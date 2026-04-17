@@ -14,6 +14,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useAppContext, type AnamnesesData } from '@/lib/app-context';
+import { exportAndShareAnamnesis } from '@/lib/pdf-utils';
 
 const GENDER_OPTIONS: { value: AnamnesesData['gender']; label: string }[] = [
   { value: 'M', label: 'Masculino' },
@@ -63,6 +64,18 @@ export default function AnamnesisScreen() {
 
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
+  };
+
+  const handleExport = async () => {
+    try {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      await exportAndShareAnamnesis(form);
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível exportar a ficha médica.');
+      console.error('Export error:', error);
+    }
   };
 
   const updateField = <K extends keyof AnamnesesData>(key: K, value: AnamnesesData[K]) => {
@@ -235,25 +248,43 @@ export default function AnamnesisScreen() {
         </View>
 
         {/* Save Button */}
-        <Pressable
-          onPress={handleSave}
-          style={({ pressed }) => [
-            styles.saveButton,
-            {
-              backgroundColor: saved ? '#22C55E' : '#0066CC',
-              opacity: pressed ? 0.85 : 1,
-            },
-          ]}
-        >
-          <MaterialIcons
-            name={saved ? 'check' : 'save'}
-            size={20}
-            color="#FFFFFF"
-          />
-          <Text style={styles.saveButtonText}>
-            {saved ? 'Salvo com sucesso!' : 'Salvar Ficha'}
-          </Text>
-        </Pressable>
+        <View style={styles.buttonsRow}>
+          <Pressable
+            onPress={handleSave}
+            style={({ pressed }) => [
+              styles.saveButton,
+              { flex: 1, marginRight: 8 },
+              {
+                backgroundColor: saved ? colors.success : colors.primary,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
+          >
+            <MaterialIcons
+              name={saved ? 'check' : 'save'}
+              size={20}
+              color={colors.onPrimary}
+            />
+            <Text style={[styles.saveButtonText, { color: colors.onPrimary }]}>
+              {saved ? 'Salvo!' : 'Salvar'}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={handleExport}
+            style={({ pressed }) => [
+              styles.exportButton,
+              { flex: 1 },
+              {
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
+          >
+            <MaterialIcons name="share" size={20} color={colors.onPrimary} />
+            <Text style={[styles.exportButtonText, { color: colors.onPrimary }]}>Compartilhar</Text>
+          </Pressable>
+        </View>
 
         {/* Privacy Note */}
         <View style={[styles.privacyNote, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -348,16 +379,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   genderOptionText: { fontSize: 15, fontWeight: '500' },
+  buttonsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 16,
-    borderRadius: 16,
-    marginTop: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
   },
-  saveButtonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '700' },
+  saveButtonText: { fontSize: 15, fontWeight: '600' },
+  exportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  exportButtonText: { fontSize: 15, fontWeight: '600' },
   privacyNote: {
     flexDirection: 'row',
     alignItems: 'flex-start',

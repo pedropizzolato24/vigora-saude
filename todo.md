@@ -55,3 +55,11 @@
 ## UI/UX Adjustments
 - [x] Reorder tabs: Alarmes (left), Início (center), Saúde, Config
 - [x] Add rounded borders to tab bar icon containers
+
+## New Features in Development
+- [ ] Implement alarm notifications with expo-notifications scheduling
+- [ ] Add PDF export for Anamnesis medical form
+
+## Completed Features
+- [x] Alarm notifications with expo-notifications scheduling (daily, weekdays, weekends, one-time)
+- [x] PDF export for Anamnesis medical form with sharing capability
