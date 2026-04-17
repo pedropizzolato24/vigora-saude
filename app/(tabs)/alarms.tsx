@@ -82,6 +82,22 @@ export default function AlarmsScreen() {
     setForm((f) => ({ ...f, time: `${f.time.split(':')[0] || '00'}:${clamped}` }));
   };
 
+  const incrementHour = (delta: number) => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const h = parseInt(timeHour, 10);
+    const base = isNaN(h) ? 0 : h;
+    const next = ((base + delta + 24) % 24);
+    setForm((f) => ({ ...f, time: `${String(next).padStart(2, '0')}:${f.time.split(':')[1] || '00'}` }));
+  };
+
+  const incrementMinute = (delta: number) => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const m = parseInt(timeMinute, 10);
+    const base = isNaN(m) ? 0 : m;
+    const next = ((base + delta + 60) % 60);
+    setForm((f) => ({ ...f, time: `${f.time.split(':')[0] || '00'}:${String(next).padStart(2, '0')}` }));
+  };
+
   const sortedAlarms = [...state.alarms].sort((a, b) => {
     const [ah, am] = a.time.split(':').map(Number);
     const [bh, bm] = b.time.split(':').map(Number);
@@ -139,6 +155,16 @@ export default function AlarmsScreen() {
         dispatch({ type: 'ADD_ALARM', payload: { ...form, id: alarmId, notificationId: notificationId || undefined } });
       }
       setModalVisible(false);
+
+      // Confirmation message
+      const repeatLabel = REPEAT_OPTIONS.find(r => r.value === form.repeat)?.label ?? form.repeat;
+      const desc = form.description ? `\n"${form.description}"` : '';
+      const action = editingAlarm ? 'atualizado' : 'criado';
+      Alert.alert(
+        `✅ Alarme ${action}!`,
+        `${form.time} • ${repeatLabel}${desc}`,
+        [{ text: 'OK' }]
+      );
     } catch (error) {
       console.error('Error scheduling alarm notification:', error);
       Alert.alert('Erro', 'Não foi possível agendar a notificação do alarme.');
@@ -282,7 +308,18 @@ export default function AlarmsScreen() {
             <View style={styles.formGroup}>
               <Text style={[styles.formLabel, { color: colors.foreground }]}>Horário</Text>
               <View style={styles.timePicker}>
-                <View style={styles.timeInputWrapper}>
+
+                {/* Hour column */}
+                <View style={styles.timeColumn}>
+                  <Pressable
+                    onPress={() => incrementHour(1)}
+                    style={({ pressed }) => [
+                      styles.timeStepBtn,
+                      { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
+                    ]}
+                  >
+                    <MaterialIcons name="keyboard-arrow-up" size={26} color={colors.primary} />
+                  </Pressable>
                   <TextInput
                     value={timeHour}
                     onChangeText={handleHourChange}
@@ -295,7 +332,7 @@ export default function AlarmsScreen() {
                       {
                         backgroundColor: colors.surface,
                         color: colors.foreground,
-                        borderColor: colors.border,
+                        borderColor: colors.primary,
                       },
                     ]}
                     returnKeyType="next"
@@ -303,10 +340,31 @@ export default function AlarmsScreen() {
                     selectTextOnFocus
                     onSubmitEditing={() => minuteInputRef.current?.focus()}
                   />
+                  <Pressable
+                    onPress={() => incrementHour(-1)}
+                    style={({ pressed }) => [
+                      styles.timeStepBtn,
+                      { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
+                    ]}
+                  >
+                    <MaterialIcons name="keyboard-arrow-down" size={26} color={colors.primary} />
+                  </Pressable>
                   <Text style={[styles.timeInputLabel, { color: colors.muted }]}>hora</Text>
                 </View>
+
                 <Text style={[styles.timeColon, { color: colors.foreground }]}>:</Text>
-                <View style={styles.timeInputWrapper}>
+
+                {/* Minute column */}
+                <View style={styles.timeColumn}>
+                  <Pressable
+                    onPress={() => incrementMinute(1)}
+                    style={({ pressed }) => [
+                      styles.timeStepBtn,
+                      { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
+                    ]}
+                  >
+                    <MaterialIcons name="keyboard-arrow-up" size={26} color={colors.primary} />
+                  </Pressable>
                   <TextInput
                     ref={minuteInputRef}
                     value={timeMinute}
@@ -320,15 +378,25 @@ export default function AlarmsScreen() {
                       {
                         backgroundColor: colors.surface,
                         color: colors.foreground,
-                        borderColor: colors.border,
+                        borderColor: colors.primary,
                       },
                     ]}
                     returnKeyType="done"
                     maxLength={2}
                     selectTextOnFocus
                   />
+                  <Pressable
+                    onPress={() => incrementMinute(-1)}
+                    style={({ pressed }) => [
+                      styles.timeStepBtn,
+                      { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
+                    ]}
+                  >
+                    <MaterialIcons name="keyboard-arrow-down" size={26} color={colors.primary} />
+                  </Pressable>
                   <Text style={[styles.timeInputLabel, { color: colors.muted }]}>min</Text>
                 </View>
+
               </View>
             </View>
 
@@ -586,7 +654,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 12,
+  },
+  timeColumn: {
+    alignItems: 'center',
+    gap: 6,
   },
   timeInputWrapper: {
     alignItems: 'center',
@@ -596,15 +668,23 @@ const styles = StyleSheet.create({
     width: 90,
     height: 72,
     borderRadius: 16,
-    borderWidth: 1.5,
+    borderWidth: 2,
     fontSize: 36,
     fontWeight: '700',
     textAlign: 'center',
   },
+  timeStepBtn: {
+    width: 90,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   timeColon: {
     fontSize: 40,
     fontWeight: '800',
-    marginBottom: 20,
+    marginBottom: 56,
     paddingHorizontal: 4,
   },
   timeInputLabel: {
@@ -612,5 +692,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    marginTop: 2,
   },
 });

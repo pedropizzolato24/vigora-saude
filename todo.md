@@ -154,3 +154,7 @@
 - [x] Fix white line gap between blue profile header and white menu body in sidebar
 - [x] Improve alarm time picker: auto-insert colon between hours and minutes (no manual typing of ":")
 
+
+## Alarm UX Improvements
+- [x] Add +/- increment/decrement buttons to alarm time picker (hour and minute fields)
+- [x] Show confirmation notification/toast when alarm is saved (with next occurrence info)
