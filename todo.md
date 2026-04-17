@@ -54,3 +54,4 @@
 
 ## UI/UX Adjustments
 - [x] Reorder tabs: Alarmes (left), Início (center), Saúde, Config
+- [x] Add rounded borders to tab bar icon containers
