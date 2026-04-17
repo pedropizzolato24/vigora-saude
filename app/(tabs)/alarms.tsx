@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AlarmCard } from '@/components/alarm-card';
 import { useColors } from '@/hooks/use-colors';
 import { generateId, useAppContext, type Alarm } from '@/lib/app-context';
@@ -38,6 +39,7 @@ const EMPTY_FORM: Omit<Alarm, 'id'> = {
 
 export default function AlarmsScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { state, dispatch } = useAppContext();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingAlarm, setEditingAlarm] = useState<Alarm | null>(null);
@@ -152,9 +154,9 @@ export default function AlarmsScreen() {
   };
 
   return (
-    <ScreenContainer>
+    <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: Math.max(insets.top, 16) }]}>
         <View>
           <Text style={[styles.title, { color: colors.foreground }]}>Alarmes</Text>
           <Text style={[styles.subtitle, { color: colors.muted }]}>

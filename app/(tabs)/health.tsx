@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
 import { generateId, getHealthStatus, useAppContext, type HealthMetric } from '@/lib/app-context';
 
@@ -58,6 +59,7 @@ function formatTimestamp(ts: number): string {
 
 export default function HealthScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { state, dispatch } = useAppContext();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedType, setSelectedType] = useState<MetricType>('heart_rate');
@@ -147,9 +149,9 @@ export default function HealthScreen() {
   };
 
   return (
-    <ScreenContainer>
+    <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: Math.max(insets.top, 16) }]}>
         <View>
           <Text style={[styles.title, { color: colors.foreground }]}>Saúde</Text>
           <Text style={[styles.subtitle, { color: colors.muted }]}>

@@ -12,12 +12,14 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
 import { useAppContext } from '@/lib/app-context';
 import { useThemeContext } from '@/lib/theme-provider';
 
 export default function SettingsScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { state, dispatch } = useAppContext();
   const { colorScheme, setColorScheme } = useThemeContext();
   const { settings } = state;
@@ -55,9 +57,9 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScreenContainer>
+    <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: Math.max(insets.top, 16) }]}>
         <Text style={[styles.title, { color: colors.foreground }]}>Configurações</Text>
       </View>
 

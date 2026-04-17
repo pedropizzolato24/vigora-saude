@@ -97,3 +97,6 @@
 
 ## UI/UX Improvements
 - [x] Add ambulance call button next to/below SOS button on Dashboard
+
+## Bug Fixes
+- [x] Fix status bar overlap on all screens (added useSafeAreaInsets to all 8 screens, removed top edge from ScreenContainer)

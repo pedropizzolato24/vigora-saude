@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ContactCard } from '@/components/contact-card';
 import { useColors } from '@/hooks/use-colors';
 import { generateId, useAppContext, type EmergencyContact } from '@/lib/app-context';
@@ -37,6 +38,7 @@ function formatPhone(value: string): string {
 
 export default function ContactsScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { state, dispatch } = useAppContext();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingContact, setEditingContact] = useState<EmergencyContact | null>(null);
@@ -98,9 +100,9 @@ export default function ContactsScreen() {
   };
 
   return (
-    <ScreenContainer>
+    <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: Math.max(insets.top, 16) }]}>
         <View>
           <Text style={[styles.title, { color: colors.foreground }]}>Contatos SOS</Text>
           <Text style={[styles.subtitle, { color: colors.muted }]}>

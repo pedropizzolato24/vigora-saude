@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
 
 interface LocationRecord {
@@ -27,6 +28,7 @@ interface LocationRecord {
 
 export default function LocationScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const [currentLocation, setCurrentLocation] = useState<LocationRecord | null>(null);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<LocationRecord[]>([]);
@@ -119,9 +121,9 @@ export default function LocationScreen() {
   };
 
   return (
-    <ScreenContainer>
+    <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: Math.max(insets.top, 16) }]}>
         <View>
           <Text style={[styles.title, { color: colors.foreground }]}>Localização</Text>
           <Text style={[styles.subtitle, { color: colors.muted }]}>

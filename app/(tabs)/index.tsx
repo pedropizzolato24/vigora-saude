@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
 import { getNextAlarm, useAppContext } from '@/lib/app-context';
 import { useNotifications } from '@/lib/notifications-context';
@@ -20,6 +21,7 @@ import { AdBanner } from '@/components/ad-banner';
 
 export default function DashboardScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { state, dispatch } = useAppContext();
   const { sendNotification } = useNotifications();
@@ -118,13 +120,13 @@ export default function DashboardScreen() {
   ];
 
   return (
-    <ScreenContainer>
+    <ScreenContainer edges={["left", "right"]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
           <View>
             <Text style={[styles.greeting, { color: colors.muted }]}>Bem-vindo ao</Text>
             <Text style={[styles.appName, { color: colors.foreground }]}>Vigora Saúde</Text>

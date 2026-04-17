@@ -21,6 +21,10 @@ export interface ScreenContainerProps extends ViewProps {
    * Additional className for the SafeAreaView (content layer).
    */
   safeAreaClassName?: string;
+  /**
+   * SafeArea mode. Use 'padding' (default) to add padding, or 'margin' to add margin.
+   */
+  mode?: 'padding' | 'margin';
 }
 
 /**
@@ -41,6 +45,7 @@ export interface ScreenContainerProps extends ViewProps {
 export function ScreenContainer({
   children,
   edges = ["top", "left", "right"],
+  mode = "padding",
   className,
   containerClassName,
   safeAreaClassName,
@@ -58,6 +63,7 @@ export function ScreenContainer({
     >
       <SafeAreaView
         edges={edges}
+        mode={mode}
         className={cn("flex-1", safeAreaClassName)}
         style={style}
       >
