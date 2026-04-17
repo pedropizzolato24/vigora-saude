@@ -87,6 +87,12 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     [
+      "expo-contacts",
+      {
+        contactsPermission: "Permitir que o Vigora Saúde acesse seus contatos para importar contatos de emergência."
+      }
+    ],
+    [
       "expo-location",
       {
         locationAlwaysAndWhenInUsePermission: "Permitir que o Vigora Saúde acesse sua localização para compartilhar em emergências."

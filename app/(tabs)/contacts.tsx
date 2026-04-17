@@ -1,4 +1,5 @@
 import * as Haptics from 'expo-haptics';
+import * as Contacts from 'expo-contacts';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -44,11 +45,76 @@ export default function ContactsScreen() {
   const [editingContact, setEditingContact] = useState<EmergencyContact | null>(null);
   const [form, setForm] = useState<Omit<EmergencyContact, 'id'>>(EMPTY_FORM);
 
+  const [deviceContacts, setDeviceContacts] = useState<Contacts.Contact[]>([]);
+  const [importModalVisible, setImportModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
   const openAddModal = () => {
     setEditingContact(null);
     setForm(EMPTY_FORM);
     setModalVisible(true);
   };
+
+  const handleImportFromDevice = async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Indisponível', 'Importação de contatos não está disponível na web.');
+      return;
+    }
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permissão negada', 'Permita o acesso aos contatos nas configurações do dispositivo.');
+        return;
+      }
+      const { data } = await Contacts.getContactsAsync({
+        fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name],
+      });
+      const withPhone = data.filter(
+        (c) => c.phoneNumbers && c.phoneNumbers.length > 0 && c.name
+      );
+      setDeviceContacts(withPhone);
+      setSearchQuery('');
+      setImportModalVisible(true);
+    } catch (err) {
+      Alert.alert('Erro', 'Não foi possível acessar os contatos do dispositivo.');
+    }
+  };
+
+  const handleSelectDeviceContact = (contact: Contacts.Contact) => {
+    const phone = contact.phoneNumbers?.[0]?.number ?? '';
+    const cleanPhone = phone.replace(/\D/g, '').slice(-11);
+    const formatted = formatPhone(cleanPhone);
+
+    // Check if already exists
+    const exists = state.emergencyContacts.some(
+      (c) => c.phone.replace(/\D/g, '') === cleanPhone
+    );
+    if (exists) {
+      Alert.alert('Contato já existe', `${contact.name} já está na sua lista de contatos de emergência.`);
+      return;
+    }
+
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+
+    dispatch({
+      type: 'ADD_CONTACT',
+      payload: {
+        id: generateId(),
+        name: contact.name ?? 'Sem nome',
+        phone: formatted,
+        relation: '',
+        whatsapp: true,
+      },
+    });
+    setImportModalVisible(false);
+    Alert.alert('Contato importado', `${contact.name} foi adicionado como contato de emergência.`);
+  };
+
+  const filteredDeviceContacts = deviceContacts.filter((c) =>
+    (c.name ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const openEditModal = (contact: EmergencyContact) => {
     setEditingContact(contact);
@@ -109,16 +175,28 @@ export default function ContactsScreen() {
             {state.emergencyContacts.length} contato(s) de emergência
           </Text>
         </View>
-        <Pressable
-          onPress={openAddModal}
-          style={({ pressed }) => [
-            styles.addButton,
-            { backgroundColor: colors.emergency, opacity: pressed ? 0.85 : 1 },
-          ]}
-          accessibilityLabel="Adicionar contato"
-        >
-          <MaterialIcons name="add" size={24} color="#FFFFFF" />
-        </Pressable>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Pressable
+            onPress={handleImportFromDevice}
+            style={({ pressed }) => [
+              styles.addButton,
+              { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
+            ]}
+            accessibilityLabel="Importar contato do celular"
+          >
+            <MaterialIcons name="contacts" size={22} color="#FFFFFF" />
+          </Pressable>
+          <Pressable
+            onPress={openAddModal}
+            style={({ pressed }) => [
+              styles.addButton,
+              { backgroundColor: colors.emergency, opacity: pressed ? 0.85 : 1 },
+            ]}
+            accessibilityLabel="Adicionar contato"
+          >
+            <MaterialIcons name="add" size={24} color="#FFFFFF" />
+          </Pressable>
+        </View>
       </View>
 
       {/* Info Banner */}
@@ -267,6 +345,88 @@ export default function ContactsScreen() {
           </ScrollView>
         </View>
       </Modal>
+
+      {/* Import from Device Modal */}
+      <Modal
+        visible={importModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setImportModalVisible(false)}
+      >
+        <View style={[styles.modal, { backgroundColor: colors.background }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <Pressable
+              onPress={() => setImportModalVisible(false)}
+              style={({ pressed }) => [styles.modalClose, pressed && { opacity: 0.6 }]}
+            >
+              <Text style={[styles.modalCloseText, { color: colors.muted }]}>Fechar</Text>
+            </Pressable>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+              Importar Contato
+            </Text>
+            <View style={{ minWidth: 70 }} />
+          </View>
+
+          {/* Search Bar */}
+          <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+            <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <MaterialIcons name="search" size={20} color={colors.muted} />
+              <TextInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Buscar contato..."
+                placeholderTextColor={colors.muted}
+                style={[styles.searchInput, { color: colors.foreground }]}
+                returnKeyType="search"
+              />
+              {searchQuery.length > 0 && (
+                <Pressable onPress={() => setSearchQuery('')}>
+                  <MaterialIcons name="close" size={18} color={colors.muted} />
+                </Pressable>
+              )}
+            </View>
+          </View>
+
+          {/* Device Contacts List */}
+          <FlatList
+            data={filteredDeviceContacts}
+            keyExtractor={(item, index) => (item as any).id ?? `${item.name}-${index}`}
+            renderItem={({ item }) => (
+              <Pressable
+                onPress={() => handleSelectDeviceContact(item)}
+                style={({ pressed }) => [
+                  styles.deviceContactRow,
+                  { borderBottomColor: colors.border, opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <View style={[styles.deviceContactAvatar, { backgroundColor: colors.primaryLight }]}>
+                  <Text style={[styles.deviceContactInitial, { color: colors.primary }]}>
+                    {(item.name ?? '?')[0].toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.deviceContactName, { color: colors.foreground }]}>
+                    {item.name}
+                  </Text>
+                  <Text style={[styles.deviceContactPhone, { color: colors.muted }]}>
+                    {item.phoneNumbers?.[0]?.number ?? 'Sem número'}
+                  </Text>
+                </View>
+                <MaterialIcons name="add-circle-outline" size={24} color={colors.primary} />
+              </Pressable>
+            )}
+            contentContainerStyle={{ paddingBottom: 32 }}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <MaterialIcons name="search-off" size={48} color={colors.border} />
+                <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+                  Nenhum contato encontrado
+                </Text>
+              </View>
+            }
+          />
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -355,4 +515,45 @@ const styles = StyleSheet.create({
   toggleLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   toggleLabel: { fontSize: 16, fontWeight: '500' },
   toggleSubLabel: { fontSize: 13, marginTop: 1 },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 0,
+  },
+  deviceContactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  deviceContactAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deviceContactInitial: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  deviceContactName: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  deviceContactPhone: {
+    fontSize: 14,
+    marginTop: 2,
+  },
 });

@@ -46,6 +46,7 @@ export interface AppSettings {
   notificationsEnabled: boolean;
   alarmVolume: number; // 0-100
   language: 'pt' | 'en';
+  missedAlarmThreshold: number; // Number of missed alarms before WhatsApp escalation (1-10)
 }
 
 export interface Ad {
@@ -66,6 +67,7 @@ export interface AppState {
   lastSOS: number | null;
   settings: AppSettings;
   ads: Ad[];
+  missedAlarmCount: number; // Consecutive missed alarms counter
   isLoading: boolean;
 }
 
@@ -84,6 +86,8 @@ type AppAction =
   | { type: 'DELETE_HEALTH_METRIC'; payload: string }
   | { type: 'TRIGGER_SOS' }
   | { type: 'UPDATE_SETTINGS'; payload: Partial<AppSettings> }
+  | { type: 'INCREMENT_MISSED_ALARM' }
+  | { type: 'RESET_MISSED_ALARM' }
   | { type: 'CLEAR_ALL_DATA' };
 
 // ─── Initial State ────────────────────────────────────────────────────────────
@@ -98,8 +102,10 @@ const initialState: AppState = {
     notificationsEnabled: true,
     alarmVolume: 80,
     language: 'pt',
+    missedAlarmThreshold: 3,
   },
   ads: [],
+  missedAlarmCount: 0,
   isLoading: true,
 };
 
@@ -175,6 +181,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         settings: { ...state.settings, ...action.payload },
       };
+
+    case 'INCREMENT_MISSED_ALARM':
+      return { ...state, missedAlarmCount: state.missedAlarmCount + 1 };
+
+    case 'RESET_MISSED_ALARM':
+      return { ...state, missedAlarmCount: 0 };
 
     case 'CLEAR_ALL_DATA':
       return {

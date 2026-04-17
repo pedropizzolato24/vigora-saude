@@ -169,6 +169,85 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Missed Alarm Escalation Section */}
+        <SectionTitle title="Escalação de Alarmes" colors={colors} />
+        <View style={[styles.settingsGroup, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={{ padding: 16, gap: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={[styles.settingIcon, { backgroundColor: colors.emergencyLight }]}>
+                <MaterialIcons name="warning" size={20} color={colors.emergency} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.settingLabel, { color: colors.foreground }]}>Alarmes não respondidos</Text>
+                <Text style={[styles.settingSubLabel, { color: colors.muted }]}>
+                  Após {settings.missedAlarmThreshold} alarme(s) não respondido(s), enviar WhatsApp para contatos
+                </Text>
+              </View>
+            </View>
+
+            {/* Threshold Counter */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+              <Pressable
+                onPress={() => {
+                  if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  const newVal = Math.max(1, settings.missedAlarmThreshold - 1);
+                  updateSetting('missedAlarmThreshold', newVal);
+                }}
+                style={({ pressed }) => [
+                  styles.thresholdBtn,
+                  { backgroundColor: colors.border, opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <MaterialIcons name="remove" size={22} color={colors.foreground} />
+              </Pressable>
+              <View style={[styles.thresholdDisplay, { backgroundColor: colors.emergencyLight }]}>
+                <Text style={[styles.thresholdValue, { color: colors.emergency }]}>
+                  {settings.missedAlarmThreshold}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => {
+                  if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  const newVal = Math.min(10, settings.missedAlarmThreshold + 1);
+                  updateSetting('missedAlarmThreshold', newVal);
+                }}
+                style={({ pressed }) => [
+                  styles.thresholdBtn,
+                  { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <MaterialIcons name="add" size={22} color="#FFFFFF" />
+              </Pressable>
+            </View>
+
+            {/* Current missed count */}
+            <View style={[styles.missedCountBanner, { backgroundColor: state.missedAlarmCount > 0 ? colors.warningLight : colors.successLight, borderColor: state.missedAlarmCount > 0 ? colors.warningLight : colors.successLight }]}>
+              <MaterialIcons
+                name={state.missedAlarmCount > 0 ? 'notifications-off' : 'check-circle'}
+                size={16}
+                color={state.missedAlarmCount > 0 ? colors.warning : colors.success}
+              />
+              <Text style={[styles.missedCountText, { color: colors.foreground }]}>
+                {state.missedAlarmCount > 0
+                  ? `${state.missedAlarmCount} alarme(s) não respondido(s) consecutivo(s)`
+                  : 'Nenhum alarme não respondido'}
+              </Text>
+            </View>
+
+            {state.missedAlarmCount > 0 && (
+              <Pressable
+                onPress={() => {
+                  if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  dispatch({ type: 'RESET_MISSED_ALARM' });
+                }}
+                style={({ pressed }) => [{ alignItems: 'center', paddingVertical: 8, opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>Resetar contador</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+
         {/* Language Section */}
         <SectionTitle title="Idioma" colors={colors} />
         <View style={[styles.settingsGroup, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -340,4 +419,35 @@ const styles = StyleSheet.create({
   },
   dangerButtonText: { color: "#EF4444", fontSize: 16, fontWeight: '600' },
   dangerHint: { fontSize: 13, textAlign: 'center', lineHeight: 18 },
+  thresholdBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thresholdDisplay: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thresholdValue: {
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  missedCountBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  missedCountText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+  },
 });

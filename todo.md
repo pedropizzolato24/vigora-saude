@@ -100,3 +100,12 @@
 
 ## Bug Fixes
 - [x] Fix status bar overlap on all screens (added useSafeAreaInsets to all 8 screens, removed top edge from ScreenContainer)
+
+
+## New Features - Contacts & WhatsApp Escalation
+- [x] Integrate device contacts picker to import emergency contacts from phone agenda
+- [x] Add configurable missed alarm threshold in Settings (1-10, with +/- controls)
+- [x] Track consecutive missed alarms per user (with counter display)
+- [x] Auto-send WhatsApp messages to emergency contacts when missed alarm threshold is reached
+- [x] Include GPS location in WhatsApp escalation messages
+- [x] Add missed alarm counter reset when user responds to alarm
