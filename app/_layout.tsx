@@ -13,6 +13,7 @@ import { NotificationsProvider } from "@/lib/notifications-context";
 import { MenuProvider } from "@/lib/menu-context";
 import { syncAlarmsOnStartup } from "@/lib/alarm-sync";
 import { AlarmSyncInitializer } from "@/components/alarm-sync-initializer";
+import { AlarmNotificationHandler } from "@/components/alarm-notification-handler";
 import {
   SafeAreaFrameContext,
   SafeAreaInsetsContext,
@@ -88,6 +89,7 @@ export default function RootLayout() {
       <NotificationsProvider>
         <AppProvider>
           <AlarmSyncInitializer />
+          <AlarmNotificationHandler />
           <MenuProvider>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>

@@ -80,3 +80,11 @@
 - [x] 2. Location sharing: Send real-time GPS location via Google Maps link in notifications — LOCATION SCREEN EXISTS
 - [x] 3. Ambulance button: Pre-configured with SUS and health plan numbers — ALREADY IMPLEMENTED
 - [x] 4. Ad banners: Monetization banners for commercial partners — CREATED COMPONENT & INTEGRATED
+
+
+## Alarm Timeout Escalation Feature
+- [x] Create alarm timeout manager utility
+- [x] Add timeout tracking to Alarm interface
+- [x] Implement auto-escalation after 2-3 minutes of no response
+- [x] Add dismiss/snooze buttons to alarm notifications
+- [x] Track escalation history in AppState
