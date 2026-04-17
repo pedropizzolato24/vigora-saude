@@ -11,6 +11,7 @@ export interface Alarm {
   repeat: 'daily' | 'weekdays' | 'weekends' | 'custom';
   sound: boolean;
   vibration: boolean;
+  notificationId?: string; // Expo notification ID for scheduled alarm
 }
 
 export interface EmergencyContact {

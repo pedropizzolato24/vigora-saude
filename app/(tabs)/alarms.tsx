@@ -18,6 +18,7 @@ import { ScreenContainer } from '@/components/screen-container';
 import { AlarmCard } from '@/components/alarm-card';
 import { useColors } from '@/hooks/use-colors';
 import { generateId, useAppContext, type Alarm } from '@/lib/app-context';
+import { scheduleAlarmNotification, cancelAlarmNotification } from '@/lib/notifications-utils';
 
 const REPEAT_OPTIONS: { value: Alarm['repeat']; label: string }[] = [
   { value: 'daily', label: 'Diário' },
@@ -71,7 +72,7 @@ export default function AlarmsScreen() {
     setModalVisible(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Validate time format
     const timeRegex = /^([01]?\d|2[0-3]):([0-5]\d)$/;
     if (!timeRegex.test(form.time)) {
@@ -83,12 +84,26 @@ export default function AlarmsScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
 
-    if (editingAlarm) {
-      dispatch({ type: 'UPDATE_ALARM', payload: { ...form, id: editingAlarm.id } });
-    } else {
-      dispatch({ type: 'ADD_ALARM', payload: { ...form, id: generateId() } });
+    try {
+      if (editingAlarm) {
+        // Cancel old notification if exists
+        if (editingAlarm.notificationId) {
+          await cancelAlarmNotification(editingAlarm.notificationId);
+        }
+        // Schedule new notification
+        const notificationId = await scheduleAlarmNotification({ ...form, id: editingAlarm.id } as Alarm);
+        dispatch({ type: 'UPDATE_ALARM', payload: { ...form, id: editingAlarm.id, notificationId: notificationId || undefined } });
+      } else {
+        const alarmId = generateId();
+        // Schedule notification for new alarm
+        const notificationId = await scheduleAlarmNotification({ ...form, id: alarmId } as Alarm);
+        dispatch({ type: 'ADD_ALARM', payload: { ...form, id: alarmId, notificationId: notificationId || undefined } });
+      }
+      setModalVisible(false);
+    } catch (error) {
+      console.error('Error scheduling alarm notification:', error);
+      Alert.alert('Erro', 'Não foi possível agendar a notificação do alarme.');
     }
-    setModalVisible(false);
   };
 
   const handleDelete = (id: string) => {
@@ -97,9 +112,14 @@ export default function AlarmsScreen() {
       {
         text: 'Excluir',
         style: 'destructive',
-        onPress: () => {
+        onPress: async () => {
           if (Platform.OS !== 'web') {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          }
+          // Find alarm and cancel its notification
+          const alarm = state.alarms.find(a => a.id === id);
+          if (alarm?.notificationId) {
+            await cancelAlarmNotification(alarm.notificationId);
           }
           dispatch({ type: 'DELETE_ALARM', payload: id });
         },
@@ -107,11 +127,28 @@ export default function AlarmsScreen() {
     ]);
   };
 
-  const handleToggle = (alarm: Alarm) => {
+  const handleToggle = async (alarm: Alarm) => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    dispatch({ type: 'UPDATE_ALARM', payload: { ...alarm, enabled: !alarm.enabled } });
+    
+    const newEnabled = !alarm.enabled;
+    
+    try {
+      if (newEnabled && !alarm.notificationId) {
+        // Enable alarm: schedule notification
+        const notificationId = await scheduleAlarmNotification(alarm);
+        dispatch({ type: 'UPDATE_ALARM', payload: { ...alarm, enabled: true, notificationId: notificationId || undefined } });
+      } else if (!newEnabled && alarm.notificationId) {
+        // Disable alarm: cancel notification
+        await cancelAlarmNotification(alarm.notificationId);
+        dispatch({ type: 'UPDATE_ALARM', payload: { ...alarm, enabled: false, notificationId: undefined } });
+      } else {
+        dispatch({ type: 'UPDATE_ALARM', payload: { ...alarm, enabled: newEnabled } });
+      }
+    } catch (error) {
+      console.error('Error toggling alarm notification:', error);
+    }
   };
 
   return (

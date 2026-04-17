@@ -63,3 +63,8 @@
 ## Completed Features
 - [x] Alarm notifications with expo-notifications scheduling (daily, weekdays, weekends, one-time)
 - [x] PDF export for Anamnesis medical form with sharing capability
+
+## Current Work
+- [x] Integrate alarm notifications with saved alarms (auto-schedule on add/update, cancel on delete)
+- [x] Add notification ID tracking to Alarm type and AppState
+- [x] Test alarm notifications fire at correct times
