@@ -10,7 +10,8 @@ import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { AppProvider, useAppContext } from "@/lib/app-context";
 import { NotificationsProvider } from "@/lib/notifications-context";
-import { MenuProvider } from "@/lib/menu-context";
+import { MenuProvider } from '@/lib/menu-context';
+import { FontSizeProvider } from '@/lib/font-size-context';
 import { syncAlarmsOnStartup } from "@/lib/alarm-sync";
 import { AlarmSyncInitializer } from "@/components/alarm-sync-initializer";
 import { AlarmNotificationHandler } from '@/components/alarm-notification-handler';
@@ -92,6 +93,7 @@ export default function RootLayout() {
           <AlarmSyncInitializer />
           <AlarmNotificationHandler />
           <OnboardingGate />
+          <FontSizeProvider>
           <MenuProvider>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
@@ -107,6 +109,7 @@ export default function RootLayout() {
         </QueryClientProvider>
       </trpc.Provider>
           </MenuProvider>
+          </FontSizeProvider>
         </AppProvider>
       </NotificationsProvider>
     </GestureHandlerRootView>

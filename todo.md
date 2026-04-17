@@ -158,3 +158,8 @@
 ## Alarm UX Improvements
 - [x] Add +/- increment/decrement buttons to alarm time picker (hour and minute fields)
 - [x] Show confirmation notification/toast when alarm is saved (with next occurrence info)
+
+## Bug Fixes & Improvements v3
+- [x] Fix SOS button pulse animation loop (cuts at wrong moment, visually jarring)
+- [x] Improve FAQ text contrast for better readability against background
+- [x] Implement working font size setting (small/medium/large) with persistence via AsyncStorage, default medium — applied to Dashboard, Alarmes, Configurações, FAQ; remaining screens pending

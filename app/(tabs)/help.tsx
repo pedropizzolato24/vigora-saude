@@ -16,6 +16,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
+import { useFontSize } from '@/lib/font-size-context';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -206,6 +207,7 @@ const FAQ_DATA: FAQSection[] = [
 
 export default function HelpScreen() {
   const colors = useColors();
+  const fs = useFontSize();
   const insets = useSafeAreaInsets();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
@@ -229,7 +231,7 @@ export default function HelpScreen() {
   return (
     <ScreenContainer edges={['left', 'right']}>
       <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Ajuda e FAQ</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: fs['2xl'] }]}>Ajuda e FAQ</Text>
         <MaterialIcons name="help-outline" size={26} color={colors.primary} />
       </View>
 
@@ -238,10 +240,10 @@ export default function HelpScreen() {
         <View style={[styles.welcomeBanner, { backgroundColor: colors.primaryLight, borderColor: colors.primary + '30' }]}>
           <MaterialIcons name="support-agent" size={40} color={colors.primary} />
           <View style={styles.welcomeTextContainer}>
-            <Text style={[styles.welcomeTitle, { color: colors.foreground }]}>
+            <Text style={[styles.welcomeTitle, { color: colors.foreground, fontSize: fs.lg }]}>
               Como podemos ajudar?
             </Text>
-            <Text style={[styles.welcomeSubtitle, { color: colors.muted }]}>
+            <Text style={[styles.welcomeSubtitle, { color: colors.foreground, fontSize: fs.sm }]}>
               Encontre respostas para as dúvidas mais comuns sobre o Vigora Saúde.
             </Text>
           </View>
@@ -265,7 +267,7 @@ export default function HelpScreen() {
                 <View style={[styles.sectionIconBadge, { backgroundColor: section.color + '15' }]}>
                   <MaterialIcons name={section.icon} size={24} color={section.color} />
                 </View>
-                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                <Text style={[styles.sectionTitle, { color: colors.foreground, fontSize: fs.md }]}>
                   {section.title}
                 </Text>
                 <View style={[styles.countBadge, { backgroundColor: colors.primary + '15' }]}>
@@ -300,7 +302,7 @@ export default function HelpScreen() {
                           <View style={[styles.faqIconCircle, { backgroundColor: section.color + '10' }]}>
                             <MaterialIcons name={item.icon} size={18} color={section.color} />
                           </View>
-                          <Text style={[styles.faqQuestion, { color: colors.foreground }]} numberOfLines={isItemOpen ? undefined : 2}>
+                          <Text style={[styles.faqQuestion, { color: colors.foreground, fontSize: fs.base }]} numberOfLines={isItemOpen ? undefined : 2}>
                             {item.question}
                           </Text>
                           <MaterialIcons
@@ -311,8 +313,8 @@ export default function HelpScreen() {
                         </TouchableOpacity>
 
                         {isItemOpen && (
-                          <View style={[styles.faqAnswer, { backgroundColor: colors.background }]}>
-                            <Text style={[styles.faqAnswerText, { color: colors.muted }]}>
+                          <View style={[styles.faqAnswer, { backgroundColor: colors.surface }]}>
+                            <Text style={[styles.faqAnswerText, { color: colors.foreground, fontSize: fs.base, lineHeight: fs.scaled(24) }]}>
                               {item.answer}
                             </Text>
                           </View>
@@ -332,7 +334,7 @@ export default function HelpScreen() {
           <Text style={[styles.supportTitle, { color: colors.foreground }]}>
             Ainda precisa de ajuda?
           </Text>
-          <Text style={[styles.supportText, { color: colors.muted }]}>
+          <Text style={[styles.supportText, { color: colors.foreground }]}>
             Se sua dúvida não foi respondida, entre em contato conosco pelo e-mail suporte@vigorasaude.com.br
           </Text>
         </View>
@@ -443,8 +445,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   faqAnswerText: {
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 15,
+    lineHeight: 24,
+    fontWeight: '400',
   },
   supportSection: {
     alignItems: 'center',

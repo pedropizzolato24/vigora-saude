@@ -18,6 +18,7 @@ import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AlarmCard } from '@/components/alarm-card';
 import { useColors } from '@/hooks/use-colors';
+import { useFontSize } from '@/lib/font-size-context';
 import { generateId, useAppContext, type Alarm } from '@/lib/app-context';
 import { scheduleAlarmNotification, cancelAlarmNotification } from '@/lib/notifications-utils';
 
@@ -39,6 +40,7 @@ const EMPTY_FORM: Omit<Alarm, 'id'> = {
 
 export default function AlarmsScreen() {
   const colors = useColors();
+  const fs = useFontSize();
   const insets = useSafeAreaInsets();
   const { state, dispatch } = useAppContext();
   const [modalVisible, setModalVisible] = useState(false);
@@ -221,8 +223,8 @@ export default function AlarmsScreen() {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
         <View>
-          <Text style={[styles.title, { color: colors.foreground }]}>Alarmes</Text>
-          <Text style={[styles.subtitle, { color: colors.muted }]}>
+          <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'] }]}>Alarmes</Text>
+          <Text style={[styles.subtitle, { color: colors.muted, fontSize: fs.sm }]}>
             {state.alarms.length}/24 alarmes configurados
           </Text>
         </View>
@@ -242,10 +244,10 @@ export default function AlarmsScreen() {
       {sortedAlarms.length === 0 ? (
         <View style={styles.emptyState}>
           <MaterialIcons name="alarm" size={64} color={colors.border} />
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+          <Text style={[styles.emptyTitle, { color: colors.foreground, fontSize: fs.lg }]}>
             Nenhum alarme configurado
           </Text>
-          <Text style={[styles.emptySubtext, { color: colors.muted }]}>
+          <Text style={[styles.emptySubtext, { color: colors.muted, fontSize: fs.sm }]}>
             Toque em "+" para adicionar seu primeiro alarme de medicação.
           </Text>
           <Pressable
@@ -292,7 +294,7 @@ export default function AlarmsScreen() {
             >
               <Text style={[styles.modalCloseText, { color: colors.muted }]}>Cancelar</Text>
             </Pressable>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground, fontSize: fs.xl }]}>
               {editingAlarm ? 'Editar Alarme' : 'Novo Alarme'}
             </Text>
             <Pressable

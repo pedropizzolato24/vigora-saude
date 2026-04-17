@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
 import { useAppContext } from '@/lib/app-context';
 import { useThemeContext } from '@/lib/theme-provider';
+import { useFontSize } from '@/lib/font-size-context';
 
 // ─── Collapsible Section ────────────────────────────────────────────────────
 
@@ -140,6 +141,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { state, dispatch } = useAppContext();
   const { colorScheme, setColorScheme } = useThemeContext();
+  const fs = useFontSize();
   const { settings } = state;
 
   const updateSetting = <K extends keyof typeof settings>(key: K, value: (typeof settings)[K]) => {
@@ -176,8 +178,8 @@ export default function SettingsScreen() {
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Configurações</Text>
-        <Text style={[styles.headerSubtitle, { color: colors.muted }]}>Personalize sua experiência</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: fs['2xl'] }]}>Configurações</Text>
+        <Text style={[styles.headerSubtitle, { color: colors.muted, fontSize: fs.sm }]}>Personalize sua experiência</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

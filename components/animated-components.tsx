@@ -124,19 +124,33 @@ export function PulseView({
       return;
     }
 
+    // Start from 1 → expand → back to 1 → shrink → back to 1
+    // This ensures the loop restarts seamlessly at scale=1
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(scale, {
           toValue: maxScale,
-          duration: duration / 2,
+          duration: duration / 4,
           useNativeDriver: true,
-          easing: Easing.inOut(Easing.ease),
+          easing: Easing.inOut(Easing.sin),
+        }),
+        Animated.timing(scale, {
+          toValue: 1,
+          duration: duration / 4,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.sin),
         }),
         Animated.timing(scale, {
           toValue: minScale,
-          duration: duration / 2,
+          duration: duration / 4,
           useNativeDriver: true,
-          easing: Easing.inOut(Easing.ease),
+          easing: Easing.inOut(Easing.sin),
+        }),
+        Animated.timing(scale, {
+          toValue: 1,
+          duration: duration / 4,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.sin),
         }),
       ])
     );

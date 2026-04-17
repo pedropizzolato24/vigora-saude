@@ -16,6 +16,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
+import { useFontSize } from '@/lib/font-size-context';
 import { getNextAlarm, useAppContext } from '@/lib/app-context';
 import { useNotifications } from '@/lib/notifications-context';
 import { AdBanner } from '@/components/ad-banner';
@@ -23,6 +24,7 @@ import { FadeInView, ScaleInView, PulseView, StaggeredItem } from '@/components/
 
 export default function DashboardScreen() {
   const colors = useColors();
+  const fs = useFontSize();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { state, dispatch } = useAppContext();
@@ -131,8 +133,8 @@ export default function DashboardScreen() {
         <FadeInView delay={0}>
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <View>
-            <Text style={[styles.greeting, { color: colors.muted }]}>Bem-vindo ao</Text>
-            <Text style={[styles.appName, { color: colors.foreground }]}>Vigora Saúde</Text>
+            <Text style={[styles.greeting, { color: colors.muted, fontSize: fs.sm }]}>Bem-vindo ao</Text>
+            <Text style={[styles.appName, { color: colors.foreground, fontSize: fs.scaled(26) }]}>Vigora Saúde</Text>
           </View>
           <View style={[styles.heartBadge, { backgroundColor: '#FF000015' }]}>
             <MaterialIcons name="favorite" size={28} color="#FF0000" />
@@ -162,8 +164,8 @@ export default function DashboardScreen() {
               ]}
             >
               <MaterialIcons name="warning" size={52} color={colors.onEmergency} />
-              <Text style={styles.sosText}>SOS</Text>
-              <Text style={styles.sosSubtext}>Toque para emergência</Text>
+              <Text style={[styles.sosText, { fontSize: fs.scaled(40) }]}>SOS</Text>
+              <Text style={[styles.sosSubtext, { fontSize: fs.scaled(12) }]}>Toque para emergência</Text>
             </View>
           </Pressable>
           </PulseView>
@@ -195,7 +197,7 @@ export default function DashboardScreen() {
           <MaterialIcons name="local-hospital" size={24} color={colors.onPrimary} />
           <Text style={{
             color: colors.onPrimary,
-            fontSize: 16,
+            fontSize: fs.md,
             fontWeight: '600',
           }}>
             Chamar Ambulância
@@ -229,11 +231,11 @@ export default function DashboardScreen() {
                 </View>
                 <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
               </View>
-              <Text style={[styles.cardValue, { color: card.color }]}>{card.value}</Text>
-              <Text style={[styles.cardLabel, { color: colors.foreground }]} numberOfLines={2}>
+              <Text style={[styles.cardValue, { color: card.color, fontSize: fs.scaled(28) }]}>{card.value}</Text>
+              <Text style={[styles.cardLabel, { color: colors.foreground, fontSize: fs.sm }]} numberOfLines={2}>
                 {card.label}
               </Text>
-              <Text style={[styles.cardSubtext, { color: colors.muted }]} numberOfLines={1}>
+              <Text style={[styles.cardSubtext, { color: colors.muted, fontSize: fs.xs }]} numberOfLines={1}>
                 {card.subtext}
               </Text>
               <View style={[styles.cardTapHint, { backgroundColor: card.color + '10' }]}>
@@ -247,7 +249,7 @@ export default function DashboardScreen() {
         {/* Quick Actions */}
         <FadeInView delay={400}>
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground, fontSize: fs.lg }]}>
             Ações Rápidas
           </Text>
           <View style={styles.quickActions}>
@@ -259,7 +261,7 @@ export default function DashboardScreen() {
               ]}
             >
               <MaterialIcons name="alarm" size={22} color={colors.onPrimary} />
-              <Text style={styles.quickActionText}>Gerenciar Alarmes</Text>
+              <Text style={[styles.quickActionText, { fontSize: fs.sm }]}>Gerenciar Alarmes</Text>
             </Pressable>
             <Pressable
               onPress={() => navigate('/(tabs)/health')}
@@ -269,7 +271,7 @@ export default function DashboardScreen() {
               ]}
             >
               <MaterialIcons name="favorite" size={22} color={colors.onSuccess} />
-              <Text style={styles.quickActionText}>Registrar Saúde</Text>
+              <Text style={[styles.quickActionText, { fontSize: fs.sm }]}>Registrar Saúde</Text>
             </Pressable>
           </View>
         </View>
