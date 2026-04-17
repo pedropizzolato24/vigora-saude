@@ -80,7 +80,7 @@ export default function AnamnesisScreen() {
             Histórico médico pessoal
           </Text>
         </View>
-        <View style={[styles.headerIcon, { backgroundColor: '#0066CC15' }]}>
+        <View style={[styles.headerIcon, { backgroundColor: colors.primaryLight }]}>
           <MaterialIcons name="description" size={24} color="#0066CC" />
         </View>
       </View>
@@ -146,7 +146,7 @@ export default function AnamnesisScreen() {
         </View>
 
         {/* Medical Info Section */}
-        <SectionHeader title="Informações Médicas" icon="medical-services" color="#FF0000" colors={colors} />
+        <SectionHeader title="Informações Médicas" icon="medical-services" color={colors.emergency} colors={colors} />
 
         <View style={styles.formGroup}>
           <Text style={[styles.formLabel, { color: colors.foreground }]}>Alergias</Text>

@@ -128,7 +128,7 @@ export default function AlarmsScreen() {
           onPress={openAddModal}
           style={({ pressed }) => [
             styles.addButton,
-            { backgroundColor: '#0066CC', opacity: pressed ? 0.85 : 1 },
+            { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
           ]}
           accessibilityLabel="Adicionar alarme"
         >
@@ -150,7 +150,7 @@ export default function AlarmsScreen() {
             onPress={openAddModal}
             style={({ pressed }) => [
               styles.emptyButton,
-              { backgroundColor: '#0066CC', opacity: pressed ? 0.85 : 1 },
+              { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
             ]}
           >
             <MaterialIcons name="add" size={20} color="#FFFFFF" />
@@ -197,7 +197,7 @@ export default function AlarmsScreen() {
               onPress={handleSave}
               style={({ pressed }) => [styles.modalSave, pressed && { opacity: 0.7 }]}
             >
-              <Text style={[styles.modalSaveText, { color: '#0066CC' }]}>Salvar</Text>
+              <Text style={[styles.modalSaveText, { color: colors.primary }]}>Salvar</Text>
             </Pressable>
           </View>
 
@@ -289,7 +289,7 @@ export default function AlarmsScreen() {
                 <Switch
                   value={form.sound}
                   onValueChange={(v) => setForm((f) => ({ ...f, sound: v }))}
-                  trackColor={{ false: colors.border, true: '#0066CC' }}
+                  trackColor={{ false: colors.border, true: colors.primary }}
                   thumbColor="#FFFFFF"
                 />
               </View>
@@ -302,7 +302,7 @@ export default function AlarmsScreen() {
                 <Switch
                   value={form.vibration}
                   onValueChange={(v) => setForm((f) => ({ ...f, vibration: v }))}
-                  trackColor={{ false: colors.border, true: '#0066CC' }}
+                  trackColor={{ false: colors.border, true: colors.primary }}
                   thumbColor="#FFFFFF"
                 />
               </View>
@@ -315,7 +315,7 @@ export default function AlarmsScreen() {
                 <Switch
                   value={form.enabled}
                   onValueChange={(v) => setForm((f) => ({ ...f, enabled: v }))}
-                  trackColor={{ false: colors.border, true: '#0066CC' }}
+                  trackColor={{ false: colors.border, true: colors.primary }}
                   thumbColor="#FFFFFF"
                 />
               </View>

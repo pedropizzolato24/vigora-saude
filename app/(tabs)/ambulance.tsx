@@ -40,7 +40,7 @@ export default function AmbulanceScreen() {
       description: 'Serviço de Atendimento Móvel de Urgência — gratuito',
       phone: '192',
       icon: 'local-hospital',
-      color: '#FF0000',
+      color: colors.emergency,
     },
     {
       type: 'plan',
@@ -50,7 +50,7 @@ export default function AmbulanceScreen() {
         : 'Cadastre seu plano na ficha de anamnese',
       phone: anamnesis?.healthPlanNumber || '',
       icon: 'medical-services',
-      color: '#0066CC',
+      color: colors.primary,
     },
     {
       type: 'private',
@@ -58,7 +58,7 @@ export default function AmbulanceScreen() {
       description: 'Corpo de Bombeiros — emergências gerais',
       phone: '193',
       icon: 'warning',
-      color: '#F59E0B',
+      color: colors.warning,
     },
   ];
 
@@ -110,17 +110,17 @@ export default function AmbulanceScreen() {
             Acione atendimento de emergência
           </Text>
         </View>
-        <View style={[styles.headerIcon, { backgroundColor: '#FF000015' }]}>
-          <MaterialIcons name="local-hospital" size={24} color="#FF0000" />
+        <View style={[styles.headerIcon, { backgroundColor: colors.emergencyLight }]}>
+          <MaterialIcons name="local-hospital" size={24} color={colors.emergency} />
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Emergency Banner */}
-        <View style={[styles.emergencyBanner, { backgroundColor: '#FF000015', borderColor: '#FF000040' }]}>
-          <MaterialIcons name="warning" size={22} color="#FF0000" />
+        <View style={[styles.emergencyBanner, { backgroundColor: colors.emergencyLight, borderColor: '#FF000040' }]}>
+          <MaterialIcons name="warning" size={22} color={colors.emergency} />
           <Text style={[styles.emergencyText, { color: colors.foreground }]}>
-            <Text style={{ fontWeight: '700', color: '#FF0000' }}>Emergência grave? </Text>
+            <Text style={{ fontWeight: '700', color: colors.emergency }}>Emergência grave? </Text>
             Ligue imediatamente para o SAMU: 192
           </Text>
         </View>
@@ -215,7 +215,7 @@ export default function AmbulanceScreen() {
             'Desbloqueie o acesso para a ambulância',
           ].map((instruction, i) => (
             <View key={i} style={styles.instructionRow}>
-              <View style={[styles.instructionBullet, { backgroundColor: '#0066CC' }]}>
+              <View style={[styles.instructionBullet, { backgroundColor: colors.primary }]}>
                 <Text style={styles.instructionNumber}>{i + 1}</Text>
               </View>
               <Text style={[styles.instructionText, { color: colors.foreground }]}>

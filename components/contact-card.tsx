@@ -29,7 +29,7 @@ export function ContactCard({ contact, onEdit, onDelete }: ContactCardProps) {
       ]}
     >
       {/* Avatar */}
-      <View style={[styles.avatar, { backgroundColor: '#0066CC20' }]}>
+      <View style={[styles.avatar, { backgroundColor: colors.primaryLight }]}>
         <Text style={styles.avatarText}>{getInitials(contact.name)}</Text>
       </View>
 
@@ -43,13 +43,13 @@ export function ContactCard({ contact, onEdit, onDelete }: ContactCardProps) {
           <Text style={[styles.phone, { color: colors.muted }]}>{contact.phone}</Text>
         </View>
         <View style={styles.tagsRow}>
-          <View style={[styles.tag, { backgroundColor: '#0066CC15' }]}>
-            <Text style={[styles.tagText, { color: '#0066CC' }]}>{contact.relation}</Text>
+          <View style={[styles.tag, { backgroundColor: colors.primaryLight }]}>
+            <Text style={[styles.tagText, { color: colors.primary }]}>{contact.relation}</Text>
           </View>
           {contact.whatsapp && (
-            <View style={[styles.tag, { backgroundColor: '#22C55E15' }]}>
+            <View style={[styles.tag, { backgroundColor: colors.successLight }]}>
               <MaterialIcons name="chat" size={12} color="#22C55E" />
-              <Text style={[styles.tagText, { color: '#22C55E' }]}>WhatsApp</Text>
+              <Text style={[styles.tagText, { color: colors.success }]}>WhatsApp</Text>
             </View>
           )}
         </View>

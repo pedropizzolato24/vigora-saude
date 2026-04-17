@@ -111,7 +111,7 @@ export default function ContactsScreen() {
           onPress={openAddModal}
           style={({ pressed }) => [
             styles.addButton,
-            { backgroundColor: '#FF0000', opacity: pressed ? 0.85 : 1 },
+            { backgroundColor: colors.emergency, opacity: pressed ? 0.85 : 1 },
           ]}
           accessibilityLabel="Adicionar contato"
         >
@@ -120,8 +120,8 @@ export default function ContactsScreen() {
       </View>
 
       {/* Info Banner */}
-      <View style={[styles.infoBanner, { backgroundColor: '#FF000010', borderColor: '#FF000030' }]}>
-        <MaterialIcons name="info" size={16} color="#FF0000" />
+      <View style={[styles.infoBanner, { backgroundColor: colors.emergencyLight, borderColor: colors.emergencyLight }]}>
+        <MaterialIcons name="info" size={16} color={colors.emergency} />
         <Text style={[styles.infoText, { color: colors.foreground }]}>
           Estes contatos serão notificados quando você acionar o botão SOS.
         </Text>
@@ -141,7 +141,7 @@ export default function ContactsScreen() {
             onPress={openAddModal}
             style={({ pressed }) => [
               styles.emptyButton,
-              { backgroundColor: '#FF0000', opacity: pressed ? 0.85 : 1 },
+              { backgroundColor: colors.emergency, opacity: pressed ? 0.85 : 1 },
             ]}
           >
             <MaterialIcons name="add" size={20} color="#FFFFFF" />
@@ -186,7 +186,7 @@ export default function ContactsScreen() {
               onPress={handleSave}
               style={({ pressed }) => [styles.modalSave, pressed && { opacity: 0.7 }]}
             >
-              <Text style={[styles.modalSaveText, { color: '#0066CC' }]}>Salvar</Text>
+              <Text style={[styles.modalSaveText, { color: colors.primary }]}>Salvar</Text>
             </Pressable>
           </View>
 
@@ -258,7 +258,7 @@ export default function ContactsScreen() {
               <Switch
                 value={form.whatsapp}
                 onValueChange={(v) => setForm((f) => ({ ...f, whatsapp: v }))}
-                trackColor={{ false: colors.border, true: '#22C55E' }}
+                trackColor={{ false: colors.border, true: colors.success }}
                 thumbColor="#FFFFFF"
               />
             </View>

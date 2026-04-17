@@ -19,15 +19,12 @@ import { generateId, getHealthStatus, useAppContext, type HealthMetric } from '@
 
 type MetricType = HealthMetric['type'];
 
-const METRIC_CONFIG: Record<
-  MetricType,
-  { label: string; unit: string; icon: React.ComponentProps<typeof MaterialIcons>['name']; color: string; placeholder: string; hint: string }
-> = {
+const getMetricConfig = (colors: any) => ({
   heart_rate: {
     label: 'Frequência Cardíaca',
     unit: 'bpm',
     icon: 'favorite',
-    color: '#FF0000',
+    color: colors.emergency,
     placeholder: 'Ex: 72',
     hint: 'Normal: 60-100 bpm',
   },
@@ -35,7 +32,7 @@ const METRIC_CONFIG: Record<
     label: 'Pressão Arterial',
     unit: 'mmHg',
     icon: 'monitor-heart',
-    color: '#0066CC',
+    color: colors.primary,
     placeholder: 'Ex: 120',
     hint: 'Normal: 90-120 mmHg',
   },
@@ -43,18 +40,17 @@ const METRIC_CONFIG: Record<
     label: 'Glicose',
     unit: 'mg/dL',
     icon: 'water-drop',
-    color: '#F59E0B',
+    color: colors.warning,
     placeholder: 'Ex: 90',
     hint: 'Normal: 70-100 mg/dL',
   },
-};
+});
 
-const STATUS_CONFIG = {
-  normal: { label: 'Normal', color: '#22C55E', bg: '#22C55E15' },
-  warning: { label: 'Atenção', color: '#F59E0B', bg: '#F59E0B15' },
-  critical: { label: 'Crítico', color: '#EF4444', bg: '#EF444415' },
-};
-
+const getStatusConfig = (colors: any) => ({
+  normal: { label: 'Normal', color: colors.success, bg: colors.successLight },
+  warning: { label: 'Atenção', color: colors.warning, bg: colors.warningLight },
+  critical: { label: 'Crítico', color: colors.error, bg: '#EF444415' },
+});
 function formatTimestamp(ts: number): string {
   const d = new Date(ts);
   return `${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
@@ -66,6 +62,8 @@ export default function HealthScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedType, setSelectedType] = useState<MetricType>('heart_rate');
   const [valueText, setValueText] = useState('');
+  const METRIC_CONFIG = getMetricConfig(colors);
+  const STATUS_CONFIG = getStatusConfig(colors);
 
   const handleSave = () => {
     const value = parseFloat(valueText);
@@ -117,7 +115,7 @@ export default function HealthScreen() {
         ]}
       >
         <View style={[styles.metricIcon, { backgroundColor: config.color + '15' }]}>
-          <MaterialIcons name={config.icon} size={22} color={config.color} />
+          <MaterialIcons name={config.icon as any} size={40} color={config.color} />
         </View>
         <View style={styles.metricInfo}>
           <Text style={[styles.metricType, { color: colors.muted }]}>{config.label}</Text>
@@ -166,7 +164,7 @@ export default function HealthScreen() {
           }}
           style={({ pressed }) => [
             styles.addButton,
-            { backgroundColor: '#22C55E', opacity: pressed ? 0.85 : 1 },
+            { backgroundColor: colors.success, opacity: pressed ? 0.85 : 1 },
           ]}
           accessibilityLabel="Adicionar métrica de saúde"
         >
@@ -184,7 +182,7 @@ export default function HealthScreen() {
               key={type}
               style={[styles.summaryCard, { backgroundColor: colors.surface, borderColor: config.color + '30' }]}
             >
-              <MaterialIcons name={config.icon} size={20} color={config.color} />
+              <MaterialIcons name={config.icon as any} size={20} color={config.color} />
               <Text style={[styles.summaryLabel, { color: colors.muted }]}>{config.label}</Text>
               {latest ? (
                 <>
@@ -219,7 +217,7 @@ export default function HealthScreen() {
             }}
             style={({ pressed }) => [
               styles.emptyButton,
-              { backgroundColor: '#22C55E', opacity: pressed ? 0.85 : 1 },
+              { backgroundColor: colors.success, opacity: pressed ? 0.85 : 1 },
             ]}
           >
             <MaterialIcons name="add" size={20} color="#FFFFFF" />
@@ -256,7 +254,7 @@ export default function HealthScreen() {
               onPress={handleSave}
               style={({ pressed }) => [styles.modalSave, pressed && { opacity: 0.7 }]}
             >
-              <Text style={[styles.modalSaveText, { color: '#0066CC' }]}>Salvar</Text>
+              <Text style={[styles.modalSaveText, { color: colors.primary }]}>Salvar</Text>
             </Pressable>
           </View>
 
@@ -280,7 +278,7 @@ export default function HealthScreen() {
                         },
                       ]}
                     >
-                      <MaterialIcons name={config.icon} size={24} color={selected ? config.color : colors.muted} />
+                      <MaterialIcons name={config.icon as any} size={24} color={selected ? config.color : colors.muted} />
                       <Text
                         style={[
                           styles.typeOptionText,

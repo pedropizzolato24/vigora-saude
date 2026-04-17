@@ -36,6 +36,15 @@ type RuntimePalette = SchemePaletteItem & {
   tabIconDefault: string;
   tabIconSelected: string;
   border: string;
+  onPrimary?: string;
+  onEmergency?: string;
+  onSuccess?: string;
+  onWarning?: string;
+  primaryLight?: string;
+  emergencyLight?: string;
+  successLight?: string;
+  warningLight?: string;
+  warningDark?: string;
 };
 
 function buildRuntimePalette(scheme: ColorScheme): RuntimePalette {

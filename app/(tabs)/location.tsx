@@ -128,14 +128,14 @@ export default function LocationScreen() {
             Compartilhe sua posição
           </Text>
         </View>
-        <View style={[styles.headerIcon, { backgroundColor: '#22C55E15' }]}>
+        <View style={[styles.headerIcon, { backgroundColor: colors.successLight }]}>
           <MaterialIcons name="location-on" size={24} color="#22C55E" />
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Privacy Note */}
-        <View style={[styles.privacyNote, { backgroundColor: '#0066CC10', borderColor: '#0066CC30' }]}>
+        <View style={[styles.privacyNote, { backgroundColor: colors.primaryLight, borderColor: '#0066CC30' }]}>
           <MaterialIcons name="lock" size={16} color="#0066CC" />
           <Text style={[styles.privacyText, { color: colors.foreground }]}>
             Sua localização é obtida apenas quando você solicita e nunca é armazenada em servidores externos.
@@ -147,7 +147,7 @@ export default function LocationScreen() {
           onPress={getLocation}
           style={({ pressed }) => [
             styles.getLocationBtn,
-            { backgroundColor: '#22C55E', opacity: pressed ? 0.85 : 1 },
+            { backgroundColor: colors.success, opacity: pressed ? 0.85 : 1 },
           ]}
           disabled={loading}
         >
@@ -161,7 +161,7 @@ export default function LocationScreen() {
         {currentLocation && (
           <View style={[styles.locationCard, { backgroundColor: colors.surface, borderColor: '#22C55E40' }]}>
             <View style={styles.locationCardHeader}>
-              <View style={[styles.locationIconBadge, { backgroundColor: '#22C55E15' }]}>
+              <View style={[styles.locationIconBadge, { backgroundColor: colors.successLight }]}>
                 <MaterialIcons name="location-on" size={22} color="#22C55E" />
               </View>
               <View style={{ flex: 1 }}>
@@ -208,7 +208,7 @@ export default function LocationScreen() {
                 onPress={() => shareLocation(currentLocation)}
                 style={({ pressed }) => [
                   styles.locationActionBtn,
-                  { backgroundColor: '#22C55E', opacity: pressed ? 0.85 : 1, flex: 1.5 },
+                  { backgroundColor: colors.success, opacity: pressed ? 0.85 : 1, flex: 1.5 },
                 ]}
               >
                 <MaterialIcons name="share" size={18} color="#FFFFFF" />

@@ -103,7 +103,7 @@ export function SidebarMenu() {
         {/* Header */}
         <View style={[styles.sidebarHeader, { borderBottomColor: colors.border }]}>
           <View style={styles.logoContainer}>
-            <MaterialIcons name="favorite" size={28} color="#FF0000" />
+            <MaterialIcons name="favorite" size={28} color={colors.emergency} />
             <Text style={[styles.sidebarTitle, { color: colors.foreground }]}>
               Vigora Saúde
             </Text>

@@ -67,7 +67,7 @@ export default function SettingsScreen() {
         <View style={[styles.settingsGroup, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.settingRow}>
             <View style={styles.settingLeft}>
-              <View style={[styles.settingIcon, { backgroundColor: '#0066CC15' }]}>
+              <View style={[styles.settingIcon, { backgroundColor: colors.primaryLight }]}>
                 <MaterialIcons name="notifications" size={20} color="#0066CC" />
               </View>
               <View>
@@ -80,7 +80,7 @@ export default function SettingsScreen() {
             <Switch
               value={settings.notificationsEnabled}
               onValueChange={(v) => updateSetting('notificationsEnabled', v)}
-              trackColor={{ false: colors.border, true: '#0066CC' }}
+              trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -107,7 +107,7 @@ export default function SettingsScreen() {
                 style={[
                   styles.volumeBarFill,
                   {
-                    backgroundColor: '#0066CC',
+                    backgroundColor: colors.primary,
                     width: `${settings.alarmVolume}%`,
                   },
                 ]}
@@ -129,7 +129,7 @@ export default function SettingsScreen() {
                 onPress={() => handleVolumeChange(10)}
                 style={({ pressed }) => [
                   styles.volumeBtn,
-                  { backgroundColor: '#0066CC', opacity: pressed ? 0.7 : 1 },
+                  { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 },
                 ]}
               >
                 <Text style={[styles.volumeBtnText, { color: '#FFFFFF' }]}>+10%</Text>
@@ -143,7 +143,7 @@ export default function SettingsScreen() {
         <View style={[styles.settingsGroup, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.settingRow}>
             <View style={styles.settingLeft}>
-              <View style={[styles.settingIcon, { backgroundColor: '#F59E0B15' }]}>
+              <View style={[styles.settingIcon, { backgroundColor: colors.warningLight }]}>
                 <MaterialIcons name={colorScheme === 'dark' ? 'dark-mode' : 'light-mode'} size={20} color="#F59E0B" />
               </View>
               <View>
@@ -174,7 +174,7 @@ export default function SettingsScreen() {
             onPress={() => updateSetting('language', 'pt')}
             style={[
               styles.languageOption,
-              settings.language === 'pt' && { backgroundColor: '#0066CC10' },
+              settings.language === 'pt' && { backgroundColor: colors.primaryLight },
             ]}
           >
             <Text style={styles.flagEmoji}>🇧🇷</Text>
@@ -190,7 +190,7 @@ export default function SettingsScreen() {
             onPress={() => updateSetting('language', 'en')}
             style={[
               styles.languageOption,
-              settings.language === 'en' && { backgroundColor: '#0066CC10' },
+              settings.language === 'en' && { backgroundColor: colors.primaryLight },
             ]}
           >
             <Text style={styles.flagEmoji}>🇺🇸</Text>
@@ -207,8 +207,8 @@ export default function SettingsScreen() {
         <SectionTitle title="Sobre" colors={colors} />
         <View style={[styles.settingsGroup, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.aboutRow}>
-            <View style={[styles.settingIcon, { backgroundColor: '#FF000015' }]}>
-              <MaterialIcons name="favorite" size={20} color="#FF0000" />
+            <View style={[styles.settingIcon, { backgroundColor: colors.emergencyLight }]}>
+              <MaterialIcons name="favorite" size={20} color={colors.emergency} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.settingLabel, { color: colors.foreground }]}>Vigora Saúde</Text>
@@ -220,7 +220,7 @@ export default function SettingsScreen() {
             style={({ pressed }) => [styles.linkRow, pressed && { opacity: 0.6 }]}
             onPress={() => Alert.alert('Termos de Serviço', 'Vigora Saúde - Termos de Serviço\n\nEste aplicativo é fornecido para fins informativos. Não substitui atendimento médico profissional.')}
           >
-            <Text style={[styles.linkText, { color: '#0066CC' }]}>Termos de Serviço</Text>
+            <Text style={[styles.linkText, { color: colors.primary }]}>Termos de Serviço</Text>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -228,7 +228,7 @@ export default function SettingsScreen() {
             style={({ pressed }) => [styles.linkRow, pressed && { opacity: 0.6 }]}
             onPress={() => Alert.alert('Política de Privacidade', 'Vigora Saúde - Política de Privacidade\n\nTodos os seus dados são armazenados localmente neste dispositivo. Nenhum dado é enviado para servidores externos.')}
           >
-            <Text style={[styles.linkText, { color: '#0066CC' }]}>Política de Privacidade</Text>
+            <Text style={[styles.linkText, { color: colors.primary }]}>Política de Privacidade</Text>
             <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
           </Pressable>
         </View>
@@ -336,6 +336,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     marginTop: 8,
   },
-  dangerButtonText: { color: '#EF4444', fontSize: 16, fontWeight: '600' },
+  dangerButtonText: { color: "#EF4444", fontSize: 16, fontWeight: '600' },
   dangerHint: { fontSize: 13, textAlign: 'center', lineHeight: 18 },
 });

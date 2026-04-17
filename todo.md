@@ -41,3 +41,13 @@
 
 ## Post-Launch Features
 - [x] Set app to light mode by default with dark mode toggle in Settings
+- [x] Replace all hardcoded colors with theme tokens for full dark/light mode support
+
+## Theme Consistency Audit
+- [x] Review all hardcoded colors and replace with theme tokens
+- [x] Verify all buttons use theme colors
+- [x] Verify all icons use theme colors
+- [x] Verify all text uses theme colors
+- [x] Verify all backgrounds use theme colors
+- [x] Test dark mode on all screens
+- [x] Test light mode on all screens

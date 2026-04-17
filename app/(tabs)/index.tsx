@@ -151,7 +151,7 @@ export default function DashboardScreen() {
                 { opacity: sosPressing ? 0.9 : 1 },
               ]}
             >
-              <MaterialIcons name="warning" size={52} color="#FFFFFF" />
+              <MaterialIcons name="warning" size={52} color={colors.onEmergency} />
               <Text style={styles.sosText}>SOS</Text>
               <Text style={styles.sosSubtext}>Toque para emergência</Text>
             </View>
@@ -200,29 +200,29 @@ export default function DashboardScreen() {
               onPress={() => navigate('/(tabs)/alarms')}
               style={({ pressed }) => [
                 styles.quickActionBtn,
-                { backgroundColor: '#0066CC', opacity: pressed ? 0.85 : 1 },
+                { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
               ]}
             >
-              <MaterialIcons name="alarm" size={22} color="#FFFFFF" />
+              <MaterialIcons name="alarm" size={22} color={colors.onPrimary} />
               <Text style={styles.quickActionText}>Gerenciar Alarmes</Text>
             </Pressable>
             <Pressable
               onPress={() => navigate('/(tabs)/health')}
               style={({ pressed }) => [
                 styles.quickActionBtn,
-                { backgroundColor: '#22C55E', opacity: pressed ? 0.85 : 1 },
+                { backgroundColor: colors.success, opacity: pressed ? 0.85 : 1 },
               ]}
             >
-              <MaterialIcons name="favorite" size={22} color="#FFFFFF" />
+              <MaterialIcons name="favorite" size={22} color={colors.onSuccess} />
               <Text style={styles.quickActionText}>Registrar Saúde</Text>
             </Pressable>
           </View>
         </View>
 
         {/* Warning Banner */}
-        <View style={[styles.warningBanner, { backgroundColor: '#F59E0B15', borderColor: '#F59E0B40' }]}>
-          <MaterialIcons name="info" size={20} color="#F59E0B" />
-          <Text style={[styles.warningText, { color: '#92400E' }]}>
+        <View style={[styles.warningBanner, { backgroundColor: colors.warningLight, borderColor: colors.warning + '40' }]}>
+          <MaterialIcons name="info" size={20} color={colors.warning} />
+          <Text style={[styles.warningText, { color: colors.warningDark }]}>
             <Text style={{ fontWeight: '700' }}>Emergências graves: </Text>
             Ligue imediatamente para o SAMU (192) ou Bombeiros (193). Este app é um suporte, não substitui serviços de emergência.
           </Text>

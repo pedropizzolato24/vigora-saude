@@ -64,12 +64,12 @@ export function AlarmCard({ alarm, onEdit, onDelete, onToggle }: AlarmCardProps)
             </Text>
           </View>
           {alarm.sound && (
-            <View style={[styles.tag, { backgroundColor: '#0066CC15' }]}>
+            <View style={[styles.tag, { backgroundColor: colors.primaryLight }]}>
               <MaterialIcons name="volume-up" size={12} color="#0066CC" />
             </View>
           )}
           {alarm.vibration && (
-            <View style={[styles.tag, { backgroundColor: '#0066CC15' }]}>
+            <View style={[styles.tag, { backgroundColor: colors.primaryLight }]}>
               <MaterialIcons name="vibration" size={12} color="#0066CC" />
             </View>
           )}
