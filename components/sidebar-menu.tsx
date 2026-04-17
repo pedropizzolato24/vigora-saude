@@ -31,6 +31,7 @@ const MENU_ITEMS: MenuItem[] = [
   { label: 'Chamada de Ambulância', icon: 'local-hospital', route: '/(tabs)/ambulance' },
   { label: 'Compartilhar Localização', icon: 'location-on', route: '/(tabs)/location' },
   { label: 'Configurações', icon: 'settings', route: '/(tabs)/settings' },
+  { label: 'Ajuda e FAQ', icon: 'help-outline', route: '/(tabs)/help' },
 ];
 
 export function SidebarMenu() {

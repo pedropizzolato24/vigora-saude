@@ -135,3 +135,10 @@
 - [x] Add SOS button pulse animation (PulseView component)
 - [x] Add card press animations with scale feedback (PressScale component)
 - [x] Add fade-in animations on screen mount (header, cards, quick actions)
+
+
+## Help/FAQ Screen
+- [x] Create Help/FAQ screen with 8 sections and expandable questions
+- [x] Add FAQ to sidebar menu navigation
+- [x] Include sections: SOS, Alarmes, Contatos, Anamnese, Ambulância, Localização, Configurações, Perfil
+- [x] Design for elderly users with large text (15-18px), clear icons, and high contrast
