@@ -54,6 +54,14 @@ export interface AppSettings {
   emergencyMessage: string; // Custom message for WhatsApp escalation
 }
 
+export interface UserProfile {
+  name: string;
+  photoUri: string | null;
+  birthDate: string;
+  bloodType: string;
+  phone: string;
+}
+
 export interface Ad {
   id: string;
   title: string;
@@ -72,7 +80,8 @@ export interface AppState {
   lastSOS: number | null;
   settings: AppSettings;
   ads: Ad[];
-  missedAlarmCount: number; // Consecutive missed alarms counter
+  missedAlarmCount: number;
+  profile: UserProfile;
   isLoading: boolean;
 }
 
@@ -93,6 +102,7 @@ type AppAction =
   | { type: 'UPDATE_SETTINGS'; payload: Partial<AppSettings> }
   | { type: 'INCREMENT_MISSED_ALARM' }
   | { type: 'RESET_MISSED_ALARM' }
+  | { type: 'UPDATE_PROFILE'; payload: Partial<UserProfile> }
   | { type: 'CLEAR_ALL_DATA' };
 
 // ─── Initial State ────────────────────────────────────────────────────────────
@@ -116,6 +126,13 @@ const initialState: AppState = {
   },
   ads: [],
   missedAlarmCount: 0,
+  profile: {
+    name: '',
+    photoUri: null,
+    birthDate: '',
+    bloodType: '',
+    phone: '',
+  },
   isLoading: true,
 };
 
@@ -197,6 +214,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'RESET_MISSED_ALARM':
       return { ...state, missedAlarmCount: 0 };
+
+    case 'UPDATE_PROFILE':
+      return {
+        ...state,
+        profile: { ...state.profile, ...action.payload },
+      };
 
     case 'CLEAR_ALL_DATA':
       return {

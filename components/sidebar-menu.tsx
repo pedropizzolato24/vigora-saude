@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import {
   Animated,
   Dimensions,
+  Image,
   Platform,
   Pressable,
   StyleSheet,
@@ -13,6 +14,7 @@ import {
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useColors } from '@/hooks/use-colors';
 import { useMenu } from '@/lib/menu-context';
+import { useAppContext } from '@/lib/app-context';
 
 const SIDEBAR_WIDTH = Math.min(Dimensions.get('window').width * 0.75, 300);
 
@@ -35,6 +37,7 @@ export function SidebarMenu() {
   const colors = useColors();
   const router = useRouter();
   const { isOpen, closeMenu } = useMenu();
+  const { state } = useAppContext();
 
   const translateX = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -79,6 +82,9 @@ export function SidebarMenu() {
     }, 50);
   };
 
+  const profileName = state.profile.name || 'Configurar Perfil';
+  const profilePhoto = state.profile.photoUri;
+
   return (
     <>
       {/* Overlay */}
@@ -100,19 +106,39 @@ export function SidebarMenu() {
           },
         ]}
       >
-        {/* Header */}
-        <View style={[styles.sidebarHeader, { borderBottomColor: colors.border }]}>
-          <View style={styles.logoContainer}>
-            <MaterialIcons name="favorite" size={28} color={colors.emergency} />
-            <Text style={[styles.sidebarTitle, { color: colors.foreground }]}>
-              Vigora Saúde
-            </Text>
-          </View>
+        {/* Profile Header */}
+        <View style={[styles.profileSection, { backgroundColor: colors.primary }]}>
           <Pressable
             onPress={closeMenu}
             style={({ pressed }) => [styles.closeButton, pressed && { opacity: 0.6 }]}
           >
-            <MaterialIcons name="close" size={24} color={colors.muted} />
+            <MaterialIcons name="close" size={24} color="#FFFFFF" />
+          </Pressable>
+
+          <Pressable
+            onPress={() => handleItemPress('/(tabs)/profile')}
+            style={({ pressed }) => [styles.profileContent, pressed && { opacity: 0.8 }]}
+          >
+            {profilePhoto ? (
+              <Image source={{ uri: profilePhoto }} style={styles.profileAvatar} />
+            ) : (
+              <View style={[styles.profileAvatarPlaceholder, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+                <MaterialIcons name="person" size={36} color="#FFFFFF" />
+              </View>
+            )}
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName} numberOfLines={1}>
+                {profileName}
+              </Text>
+              {state.profile.phone ? (
+                <Text style={styles.profilePhone} numberOfLines={1}>
+                  {state.profile.phone}
+                </Text>
+              ) : (
+                <Text style={styles.profilePhone}>Toque para editar</Text>
+              )}
+            </View>
+            <MaterialIcons name="chevron-right" size={22} color="rgba(255,255,255,0.7)" />
           </Pressable>
         </View>
 
@@ -131,13 +157,13 @@ export function SidebarMenu() {
               <View
                 style={[
                   styles.menuItemIcon,
-                  { backgroundColor: (item.color ?? '#0066CC') + '15' },
+                  { backgroundColor: (item.color ?? colors.primary) + '15' },
                 ]}
               >
                 <MaterialIcons
                   name={item.icon}
                   size={24}
-                  color={item.color ?? '#0066CC'}
+                  color={item.color ?? colors.primary}
                 />
               </View>
               <Text style={[styles.menuItemLabel, { color: colors.foreground }]}>
@@ -182,26 +208,47 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 16,
   },
-  sidebarHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
+  profileSection: {
     paddingTop: 56,
     paddingBottom: 20,
-    borderBottomWidth: 1,
-  },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  sidebarTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    paddingHorizontal: 20,
   },
   closeButton: {
+    alignSelf: 'flex-end',
     padding: 4,
+    marginBottom: 12,
+  },
+  profileContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  profileAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  profileAvatarPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  profilePhone: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.75)',
+    marginTop: 2,
   },
   menuItems: {
     flex: 1,

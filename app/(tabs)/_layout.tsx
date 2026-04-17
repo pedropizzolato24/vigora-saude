@@ -34,6 +34,7 @@ export default function TabLayout() {
         <Tabs.Screen name="anamnesis" options={{ title: "Anamnese" }} />
         <Tabs.Screen name="ambulance" options={{ title: "Ambulância" }} />
         <Tabs.Screen name="location" options={{ title: "Localização" }} />
+        <Tabs.Screen name="profile" options={{ title: "Perfil" }} />
       </Tabs>
       <SidebarMenu />
     </View>

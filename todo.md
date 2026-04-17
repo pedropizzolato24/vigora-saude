@@ -124,3 +124,14 @@
 - [x] 3. Improve contacts screen buttons (larger 44px touch targets, more spacing, row layout)
 - [x] 4. Enhance dashboard quick action cards with 1.5px borders, chevron indicators, and tap hints
 - [x] 5. Redesign Settings screen with 6 collapsible sections, new options (vibration, SOS confirmation, auto-location, font size, emergency message)
+
+
+## User Profile & Animations
+- [x] Create user profile screen with photo, name, blood type, and basic info
+- [x] Add profile data to AppState and AppContext (UserProfile interface)
+- [x] Integrate profile into sidebar menu (avatar + name at top, tap to edit)
+- [x] Add image picker for profile photo (camera + gallery)
+- [x] Add smooth transition animations (FadeInView, ScaleInView, StaggeredItem)
+- [x] Add SOS button pulse animation (PulseView component)
+- [x] Add card press animations with scale feedback (PressScale component)
+- [x] Add fade-in animations on screen mount (header, cards, quick actions)

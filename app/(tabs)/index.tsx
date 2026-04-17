@@ -18,6 +18,7 @@ import { useColors } from '@/hooks/use-colors';
 import { getNextAlarm, useAppContext } from '@/lib/app-context';
 import { useNotifications } from '@/lib/notifications-context';
 import { AdBanner } from '@/components/ad-banner';
+import { FadeInView, ScaleInView, PulseView, StaggeredItem } from '@/components/animated-components';
 
 export default function DashboardScreen() {
   const colors = useColors();
@@ -126,6 +127,7 @@ export default function DashboardScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
+        <FadeInView delay={0}>
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <View>
             <Text style={[styles.greeting, { color: colors.muted }]}>Bem-vindo ao</Text>
@@ -135,9 +137,12 @@ export default function DashboardScreen() {
             <MaterialIcons name="favorite" size={28} color="#FF0000" />
           </View>
         </View>
+        </FadeInView>
 
         {/* SOS Button */}
+        <ScaleInView delay={100}>
         <View style={styles.sosSection}>
+          <PulseView active={!sosPressing} minScale={0.98} maxScale={1.02} duration={1500}>
           <Pressable
             onPress={handleSOS}
             onPressIn={() => setSosPressing(true)}
@@ -160,12 +165,15 @@ export default function DashboardScreen() {
               <Text style={styles.sosSubtext}>Toque para emergência</Text>
             </View>
           </Pressable>
+          </PulseView>
           <Text style={[styles.sosHint, { color: colors.muted }]}>
             Pressione para acionar emergência
           </Text>
         </View>
+        </ScaleInView>
 
         {/* Ambulance Button */}
+        <FadeInView delay={200}>
         <Pressable
           onPress={() => navigate('/(tabs)/ambulance')}
           style={({ pressed }) => [{
@@ -192,12 +200,13 @@ export default function DashboardScreen() {
             Chamar Ambulância
           </Text>
         </Pressable>
+        </FadeInView>
 
         {/* Status Cards */}
         <View style={styles.cardsGrid}>
-          {statusCards.map((card) => (
+          {statusCards.map((card, idx) => (
+            <StaggeredItem key={card.label} index={idx} staggerDelay={80}>
             <Pressable
-              key={card.label}
               onPress={() => navigate(card.route)}
               style={({ pressed }) => [
                 styles.statusCard,
@@ -230,10 +239,12 @@ export default function DashboardScreen() {
                 <Text style={[styles.cardTapHintText, { color: card.color }]}>Toque para ver</Text>
               </View>
             </Pressable>
+            </StaggeredItem>
           ))}
         </View>
 
         {/* Quick Actions */}
+        <FadeInView delay={400}>
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
             Ações Rápidas
@@ -261,6 +272,7 @@ export default function DashboardScreen() {
             </Pressable>
           </View>
         </View>
+        </FadeInView>
 
         {/* Promotional Ads */}
         {state.ads.filter(ad => ad.active).slice(0, 2).map(ad => (
