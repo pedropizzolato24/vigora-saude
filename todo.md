@@ -147,3 +147,10 @@
 ## Bug Fixes v2
 - [x] Fix dashboard status cards layout (too narrow, text truncated, grid broken)
 - [x] Move "Sobre e Legal" section from Settings dropdown to fixed footer at bottom of page
+
+
+## UI Fixes v3
+- [x] Move X (close) button on sidebar menu to be inline with profile block (remove empty space at top)
+- [x] Fix white line gap between blue profile header and white menu body in sidebar
+- [x] Improve alarm time picker: auto-insert colon between hours and minutes (no manual typing of ":")
+

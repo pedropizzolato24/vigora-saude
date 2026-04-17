@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
 import { useMenu } from '@/lib/menu-context';
 import { useAppContext } from '@/lib/app-context';
@@ -39,6 +40,7 @@ export function SidebarMenu() {
   const router = useRouter();
   const { isOpen, closeMenu } = useMenu();
   const { state } = useAppContext();
+  const insets = useSafeAreaInsets();
 
   const translateX = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -108,14 +110,7 @@ export function SidebarMenu() {
         ]}
       >
         {/* Profile Header */}
-        <View style={[styles.profileSection, { backgroundColor: colors.primary }]}>
-          <Pressable
-            onPress={closeMenu}
-            style={({ pressed }) => [styles.closeButton, pressed && { opacity: 0.6 }]}
-          >
-            <MaterialIcons name="close" size={24} color="#FFFFFF" />
-          </Pressable>
-
+        <View style={[styles.profileSection, { backgroundColor: colors.primary, paddingTop: Math.max(insets.top, 20) + 12 }]}>
           <Pressable
             onPress={() => handleItemPress('/(tabs)/profile')}
             style={({ pressed }) => [styles.profileContent, pressed && { opacity: 0.8 }]}
@@ -139,7 +134,12 @@ export function SidebarMenu() {
                 <Text style={styles.profilePhone}>Toque para editar</Text>
               )}
             </View>
-            <MaterialIcons name="chevron-right" size={22} color="rgba(255,255,255,0.7)" />
+            <Pressable
+              onPress={(e) => { e.stopPropagation(); closeMenu(); }}
+              style={({ pressed }) => [styles.closeButton, pressed && { opacity: 0.6 }]}
+            >
+              <MaterialIcons name="close" size={24} color="#FFFFFF" />
+            </Pressable>
           </Pressable>
         </View>
 
@@ -210,14 +210,12 @@ const styles = StyleSheet.create({
     elevation: 16,
   },
   profileSection: {
-    paddingTop: 56,
     paddingBottom: 20,
     paddingHorizontal: 20,
   },
   closeButton: {
-    alignSelf: 'flex-end',
-    padding: 4,
-    marginBottom: 12,
+    padding: 6,
+    marginLeft: 4,
   },
   profileContent: {
     flexDirection: 'row',

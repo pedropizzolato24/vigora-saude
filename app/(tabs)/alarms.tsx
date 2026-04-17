@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -44,6 +44,43 @@ export default function AlarmsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingAlarm, setEditingAlarm] = useState<Alarm | null>(null);
   const [form, setForm] = useState<Omit<Alarm, 'id'>>(EMPTY_FORM);
+  const minuteInputRef = useRef<TextInput>(null);
+
+  // Derived hour/minute from form.time for the split picker
+  const [timeHour, timeMinute] = form.time.split(':');
+
+  const handleHourChange = (val: string) => {
+    const digits = val.replace(/\D/g, '').slice(0, 2);
+    const hNum = parseInt(digits, 10);
+    // Auto-jump to minute field when 2 digits entered or hour > 2
+    if (digits.length === 2 || (digits.length === 1 && hNum > 2)) {
+      const clampedH = isNaN(hNum) ? '00' : String(Math.min(hNum, 23)).padStart(2, '0');
+      setForm((f) => ({ ...f, time: `${clampedH}:${f.time.split(':')[1] || '00'}` }));
+      if (digits.length === 2) minuteInputRef.current?.focus();
+    } else {
+      setForm((f) => ({ ...f, time: `${digits}:${f.time.split(':')[1] || '00'}` }));
+    }
+  };
+
+  const handleMinuteChange = (val: string) => {
+    const digits = val.replace(/\D/g, '').slice(0, 2);
+    const mNum = parseInt(digits, 10);
+    const clampedM = digits.length === 2 ? String(Math.min(mNum, 59)).padStart(2, '0') : digits;
+    const currentHour = form.time.split(':')[0] || '00';
+    setForm((f) => ({ ...f, time: `${currentHour}:${clampedM}` }));
+  };
+
+  const handleHourBlur = () => {
+    const h = parseInt(timeHour, 10);
+    const clamped = isNaN(h) ? '00' : String(Math.min(h, 23)).padStart(2, '0');
+    setForm((f) => ({ ...f, time: `${clamped}:${f.time.split(':')[1] || '00'}` }));
+  };
+
+  const handleMinuteBlur = () => {
+    const m = parseInt(timeMinute, 10);
+    const clamped = isNaN(m) ? '00' : String(Math.min(m, 59)).padStart(2, '0');
+    setForm((f) => ({ ...f, time: `${f.time.split(':')[0] || '00'}:${clamped}` }));
+  };
 
   const sortedAlarms = [...state.alarms].sort((a, b) => {
     const [ah, am] = a.time.split(':').map(Number);
@@ -241,29 +278,58 @@ export default function AlarmsScreen() {
           </View>
 
           <ScrollView contentContainerStyle={styles.modalContent}>
-            {/* Time */}
+            {/* Time Picker */}
             <View style={styles.formGroup}>
-              <Text style={[styles.formLabel, { color: colors.foreground }]}>Horário (HH:MM)</Text>
-              <TextInput
-                value={form.time}
-                onChangeText={(v) => setForm((f) => ({ ...f, time: v }))}
-                placeholder="08:00"
-                placeholderTextColor={colors.muted}
-                keyboardType="numbers-and-punctuation"
-                style={[
-                  styles.textInput,
-                  {
-                    backgroundColor: colors.surface,
-                    color: colors.foreground,
-                    borderColor: colors.border,
-                    fontSize: 32,
-                    textAlign: 'center',
-                    fontWeight: '700',
-                  },
-                ]}
-                returnKeyType="done"
-                maxLength={5}
-              />
+              <Text style={[styles.formLabel, { color: colors.foreground }]}>Horário</Text>
+              <View style={styles.timePicker}>
+                <View style={styles.timeInputWrapper}>
+                  <TextInput
+                    value={timeHour}
+                    onChangeText={handleHourChange}
+                    onBlur={handleHourBlur}
+                    placeholder="08"
+                    placeholderTextColor={colors.muted}
+                    keyboardType="number-pad"
+                    style={[
+                      styles.timeInput,
+                      {
+                        backgroundColor: colors.surface,
+                        color: colors.foreground,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                    returnKeyType="next"
+                    maxLength={2}
+                    selectTextOnFocus
+                    onSubmitEditing={() => minuteInputRef.current?.focus()}
+                  />
+                  <Text style={[styles.timeInputLabel, { color: colors.muted }]}>hora</Text>
+                </View>
+                <Text style={[styles.timeColon, { color: colors.foreground }]}>:</Text>
+                <View style={styles.timeInputWrapper}>
+                  <TextInput
+                    ref={minuteInputRef}
+                    value={timeMinute}
+                    onChangeText={handleMinuteChange}
+                    onBlur={handleMinuteBlur}
+                    placeholder="00"
+                    placeholderTextColor={colors.muted}
+                    keyboardType="number-pad"
+                    style={[
+                      styles.timeInput,
+                      {
+                        backgroundColor: colors.surface,
+                        color: colors.foreground,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                    returnKeyType="done"
+                    maxLength={2}
+                    selectTextOnFocus
+                  />
+                  <Text style={[styles.timeInputLabel, { color: colors.muted }]}>min</Text>
+                </View>
+              </View>
             </View>
 
             {/* Description */}
@@ -513,5 +579,38 @@ const styles = StyleSheet.create({
   toggleDivider: {
     height: StyleSheet.hairlineWidth,
     marginHorizontal: 16,
+  },
+
+  // Time Picker
+  timePicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  timeInputWrapper: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  timeInput: {
+    width: 90,
+    height: 72,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    fontSize: 36,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  timeColon: {
+    fontSize: 40,
+    fontWeight: '800',
+    marginBottom: 20,
+    paddingHorizontal: 4,
+  },
+  timeInputLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 });
