@@ -13,7 +13,8 @@ import { NotificationsProvider } from "@/lib/notifications-context";
 import { MenuProvider } from "@/lib/menu-context";
 import { syncAlarmsOnStartup } from "@/lib/alarm-sync";
 import { AlarmSyncInitializer } from "@/components/alarm-sync-initializer";
-import { AlarmNotificationHandler } from "@/components/alarm-notification-handler";
+import { AlarmNotificationHandler } from '@/components/alarm-notification-handler';
+import { OnboardingGate } from '@/components/onboarding-gate';
 import {
   SafeAreaFrameContext,
   SafeAreaInsetsContext,
@@ -90,6 +91,7 @@ export default function RootLayout() {
         <AppProvider>
           <AlarmSyncInitializer />
           <AlarmNotificationHandler />
+          <OnboardingGate />
           <MenuProvider>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
@@ -98,6 +100,7 @@ export default function RootLayout() {
           {/* in order for ios apps tab switching to work properly, use presentation: "fullScreenModal" for login page, whenever you decide to use presentation: "modal*/}
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
             <Stack.Screen name="oauth/callback" />
           </Stack>
           <StatusBar style="auto" />

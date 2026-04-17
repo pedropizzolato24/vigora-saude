@@ -109,3 +109,10 @@
 - [x] Auto-send WhatsApp messages to emergency contacts when missed alarm threshold is reached
 - [x] Include GPS location in WhatsApp escalation messages
 - [x] Add missed alarm counter reset when user responds to alarm
+
+
+## Onboarding Tutorial
+- [x] Create onboarding screen with 5 animated slides explaining key features
+- [x] Add first-launch detection with AsyncStorage
+- [x] Integrate onboarding into app navigation flow (OnboardingGate component)
+- [x] Add skip, next, and start buttons with animated dot progress indicators
