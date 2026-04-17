@@ -38,3 +38,6 @@
 - [x] Fix TypeScript errors (only pre-existing server template error remains)
 - [x] Add expo-location plugin to app.config.ts
 - [x] Create checkpoint
+
+## Post-Launch Features
+- [x] Set app to light mode by default with dark mode toggle in Settings

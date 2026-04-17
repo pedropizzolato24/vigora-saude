@@ -14,10 +14,12 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useAppContext } from '@/lib/app-context';
+import { useThemeContext } from '@/lib/theme-provider';
 
 export default function SettingsScreen() {
   const colors = useColors();
   const { state, dispatch } = useAppContext();
+  const { colorScheme, setColorScheme } = useThemeContext();
   const { settings } = state;
 
   const updateSetting = <K extends keyof typeof settings>(key: K, value: (typeof settings)[K]) => {
@@ -133,6 +135,35 @@ export default function SettingsScreen() {
                 <Text style={[styles.volumeBtnText, { color: '#FFFFFF' }]}>+10%</Text>
               </Pressable>
             </View>
+          </View>
+        </View>
+
+        {/* Theme Section */}
+        <SectionTitle title="Aparência" colors={colors} />
+        <View style={[styles.settingsGroup, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.settingRow}>
+            <View style={styles.settingLeft}>
+              <View style={[styles.settingIcon, { backgroundColor: '#F59E0B15' }]}>
+                <MaterialIcons name={colorScheme === 'dark' ? 'dark-mode' : 'light-mode'} size={20} color="#F59E0B" />
+              </View>
+              <View>
+                <Text style={[styles.settingLabel, { color: colors.foreground }]}>Modo Escuro</Text>
+                <Text style={[styles.settingSubLabel, { color: colors.muted }]}>
+                  {colorScheme === 'dark' ? 'Ativado' : 'Desativado'}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={colorScheme === 'dark'}
+              onValueChange={(v) => {
+                if (Platform.OS !== 'web') {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
+                setColorScheme(v ? 'dark' : 'light');
+              }}
+              trackColor={{ false: colors.border, true: '#F59E0B' }}
+              thumbColor="#FFFFFF"
+            />
           </View>
         </View>
 

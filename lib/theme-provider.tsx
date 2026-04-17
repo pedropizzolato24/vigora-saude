@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Appearance, View, useColorScheme as useSystemColorScheme } from "react-native";
 import { colorScheme as nativewindColorScheme, vars } from "nativewind";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { SchemeColors, type ColorScheme } from "@/constants/theme";
 
@@ -11,9 +12,12 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+const THEME_STORAGE_KEY = 'vigora_theme_preference';
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useSystemColorScheme() ?? "light";
-  const [colorScheme, setColorSchemeState] = useState<ColorScheme>(systemScheme);
+  const [colorScheme, setColorSchemeState] = useState<ColorScheme>("light");
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const applyScheme = useCallback((scheme: ColorScheme) => {
     nativewindColorScheme.set(scheme);
@@ -32,11 +36,36 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setColorScheme = useCallback((scheme: ColorScheme) => {
     setColorSchemeState(scheme);
     applyScheme(scheme);
+    // Persist immediately
+    AsyncStorage.setItem(THEME_STORAGE_KEY, scheme).catch(() => {});
   }, [applyScheme]);
 
+  // Load saved theme preference on mount
   useEffect(() => {
-    applyScheme(colorScheme);
-  }, [applyScheme, colorScheme]);
+    (async () => {
+      try {
+        const saved = await AsyncStorage.getItem(THEME_STORAGE_KEY);
+        if (saved === 'dark' || saved === 'light') {
+          setColorSchemeState(saved);
+          applyScheme(saved);
+        } else {
+          // Default to light mode
+          applyScheme('light');
+        }
+      } catch {
+        // Default to light mode on error
+        applyScheme('light');
+      } finally {
+        setIsLoaded(true);
+      }
+    })();
+  }, [applyScheme]);
+
+  // Persist theme preference when it changes
+  useEffect(() => {
+    if (!isLoaded) return;
+    AsyncStorage.setItem(THEME_STORAGE_KEY, colorScheme).catch(() => {});
+  }, [colorScheme, isLoaded]);
 
   const themeVariables = useMemo(
     () =>
@@ -61,7 +90,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }),
     [colorScheme, setColorScheme],
   );
-  console.log(value, themeVariables)
+
 
   return (
     <ThemeContext.Provider value={value}>
