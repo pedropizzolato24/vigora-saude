@@ -1,10 +1,10 @@
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-import { HapticTab } from "@/components/haptic-tab";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Platform } from "react-native";
 import { useColors } from "@/hooks/use-colors";
+import { CustomTabBar } from "@/components/custom-tab-bar";
+import { SidebarMenu } from "@/components/sidebar-menu";
+import { View } from "react-native";
 
 export default function TabLayout() {
   const colors = useColors();
@@ -13,28 +13,29 @@ export default function TabLayout() {
   const tabBarHeight = 56 + bottomPadding;
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: colors.tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarStyle: {
-          paddingTop: 8,
-          paddingBottom: bottomPadding,
-          height: tabBarHeight,
-          backgroundColor: colors.background,
-          borderTopColor: colors.border,
-          borderTopWidth: 0.5,
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Home",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+    <View style={{ flex: 1 }}>
+      <Tabs
+        tabBar={() => <CustomTabBar />}
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            height: tabBarHeight,
+            backgroundColor: colors.background,
+            borderTopColor: colors.border,
+            borderTopWidth: 0.5,
+          },
         }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen name="index" options={{ title: "Início" }} />
+        <Tabs.Screen name="alarms" options={{ title: "Alarmes" }} />
+        <Tabs.Screen name="health" options={{ title: "Saúde" }} />
+        <Tabs.Screen name="settings" options={{ title: "Configurações" }} />
+        <Tabs.Screen name="contacts" options={{ title: "Contatos" }} />
+        <Tabs.Screen name="anamnesis" options={{ title: "Anamnese" }} />
+        <Tabs.Screen name="ambulance" options={{ title: "Ambulância" }} />
+        <Tabs.Screen name="location" options={{ title: "Localização" }} />
+      </Tabs>
+      <SidebarMenu />
+    </View>
   );
 }
