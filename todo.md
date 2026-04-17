@@ -68,3 +68,8 @@
 - [x] Integrate alarm notifications with saved alarms (auto-schedule on add/update, cancel on delete)
 - [x] Add notification ID tracking to Alarm type and AppState
 - [x] Test alarm notifications fire at correct times
+
+## In Progress
+- [x] Sync alarms on app startup to reschedule lost notifications
+- [x] Create AlarmSyncInitializer component to check and reschedule alarms
+- [x] Handle edge cases (disabled alarms, past times, etc.)

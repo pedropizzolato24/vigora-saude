@@ -8,9 +8,11 @@ import "react-native-reanimated";
 import { Platform } from "react-native";
 import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
-import { AppProvider } from "@/lib/app-context";
+import { AppProvider, useAppContext } from "@/lib/app-context";
 import { NotificationsProvider } from "@/lib/notifications-context";
 import { MenuProvider } from "@/lib/menu-context";
+import { syncAlarmsOnStartup } from "@/lib/alarm-sync";
+import { AlarmSyncInitializer } from "@/components/alarm-sync-initializer";
 import {
   SafeAreaFrameContext,
   SafeAreaInsetsContext,
@@ -85,6 +87,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NotificationsProvider>
         <AppProvider>
+          <AlarmSyncInitializer />
           <MenuProvider>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
