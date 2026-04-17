@@ -48,6 +48,16 @@ export interface AppSettings {
   language: 'pt' | 'en';
 }
 
+export interface Ad {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl?: string;
+  icon?: string;
+  actionUrl?: string;
+  active: boolean;
+}
+
 export interface AppState {
   alarms: Alarm[];
   emergencyContacts: EmergencyContact[];
@@ -55,6 +65,7 @@ export interface AppState {
   healthMetrics: HealthMetric[];
   lastSOS: number | null;
   settings: AppSettings;
+  ads: Ad[];
   isLoading: boolean;
 }
 
@@ -88,6 +99,7 @@ const initialState: AppState = {
     alarmVolume: 80,
     language: 'pt',
   },
+  ads: [],
   isLoading: true,
 };
 

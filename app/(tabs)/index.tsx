@@ -1,5 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
+import * as Linking from 'expo-linking';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -15,6 +16,7 @@ import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { getNextAlarm, useAppContext } from '@/lib/app-context';
 import { useNotifications } from '@/lib/notifications-context';
+import { AdBanner } from '@/components/ad-banner';
 
 export default function DashboardScreen() {
   const colors = useColors();
@@ -218,6 +220,25 @@ export default function DashboardScreen() {
             </Pressable>
           </View>
         </View>
+
+        {/* Promotional Ads */}
+        {state.ads.filter(ad => ad.active).slice(0, 2).map(ad => (
+          <AdBanner
+            key={ad.id}
+            title={ad.title}
+            description={ad.description}
+            imageUrl={ad.imageUrl}
+            icon={ad.icon as any}
+            onPress={() => {
+              if (ad.actionUrl) {
+                Linking.openURL(ad.actionUrl).catch((err: any) => console.error('Error opening URL:', err));
+              }
+            }}
+            onClose={() => {
+              // Optionally hide this ad
+            }}
+          />
+        ))}
 
         {/* Warning Banner */}
         <View style={[styles.warningBanner, { backgroundColor: colors.warningLight, borderColor: colors.warning + '40' }]}>
