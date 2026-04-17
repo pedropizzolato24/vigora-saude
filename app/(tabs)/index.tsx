@@ -163,6 +163,34 @@ export default function DashboardScreen() {
           </Text>
         </View>
 
+        {/* Ambulance Button */}
+        <Pressable
+          onPress={() => navigate('/(tabs)/ambulance')}
+          style={({ pressed }) => [{
+            backgroundColor: colors.primary,
+            opacity: pressed ? 0.85 : 1,
+            paddingVertical: 16,
+            paddingHorizontal: 24,
+            borderRadius: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 12,
+            marginHorizontal: 20,
+          }]}
+          accessibilityLabel="Chamar ambulância"
+          accessibilityRole="button"
+        >
+          <MaterialIcons name="local-hospital" size={24} color={colors.onPrimary} />
+          <Text style={{
+            color: colors.onPrimary,
+            fontSize: 16,
+            fontWeight: '600',
+          }}>
+            Chamar Ambulância
+          </Text>
+        </Pressable>
+
         {/* Status Cards */}
         <View style={styles.cardsGrid}>
           {statusCards.map((card) => (

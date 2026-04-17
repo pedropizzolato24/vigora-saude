@@ -94,3 +94,6 @@
 - [x] Remove pdfbox-android dependency causing build failure
 - [x] Replace PDF generation with Expo-compatible solution (using expo-print + expo-sharing)
 - [ ] Test APK build again
+
+## UI/UX Improvements
+- [x] Add ambulance call button next to/below SOS button on Dashboard
