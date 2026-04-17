@@ -16,8 +16,8 @@ interface TabItem {
 
 const TABS: TabItem[] = [
   { label: 'Menu', icon: 'menu', route: '', isMenu: true },
-  { label: 'Início', icon: 'home', route: '/(tabs)/' },
   { label: 'Alarmes', icon: 'alarm', route: '/(tabs)/alarms' },
+  { label: 'Início', icon: 'home', route: '/(tabs)/' },
   { label: 'Saúde', icon: 'favorite', route: '/(tabs)/health' },
   { label: 'Config', icon: 'settings', route: '/(tabs)/settings' },
 ];

@@ -51,3 +51,6 @@
 - [x] Verify all backgrounds use theme colors
 - [x] Test dark mode on all screens
 - [x] Test light mode on all screens
+
+## UI/UX Adjustments
+- [x] Reorder tabs: Alarmes (left), Início (center), Saúde, Config
