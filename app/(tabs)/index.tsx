@@ -4,6 +4,7 @@ import * as Linking from 'expo-linking';
 import React, { useState } from 'react';
 import {
   Alert,
+  Dimensions,
   Platform,
   Pressable,
   ScrollView,
@@ -212,12 +213,12 @@ export default function DashboardScreen() {
                 styles.statusCard,
                 {
                   backgroundColor: colors.surface,
-                  borderColor: card.color + '60',
+                  borderColor: card.color + '40',
                   shadowColor: card.color,
                   shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 6,
-                  elevation: 3,
+                  shadowOpacity: 0.08,
+                  shadowRadius: 4,
+                  elevation: 2,
                   transform: [{ scale: pressed ? 0.97 : 1 }],
                 },
               ]}
@@ -226,16 +227,16 @@ export default function DashboardScreen() {
                 <View style={[styles.cardIconBadge, { backgroundColor: card.color + '15' }]}>
                   <MaterialIcons name={card.icon} size={22} color={card.color} />
                 </View>
-                <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+                <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
               </View>
               <Text style={[styles.cardValue, { color: card.color }]}>{card.value}</Text>
-              <Text style={[styles.cardLabel, { color: colors.foreground }]} numberOfLines={1}>
+              <Text style={[styles.cardLabel, { color: colors.foreground }]} numberOfLines={2}>
                 {card.label}
               </Text>
               <Text style={[styles.cardSubtext, { color: colors.muted }]} numberOfLines={1}>
                 {card.subtext}
               </Text>
-              <View style={[styles.cardTapHint, { backgroundColor: card.color + '12' }]}>
+              <View style={[styles.cardTapHint, { backgroundColor: card.color + '10' }]}>
                 <Text style={[styles.cardTapHintText, { color: card.color }]}>Toque para ver</Text>
               </View>
             </Pressable>
@@ -377,14 +378,15 @@ const styles = StyleSheet.create({
   cardsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: 12,
   },
   statusCard: {
-    width: '47%',
+    width: (Dimensions.get('window').width - 52) / 2,
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     borderWidth: 1.5,
-    gap: 6,
+    gap: 4,
   },
   cardTopRow: {
     flexDirection: 'row',

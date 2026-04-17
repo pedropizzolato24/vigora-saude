@@ -473,56 +473,7 @@ export default function SettingsScreen() {
           ))}
         </CollapsibleSection>
 
-        {/* ═══ SECTION 5: Sobre e Legal ═══ */}
-        <CollapsibleSection
-          title="Sobre e Legal"
-          icon="info"
-          iconBg={colors.primaryLight}
-          iconColor={colors.primary}
-          colors={colors}
-          defaultOpen={false}
-        >
-          <View style={styles.aboutBlock}>
-            <View style={[styles.aboutLogoBadge, { backgroundColor: colors.emergencyLight }]}>
-              <MaterialIcons name="favorite" size={28} color={colors.emergency} />
-            </View>
-            <Text style={[styles.aboutAppName, { color: colors.foreground }]}>Vigora Saúde</Text>
-            <Text style={[styles.aboutVersion, { color: colors.muted }]}>Versão 1.0.0</Text>
-          </View>
-          <Divider colors={colors} />
-          <SettingLink
-            label="Termos de Serviço"
-            onPress={() =>
-              Alert.alert(
-                'Termos de Serviço',
-                'Vigora Saúde - Termos de Serviço\n\nEste aplicativo é fornecido para fins informativos. Não substitui atendimento médico profissional.'
-              )
-            }
-            colors={colors}
-          />
-          <Divider colors={colors} />
-          <SettingLink
-            label="Política de Privacidade"
-            sublabel="Dados armazenados localmente"
-            onPress={() =>
-              Alert.alert(
-                'Política de Privacidade',
-                'Vigora Saúde - Política de Privacidade\n\nTodos os seus dados são armazenados localmente neste dispositivo. Nenhum dado é enviado para servidores externos.'
-              )
-            }
-            colors={colors}
-          />
-          <Divider colors={colors} />
-          <SettingLink
-            label="Licenças de Código Aberto"
-            onPress={() =>
-              Alert.alert('Licenças', 'Este aplicativo utiliza bibliotecas de código aberto. Obrigado à comunidade de desenvolvedores!')
-            }
-            colors={colors}
-          />
-        </CollapsibleSection>
-
-        {/* ═══ SECTION 6: Dados e Armazenamento ═══ */}
+        {/* ═══ SECTION 5: Dados e Armazenamento ═══ */}
         <CollapsibleSection
           title="Dados e Armazenamento"
           icon="storage"
@@ -567,8 +518,59 @@ export default function SettingsScreen() {
           </View>
         </CollapsibleSection>
 
-        {/* Bottom spacing */}
-        <View style={{ height: 40 }} />
+        {/* ═══ Footer: Sobre e Legal ═══ */}
+        <View style={styles.footerSection}>
+          <View style={[styles.footerDivider, { backgroundColor: colors.border }]} />
+          <View style={styles.footerLogoRow}>
+            <View style={[styles.footerLogoBadge, { backgroundColor: colors.emergencyLight }]}>
+              <MaterialIcons name="favorite" size={20} color={colors.emergency} />
+            </View>
+            <View>
+              <Text style={[styles.footerAppName, { color: colors.foreground }]}>Vigora Saúde</Text>
+              <Text style={[styles.footerVersion, { color: colors.muted }]}>Versão 1.0.0</Text>
+            </View>
+          </View>
+          <View style={styles.footerLinks}>
+            <Pressable
+              onPress={() =>
+                Alert.alert(
+                  'Termos de Serviço',
+                  'Vigora Saúde - Termos de Serviço\n\nEste aplicativo é fornecido para fins informativos. Não substitui atendimento médico profissional.'
+                )
+              }
+              style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+            >
+              <Text style={[styles.footerLink, { color: colors.primary }]}>Termos de Serviço</Text>
+            </Pressable>
+            <Text style={[styles.footerDot, { color: colors.muted }]}>·</Text>
+            <Pressable
+              onPress={() =>
+                Alert.alert(
+                  'Política de Privacidade',
+                  'Vigora Saúde - Política de Privacidade\n\nTodos os seus dados são armazenados localmente neste dispositivo. Nenhum dado é enviado para servidores externos.'
+                )
+              }
+              style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+            >
+              <Text style={[styles.footerLink, { color: colors.primary }]}>Privacidade</Text>
+            </Pressable>
+            <Text style={[styles.footerDot, { color: colors.muted }]}>·</Text>
+            <Pressable
+              onPress={() =>
+                Alert.alert('Licenças', 'Este aplicativo utiliza bibliotecas de código aberto. Obrigado à comunidade de desenvolvedores!')
+              }
+              style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+            >
+              <Text style={[styles.footerLink, { color: colors.primary }]}>Licenças</Text>
+            </Pressable>
+          </View>
+          <Text style={[styles.footerCopyright, { color: colors.muted }]}>
+            Dados armazenados localmente no dispositivo.
+          </Text>
+          <Text style={[styles.footerCopyright, { color: colors.muted }]}>
+            © 2026 Vigora Saúde. Todos os direitos reservados.
+          </Text>
+        </View>
       </ScrollView>
     </ScreenContainer>
   );
@@ -769,4 +771,56 @@ const styles = StyleSheet.create({
   },
   dangerButtonText: { fontSize: 15, fontWeight: '600' },
   dangerHint: { fontSize: 12, textAlign: 'center', lineHeight: 18 },
+
+  // Footer
+  footerSection: {
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 32,
+    gap: 10,
+  },
+  footerDivider: {
+    width: '60%',
+    height: StyleSheet.hairlineWidth,
+    marginBottom: 8,
+  },
+  footerLogoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  footerLogoBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footerAppName: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  footerVersion: {
+    fontSize: 12,
+  },
+  footerLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  footerLink: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  footerDot: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  footerCopyright: {
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
 });

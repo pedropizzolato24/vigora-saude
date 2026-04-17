@@ -142,3 +142,8 @@
 - [x] Add FAQ to sidebar menu navigation
 - [x] Include sections: SOS, Alarmes, Contatos, Anamnese, Ambulância, Localização, Configurações, Perfil
 - [x] Design for elderly users with large text (15-18px), clear icons, and high contrast
+
+
+## Bug Fixes v2
+- [x] Fix dashboard status cards layout (too narrow, text truncated, grid broken)
+- [x] Move "Sobre e Legal" section from Settings dropdown to fixed footer at bottom of page
