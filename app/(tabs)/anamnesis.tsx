@@ -14,7 +14,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useAppContext, type AnamnesesData } from '@/lib/app-context';
-import { exportAndShareAnamnesis } from '@/lib/pdf-utils';
+import { exportAnamnesisToPDF } from '@/lib/pdf-utils-v2';
 
 const GENDER_OPTIONS: { value: AnamnesesData['gender']; label: string }[] = [
   { value: 'M', label: 'Masculino' },
@@ -71,7 +71,7 @@ export default function AnamnesisScreen() {
       if (Platform.OS !== 'web') {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
-      await exportAndShareAnamnesis(form);
+      await exportAnamnesisToPDF(form);
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível exportar a ficha médica.');
       console.error('Export error:', error);

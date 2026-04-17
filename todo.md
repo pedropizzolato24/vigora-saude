@@ -88,3 +88,9 @@
 - [x] Implement auto-escalation after 2-3 minutes of no response
 - [x] Add dismiss/snooze buttons to alarm notifications
 - [x] Track escalation history in AppState
+
+
+## Build Error Fixes
+- [x] Remove pdfbox-android dependency causing build failure
+- [x] Replace PDF generation with Expo-compatible solution (using expo-print + expo-sharing)
+- [ ] Test APK build again
