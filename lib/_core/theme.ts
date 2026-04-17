@@ -36,15 +36,16 @@ type RuntimePalette = SchemePaletteItem & {
   tabIconDefault: string;
   tabIconSelected: string;
   border: string;
-  onPrimary?: string;
-  onEmergency?: string;
-  onSuccess?: string;
-  onWarning?: string;
-  primaryLight?: string;
-  emergencyLight?: string;
-  successLight?: string;
-  warningLight?: string;
-  warningDark?: string;
+  onPrimary: string;
+  onEmergency: string;
+  onSuccess: string;
+  onWarning: string;
+  primaryLight: string;
+  emergencyLight: string;
+  successLight: string;
+  warningLight: string;
+  warningDark: string;
+  errorLight: string;
 };
 
 function buildRuntimePalette(scheme: ColorScheme): RuntimePalette {
@@ -58,6 +59,16 @@ function buildRuntimePalette(scheme: ColorScheme): RuntimePalette {
     tabIconDefault: base.muted,
     tabIconSelected: base.primary,
     border: base.border,
+    onPrimary: base.onPrimary,
+    onEmergency: base.onEmergency,
+    onSuccess: base.onSuccess,
+    onWarning: base.onWarning,
+    primaryLight: base.primaryLight,
+    emergencyLight: base.emergencyLight,
+    successLight: base.successLight,
+    warningLight: base.warningLight,
+    warningDark: base.warningDark,
+    errorLight: base.errorLight,
   };
 }
 

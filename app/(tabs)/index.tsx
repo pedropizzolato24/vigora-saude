@@ -126,7 +126,7 @@ export default function DashboardScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <View>
             <Text style={[styles.greeting, { color: colors.muted }]}>Bem-vindo ao</Text>
             <Text style={[styles.appName, { color: colors.foreground }]}>Vigora Saúde</Text>
@@ -203,13 +203,21 @@ export default function DashboardScreen() {
                 styles.statusCard,
                 {
                   backgroundColor: colors.surface,
-                  borderColor: card.color + '30',
-                  opacity: pressed ? 0.75 : 1,
+                  borderColor: card.color + '60',
+                  shadowColor: card.color,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 6,
+                  elevation: 3,
+                  transform: [{ scale: pressed ? 0.97 : 1 }],
                 },
               ]}
             >
-              <View style={[styles.cardIconBadge, { backgroundColor: card.color + '15' }]}>
-                <MaterialIcons name={card.icon} size={22} color={card.color} />
+              <View style={styles.cardTopRow}>
+                <View style={[styles.cardIconBadge, { backgroundColor: card.color + '15' }]}>
+                  <MaterialIcons name={card.icon} size={22} color={card.color} />
+                </View>
+                <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
               </View>
               <Text style={[styles.cardValue, { color: card.color }]}>{card.value}</Text>
               <Text style={[styles.cardLabel, { color: colors.foreground }]} numberOfLines={1}>
@@ -218,6 +226,9 @@ export default function DashboardScreen() {
               <Text style={[styles.cardSubtext, { color: colors.muted }]} numberOfLines={1}>
                 {card.subtext}
               </Text>
+              <View style={[styles.cardTapHint, { backgroundColor: card.color + '12' }]}>
+                <Text style={[styles.cardTapHintText, { color: card.color }]}>Toque para ver</Text>
+              </View>
             </Pressable>
           ))}
         </View>
@@ -293,6 +304,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   greeting: {
     fontSize: 14,
@@ -358,8 +371,13 @@ const styles = StyleSheet.create({
     width: '47%',
     borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
+    borderWidth: 1.5,
     gap: 6,
+  },
+  cardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   cardIconBadge: {
     width: 40,
@@ -418,5 +436,16 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     lineHeight: 20,
+  },
+  cardTapHint: {
+    marginTop: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  cardTapHintText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
 });

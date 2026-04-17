@@ -30,7 +30,7 @@ export function CustomTabBar() {
   const { toggleMenu } = useMenu();
 
   const bottomPadding = Platform.OS === 'web' ? 12 : Math.max(insets.bottom, 8);
-  const tabBarHeight = 56 + bottomPadding;
+  const tabBarHeight = 60 + bottomPadding;
 
   const isActive = (route: string) => {
     if (route === '/(tabs)/') return pathname === '/' || pathname === '/index';
@@ -73,10 +73,18 @@ export function CustomTabBar() {
             accessibilityLabel={tab.label}
             accessibilityRole="button"
           >
-            <View style={[styles.iconContainer, active && { backgroundColor: colors.primary + '20' }]}>
+            <View
+              style={[
+                styles.iconContainer,
+                {
+                  backgroundColor: active ? colors.primary + '20' : 'transparent',
+                  borderRadius: 12,
+                },
+              ]}
+            >
               <MaterialIcons
                 name={tab.icon}
-                size={26}
+                size={24}
                 color={active ? colors.primary : colors.muted}
               />
             </View>
@@ -84,6 +92,7 @@ export function CustomTabBar() {
               style={[
                 styles.label,
                 { color: active ? colors.primary : colors.muted },
+                active && styles.labelActive,
               ]}
             >
               {tab.label}
@@ -99,24 +108,27 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     borderTopWidth: 0.5,
-    paddingTop: 8,
+    paddingTop: 6,
     alignItems: 'flex-start',
   },
   tab: {
     flex: 1,
     alignItems: 'center',
-    gap: 2,
+    gap: 3,
   },
   iconContainer: {
-    width: 40,
-    height: 32,
-    borderRadius: 8,
+    width: 48,
+    height: 34,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   label: {
     fontSize: 11,
     fontWeight: '500',
     textAlign: 'center',
+  },
+  labelActive: {
+    fontWeight: '700',
   },
 });

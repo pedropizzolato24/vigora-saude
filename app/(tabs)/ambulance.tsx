@@ -105,7 +105,7 @@ export default function AmbulanceScreen() {
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: Math.max(insets.top, 16) }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
         <View>
           <Text style={[styles.title, { color: colors.foreground }]}>Ambulância</Text>
           <Text style={[styles.subtitle, { color: colors.muted }]}>

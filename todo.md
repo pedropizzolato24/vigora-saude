@@ -116,3 +116,11 @@
 - [x] Add first-launch detection with AsyncStorage
 - [x] Integrate onboarding into app navigation flow (OnboardingGate component)
 - [x] Add skip, next, and start buttons with animated dot progress indicators
+
+
+## UI/UX Adjustments v2
+- [x] 1. Standardize top padding across all screens (insets.top + 12, paddingHorizontal: 20, paddingVertical: 16)
+- [x] 2. Fix tab bar icon rounding with consistent borderRadius: 12 on all states
+- [x] 3. Improve contacts screen buttons (larger 44px touch targets, more spacing, row layout)
+- [x] 4. Enhance dashboard quick action cards with 1.5px borders, chevron indicators, and tap hints
+- [x] 5. Redesign Settings screen with 6 collapsible sections, new options (vibration, SOS confirmation, auto-location, font size, emergency message)

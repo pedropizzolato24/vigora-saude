@@ -19,6 +19,7 @@ const themeColors = {
   successLight: { light: '#22C55E15', dark: '#4ADE8020' },
   warningLight: { light: '#F59E0B15', dark: '#FBBF2420' },
   warningDark: { light: '#92400E', dark: '#FCD34D' },
+  errorLight: { light: '#EF444415', dark: '#F8717120' },
 };
 
 module.exports = { themeColors };

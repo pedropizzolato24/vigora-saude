@@ -47,6 +47,11 @@ export interface AppSettings {
   alarmVolume: number; // 0-100
   language: 'pt' | 'en';
   missedAlarmThreshold: number; // Number of missed alarms before WhatsApp escalation (1-10)
+  vibrationEnabled: boolean;
+  sosConfirmation: boolean; // Require confirmation before SOS
+  autoShareLocation: boolean; // Auto-share location on SOS
+  fontSize: 'small' | 'medium' | 'large';
+  emergencyMessage: string; // Custom message for WhatsApp escalation
 }
 
 export interface Ad {
@@ -103,6 +108,11 @@ const initialState: AppState = {
     alarmVolume: 80,
     language: 'pt',
     missedAlarmThreshold: 3,
+    vibrationEnabled: true,
+    sosConfirmation: true,
+    autoShareLocation: true,
+    fontSize: 'medium',
+    emergencyMessage: 'URGENTE: Não estou respondendo aos meus alarmes de saúde. Por favor, verifique se estou bem.',
   },
   ads: [],
   missedAlarmCount: 0,

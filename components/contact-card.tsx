@@ -28,48 +28,60 @@ export function ContactCard({ contact, onEdit, onDelete }: ContactCardProps) {
         { backgroundColor: colors.surface, borderColor: colors.border },
       ]}
     >
-      {/* Avatar */}
-      <View style={[styles.avatar, { backgroundColor: colors.primaryLight }]}>
-        <Text style={styles.avatarText}>{getInitials(contact.name)}</Text>
-      </View>
-
-      {/* Info */}
-      <View style={styles.info}>
-        <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
-          {contact.name}
-        </Text>
-        <View style={styles.phoneRow}>
-          <MaterialIcons name="phone" size={14} color={colors.muted} />
-          <Text style={[styles.phone, { color: colors.muted }]}>{contact.phone}</Text>
+      {/* Top Row: Avatar + Info */}
+      <View style={styles.topRow}>
+        {/* Avatar */}
+        <View style={[styles.avatar, { backgroundColor: colors.primaryLight }]}>
+          <Text style={[styles.avatarText, { color: colors.primary }]}>{getInitials(contact.name)}</Text>
         </View>
-        <View style={styles.tagsRow}>
-          <View style={[styles.tag, { backgroundColor: colors.primaryLight }]}>
-            <Text style={[styles.tagText, { color: colors.primary }]}>{contact.relation}</Text>
+
+        {/* Info */}
+        <View style={styles.info}>
+          <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
+            {contact.name}
+          </Text>
+          <View style={styles.phoneRow}>
+            <MaterialIcons name="phone" size={14} color={colors.muted} />
+            <Text style={[styles.phone, { color: colors.muted }]}>{contact.phone}</Text>
           </View>
-          {contact.whatsapp && (
-            <View style={[styles.tag, { backgroundColor: colors.successLight }]}>
-              <MaterialIcons name="chat" size={12} color="#22C55E" />
-              <Text style={[styles.tagText, { color: colors.success }]}>WhatsApp</Text>
+          <View style={styles.tagsRow}>
+            <View style={[styles.tag, { backgroundColor: colors.primaryLight }]}>
+              <Text style={[styles.tagText, { color: colors.primary }]}>{contact.relation}</Text>
             </View>
-          )}
+            {contact.whatsapp && (
+              <View style={[styles.tag, { backgroundColor: colors.successLight }]}>
+                <MaterialIcons name="chat" size={12} color="#22C55E" />
+                <Text style={[styles.tagText, { color: colors.success }]}>WhatsApp</Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
 
-      {/* Actions */}
-      <View style={styles.actions}>
+      {/* Bottom Row: Action Buttons */}
+      <View style={styles.actionsRow}>
         <Pressable
           onPress={() => onEdit(contact)}
-          style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}
+          style={({ pressed }) => [
+            styles.actionBtn,
+            { backgroundColor: colors.primaryLight, opacity: pressed ? 0.7 : 1 },
+          ]}
           accessibilityLabel="Editar contato"
         >
-          <MaterialIcons name="edit" size={20} color={colors.muted} />
+          <MaterialIcons name="edit" size={18} color={colors.primary} />
+          <Text style={[styles.actionText, { color: colors.primary }]}>Editar</Text>
         </Pressable>
+
         <Pressable
           onPress={() => onDelete(contact.id)}
-          style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}
+          style={({ pressed }) => [
+            styles.actionBtn,
+            { backgroundColor: colors.errorLight, opacity: pressed ? 0.7 : 1 },
+          ]}
           accessibilityLabel="Excluir contato"
         >
-          <MaterialIcons name="delete" size={20} color="#EF4444" />
+          <MaterialIcons name="delete" size={18} color={colors.error} />
+          <Text style={[styles.actionText, { color: colors.error }]}>Excluir</Text>
         </Pressable>
       </View>
     </View>
@@ -78,12 +90,15 @@ export function ContactCard({ contact, onEdit, onDelete }: ContactCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
+    gap: 14,
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
   avatar: {
@@ -96,7 +111,6 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#0066CC',
   },
   info: {
     flex: 1,
@@ -132,10 +146,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-  actions: {
-    gap: 4,
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 12,
   },
   actionBtn: {
-    padding: 6,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  actionText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
