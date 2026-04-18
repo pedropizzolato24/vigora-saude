@@ -116,7 +116,8 @@ export function PulseView({
   style,
   ...props
 }: PulseViewProps) {
-  const scale = useRef(new Animated.Value(1)).current;
+  // Start at minScale so the loop begins from the bottom
+  const scale = useRef(new Animated.Value(minScale)).current;
 
   useEffect(() => {
     if (!active) {
@@ -124,26 +125,23 @@ export function PulseView({
       return;
     }
 
-    // Use 3-step sequence: 1 → max → min → 1
-    // Each step uses Easing.inOut(sin) for smooth acceleration/deceleration
-    // Returns to 1 before loop restarts for seamless continuation
+    // Set starting point to minScale before looping
+    scale.setValue(minScale);
+
+    // 2-step sequence: min → max → min
+    // Easing.inOut(sin) gives smooth ease-in/out at both ends
+    // Since the sequence starts and ends at minScale, the loop is perfectly seamless
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(scale, {
           toValue: maxScale,
-          duration: duration / 3,
+          duration: duration / 2,
           useNativeDriver: true,
           easing: Easing.inOut(Easing.sin),
         }),
         Animated.timing(scale, {
           toValue: minScale,
-          duration: duration / 3,
-          useNativeDriver: true,
-          easing: Easing.inOut(Easing.sin),
-        }),
-        Animated.timing(scale, {
-          toValue: 1,
-          duration: duration / 3,
+          duration: duration / 2,
           useNativeDriver: true,
           easing: Easing.inOut(Easing.sin),
         }),
