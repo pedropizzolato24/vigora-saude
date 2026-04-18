@@ -335,47 +335,63 @@ export default function SettingsScreen() {
         <Pressable
           onPress={handleToggleAccessibility}
           style={({ pressed }) => [{
-            borderRadius: 20,
-            borderWidth: 2,
-            borderColor: settings.accessibilityMode ? '#003388' : colors.border,
-            backgroundColor: settings.accessibilityMode ? '#0055CC' : colors.surface,
-            padding: 18,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 14,
-            opacity: pressed ? 0.85 : 1,
+            borderRadius: 24,
+            borderWidth: 3,
+            borderColor: settings.accessibilityMode ? '#003388' : '#0055CC',
+            backgroundColor: settings.accessibilityMode ? '#0055CC' : '#FFFFFF',
+            overflow: 'hidden',
+            opacity: pressed ? 0.88 : 1,
           }]}
         >
-          <View style={[{
-            width: 48,
-            height: 48,
-            borderRadius: 14,
+          {/* Top banner strip */}
+          <View style={{
+            backgroundColor: settings.accessibilityMode ? '#003388' : '#0055CC',
+            paddingHorizontal: 18,
+            paddingVertical: 10,
+            flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: settings.accessibilityMode ? '#FFFFFF30' : colors.primaryLight,
-          }]}>
-            <MaterialIcons
-              name="accessibility-new"
-              size={28}
-              color={settings.accessibilityMode ? '#FFFFFF' : colors.primary}
+            gap: 10,
+          }}>
+            <MaterialIcons name="accessibility-new" size={22} color="#FFFFFF" />
+            <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+              {settings.accessibilityMode ? 'Modo de Acessibilidade — Ativado' : 'Modo de Acessibilidade'}
+            </Text>
+          </View>
+          {/* Card body */}
+          <View style={{ padding: 18, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            <View style={{
+              width: 64,
+              height: 64,
+              borderRadius: 20,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: settings.accessibilityMode ? '#FFFFFF20' : '#0055CC15',
+              borderWidth: 2,
+              borderColor: settings.accessibilityMode ? '#FFFFFF40' : '#0055CC40',
+            }}>
+              <MaterialIcons
+                name="accessibility-new"
+                size={36}
+                color={settings.accessibilityMode ? '#FFFFFF' : '#0055CC'}
+              />
+            </View>
+            <View style={{ flex: 1, gap: 6 }}>
+              <Text style={{ fontSize: 18, fontWeight: '900', color: settings.accessibilityMode ? '#FFFFFF' : '#0055CC', lineHeight: 22 }}>
+                {settings.accessibilityMode ? 'Ativado' : 'Para idosos e pessoas com\ndificuldades visuais'}
+              </Text>
+              <Text style={{ fontSize: 13, fontWeight: '500', color: settings.accessibilityMode ? '#FFFFFFBB' : '#555555', lineHeight: 18 }}>
+                {settings.accessibilityMode
+                  ? 'Fontes maiores, alto contraste e interface simplificada'
+                  : 'Fontes maiores • Alto contraste • Botões maiores'}
+              </Text>
+            </View>
+            <Switch
+              value={settings.accessibilityMode}
+              onValueChange={handleToggleAccessibility}
+              trackColor={{ false: '#CCCCCC', true: '#003388' }}
+              thumbColor="#FFFFFF"
             />
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.settingLabel, { color: settings.accessibilityMode ? '#FFFFFF' : colors.foreground, fontSize: 16 }]}>
-              Modo de Acessibilidade
-            </Text>
-            <Text style={[styles.settingSubLabel, { color: settings.accessibilityMode ? '#FFFFFFAA' : colors.muted }]}>
-              {settings.accessibilityMode
-                ? 'Ativado — layout simplificado e fontes maiores'
-                : 'Ideal para idosos e pessoas com dificuldades visuais'}
-            </Text>
-          </View>
-          <Switch
-            value={settings.accessibilityMode}
-            onValueChange={handleToggleAccessibility}
-            trackColor={{ false: colors.border, true: '#0033AA' }}
-            thumbColor="#FFFFFF"
-          />
         </Pressable>
 
         {/* ═══ SECTION 1: Notificações e Alarmes ═══ */}
