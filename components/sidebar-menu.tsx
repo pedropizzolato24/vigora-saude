@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
 import { useMenu } from '@/lib/menu-context';
 import { useAppContext } from '@/lib/app-context';
+import { useAccessibility } from '@/lib/accessibility-context';
 
 const SIDEBAR_WIDTH = Math.min(Dimensions.get('window').width * 0.75, 300);
 
@@ -41,6 +42,7 @@ export function SidebarMenu() {
   const { isOpen, closeMenu } = useMenu();
   const { state } = useAppContext();
   const insets = useSafeAreaInsets();
+  const { isAccessibilityMode, a11yColors: ac } = useAccessibility();
 
   const translateX = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -103,42 +105,43 @@ export function SidebarMenu() {
         style={[
           styles.sidebar,
           {
-            backgroundColor: colors.background,
-            borderRightColor: colors.border,
+            backgroundColor: isAccessibilityMode ? ac.background : colors.background,
+            borderRightColor: isAccessibilityMode ? ac.border : colors.border,
+            borderRightWidth: isAccessibilityMode ? 2 : StyleSheet.hairlineWidth,
             transform: [{ translateX }],
           },
         ]}
       >
         {/* Profile Header */}
-        <View style={[styles.profileSection, { backgroundColor: colors.primary, paddingTop: Math.max(insets.top, 20) + 12 }]}>
+        <View style={[styles.profileSection, { backgroundColor: isAccessibilityMode ? '#003388' : colors.primary, paddingTop: Math.max(insets.top, 20) + 12 }]}>
           <Pressable
             onPress={() => handleItemPress('/(tabs)/profile')}
             style={({ pressed }) => [styles.profileContent, pressed && { opacity: 0.8 }]}
           >
             {profilePhoto ? (
-              <Image source={{ uri: profilePhoto }} style={styles.profileAvatar} />
+              <Image source={{ uri: profilePhoto }} style={[styles.profileAvatar, isAccessibilityMode && { width: 64, height: 64, borderRadius: 32 }]} />
             ) : (
-              <View style={[styles.profileAvatarPlaceholder, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
-                <MaterialIcons name="person" size={36} color="#FFFFFF" />
+              <View style={[styles.profileAvatarPlaceholder, { backgroundColor: 'rgba(255,255,255,0.25)' }, isAccessibilityMode && { width: 64, height: 64, borderRadius: 32 }]}>
+                <MaterialIcons name="person" size={isAccessibilityMode ? 44 : 36} color="#FFFFFF" />
               </View>
             )}
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName} numberOfLines={1}>
+              <Text style={[styles.profileName, isAccessibilityMode && { fontSize: 20, fontWeight: '900' }]} numberOfLines={1}>
                 {profileName}
               </Text>
               {state.profile.phone ? (
-                <Text style={styles.profilePhone} numberOfLines={1}>
+                <Text style={[styles.profilePhone, isAccessibilityMode && { fontSize: 16 }]} numberOfLines={1}>
                   {state.profile.phone}
                 </Text>
               ) : (
-                <Text style={styles.profilePhone}>Toque para editar</Text>
+                <Text style={[styles.profilePhone, isAccessibilityMode && { fontSize: 16 }]}>Toque para editar</Text>
               )}
             </View>
             <Pressable
               onPress={(e) => { e.stopPropagation(); closeMenu(); }}
-              style={({ pressed }) => [styles.closeButton, pressed && { opacity: 0.6 }]}
+              style={({ pressed }) => [styles.closeButton, isAccessibilityMode && { width: 44, height: 44, borderRadius: 22 }, pressed && { opacity: 0.6 }]}
             >
-              <MaterialIcons name="close" size={24} color="#FFFFFF" />
+              <MaterialIcons name="close" size={isAccessibilityMode ? 30 : 24} color="#FFFFFF" />
             </Pressable>
           </Pressable>
         </View>
@@ -151,36 +154,38 @@ export function SidebarMenu() {
               onPress={() => handleItemPress(item.route)}
               style={({ pressed }) => [
                 styles.menuItem,
-                { borderBottomColor: colors.border },
-                pressed && { backgroundColor: colors.surface },
+                isAccessibilityMode && { paddingVertical: 18, minHeight: 72 },
+                { borderBottomColor: isAccessibilityMode ? ac.border : colors.border },
+                pressed && { backgroundColor: isAccessibilityMode ? ac.surface : colors.surface },
               ]}
             >
               <View
                 style={[
                   styles.menuItemIcon,
-                  { backgroundColor: (item.color ?? colors.primary) + '15' },
+                  isAccessibilityMode && { width: 52, height: 52, borderRadius: 16 },
+                  { backgroundColor: (item.color ?? (isAccessibilityMode ? ac.primary : colors.primary)) + '20' },
                 ]}
               >
                 <MaterialIcons
                   name={item.icon}
-                  size={24}
-                  color={item.color ?? colors.primary}
+                  size={isAccessibilityMode ? 30 : 24}
+                  color={item.color ?? (isAccessibilityMode ? ac.primary : colors.primary)}
                 />
               </View>
-              <Text style={[styles.menuItemLabel, { color: colors.foreground }]}>
+              <Text style={[styles.menuItemLabel, { color: isAccessibilityMode ? ac.foreground : colors.foreground }, isAccessibilityMode && { fontSize: 18, fontWeight: '700' }]}>
                 {item.label}
               </Text>
-              <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+              <MaterialIcons name="chevron-right" size={isAccessibilityMode ? 28 : 20} color={isAccessibilityMode ? ac.muted : colors.muted} />
             </Pressable>
           ))}
         </View>
 
         {/* Footer */}
         <View style={styles.sidebarFooter}>
-          <Text style={[styles.footerText, { color: colors.muted }]}>
+          <Text style={[styles.footerText, { color: isAccessibilityMode ? ac.muted : colors.muted }, isAccessibilityMode && { fontSize: 15 }]}>
             Vigora Saúde v1.0.0
           </Text>
-          <Text style={[styles.footerSubtext, { color: colors.muted }]}>
+          <Text style={[styles.footerSubtext, { color: isAccessibilityMode ? ac.muted : colors.muted }, isAccessibilityMode && { fontSize: 14 }]}>
             Sua saúde, sempre protegida
           </Text>
         </View>

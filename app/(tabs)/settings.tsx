@@ -19,6 +19,7 @@ import { useColors } from '@/hooks/use-colors';
 import { useAppContext } from '@/lib/app-context';
 import { useThemeContext } from '@/lib/theme-provider';
 import { useFontSize } from '@/lib/font-size-context';
+import { useAccessibility } from '@/lib/accessibility-context';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
 
@@ -207,7 +208,119 @@ export default function SettingsScreen() {
   };
 
   const fontSizeLabels = { small: 'Pequeno', medium: 'Médio', large: 'Grande' };
+  const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
 
+  const handleToggleAccessibility = () => {
+    if (!settings.accessibilityMode) {
+      // Show confirmation before enabling
+      Alert.alert(
+        'Ativar Modo de Acessibilidade?',
+        'O Modo de Acessibilidade simplifica o layout do app para facilitar o uso:\n\n• Fontes maiores e mais legíveis\n• Cores de alto contraste\n• Botões maiores e mais fáceis de tocar\n• Interface simplificada, sem detalhes desnecessários\n• Ideal para pessoas idosas ou com dificuldades visuais\n\nVocê pode desativar a qualquer momento nesta mesma tela.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Ativar',
+            onPress: () => {
+              if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              updateSetting('accessibilityMode', true);
+            },
+          },
+        ]
+      );
+    } else {
+      if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      updateSetting('accessibilityMode', false);
+    }
+  };
+
+  // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
+  if (isAccessibilityMode) {
+    return (
+      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.background }}>
+          <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Configurações</Text>
+        </View>
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          {/* Accessibility toggle — always visible at top */}
+          <Pressable
+            onPress={handleToggleAccessibility}
+            style={({ pressed }) => [{ borderRadius: 20, borderWidth: 3, borderColor: '#003388', backgroundColor: '#0055CC', padding: 20, flexDirection: 'row', alignItems: 'center', gap: 14, opacity: pressed ? 0.85 : 1 }]}
+          >
+            <MaterialIcons name="accessibility-new" size={36} color="#FFFFFF" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: af.lg, fontWeight: '900', color: '#FFFFFF' }}>Modo de Acessibilidade</Text>
+              <Text style={{ fontSize: af.sm, color: '#FFFFFFCC', marginTop: 4 }}>Ativado — toque para desativar</Text>
+            </View>
+            <Switch value={true} onValueChange={handleToggleAccessibility} trackColor={{ false: '#888', true: '#0033AA' }} thumbColor="#FFFFFF" />
+          </Pressable>
+
+          {/* Notifications toggle */}
+          <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 16 }}>
+            <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>Notificações</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Alertas de alarmes</Text>
+                <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Avisos quando o alarme tocar</Text>
+              </View>
+              <Switch value={settings.notificationsEnabled} onValueChange={(v) => updateSetting('notificationsEnabled', v)} trackColor={{ false: ac.border, true: ac.primary }} thumbColor="#FFFFFF" />
+            </View>
+            <View style={{ height: 2, backgroundColor: ac.border }} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Vibração</Text>
+                <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Vibrar ao disparar alarmes</Text>
+              </View>
+              <Switch value={settings.vibrationEnabled} onValueChange={(v) => updateSetting('vibrationEnabled', v)} trackColor={{ false: ac.border, true: ac.primary }} thumbColor="#FFFFFF" />
+            </View>
+          </View>
+
+          {/* Volume */}
+          <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 16 }}>
+            <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>Volume do Alarme</Text>
+            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.primary, textAlign: 'center' }}>{settings.alarmVolume}%</Text>
+            <View style={{ height: 12, backgroundColor: ac.border, borderRadius: 6, overflow: 'hidden' }}>
+              <View style={{ height: 12, backgroundColor: ac.primary, width: `${settings.alarmVolume}%` as any, borderRadius: 6 }} />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              <Pressable
+                onPress={() => handleVolumeChange(-10)}
+                style={({ pressed }) => [{ flex: 1, backgroundColor: ac.surface, borderRadius: 16, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 3, borderColor: ac.border, opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="volume-down" size={28} color={ac.foreground} />
+                <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>-10</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => handleVolumeChange(10)}
+                style={({ pressed }) => [{ flex: 1, backgroundColor: ac.primary, borderRadius: 16, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 3, borderColor: '#003388', opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="volume-up" size={28} color="#FFFFFF" />
+                <Text style={{ fontSize: af.lg, fontWeight: '800', color: '#FFFFFF' }}>+10</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {/* SOS confirmation */}
+          <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Confirmar SOS</Text>
+                <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Pedir confirmação antes de acionar</Text>
+              </View>
+              <Switch value={settings.sosConfirmation} onValueChange={(v) => updateSetting('sosConfirmation', v)} trackColor={{ false: ac.border, true: ac.emergency }} thumbColor="#FFFFFF" />
+            </View>
+          </View>
+
+          {/* Version info */}
+          <View style={{ alignItems: 'center', gap: 4, paddingTop: 8 }}>
+            <Text style={{ fontSize: af.sm, color: ac.muted, fontWeight: '600' }}>Vigora Saúde — Versão 1.0.0</Text>
+            <Text style={{ fontSize: af.sm, color: ac.muted }}>Dados armazenados localmente no dispositivo.</Text>
+          </View>
+        </ScrollView>
+      </ScreenContainer>
+    );
+  }
+
+  // ─── NORMAL MODE ──────────────────────────────────────────────────
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
@@ -218,6 +331,53 @@ export default function SettingsScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
+        {/* ═══ ACCESSIBILITY TOGGLE (always at top, outside any group) ═══ */}
+        <Pressable
+          onPress={handleToggleAccessibility}
+          style={({ pressed }) => [{
+            borderRadius: 20,
+            borderWidth: 2,
+            borderColor: settings.accessibilityMode ? '#003388' : colors.border,
+            backgroundColor: settings.accessibilityMode ? '#0055CC' : colors.surface,
+            padding: 18,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 14,
+            opacity: pressed ? 0.85 : 1,
+          }]}
+        >
+          <View style={[{
+            width: 48,
+            height: 48,
+            borderRadius: 14,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: settings.accessibilityMode ? '#FFFFFF30' : colors.primaryLight,
+          }]}>
+            <MaterialIcons
+              name="accessibility-new"
+              size={28}
+              color={settings.accessibilityMode ? '#FFFFFF' : colors.primary}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.settingLabel, { color: settings.accessibilityMode ? '#FFFFFF' : colors.foreground, fontSize: 16 }]}>
+              Modo de Acessibilidade
+            </Text>
+            <Text style={[styles.settingSubLabel, { color: settings.accessibilityMode ? '#FFFFFFAA' : colors.muted }]}>
+              {settings.accessibilityMode
+                ? 'Ativado — layout simplificado e fontes maiores'
+                : 'Ideal para idosos e pessoas com dificuldades visuais'}
+            </Text>
+          </View>
+          <Switch
+            value={settings.accessibilityMode}
+            onValueChange={handleToggleAccessibility}
+            trackColor={{ false: colors.border, true: '#0033AA' }}
+            thumbColor="#FFFFFF"
+          />
+        </Pressable>
+
         {/* ═══ SECTION 1: Notificações e Alarmes ═══ */}
         <CollapsibleSection
           title="Notificações e Alarmes"
@@ -225,7 +385,7 @@ export default function SettingsScreen() {
           iconBg={colors.primaryLight}
           iconColor={colors.primary}
           colors={colors}
-          defaultOpen={true}
+          defaultOpen={false}
         >
           <SettingToggle
             label="Notificações"

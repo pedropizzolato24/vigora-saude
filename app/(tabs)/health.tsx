@@ -1,5 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import React, { useState } from 'react';
+import { useAccessibility } from '@/lib/accessibility-context';
 import {
   Alert,
   FlatList,
@@ -70,6 +71,7 @@ export default function HealthScreen() {
   const [showSuccess, setShowSuccess] = useState(false);
   const METRIC_CONFIG = getMetricConfig(colors);
   const STATUS_CONFIG = getStatusConfig(colors);
+  const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
 
   const handleSave = () => {
     const value = parseFloat(valueText);
@@ -158,6 +160,127 @@ export default function HealthScreen() {
     );
   };
 
+  // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
+  if (isAccessibilityMode) {
+    const A11Y_METRIC_CONFIG = getMetricConfig({ emergency: '#CC0000', primary: ac.primary, warning: '#885500' });
+    return (
+      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: ac.background }}>
+          <View>
+            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Saúde</Text>
+            <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>{state.healthMetrics.length} registro(s)</Text>
+          </View>
+          <Pressable
+            onPress={() => { setValueText(''); setSelectedType('heart_rate'); setModalVisible(true); }}
+            style={({ pressed }) => [{ backgroundColor: ac.success, width: as_.touchTarget, height: as_.touchTarget, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: '#004400', opacity: pressed ? 0.8 : 1 }]}
+            accessibilityLabel="Adicionar métrica de saúde"
+          >
+            <MaterialIcons name="add" size={36} color="#FFFFFF" />
+          </Pressable>
+        </View>
+
+        {state.healthMetrics.length === 0 ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 20 }}>
+            <MaterialIcons name="monitor-heart" size={80} color={ac.muted} />
+            <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.foreground, textAlign: 'center' }}>Nenhum registro</Text>
+            <Text style={{ fontSize: af.md, color: ac.muted, textAlign: 'center', lineHeight: af.md * 1.5 }}>Registre seus dados de saúde para acompanhar sua evolução.</Text>
+            <Pressable
+              onPress={() => { setValueText(''); setSelectedType('heart_rate'); setModalVisible(true); }}
+              style={({ pressed }) => [{ backgroundColor: ac.success, borderRadius: 20, paddingVertical: as_.buttonPadding, paddingHorizontal: 32, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 3, borderColor: '#004400', opacity: pressed ? 0.85 : 1 }]}
+            >
+              <MaterialIcons name="add" size={32} color="#FFFFFF" />
+              <Text style={{ fontSize: af.lg, fontWeight: '800', color: '#FFFFFF' }}>Registrar Métrica</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <FlatList
+            data={state.healthMetrics}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => {
+              const cfg = A11Y_METRIC_CONFIG[item.type];
+              const status = getHealthStatus(item.type, item.value);
+              const statusColor = status === 'normal' ? ac.success : status === 'warning' ? '#885500' : ac.emergency;
+              const statusLabel = status === 'normal' ? 'Normal' : status === 'warning' ? 'Atenção' : 'Crítico';
+              return (
+                <View style={{ margin: 12, marginBottom: 0, backgroundColor: ac.surface, borderRadius: as_.cardRadius, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 8 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.muted }}>{cfg.label}</Text>
+                    <View style={{ backgroundColor: statusColor + '20', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10, borderWidth: 2, borderColor: statusColor }}>
+                      <Text style={{ fontSize: af.sm, fontWeight: '800', color: statusColor }}>{statusLabel}</Text>
+                    </View>
+                  </View>
+                  <Text style={{ fontSize: af['3xl'], fontWeight: '900', color: ac.foreground }}>
+                    {item.value} <Text style={{ fontSize: af.md, fontWeight: '600', color: ac.muted }}>{item.unit}</Text>
+                  </Text>
+                  <Text style={{ fontSize: af.sm, color: ac.muted }}>{formatTimestamp(item.timestamp)}</Text>
+                  <Pressable
+                    onPress={() => handleDelete(item.id)}
+                    style={({ pressed }) => [{ marginTop: 4, paddingVertical: 12, borderRadius: 12, borderWidth: 2, borderColor: ac.emergency, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: pressed ? '#FFE0E0' : ac.background }]}
+                  >
+                    <MaterialIcons name="delete" size={24} color={ac.emergency} />
+                    <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.emergency }}>Excluir</Text>
+                  </Pressable>
+                </View>
+              );
+            }}
+            contentContainerStyle={{ padding: 12, paddingBottom: 32 }}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+
+        {/* Simplified Modal */}
+        <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setModalVisible(false)}>
+          <View style={{ flex: 1, backgroundColor: ac.background }}>
+            <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Pressable onPress={() => setModalVisible(false)} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
+                <Text style={{ fontSize: af.md, color: ac.muted, fontWeight: '600' }}>Cancelar</Text>
+              </Pressable>
+              <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>Nova Métrica</Text>
+              <Pressable onPress={handleSave} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
+                <Text style={{ fontSize: af.md, color: ac.primary, fontWeight: '800' }}>Salvar</Text>
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 24, gap: 28 }}>
+              <View style={{ gap: 12 }}>
+                <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>Tipo de Métrica</Text>
+                {(Object.keys(A11Y_METRIC_CONFIG) as MetricType[]).map((type) => {
+                  const cfg = A11Y_METRIC_CONFIG[type];
+                  const selected = selectedType === type;
+                  return (
+                    <Pressable
+                      key={type}
+                      onPress={() => setSelectedType(type)}
+                      style={[{ paddingVertical: as_.buttonPadding, paddingHorizontal: 20, borderRadius: 16, borderWidth: 3, flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: selected ? ac.primary : ac.surface, borderColor: selected ? ac.primary : ac.border }]}
+                    >
+                      <MaterialIcons name={cfg.icon as any} size={28} color={selected ? ac.onPrimary : ac.muted} />
+                      <Text style={{ fontSize: af.md, fontWeight: '700', color: selected ? ac.onPrimary : ac.foreground }}>{cfg.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <View style={{ gap: 12 }}>
+                <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>Valor ({A11Y_METRIC_CONFIG[selectedType].unit})</Text>
+                <TextInput
+                  value={valueText}
+                  onChangeText={setValueText}
+                  placeholder={A11Y_METRIC_CONFIG[selectedType].placeholder}
+                  placeholderTextColor={ac.muted}
+                  keyboardType="numeric"
+                  style={{ backgroundColor: ac.surface, color: ac.foreground, borderColor: ac.border, borderWidth: 3, borderRadius: 16, padding: 20, fontSize: af['3xl'], textAlign: 'center', fontWeight: '900' }}
+                  returnKeyType="done"
+                  maxLength={6}
+                />
+                <Text style={{ fontSize: af.sm, color: ac.muted, textAlign: 'center' }}>{A11Y_METRIC_CONFIG[selectedType].hint}</Text>
+              </View>
+            </ScrollView>
+          </View>
+        </Modal>
+        <SuccessConfirmation visible={showSuccess} onComplete={() => setShowSuccess(false)} />
+      </ScreenContainer>
+    );
+  }
+
+  // ─── NORMAL MODE ──────────────────────────────────────────────────
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}

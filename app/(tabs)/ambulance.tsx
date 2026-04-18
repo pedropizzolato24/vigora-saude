@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
 import React, { useState } from 'react';
+import { useAccessibility } from '@/lib/accessibility-context';
 import {
   Alert,
   Platform,
@@ -34,6 +35,7 @@ export default function AmbulanceScreen() {
   const insets = useSafeAreaInsets();
   const { state } = useAppContext();
   const [selectedType, setSelectedType] = useState<AmbulanceType>('sus');
+  const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
 
   const anamnesis = state.anamnesis;
 
@@ -104,6 +106,76 @@ export default function AmbulanceScreen() {
     );
   };
 
+  // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
+  if (isAccessibilityMode) {
+    const a11yOptions = [
+      { label: 'SAMU (SUS)', phone: '192', icon: 'local-hospital' as const, color: ac.emergency, borderColor: '#880000' },
+      { label: 'Bombeiros', phone: '193', icon: 'warning' as const, color: '#885500', borderColor: '#553300' },
+    ];
+    return (
+      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.background }}>
+          <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Ambuância</Text>
+          <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Acione atendimento de emergência</Text>
+        </View>
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }} showsVerticalScrollIndicator={false}>
+          {/* Emergency banner */}
+          <View style={{ backgroundColor: '#FFE0E0', borderRadius: 16, padding: 16, borderWidth: 2, borderColor: '#CC0000', flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+            <MaterialIcons name="warning" size={36} color={ac.emergency} />
+            <Text style={{ flex: 1, fontSize: af.md, fontWeight: '800', color: ac.emergency, lineHeight: af.md * 1.4 }}>
+              Emergência grave? Ligue agora: SAMU 192
+            </Text>
+          </View>
+          {/* Large call buttons */}
+          {a11yOptions.map((opt) => (
+            <Pressable
+              key={opt.phone}
+              onPress={async () => {
+                if (Platform.OS !== 'web') await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                Alert.alert(`Ligar para ${opt.label}?`, `Você será redirecionado para ligar para ${opt.phone}.`, [
+                  { text: 'Cancelar', style: 'cancel' },
+                  { text: `Ligar ${opt.phone}`, onPress: async () => { const url = `tel:${opt.phone}`; const canOpen = await Linking.canOpenURL(url); if (canOpen) await Linking.openURL(url); else Alert.alert('Erro', 'Ligue manualmente para ' + opt.phone); } },
+                ]);
+              }}
+              style={({ pressed }) => [{
+                backgroundColor: opt.color,
+                borderRadius: 20,
+                paddingVertical: as_.buttonPadding + 8,
+                paddingHorizontal: 24,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 16,
+                borderWidth: 4,
+                borderColor: opt.borderColor,
+                transform: [{ scale: pressed ? 0.97 : 1 }],
+              }]}
+            >
+              <MaterialIcons name={opt.icon} size={44} color="#FFFFFF" />
+              <View>
+                <Text style={{ fontSize: af.xl, fontWeight: '900', color: '#FFFFFF' }}>{opt.label}</Text>
+                <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: '#FFFFFF', letterSpacing: 4 }}>{opt.phone}</Text>
+              </View>
+            </Pressable>
+          ))}
+          {/* Instructions */}
+          <View style={{ backgroundColor: ac.surface, borderRadius: 16, padding: 20, borderWidth: 2, borderColor: ac.border, gap: 14 }}>
+            <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>O que fazer enquanto espera:</Text>
+            {['Fique em local seguro e visível', 'Informe seu endereço completo', 'Não desligue o telefone', 'Siga as instruções do atendente'].map((tip, i) => (
+              <View key={i} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
+                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: ac.primary, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: af.sm, fontWeight: '900', color: ac.onPrimary }}>{i + 1}</Text>
+                </View>
+                <Text style={{ flex: 1, fontSize: af.md, color: ac.foreground, lineHeight: af.md * 1.4, paddingTop: 4 }}>{tip}</Text>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </ScreenContainer>
+    );
+  }
+
+  // ─── NORMAL MODE ──────────────────────────────────────────────────
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}

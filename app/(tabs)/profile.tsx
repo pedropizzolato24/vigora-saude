@@ -19,6 +19,7 @@ import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { useAppContext } from '@/lib/app-context';
+import { useAccessibility } from '@/lib/accessibility-context';
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -27,6 +28,7 @@ export default function ProfileScreen() {
   const fs = useFontSize();
   const insets = useSafeAreaInsets();
   const { state, dispatch } = useAppContext();
+  const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
 
   const [name, setName] = useState(state.profile.name);
   const [birthDate, setBirthDate] = useState(state.profile.birthDate);
@@ -131,6 +133,89 @@ export default function ProfileScreen() {
     Alert.alert('Salvo', 'Perfil atualizado com sucesso!');
   };
 
+  // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
+  if (isAccessibilityMode) {
+    const a11yProfileFields: { label: string; value: string; onChange: (v: string) => void; placeholder: string; keyboard?: any; maxLength?: number }[] = [
+      { label: 'Nome Completo', value: name, onChange: (v) => { setName(v); markChanged(); }, placeholder: 'Seu nome completo' },
+      { label: 'Data de Nascimento', value: birthDate, onChange: formatBirthDate, placeholder: 'DD/MM/AAAA', keyboard: 'numeric', maxLength: 10 },
+      { label: 'Telefone', value: phone, onChange: formatPhone, placeholder: '(11) 99999-9999', keyboard: 'phone-pad' },
+    ];
+    return (
+      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: ac.background }}>
+          <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Meu Perfil</Text>
+          {hasChanges && (
+            <TouchableOpacity
+              onPress={handleSave}
+              style={{ backgroundColor: ac.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14, borderWidth: 2, borderColor: '#003388' }}
+            >
+              <Text style={{ fontSize: af.md, fontWeight: '800', color: '#FFFFFF' }}>Salvar</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          {/* Avatar */}
+          <View style={{ alignItems: 'center', gap: 12 }}>
+            <TouchableOpacity onPress={handlePhotoOptions} style={{ position: 'relative' }}>
+              {photoUri ? (
+                <Image source={{ uri: photoUri }} style={{ width: 120, height: 120, borderRadius: 60, borderWidth: 4, borderColor: ac.primary }} />
+              ) : (
+                <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: ac.surface, borderWidth: 4, borderColor: ac.primary, alignItems: 'center', justifyContent: 'center' }}>
+                  <MaterialIcons name="person" size={72} color={ac.primary} />
+                </View>
+              )}
+              <View style={{ position: 'absolute', bottom: 0, right: 0, width: 40, height: 40, borderRadius: 20, backgroundColor: ac.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: '#003388' }}>
+                <MaterialIcons name="camera-alt" size={20} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
+            <Text style={{ fontSize: af.sm, color: ac.muted, fontWeight: '600' }}>Toque para alterar a foto</Text>
+          </View>
+          {/* Fields */}
+          {a11yProfileFields.map((field) => (
+            <View key={field.label} style={{ gap: 10 }}>
+              <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>{field.label}</Text>
+              <TextInput
+                value={field.value}
+                onChangeText={field.onChange}
+                placeholder={field.placeholder}
+                placeholderTextColor={ac.muted}
+                keyboardType={field.keyboard ?? 'default'}
+                maxLength={field.maxLength}
+                style={{ backgroundColor: ac.surface, color: ac.foreground, borderColor: ac.border, borderWidth: 2, borderRadius: 16, padding: 18, fontSize: af.md, fontWeight: '500' }}
+                returnKeyType="done"
+              />
+            </View>
+          ))}
+          {/* Blood type */}
+          <View style={{ gap: 10 }}>
+            <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>Tipo Sanguíneo</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {BLOOD_TYPES.map((bt) => (
+                <TouchableOpacity
+                  key={bt}
+                  onPress={() => { setBloodType(bt); markChanged(); }}
+                  style={{ paddingHorizontal: 20, paddingVertical: 14, borderRadius: 14, borderWidth: 3, backgroundColor: bloodType === bt ? ac.emergency : ac.surface, borderColor: bloodType === bt ? '#880000' : ac.border }}
+                >
+                  <Text style={{ fontSize: af.md, fontWeight: '900', color: bloodType === bt ? '#FFFFFF' : ac.foreground }}>{bt}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          {hasChanges && (
+            <TouchableOpacity
+              onPress={handleSave}
+              style={{ backgroundColor: ac.primary, borderRadius: 20, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, borderWidth: 3, borderColor: '#003388' }}
+            >
+              <MaterialIcons name="save" size={32} color="#FFFFFF" />
+              <Text style={{ fontSize: af.xl, fontWeight: '800', color: '#FFFFFF' }}>Salvar Perfil</Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+      </ScreenContainer>
+    );
+  }
+
+  // ─── NORMAL MODE ──────────────────────────────────────────────────
   return (
     <ScreenContainer edges={['left', 'right']}>
       <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>

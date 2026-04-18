@@ -2,6 +2,7 @@ import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
 import * as Location from 'expo-location';
 import React, { useState } from 'react';
+import { useAccessibility } from '@/lib/accessibility-context';
 import {
   Alert,
   FlatList,
@@ -34,6 +35,7 @@ export default function LocationScreen() {
   const [currentLocation, setCurrentLocation] = useState<LocationRecord | null>(null);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<LocationRecord[]>([]);
+  const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
 
   const getLocation = async () => {
     if ((Platform.OS as string) === 'web') {
@@ -122,6 +124,70 @@ export default function LocationScreen() {
     return `${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
   };
 
+  // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
+  if (isAccessibilityMode) {
+    return (
+      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.background }}>
+          <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Localização</Text>
+          <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Compartilhe sua posição</Text>
+        </View>
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          {/* Privacy note */}
+          <View style={{ backgroundColor: '#E0F0FF', borderRadius: 16, padding: 16, borderWidth: 2, borderColor: '#0066CC', flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
+            <MaterialIcons name="lock" size={28} color="#0066CC" />
+            <Text style={{ flex: 1, fontSize: af.sm, color: '#003388', fontWeight: '600', lineHeight: af.sm * 1.5 }}>
+              Sua localização é obtida apenas quando você pede. Nunca é guardada em servidores.
+            </Text>
+          </View>
+          {/* Big get location button */}
+          <Pressable
+            onPress={getLocation}
+            disabled={loading}
+            style={({ pressed }) => [{ backgroundColor: ac.success, borderRadius: 20, paddingVertical: as_.buttonPadding + 8, paddingHorizontal: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, borderWidth: 4, borderColor: '#004400', opacity: loading ? 0.6 : pressed ? 0.85 : 1 }]}
+          >
+            <MaterialIcons name={loading ? 'refresh' : 'my-location'} size={44} color="#FFFFFF" />
+            <Text style={{ fontSize: af.xl, fontWeight: '900', color: '#FFFFFF' }}>
+              {loading ? 'Obtendo...' : 'Obter Minha Localização'}
+            </Text>
+          </Pressable>
+          {/* Location result */}
+          {currentLocation && (
+            <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.success, padding: 20, gap: 16 }}>
+              <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                <MaterialIcons name="location-on" size={36} color={ac.success} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: af.lg, fontWeight: '900', color: ac.foreground }}>Localização Encontrada</Text>
+                  <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 2 }}>{formatTimestamp(currentLocation.timestamp)}</Text>
+                </View>
+              </View>
+              {currentLocation.address && (
+                <Text style={{ fontSize: af.md, color: ac.foreground, fontWeight: '600', lineHeight: af.md * 1.4 }}>{currentLocation.address}</Text>
+              )}
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <Pressable
+                  onPress={() => shareLocation(currentLocation)}
+                  style={({ pressed }) => [{ flex: 1, backgroundColor: ac.primary, borderRadius: 16, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 3, borderColor: '#003388', opacity: pressed ? 0.85 : 1 }]}
+                >
+                  <MaterialIcons name="share" size={28} color="#FFFFFF" />
+                  <Text style={{ fontSize: af.md, fontWeight: '800', color: '#FFFFFF' }}>Compartilhar</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => openInMaps(currentLocation)}
+                  style={({ pressed }) => [{ flex: 1, backgroundColor: ac.surface, borderRadius: 16, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 3, borderColor: ac.border, opacity: pressed ? 0.85 : 1 }]}
+                >
+                  <MaterialIcons name="map" size={28} color={ac.primary} />
+                  <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.primary }}>Ver no Mapa</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
+        </ScrollView>
+      </ScreenContainer>
+    );
+  }
+
+  // ─── NORMAL MODE ──────────────────────────────────────────────────
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}

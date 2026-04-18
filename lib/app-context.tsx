@@ -54,6 +54,7 @@ export interface AppSettings {
   autoShareLocation: boolean; // Auto-share location on SOS
   fontSize: 'small' | 'medium' | 'large';
   emergencyMessage: string; // Custom message for WhatsApp escalation
+  accessibilityMode: boolean; // High-contrast, large-font, simplified layout mode
 }
 
 export interface UserProfile {
@@ -125,6 +126,7 @@ const initialState: AppState = {
     autoShareLocation: true,
     fontSize: 'medium',
     emergencyMessage: 'URGENTE: Não estou respondendo aos meus alarmes de saúde. Por favor, verifique se estou bem.',
+    accessibilityMode: false,
   },
   ads: [],
   missedAlarmCount: 0,

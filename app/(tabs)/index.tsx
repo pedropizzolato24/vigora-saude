@@ -17,6 +17,7 @@ import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
+import { useAccessibility } from '@/lib/accessibility-context';
 import { getNextAlarm, useAppContext } from '@/lib/app-context';
 import { useNotifications } from '@/lib/notifications-context';
 import { AdBanner } from '@/components/ad-banner';
@@ -30,6 +31,7 @@ export default function DashboardScreen() {
   const { state, dispatch } = useAppContext();
   const { sendNotification } = useNotifications();
   const [sosPressing, setSosPressing] = useState(false);
+  const { isAccessibilityMode, a11yFontSize, a11yColors, a11ySpacing } = useAccessibility();
 
   const nextAlarm = getNextAlarm(state.alarms);
 
@@ -50,8 +52,6 @@ export default function DashboardScreen() {
               await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             }
             dispatch({ type: 'TRIGGER_SOS' });
-
-            // Send notification for each contact
             for (const contact of state.emergencyContacts) {
               await sendNotification(
                 '🚨 EMERGÊNCIA SOS',
@@ -59,7 +59,6 @@ export default function DashboardScreen() {
                 { type: 'sos', contactId: contact.id }
               );
             }
-
             if (state.emergencyContacts.length === 0) {
               await sendNotification(
                 '🚨 EMERGÊNCIA SOS ATIVADO',
@@ -67,7 +66,6 @@ export default function DashboardScreen() {
                 { type: 'sos' }
               );
             }
-
             Alert.alert(
               '✅ SOS Enviado',
               state.emergencyContacts.length > 0
@@ -87,6 +85,179 @@ export default function DashboardScreen() {
     }
     router.push(route as any);
   };
+
+  // ─── ACCESSIBILITY MODE ────────────────────────────────────────────────────
+  if (isAccessibilityMode) {
+    const ac = a11yColors;
+    const af = a11yFontSize;
+    const as_ = a11ySpacing;
+
+    return (
+      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
+        <ScrollView
+          contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 20 }}
+          showsVerticalScrollIndicator={false}
+          style={{ backgroundColor: ac.background }}
+        >
+          {/* Header */}
+          <View style={{ paddingTop: insets.top + 12, paddingBottom: 8 }}>
+            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>
+              Vigora Saúde
+            </Text>
+            {state.profile.name ? (
+              <Text style={{ fontSize: af.md, color: ac.muted, marginTop: 4 }}>
+                Olá, {state.profile.name}
+              </Text>
+            ) : null}
+          </View>
+
+          {/* SOS Button — very large */}
+          <PulseView active={!sosPressing} minScale={0.98} maxScale={1.02} duration={1500}>
+            <Pressable
+              onPress={handleSOS}
+              onPressIn={() => setSosPressing(true)}
+              onPressOut={() => setSosPressing(false)}
+              style={({ pressed }) => [{
+                backgroundColor: ac.emergency,
+                borderRadius: 24,
+                paddingVertical: 36,
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                borderWidth: 4,
+                borderColor: '#880000',
+                transform: [{ scale: pressed ? 0.97 : 1 }],
+              }]}
+              accessibilityLabel="Botão SOS de emergência"
+              accessibilityRole="button"
+            >
+              <MaterialIcons name="warning" size={64} color={ac.onEmergency} />
+              <Text style={{ fontSize: af.title, fontWeight: '900', color: ac.onEmergency, letterSpacing: 6 }}>
+                SOS
+              </Text>
+              <Text style={{ fontSize: af.md, color: ac.onEmergency, fontWeight: '600' }}>
+                Toque para pedir socorro
+              </Text>
+            </Pressable>
+          </PulseView>
+
+          {/* Ambulance Button */}
+          <Pressable
+            onPress={() => navigate('/(tabs)/ambulance')}
+            style={({ pressed }) => [{
+              backgroundColor: ac.primary,
+              borderRadius: 20,
+              paddingVertical: as_.buttonPadding,
+              paddingHorizontal: 24,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 14,
+              borderWidth: 3,
+              borderColor: '#003388',
+              transform: [{ scale: pressed ? 0.97 : 1 }],
+            }]}
+            accessibilityLabel="Chamar ambulância"
+            accessibilityRole="button"
+          >
+            <MaterialIcons name="local-hospital" size={36} color={ac.onPrimary} />
+            <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.onPrimary }}>
+              Chamar Ambulância
+            </Text>
+          </Pressable>
+
+          {/* Next Alarm Card */}
+          <View style={{
+            backgroundColor: ac.surface,
+            borderRadius: as_.cardRadius,
+            padding: 20,
+            borderWidth: 2,
+            borderColor: ac.border,
+            gap: 6,
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <MaterialIcons name="alarm" size={32} color={ac.primary} />
+              <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>
+                Próximo Alarme
+              </Text>
+            </View>
+            <Text style={{ fontSize: af['3xl'], fontWeight: '900', color: ac.primary }}>
+              {nextAlarm ? nextAlarm.time : '--:--'}
+            </Text>
+            <Text style={{ fontSize: af.md, color: ac.muted }}>
+              {nextAlarm ? nextAlarm.description : 'Nenhum alarme configurado'}
+            </Text>
+          </View>
+
+          {/* Quick Actions: 2 large buttons */}
+          <View style={{ gap: 14 }}>
+            <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>
+              Ações Rápidas
+            </Text>
+            <Pressable
+              onPress={() => navigate('/(tabs)/alarms')}
+              style={({ pressed }) => [{
+                backgroundColor: ac.primary,
+                borderRadius: 20,
+                paddingVertical: as_.buttonPadding,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 14,
+                borderWidth: 3,
+                borderColor: '#003388',
+                opacity: pressed ? 0.85 : 1,
+              }]}
+            >
+              <MaterialIcons name="alarm" size={36} color={ac.onPrimary} />
+              <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.onPrimary }}>
+                Meus Alarmes
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => navigate('/(tabs)/health')}
+              style={({ pressed }) => [{
+                backgroundColor: ac.success,
+                borderRadius: 20,
+                paddingVertical: as_.buttonPadding,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 14,
+                borderWidth: 3,
+                borderColor: '#004400',
+                opacity: pressed ? 0.85 : 1,
+              }]}
+            >
+              <MaterialIcons name="favorite" size={36} color="#FFFFFF" />
+              <Text style={{ fontSize: af.xl, fontWeight: '800', color: '#FFFFFF' }}>
+                Registrar Saúde
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Emergency warning */}
+          <View style={{
+            backgroundColor: '#FFF3CD',
+            borderRadius: 16,
+            padding: 16,
+            borderWidth: 2,
+            borderColor: '#885500',
+            flexDirection: 'row',
+            gap: 12,
+            alignItems: 'flex-start',
+          }}>
+            <MaterialIcons name="info" size={28} color="#885500" />
+            <Text style={{ flex: 1, fontSize: af.sm, color: '#553300', fontWeight: '600', lineHeight: af.sm * 1.5 }}>
+              Para emergências graves, ligue para o SAMU (192) ou Bombeiros (193).
+            </Text>
+          </View>
+        </ScrollView>
+      </ScreenContainer>
+    );
+  }
+
+  // ─── NORMAL MODE ───────────────────────────────────────────────────────────
 
   const statusCards = [
     {
@@ -291,9 +462,7 @@ export default function DashboardScreen() {
                 Linking.openURL(ad.actionUrl).catch((err: any) => console.error('Error opening URL:', err));
               }
             }}
-            onClose={() => {
-              // Optionally hide this ad
-            }}
+            onClose={() => {}}
           />
         ))}
 
@@ -399,22 +568,34 @@ const styles = StyleSheet.create({
   cardIconBadge: {
     width: 40,
     height: 40,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
   },
   cardValue: {
     fontSize: 28,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    lineHeight: 34,
   },
   cardLabel: {
     fontSize: 13,
     fontWeight: '600',
+    lineHeight: 17,
   },
   cardSubtext: {
-    fontSize: 12,
+    fontSize: 11,
+    lineHeight: 14,
+  },
+  cardTapHint: {
+    marginTop: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  cardTapHintText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
   section: {
     gap: 12,
@@ -437,32 +618,21 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   quickActionText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
+    color: '#FFFFFF',
   },
   warningBanner: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
     gap: 10,
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
+    alignItems: 'flex-start',
   },
   warningText: {
     flex: 1,
     fontSize: 13,
-    lineHeight: 20,
-  },
-  cardTapHint: {
-    marginTop: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-  },
-  cardTapHintText: {
-    fontSize: 11,
-    fontWeight: '600',
+    lineHeight: 19,
   },
 });

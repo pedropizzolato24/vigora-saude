@@ -1,5 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useState } from 'react';
+import { useAccessibility } from '@/lib/accessibility-context';
 import {
   Alert,
   Platform,
@@ -43,6 +44,7 @@ export default function AnamnesisScreen() {
   const { state, dispatch } = useAppContext();
   const [form, setForm] = useState<AnamnesesData>(state.anamnesis ?? EMPTY_FORM);
   const [saved, setSaved] = useState(false);
+  const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
 
   useEffect(() => {
     if (state.anamnesis) {
@@ -87,6 +89,63 @@ export default function AnamnesisScreen() {
     setSaved(false);
   };
 
+  // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
+  if (isAccessibilityMode) {
+    const a11yFields: { label: string; key: keyof AnamnesesData; placeholder: string; multiline?: boolean; keyboard?: any }[] = [
+      { label: 'Nome Completo *', key: 'fullName', placeholder: 'Seu nome completo' },
+      { label: 'Data de Nascimento *', key: 'birthDate', placeholder: 'DD/MM/AAAA', keyboard: 'numbers-and-punctuation' },
+      { label: 'Alergias', key: 'allergies', placeholder: 'Ex: Penicilina, Amendoim...', multiline: true },
+      { label: 'Medicamentos em uso', key: 'medications', placeholder: 'Ex: Losartana 50mg...', multiline: true },
+      { label: 'Doenças crônicas', key: 'diseases', placeholder: 'Ex: Diabetes, Hipertensão...', multiline: true },
+    ];
+    return (
+      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.background }}>
+          <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Ficha Médica</Text>
+          <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Histórico médico pessoal</Text>
+        </View>
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          {a11yFields.map((field) => (
+            <View key={field.key} style={{ gap: 10 }}>
+              <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>{field.label}</Text>
+              <TextInput
+                value={String(form[field.key] ?? '')}
+                onChangeText={(v) => updateField(field.key, v as any)}
+                placeholder={field.placeholder}
+                placeholderTextColor={ac.muted}
+                keyboardType={field.keyboard ?? 'default'}
+                multiline={field.multiline}
+                numberOfLines={field.multiline ? 4 : 1}
+                style={{
+                  backgroundColor: ac.surface,
+                  color: ac.foreground,
+                  borderColor: ac.border,
+                  borderWidth: 2,
+                  borderRadius: 16,
+                  padding: 18,
+                  fontSize: af.md,
+                  fontWeight: '500',
+                  minHeight: field.multiline ? 100 : undefined,
+                  textAlignVertical: field.multiline ? 'top' : 'center',
+                }}
+                returnKeyType="done"
+              />
+            </View>
+          ))}
+          {/* Save button */}
+          <Pressable
+            onPress={handleSave}
+            style={({ pressed }) => [{ backgroundColor: saved ? ac.success : ac.primary, borderRadius: 20, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, borderWidth: 3, borderColor: saved ? '#004400' : '#003388', opacity: pressed ? 0.85 : 1 }]}
+          >
+            <MaterialIcons name={saved ? 'check-circle' : 'save'} size={32} color="#FFFFFF" />
+            <Text style={{ fontSize: af.xl, fontWeight: '800', color: '#FFFFFF' }}>{saved ? 'Salvo!' : 'Salvar Ficha'}</Text>
+          </Pressable>
+        </ScrollView>
+      </ScreenContainer>
+    );
+  }
+
+  // ─── NORMAL MODE ──────────────────────────────────────────────────
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}

@@ -7,6 +7,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useColors } from '@/hooks/use-colors';
 import { useMenu } from '@/lib/menu-context';
 import { useAppContext } from '@/lib/app-context';
+import { useAccessibility } from '@/lib/accessibility-context';
 
 interface TabItem {
   label: string;
@@ -30,10 +31,11 @@ export function CustomTabBar() {
   const insets = useSafeAreaInsets();
   const { toggleMenu } = useMenu();
   const { state } = useAppContext();
+  const { isAccessibilityMode, a11yColors: ac } = useAccessibility();
   const activeAlarmCount = state.alarms.filter((a) => a.enabled).length;
 
   const bottomPadding = Platform.OS === 'web' ? 12 : Math.max(insets.bottom, 8);
-  const tabBarHeight = 60 + bottomPadding;
+  const tabBarHeight = isAccessibilityMode ? 80 + bottomPadding : 60 + bottomPadding;
 
   const isActive = (route: string) => {
     if (route === '/(tabs)/') return pathname === '/' || pathname === '/index';
@@ -58,46 +60,55 @@ export function CustomTabBar() {
         {
           height: tabBarHeight,
           paddingBottom: bottomPadding,
-          backgroundColor: colors.background,
-          borderTopColor: colors.border,
+          backgroundColor: isAccessibilityMode ? ac.background : colors.background,
+          borderTopColor: isAccessibilityMode ? ac.border : colors.border,
+          borderTopWidth: isAccessibilityMode ? 2 : 0.5,
         },
       ]}
     >
       {TABS.map((tab) => {
         const active = !tab.isMenu && isActive(tab.route);
+        const iconColor = isAccessibilityMode
+          ? (active ? ac.primary : ac.muted)
+          : (active ? colors.primary : colors.muted);
+        const labelColor = isAccessibilityMode
+          ? (active ? ac.primary : ac.muted)
+          : (active ? colors.primary : colors.muted);
+        const iconSize = isAccessibilityMode ? 32 : 24;
+        const labelSize = isAccessibilityMode ? 13 : 11;
         return (
           <Pressable
             key={tab.label}
             onPress={() => handlePress(tab)}
             style={({ pressed }) => [
               styles.tab,
+              isAccessibilityMode && { paddingTop: 4 },
               pressed && { opacity: 0.7 },
             ]}
             accessibilityLabel={tab.label}
             accessibilityRole="button"
           >
             {/* Outer wrapper: overflow visible for badge */}
-            <View style={styles.iconWrapper}>
+            <View style={[styles.iconWrapper, isAccessibilityMode && { width: 56, height: 40 }]}>
               {/* Inner background: overflow hidden so borderRadius clips correctly */}
               <View
                 style={[
                   styles.iconBackground,
+                  isAccessibilityMode && { width: 56, height: 40, borderRadius: 14, borderWidth: active ? 2 : 0, borderColor: ac.primary },
                   {
-                    backgroundColor: active ? colors.primary + '20' : 'transparent',
+                    backgroundColor: active
+                      ? (isAccessibilityMode ? ac.primary + '25' : colors.primary + '20')
+                      : 'transparent',
                   },
                 ]}
               >
-                <MaterialIcons
-                  name={tab.icon}
-                  size={24}
-                  color={active ? colors.primary : colors.muted}
-                />
+                <MaterialIcons name={tab.icon} size={iconSize} color={iconColor} />
               </View>
               {tab.route === '/(tabs)/alarms' && activeAlarmCount > 0 && (
                 <View
                   style={[
                     styles.badge,
-                    { backgroundColor: colors.primary },
+                    { backgroundColor: isAccessibilityMode ? ac.primary : colors.primary },
                   ]}
                 >
                   <Text style={styles.badgeText}>
@@ -109,7 +120,7 @@ export function CustomTabBar() {
             <Text
               style={[
                 styles.label,
-                { color: active ? colors.primary : colors.muted },
+                { color: labelColor, fontSize: labelSize },
                 active && styles.labelActive,
               ]}
             >

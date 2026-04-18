@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import * as Contacts from 'expo-contacts';
 import React, { useState } from 'react';
+import { useAccessibility } from '@/lib/accessibility-context';
 import {
   Alert,
   FlatList,
@@ -46,10 +47,10 @@ export default function ContactsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingContact, setEditingContact] = useState<EmergencyContact | null>(null);
   const [form, setForm] = useState<Omit<EmergencyContact, 'id'>>(EMPTY_FORM);
-
   const [deviceContacts, setDeviceContacts] = useState<Contacts.Contact[]>([]);
   const [importModalVisible, setImportModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
 
   const openAddModal = () => {
     setEditingContact(null);
@@ -167,6 +168,117 @@ export default function ContactsScreen() {
     ]);
   };
 
+  // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
+  if (isAccessibilityMode) {
+    return (
+      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: ac.background }}>
+          <View>
+            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Contatos SOS</Text>
+            <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>{state.emergencyContacts.length} contato(s)</Text>
+          </View>
+          <Pressable
+            onPress={openAddModal}
+            style={({ pressed }) => [{ backgroundColor: ac.emergency, width: as_.touchTarget, height: as_.touchTarget, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: '#880000', opacity: pressed ? 0.8 : 1 }]}
+            accessibilityLabel="Adicionar contato"
+          >
+            <MaterialIcons name="add" size={36} color={ac.onEmergency} />
+          </Pressable>
+        </View>
+
+        <View style={{ margin: 12, padding: 16, backgroundColor: '#FFF3CD', borderRadius: 16, borderWidth: 2, borderColor: '#885500', flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+          <MaterialIcons name="info" size={28} color="#885500" />
+          <Text style={{ flex: 1, fontSize: af.sm, color: '#553300', fontWeight: '600', lineHeight: af.sm * 1.5 }}>
+            Estes contatos serão avisados quando você apertar o botão SOS.
+          </Text>
+        </View>
+
+        {state.emergencyContacts.length === 0 ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 20 }}>
+            <MaterialIcons name="people" size={80} color={ac.muted} />
+            <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.foreground, textAlign: 'center' }}>Nenhum contato</Text>
+            <Text style={{ fontSize: af.md, color: ac.muted, textAlign: 'center', lineHeight: af.md * 1.5 }}>Adicione contatos para serem avisados em uma emergência.</Text>
+            <Pressable
+              onPress={openAddModal}
+              style={({ pressed }) => [{ backgroundColor: ac.emergency, borderRadius: 20, paddingVertical: as_.buttonPadding, paddingHorizontal: 32, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 3, borderColor: '#880000', opacity: pressed ? 0.85 : 1 }]}
+            >
+              <MaterialIcons name="add" size={32} color={ac.onEmergency} />
+              <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.onEmergency }}>Adicionar Contato</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <FlatList
+            data={state.emergencyContacts}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View style={{ margin: 12, marginBottom: 0, backgroundColor: ac.surface, borderRadius: as_.cardRadius, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 8 }}>
+                <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>{item.name}</Text>
+                <Text style={{ fontSize: af.md, color: ac.primary, fontWeight: '700' }}>{item.phone}</Text>
+                {item.relation ? <Text style={{ fontSize: af.sm, color: ac.muted }}>{item.relation}</Text> : null}
+                <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+                  <Pressable
+                    onPress={() => openEditModal(item)}
+                    style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 14, borderWidth: 2, borderColor: ac.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: pressed ? '#E0EEFF' : ac.background }]}
+                  >
+                    <MaterialIcons name="edit" size={24} color={ac.primary} />
+                    <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.primary }}>Editar</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handleDelete(item.id)}
+                    style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 14, borderWidth: 2, borderColor: ac.emergency, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: pressed ? '#FFE0E0' : ac.background }]}
+                  >
+                    <MaterialIcons name="delete" size={24} color={ac.emergency} />
+                    <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.emergency }}>Excluir</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
+            contentContainerStyle={{ padding: 12, paddingBottom: 32 }}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+
+        {/* Simplified add/edit modal */}
+        <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setModalVisible(false)}>
+          <View style={{ flex: 1, backgroundColor: ac.background }}>
+            <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Pressable onPress={() => setModalVisible(false)} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
+                <Text style={{ fontSize: af.md, color: ac.muted, fontWeight: '600' }}>Cancelar</Text>
+              </Pressable>
+              <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>{editingContact ? 'Editar Contato' : 'Novo Contato'}</Text>
+              <Pressable onPress={handleSave} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
+                <Text style={{ fontSize: af.md, color: ac.primary, fontWeight: '800' }}>Salvar</Text>
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 24, gap: 24 }}>
+              {[{ label: 'Nome', key: 'name' as const, placeholder: 'Ex: Maria Silva', keyboard: 'default' as const }, { label: 'Telefone', key: 'phone' as const, placeholder: 'Ex: (11) 99999-9999', keyboard: 'phone-pad' as const }].map((field) => (
+                <View key={field.key} style={{ gap: 10 }}>
+                  <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>{field.label}</Text>
+                  <TextInput
+                    value={form[field.key]}
+                    onChangeText={(v) => {
+                      if (field.key === 'phone') {
+                        setForm((f) => ({ ...f, phone: formatPhone(v) }));
+                      } else {
+                        setForm((f) => ({ ...f, [field.key]: v }));
+                      }
+                    }}
+                    placeholder={field.placeholder}
+                    placeholderTextColor={ac.muted}
+                    keyboardType={field.keyboard}
+                    style={{ backgroundColor: ac.surface, color: ac.foreground, borderColor: ac.border, borderWidth: 2, borderRadius: 16, padding: 18, fontSize: af.md, fontWeight: '500' }}
+                    returnKeyType="done"
+                  />
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </Modal>
+      </ScreenContainer>
+    );
+  }
+
+  // ─── NORMAL MODE ──────────────────────────────────────────────────
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}

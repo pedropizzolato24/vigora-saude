@@ -1,5 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import React, { useRef, useState } from 'react';
+import { useAccessibility } from '@/lib/accessibility-context';
 import {
   Alert,
   FlatList,
@@ -60,6 +61,7 @@ export default function AlarmsScreen() {
   const [editingAlarm, setEditingAlarm] = useState<Alarm | null>(null);
   const [form, setForm] = useState<Omit<Alarm, 'id'>>(EMPTY_FORM);
   const minuteInputRef = useRef<TextInput>(null);
+  const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
 
   // Derived hour/minute from form.time for the split picker
   const [timeHour, timeMinute] = form.time.split(':');
@@ -231,6 +233,322 @@ export default function AlarmsScreen() {
     }
   };
 
+  // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
+  if (isAccessibilityMode) {
+    return (
+      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
+        {/* Header */}
+        <View style={{
+          paddingHorizontal: 20,
+          paddingTop: insets.top + 12,
+          paddingBottom: 16,
+          borderBottomWidth: 2,
+          borderBottomColor: ac.border,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: ac.background,
+        }}>
+          <View>
+            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Alarmes</Text>
+            <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>
+              {state.alarms.length} alarme(s) configurado(s)
+            </Text>
+          </View>
+          <Pressable
+            onPress={openAddModal}
+            style={({ pressed }) => [{
+              backgroundColor: ac.primary,
+              width: as_.touchTarget,
+              height: as_.touchTarget,
+              borderRadius: 20,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 3,
+              borderColor: '#003388',
+              opacity: pressed ? 0.8 : 1,
+            }]}
+            accessibilityLabel="Adicionar alarme"
+          >
+            <MaterialIcons name="add" size={36} color={ac.onPrimary} />
+          </Pressable>
+        </View>
+
+        {sortedAlarms.length === 0 ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 20 }}>
+            <MaterialIcons name="alarm" size={80} color={ac.muted} />
+            <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.foreground, textAlign: 'center' }}>
+              Nenhum alarme
+            </Text>
+            <Text style={{ fontSize: af.md, color: ac.muted, textAlign: 'center', lineHeight: af.md * 1.5 }}>
+              Toque no botão + para adicionar um alarme de medicação.
+            </Text>
+            <Pressable
+              onPress={openAddModal}
+              style={({ pressed }) => [{
+                backgroundColor: ac.primary,
+                borderRadius: 20,
+                paddingVertical: as_.buttonPadding,
+                paddingHorizontal: 32,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                borderWidth: 3,
+                borderColor: '#003388',
+                opacity: pressed ? 0.85 : 1,
+              }]}
+            >
+              <MaterialIcons name="add" size={32} color={ac.onPrimary} />
+              <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.onPrimary }}>Adicionar Alarme</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <FlatList
+            data={sortedAlarms}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View style={{
+                margin: 12,
+                marginBottom: 0,
+                backgroundColor: ac.surface,
+                borderRadius: as_.cardRadius,
+                borderWidth: 2,
+                borderColor: ac.border,
+                overflow: 'hidden',
+              }}>
+                {/* Alarm Info */}
+                <View style={{ padding: 20, gap: 6 }}>
+                  <Text style={{ fontSize: af['3xl'], fontWeight: '900', color: ac.primary }}>
+                    {item.time}
+                  </Text>
+                  <Text style={{ fontSize: af.md, color: ac.foreground, fontWeight: '600' }}>
+                    {item.description || 'Sem descrição'}
+                  </Text>
+                  <Text style={{ fontSize: af.sm, color: ac.muted }}>
+                    {item.repeat === 'daily' ? 'Todos os dias' :
+                     item.repeat === 'weekdays' ? 'Dias úteis' :
+                     item.repeat === 'weekends' ? 'Fins de semana' : 'Personalizado'}
+                  </Text>
+                </View>
+                {/* Action Buttons */}
+                <View style={{ flexDirection: 'row', borderTopWidth: 2, borderTopColor: ac.border }}>
+                  <Pressable
+                    onPress={() => openEditModal(item)}
+                    style={({ pressed }) => [{
+                      flex: 1,
+                      paddingVertical: as_.buttonPadding,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexDirection: 'row',
+                      gap: 10,
+                      backgroundColor: pressed ? '#E0EEFF' : ac.background,
+                      borderRightWidth: 1,
+                      borderRightColor: ac.border,
+                    }]}
+                  >
+                    <MaterialIcons name="edit" size={28} color={ac.primary} />
+                    <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.primary }}>Editar</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handleDelete(item.id)}
+                    style={({ pressed }) => [{
+                      flex: 1,
+                      paddingVertical: as_.buttonPadding,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexDirection: 'row',
+                      gap: 10,
+                      backgroundColor: pressed ? '#FFE0E0' : ac.background,
+                    }]}
+                  >
+                    <MaterialIcons name="delete" size={28} color={ac.emergency} />
+                    <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.emergency }}>Excluir</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
+            contentContainerStyle={{ padding: 12, paddingBottom: 32 }}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+
+        {/* Simplified Modal for Accessibility Mode */}
+        <Modal
+          visible={modalVisible}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: ac.background }}>
+            <View style={{
+              paddingHorizontal: 20,
+              paddingTop: insets.top + 16,
+              paddingBottom: 16,
+              borderBottomWidth: 2,
+              borderBottomColor: ac.border,
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <Pressable
+                onPress={() => setModalVisible(false)}
+                style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+              >
+                <Text style={{ fontSize: af.md, color: ac.muted, fontWeight: '600' }}>Cancelar</Text>
+              </Pressable>
+              <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>
+                {editingAlarm ? 'Editar Alarme' : 'Novo Alarme'}
+              </Text>
+              <Pressable
+                onPress={handleSave}
+                style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={{ fontSize: af.md, color: ac.primary, fontWeight: '800' }}>Salvar</Text>
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 24, gap: 28 }}>
+              {/* Time */}
+              <View style={{ gap: 12 }}>
+                <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>Horário</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+                  <View style={{ alignItems: 'center', gap: 8 }}>
+                    <Pressable
+                      onPress={() => incrementHour(1)}
+                      style={({ pressed }) => [{ backgroundColor: ac.surface, borderRadius: 16, padding: 12, borderWidth: 2, borderColor: ac.border, opacity: pressed ? 0.6 : 1 }]}
+                    >
+                      <MaterialIcons name="keyboard-arrow-up" size={36} color={ac.primary} />
+                    </Pressable>
+                    <TextInput
+                      value={timeHour}
+                      onChangeText={handleHourChange}
+                      onBlur={handleHourBlur}
+                      placeholder="08"
+                      placeholderTextColor={ac.muted}
+                      keyboardType="number-pad"
+                      style={{
+                        width: 90,
+                        height: 90,
+                        textAlign: 'center',
+                        fontSize: af['3xl'],
+                        fontWeight: '900',
+                        color: ac.foreground,
+                        backgroundColor: ac.surface,
+                        borderRadius: 16,
+                        borderWidth: 3,
+                        borderColor: ac.primary,
+                      }}
+                      maxLength={2}
+                      selectTextOnFocus
+                    />
+                    <Pressable
+                      onPress={() => incrementHour(-1)}
+                      style={({ pressed }) => [{ backgroundColor: ac.surface, borderRadius: 16, padding: 12, borderWidth: 2, borderColor: ac.border, opacity: pressed ? 0.6 : 1 }]}
+                    >
+                      <MaterialIcons name="keyboard-arrow-down" size={36} color={ac.primary} />
+                    </Pressable>
+                    <Text style={{ fontSize: af.sm, color: ac.muted, fontWeight: '600' }}>hora</Text>
+                  </View>
+                  <Text style={{ fontSize: af['4xl'], fontWeight: '900', color: ac.foreground, marginBottom: 32 }}>:</Text>
+                  <View style={{ alignItems: 'center', gap: 8 }}>
+                    <Pressable
+                      onPress={() => incrementMinute(1)}
+                      style={({ pressed }) => [{ backgroundColor: ac.surface, borderRadius: 16, padding: 12, borderWidth: 2, borderColor: ac.border, opacity: pressed ? 0.6 : 1 }]}
+                    >
+                      <MaterialIcons name="keyboard-arrow-up" size={36} color={ac.primary} />
+                    </Pressable>
+                    <TextInput
+                      ref={minuteInputRef}
+                      value={timeMinute}
+                      onChangeText={handleMinuteChange}
+                      onBlur={handleMinuteBlur}
+                      placeholder="00"
+                      placeholderTextColor={ac.muted}
+                      keyboardType="number-pad"
+                      style={{
+                        width: 90,
+                        height: 90,
+                        textAlign: 'center',
+                        fontSize: af['3xl'],
+                        fontWeight: '900',
+                        color: ac.foreground,
+                        backgroundColor: ac.surface,
+                        borderRadius: 16,
+                        borderWidth: 3,
+                        borderColor: ac.primary,
+                      }}
+                      maxLength={2}
+                      selectTextOnFocus
+                    />
+                    <Pressable
+                      onPress={() => incrementMinute(-1)}
+                      style={({ pressed }) => [{ backgroundColor: ac.surface, borderRadius: 16, padding: 12, borderWidth: 2, borderColor: ac.border, opacity: pressed ? 0.6 : 1 }]}
+                    >
+                      <MaterialIcons name="keyboard-arrow-down" size={36} color={ac.primary} />
+                    </Pressable>
+                    <Text style={{ fontSize: af.sm, color: ac.muted, fontWeight: '600' }}>min</Text>
+                  </View>
+                </View>
+              </View>
+              {/* Description */}
+              <View style={{ gap: 12 }}>
+                <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>Nome do Alarme</Text>
+                <TextInput
+                  value={form.description}
+                  onChangeText={(v) => setForm((f) => ({ ...f, description: v }))}
+                  placeholder="Ex: Tomar remédio para pressão"
+                  placeholderTextColor={ac.muted}
+                  style={{
+                    backgroundColor: ac.surface,
+                    color: ac.foreground,
+                    borderColor: ac.border,
+                    borderWidth: 2,
+                    borderRadius: 16,
+                    padding: 18,
+                    fontSize: af.md,
+                    fontWeight: '500',
+                  }}
+                  returnKeyType="done"
+                  maxLength={80}
+                />
+              </View>
+              {/* Repeat — simplified to just daily/weekdays */}
+              <View style={{ gap: 12 }}>
+                <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>Repetição</Text>
+                {[{ value: 'daily' as const, label: 'Todos os dias' }, { value: 'weekdays' as const, label: 'Dias úteis (Seg-Sex)' }].map((opt) => (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setForm((f) => ({ ...f, repeat: opt.value }))}
+                    style={[{
+                      paddingVertical: as_.buttonPadding,
+                      paddingHorizontal: 20,
+                      borderRadius: 16,
+                      borderWidth: 3,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 14,
+                      backgroundColor: form.repeat === opt.value ? ac.primary : ac.surface,
+                      borderColor: form.repeat === opt.value ? ac.primary : ac.border,
+                    }]}
+                  >
+                    <MaterialIcons
+                      name={form.repeat === opt.value ? 'radio-button-on' : 'radio-button-off'}
+                      size={28}
+                      color={form.repeat === opt.value ? ac.onPrimary : ac.muted}
+                    />
+                    <Text style={{ fontSize: af.md, fontWeight: '700', color: form.repeat === opt.value ? ac.onPrimary : ac.foreground }}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        </Modal>
+      </ScreenContainer>
+    );
+  }
+
+  // ─── NORMAL MODE ──────────────────────────────────────────────────────────
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
