@@ -21,6 +21,7 @@ import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { generateId, useAppContext, type Alarm } from '@/lib/app-context';
 import { scheduleAlarmNotification, cancelAlarmNotification } from '@/lib/notifications-utils';
+import { useRouter } from 'expo-router';
 
 const REPEAT_OPTIONS: { value: Alarm['repeat']; label: string }[] = [
   { value: 'daily', label: 'Diário' },
@@ -53,6 +54,7 @@ export default function AlarmsScreen() {
   const colors = useColors();
   const fs = useFontSize();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { state, dispatch } = useAppContext();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingAlarm, setEditingAlarm] = useState<Alarm | null>(null);
@@ -282,6 +284,7 @@ export default function AlarmsScreen() {
               onEdit={openEditModal}
               onDelete={handleDelete}
               onToggle={handleToggle}
+              onTest={(alarm) => router.push(`/alarm-ring?alarmId=${alarm.id}`)}
             />
           )}
           contentContainerStyle={styles.listContent}

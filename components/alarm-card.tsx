@@ -9,6 +9,7 @@ interface AlarmCardProps {
   onEdit: (alarm: Alarm) => void;
   onDelete: (id: string) => void;
   onToggle: (alarm: Alarm) => void;
+  onTest: (alarm: Alarm) => void;
 }
 
 const REPEAT_LABELS: Record<Alarm['repeat'], string> = {
@@ -26,7 +27,7 @@ function formatCustomDays(days: number[] | undefined): string {
   return days.map((d) => DAY_ABBR[d]).join(', ');
 }
 
-export function AlarmCard({ alarm, onEdit, onDelete, onToggle }: AlarmCardProps) {
+export function AlarmCard({ alarm, onEdit, onDelete, onToggle, onTest }: AlarmCardProps) {
   const colors = useColors();
 
   return (
@@ -136,6 +137,20 @@ export function AlarmCard({ alarm, onEdit, onDelete, onToggle }: AlarmCardProps)
             <MaterialIcons name="delete" size={20} color="#FFFFFF" />
           </Pressable>
         </View>
+
+        {/* Test button */}
+        <Pressable
+          onPress={() => onTest(alarm)}
+          style={({ pressed }) => [
+            styles.testBtn,
+            { borderColor: '#22C55E', backgroundColor: colors.background },
+            pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] },
+          ]}
+          accessibilityLabel="Testar alarme"
+        >
+          <MaterialIcons name="play-arrow" size={16} color="#22C55E" />
+          <Text style={styles.testBtnText}>Testar</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -230,5 +245,21 @@ const styles = StyleSheet.create({
   },
   deleteBtn: {
     backgroundColor: '#EF4444',
+  },
+  testBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    borderWidth: 1.5,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 2,
+  },
+  testBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#22C55E',
   },
 });

@@ -184,3 +184,6 @@
 - [x] Improve alarm card edit/delete buttons (larger, more visible, spaced apart)
 - [x] Implement full-screen alarm experience: sound (30s+), full-screen overlay, pulsing icon, name/description, countdown timer, dismiss button
 - [x] Countdown timer on alarm screen: when reaches 0, auto-send WhatsApp message to all emergency contacts
+
+## Alarm Test Feature
+- [x] Add test button to each alarm card to simulate alarm firing (navigate to alarm-ring screen)
