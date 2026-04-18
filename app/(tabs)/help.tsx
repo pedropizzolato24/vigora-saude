@@ -17,6 +17,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
+import { useAccessibility } from '@/lib/accessibility-context';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -209,6 +210,7 @@ export default function HelpScreen() {
   const colors = useColors();
   const fs = useFontSize();
   const insets = useSafeAreaInsets();
+  const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac } = useAccessibility();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
@@ -228,6 +230,59 @@ export default function HelpScreen() {
     setExpandedItems((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
+  if (isAccessibilityMode) {
+    // In accessibility mode, show a flat list of all FAQ items without nested collapsibles
+    // Group by section but keep everything expanded for easier reading
+    return (
+      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: ac.background }}>
+          <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground, flex: 1 }}>Ajuda e FAQ</Text>
+          <MaterialIcons name="help-outline" size={32} color={ac.primary} />
+        </View>
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          {/* Welcome banner */}
+          <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            <MaterialIcons name="support-agent" size={48} color={ac.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: af.lg, fontWeight: '900', color: ac.foreground }}>Como podemos ajudar?</Text>
+              <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 6, lineHeight: af.scaled(22) }}>Respostas para as dúvidas mais comuns.</Text>
+            </View>
+          </View>
+
+          {/* All sections expanded */}
+          {FAQ_DATA.map((section) => (
+            <View key={section.title} style={{ gap: 12 }}>
+              {/* Section title */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: section.color + '20', alignItems: 'center', justifyContent: 'center' }}>
+                  <MaterialIcons name={section.icon} size={30} color={section.color} />
+                </View>
+                <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground, flex: 1 }}>{section.title}</Text>
+              </View>
+              {/* Items */}
+              {section.items.map((item, idx) => (
+                <View key={idx} style={{ backgroundColor: ac.surface, borderRadius: 16, borderWidth: 2, borderColor: ac.border, padding: 18, gap: 10 }}>
+                  <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.foreground, lineHeight: af.scaled(26) }}>{item.question}</Text>
+                  <View style={{ height: 2, backgroundColor: ac.border }} />
+                  <Text style={{ fontSize: af.base, color: ac.foreground, lineHeight: af.scaled(28) }}>{item.answer}</Text>
+                </View>
+              ))}
+            </View>
+          ))}
+
+          {/* Support */}
+          <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, alignItems: 'center', gap: 12 }}>
+            <MaterialIcons name="email" size={40} color={ac.primary} />
+            <Text style={{ fontSize: af.lg, fontWeight: '900', color: ac.foreground }}>Ainda precisa de ajuda?</Text>
+            <Text style={{ fontSize: af.base, color: ac.foreground, textAlign: 'center', lineHeight: af.scaled(26) }}>Entre em contato pelo e-mail suporte@vigorasaude.com.br</Text>
+          </View>
+        </ScrollView>
+      </ScreenContainer>
+    );
+  }
+
+  // ─── NORMAL MODE ──────────────────────────────────────────────────
   return (
     <ScreenContainer edges={['left', 'right']}>
       <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>

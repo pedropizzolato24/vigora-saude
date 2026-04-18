@@ -94,7 +94,9 @@ export function CustomTabBar() {
               <View
                 style={[
                   styles.iconBackground,
-                  isAccessibilityMode && { width: 56, height: 40, borderRadius: 14, borderWidth: active ? 2 : 0, borderColor: ac.primary },
+                  isAccessibilityMode
+                    ? { width: 56, height: 40, borderRadius: 14, borderWidth: active ? 2 : 0, borderColor: ac.primary }
+                    : { width: 48, height: 34, borderRadius: 12, borderWidth: 0 },
                   {
                     backgroundColor: active
                       ? (isAccessibilityMode ? ac.primary + '25' : colors.primary + '20')
