@@ -254,7 +254,7 @@ export default function ContactsScreen() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={[styles.modal, { backgroundColor: colors.background }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
             <Pressable
               onPress={() => setModalVisible(false)}
               style={({ pressed }) => [styles.modalClose, pressed && { opacity: 0.6 }]}
@@ -356,7 +356,7 @@ export default function ContactsScreen() {
         onRequestClose={() => setImportModalVisible(false)}
       >
         <View style={[styles.modal, { backgroundColor: colors.background }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
             <Pressable
               onPress={() => setImportModalVisible(false)}
               style={({ pressed }) => [styles.modalClose, pressed && { opacity: 0.6 }]}

@@ -81,7 +81,6 @@ export function CustomTabBar() {
                 styles.iconContainer,
                 {
                   backgroundColor: active ? colors.primary + '20' : 'transparent',
-                  borderRadius: 12,
                 },
               ]}
             >
@@ -136,6 +135,7 @@ const styles = StyleSheet.create({
     height: 34,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 12,
     overflow: 'visible',
   },
   label: {

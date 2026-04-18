@@ -182,7 +182,7 @@ export default function DashboardScreen() {
           style={({ pressed }) => [{
             backgroundColor: colors.primary,
             opacity: pressed ? 0.85 : 1,
-            paddingBottom: 16,
+            paddingVertical: 16,
             paddingHorizontal: 24,
             borderRadius: 16,
             flexDirection: 'row',
@@ -190,6 +190,7 @@ export default function DashboardScreen() {
             justifyContent: 'center',
             gap: 12,
             marginHorizontal: 20,
+            transform: [{ scale: pressed ? 0.97 : 1 }],
           }]}
           accessibilityLabel="Chamar ambulância"
           accessibilityRole="button"

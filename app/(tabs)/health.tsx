@@ -246,7 +246,7 @@ export default function HealthScreen() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={[styles.modal, { backgroundColor: colors.background }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
             <Pressable
               onPress={() => setModalVisible(false)}
               style={({ pressed }) => [styles.modalClose, pressed && { opacity: 0.6 }]}

@@ -301,7 +301,7 @@ export default function AlarmsScreen() {
       >
         <View style={[styles.modal, { backgroundColor: colors.background }]}>
           {/* Modal Header */}
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
             <Pressable
               onPress={() => setModalVisible(false)}
               style={({ pressed }) => [styles.modalClose, pressed && { opacity: 0.6 }]}

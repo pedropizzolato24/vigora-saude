@@ -187,3 +187,9 @@
 
 ## Alarm Test Feature
 - [x] Add test button to each alarm card to simulate alarm firing (navigate to alarm-ring screen)
+
+## Bug Fixes v5
+- [x] Fix modal screens (Novo Alarme, Nova Métrica) showing behind status bar - add proper top padding
+- [x] Fix tab bar active indicator losing border radius after switching tabs
+- [x] Fix ambulance button misalignment on home screen
+- [x] Fix SOS and alarm ring pulse animation loops - remove micro-pauses between cycles
