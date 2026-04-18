@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   Alert,
   Platform,
@@ -12,12 +12,15 @@ import {
   View,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
 import { useAppContext } from '@/lib/app-context';
 import { useThemeContext } from '@/lib/theme-provider';
 import { useFontSize } from '@/lib/font-size-context';
+
+const ALARM_SOUND = require('@/assets/alarm.mp3');
 
 // ─── Collapsible Section ────────────────────────────────────────────────────
 
@@ -148,10 +151,41 @@ export default function SettingsScreen() {
     dispatch({ type: 'UPDATE_SETTINGS', payload: { [key]: value } });
   };
 
+  // Audio player for volume preview
+  const previewPlayer = useAudioPlayer(ALARM_SOUND);
+  const previewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const playVolumePreview = useCallback(async (volume: number) => {
+    if (Platform.OS === 'web') return;
+    try {
+      // Cancel any pending stop
+      if (previewTimeoutRef.current) {
+        clearTimeout(previewTimeoutRef.current);
+        previewTimeoutRef.current = null;
+      }
+
+      await setAudioModeAsync({ playsInSilentMode: true });
+      previewPlayer.volume = volume / 100;
+      previewPlayer.loop = false;
+      // Seek to start so it always plays from beginning
+      previewPlayer.seekTo(0);
+      previewPlayer.play();
+
+      // Stop after 1 second
+      previewTimeoutRef.current = setTimeout(() => {
+        previewPlayer.pause();
+        previewTimeoutRef.current = null;
+      }, 1000);
+    } catch {
+      // Ignore audio errors silently
+    }
+  }, [previewPlayer]);
+
   const handleVolumeChange = (delta: number) => {
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const newVolume = Math.max(0, Math.min(100, settings.alarmVolume + delta));
     updateSetting('alarmVolume', newVolume);
+    playVolumePreview(newVolume);
   };
 
   const handleClearData = () => {
