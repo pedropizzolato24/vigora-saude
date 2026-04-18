@@ -114,17 +114,26 @@ export function AlarmCard({ alarm, onEdit, onDelete, onToggle }: AlarmCardProps)
         <View style={styles.actionButtons}>
           <Pressable
             onPress={() => onEdit(alarm)}
-            style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}
+            style={({ pressed }) => [
+              styles.actionBtn,
+              styles.editBtn,
+              { borderColor: colors.border, backgroundColor: colors.background },
+              pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] },
+            ]}
             accessibilityLabel="Editar alarme"
           >
-            <MaterialIcons name="edit" size={18} color={colors.muted} />
+            <MaterialIcons name="edit" size={20} color="#0066CC" />
           </Pressable>
           <Pressable
             onPress={() => onDelete(alarm.id)}
-            style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}
+            style={({ pressed }) => [
+              styles.actionBtn,
+              styles.deleteBtn,
+              pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] },
+            ]}
             accessibilityLabel="Excluir alarme"
           >
-            <MaterialIcons name="delete" size={18} color="#EF4444" />
+            <MaterialIcons name="delete" size={20} color="#FFFFFF" />
           </Pressable>
         </View>
       </View>
@@ -206,9 +215,20 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: 'row',
-    gap: 4,
+    gap: 8,
+    marginTop: 2,
   },
   actionBtn: {
-    padding: 6,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editBtn: {
+    borderWidth: 1.5,
+  },
+  deleteBtn: {
+    backgroundColor: '#EF4444',
   },
 });

@@ -177,3 +177,10 @@
 - [x] Add delete confirmation dialog for alarms (prevent accidental deletion)
 - [x] Auto-sort alarms by time (ascending) after add/edit
 - [x] Add active alarm badge counter on tab bar icon
+
+## UI & Alarm System v4
+- [x] Fix top safe area padding on all screens (standardize with status bar)
+- [x] Fix badge overflow/clipping in tab bar (badge being cut off)
+- [x] Improve alarm card edit/delete buttons (larger, more visible, spaced apart)
+- [x] Implement full-screen alarm experience: sound (30s+), full-screen overlay, pulsing icon, name/description, countdown timer, dismiss button
+- [x] Countdown timer on alarm screen: when reaches 0, auto-send WhatsApp message to all emergency contacts

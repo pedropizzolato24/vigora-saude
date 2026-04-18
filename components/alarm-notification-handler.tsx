@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Alert, Linking, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
 import { useAppContext, type EmergencyContact } from '@/lib/app-context';
 import { startAlarmTimeout, clearAlarmTimeout } from '@/lib/alarm-timeout-manager';
 
@@ -63,6 +64,7 @@ async function sendWhatsAppEscalation(contacts: EmergencyContact[], missedCount:
  */
 export function AlarmNotificationHandler() {
   const { state, dispatch } = useAppContext();
+  const router = useRouter();
   const pendingAlarms = useRef<Set<string>>(new Set());
 
   // Handle alarm notification received (alarm fires)
@@ -111,24 +113,22 @@ export function AlarmNotificationHandler() {
     return () => subscription.remove();
   }, [state.alarms, state.emergencyContacts, state.missedAlarmCount, state.settings.missedAlarmThreshold, dispatch]);
 
-  // Handle notification response (user taps/dismisses alarm)
+  // Handle notification response (user taps alarm notification → open alarm-ring screen)
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const alarmId = response.notification.request.content.data?.alarmId as string | undefined;
 
       if (alarmId) {
-        console.log(`[AlarmHandler] Alarm responded: ${alarmId}`);
-        // Remove from pending — alarm was responded to
-        pendingAlarms.current.delete(alarmId);
-        // Clear escalation timeout
+        console.log(`[AlarmHandler] Alarm tapped: ${alarmId}`);
+        // Clear escalation timeout — user is responding
         clearAlarmTimeout(alarmId);
-        // Reset missed alarm counter (user is responsive)
-        dispatch({ type: 'RESET_MISSED_ALARM' });
+        // Navigate to full-screen alarm ring screen
+        router.push(`/alarm-ring?alarmId=${alarmId}`);
       }
     });
 
     return () => subscription.remove();
-  }, [dispatch]);
+  }, [dispatch, router]);
 
   return null;
 }
