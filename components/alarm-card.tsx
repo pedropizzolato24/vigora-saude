@@ -66,7 +66,7 @@ export function AlarmCard({ alarm, onEdit, onDelete, onToggle, onTest }: AlarmCa
         >
           {alarm.description || 'Sem descrição'}
         </Text>
-          <View style={styles.tagsRow}>
+        <View style={styles.tagsRow}>
           <View style={[styles.tag, { backgroundColor: colors.border }]}>
             <Text style={[styles.tagText, { color: colors.muted }]}>
               {alarm.repeat === 'custom'
@@ -88,57 +88,60 @@ export function AlarmCard({ alarm, onEdit, onDelete, onToggle, onTest }: AlarmCa
       </View>
 
       <View style={styles.rightSection}>
-        {/* Toggle */}
-        <Pressable
-          onPress={() => onToggle(alarm)}
-          style={({ pressed }) => [
-            styles.toggleButton,
-            {
-              backgroundColor: alarm.enabled ? '#0066CC' : colors.border,
-            },
-            pressed && { opacity: 0.7 },
-          ]}
-          accessibilityLabel={alarm.enabled ? 'Desativar alarme' : 'Ativar alarme'}
-        >
-          <View
-            style={[
-              styles.toggleThumb,
+        {/* Top row: Toggle + Sound/Vibration indicators */}
+        <View style={styles.topRow}>
+          <Pressable
+            onPress={() => onToggle(alarm)}
+            style={({ pressed }) => [
+              styles.toggleButton,
               {
-                backgroundColor: '#FFFFFF',
-                transform: [{ translateX: alarm.enabled ? 18 : 2 }],
+                backgroundColor: alarm.enabled ? '#0066CC' : colors.border,
               },
+              pressed && { opacity: 0.7 },
             ]}
-          />
-        </Pressable>
+            accessibilityLabel={alarm.enabled ? 'Desativar alarme' : 'Ativar alarme'}
+          >
+            <View
+              style={[
+                styles.toggleThumb,
+                {
+                  backgroundColor: '#FFFFFF',
+                  transform: [{ translateX: alarm.enabled ? 18 : 2 }],
+                },
+              ]}
+            />
+          </Pressable>
 
-        {/* Action buttons */}
-        <View style={styles.actionButtons}>
-          <Pressable
-            onPress={() => onEdit(alarm)}
-            style={({ pressed }) => [
-              styles.actionBtn,
-              styles.editBtn,
-              { borderColor: colors.border, backgroundColor: colors.background },
-              pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] },
-            ]}
-            accessibilityLabel="Editar alarme"
-          >
-            <MaterialIcons name="edit" size={20} color="#0066CC" />
-          </Pressable>
-          <Pressable
-            onPress={() => onDelete(alarm.id)}
-            style={({ pressed }) => [
-              styles.actionBtn,
-              styles.deleteBtn,
-              pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] },
-            ]}
-            accessibilityLabel="Excluir alarme"
-          >
-            <MaterialIcons name="delete" size={20} color="#FFFFFF" />
-          </Pressable>
+          {/* Sound and Vibration buttons - increased size */}
+          <View style={styles.indicatorButtons}>
+            {alarm.sound && (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.indicatorBtn,
+                  { backgroundColor: '#0066CC15' },
+                  pressed && { opacity: 0.6 },
+                ]}
+                accessibilityLabel="Som ativado"
+              >
+                <MaterialIcons name="volume-up" size={20} color="#0066CC" />
+              </Pressable>
+            )}
+            {alarm.vibration && (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.indicatorBtn,
+                  { backgroundColor: '#0066CC15' },
+                  pressed && { opacity: 0.6 },
+                ]}
+                accessibilityLabel="Vibração ativada"
+              >
+                <MaterialIcons name="vibration" size={20} color="#0066CC" />
+              </Pressable>
+            )}
+          </View>
         </View>
 
-        {/* Test button */}
+        {/* Middle row: Test button */}
         <Pressable
           onPress={() => onTest(alarm)}
           style={({ pressed }) => [
@@ -148,9 +151,36 @@ export function AlarmCard({ alarm, onEdit, onDelete, onToggle, onTest }: AlarmCa
           ]}
           accessibilityLabel="Testar alarme"
         >
-          <MaterialIcons name="play-arrow" size={16} color="#22C55E" />
+          <MaterialIcons name="play-arrow" size={18} color="#22C55E" />
           <Text style={styles.testBtnText}>Testar</Text>
         </Pressable>
+
+        {/* Bottom row: Edit and Delete buttons - larger and distinct */}
+        <View style={styles.actionButtons}>
+          <Pressable
+            onPress={() => onEdit(alarm)}
+            style={({ pressed }) => [
+              styles.editBtn,
+              { borderColor: colors.border, backgroundColor: colors.background },
+              pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] },
+            ]}
+            accessibilityLabel="Editar alarme"
+          >
+            <MaterialIcons name="edit" size={24} color="#0066CC" />
+            <Text style={styles.editBtnText}>Editar</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => onDelete(alarm.id)}
+            style={({ pressed }) => [
+              styles.deleteBtn,
+              pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] },
+            ]}
+            accessibilityLabel="Excluir alarme"
+          >
+            <MaterialIcons name="delete" size={24} color="#FFFFFF" />
+            <Text style={styles.deleteBtnText}>Excluir</Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -159,7 +189,7 @@ export function AlarmCard({ alarm, onEdit, onDelete, onToggle, onTest }: AlarmCa
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
@@ -169,6 +199,7 @@ const styles = StyleSheet.create({
   },
   leftSection: {
     alignItems: 'center',
+    paddingTop: 4,
   },
   iconBadge: {
     width: 44,
@@ -209,6 +240,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   rightSection: {
+    alignItems: 'stretch',
+    gap: 10,
+    minWidth: 120,
+  },
+  topRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
@@ -228,38 +265,67 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  actionButtons: {
+  indicatorButtons: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 2,
+    gap: 6,
+    flex: 1,
   },
-  actionBtn: {
-    width: 36,
-    height: 36,
+  indicatorBtn: {
+    flex: 1,
+    height: 40,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  editBtn: {
-    borderWidth: 1.5,
-  },
-  deleteBtn: {
-    backgroundColor: '#EF4444',
   },
   testBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 6,
     borderWidth: 1.5,
     borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginTop: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   testBtnText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: '#22C55E',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  editBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  editBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0066CC',
+  },
+  deleteBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  deleteBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

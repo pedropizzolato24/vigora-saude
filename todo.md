@@ -199,3 +199,6 @@
 
 ## Animation Refinements
 - [x] Fix pulse animation loop: add min-to-1 transition to eliminate jump/cut at loop restart
+
+## Alarm Card UX Improvements
+- [x] Reorganize alarm card: move edit/delete buttons to bottom row (larger, distinct), increase sound/vibration buttons size
