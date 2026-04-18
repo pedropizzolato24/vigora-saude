@@ -193,3 +193,6 @@
 - [x] Fix tab bar active indicator losing border radius after switching tabs
 - [x] Fix ambulance button misalignment on home screen
 - [x] Fix SOS and alarm ring pulse animation loops - remove micro-pauses between cycles
+
+## Health Metrics UX
+- [x] Add green check confirmation animation when saving a new health metric

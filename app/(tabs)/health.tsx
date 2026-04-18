@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
+import { SuccessConfirmation } from '@/components/success-confirmation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
@@ -66,6 +67,7 @@ export default function HealthScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedType, setSelectedType] = useState<MetricType>('heart_rate');
   const [valueText, setValueText] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
   const METRIC_CONFIG = getMetricConfig(colors);
   const STATUS_CONFIG = getStatusConfig(colors);
 
@@ -91,8 +93,14 @@ export default function HealthScreen() {
       },
     });
 
+    setShowSuccess(true);
     setValueText('');
     setModalVisible(false);
+
+    // Auto-close success animation after 2.5 seconds
+    setTimeout(() => {
+      setShowSuccess(false);
+    }, 2500);
   };
 
   const handleDelete = (id: string) => {
@@ -329,6 +337,7 @@ export default function HealthScreen() {
           </ScrollView>
         </View>
       </Modal>
+      <SuccessConfirmation visible={showSuccess} onComplete={() => setShowSuccess(false)} />
     </ScreenContainer>
   );
 }
