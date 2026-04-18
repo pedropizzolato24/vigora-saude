@@ -145,17 +145,20 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'LOAD_STATE':
       return { ...state, ...action.payload, isLoading: false };
 
-    case 'ADD_ALARM':
+    case 'ADD_ALARM': {
       if (state.alarms.length >= 24) return state;
-      return { ...state, alarms: [...state.alarms, action.payload] };
+      const newAlarms = [...state.alarms, action.payload].sort((a, b) =>
+        a.time.localeCompare(b.time)
+      );
+      return { ...state, alarms: newAlarms };
+    }
 
-    case 'UPDATE_ALARM':
-      return {
-        ...state,
-        alarms: state.alarms.map((a) =>
-          a.id === action.payload.id ? action.payload : a
-        ),
-      };
+    case 'UPDATE_ALARM': {
+      const updatedAlarms = state.alarms
+        .map((a) => (a.id === action.payload.id ? action.payload : a))
+        .sort((a, b) => a.time.localeCompare(b.time));
+      return { ...state, alarms: updatedAlarms };
+    }
 
     case 'DELETE_ALARM':
       return {

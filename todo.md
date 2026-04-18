@@ -172,3 +172,8 @@
 ## Alarm UX Improvements v2
 - [x] Show selected custom days in alarm list card (e.g., "Seg, Qua, Sex")
 - [x] Add full day name labels below weekday buttons in alarm modal
+
+## Alarm UX Improvements v3
+- [x] Add delete confirmation dialog for alarms (prevent accidental deletion)
+- [x] Auto-sort alarms by time (ascending) after add/edit
+- [x] Add active alarm badge counter on tab bar icon

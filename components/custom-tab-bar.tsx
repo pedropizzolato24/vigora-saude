@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useColors } from '@/hooks/use-colors';
 import { useMenu } from '@/lib/menu-context';
+import { useAppContext } from '@/lib/app-context';
 
 interface TabItem {
   label: string;
@@ -28,6 +29,8 @@ export function CustomTabBar() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { toggleMenu } = useMenu();
+  const { state } = useAppContext();
+  const activeAlarmCount = state.alarms.filter((a) => a.enabled).length;
 
   const bottomPadding = Platform.OS === 'web' ? 12 : Math.max(insets.bottom, 8);
   const tabBarHeight = 60 + bottomPadding;
@@ -87,6 +90,18 @@ export function CustomTabBar() {
                 size={24}
                 color={active ? colors.primary : colors.muted}
               />
+              {tab.route === '/(tabs)/alarms' && activeAlarmCount > 0 && (
+                <View
+                  style={[
+                    styles.badge,
+                    { backgroundColor: colors.primary },
+                  ]}
+                >
+                  <Text style={styles.badgeText}>
+                    {activeAlarmCount > 9 ? '9+' : String(activeAlarmCount)}
+                  </Text>
+                </View>
+              )}
             </View>
             <Text
               style={[
@@ -130,5 +145,24 @@ const styles = StyleSheet.create({
   },
   labelActive: {
     fontWeight: '700',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  badgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    lineHeight: 12,
   },
 });
