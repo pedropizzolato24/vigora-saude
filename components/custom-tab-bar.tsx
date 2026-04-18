@@ -76,19 +76,23 @@ export function CustomTabBar() {
             accessibilityLabel={tab.label}
             accessibilityRole="button"
           >
-            <View
-              style={[
-                styles.iconContainer,
-                {
-                  backgroundColor: active ? colors.primary + '20' : 'transparent',
-                },
-              ]}
-            >
-              <MaterialIcons
-                name={tab.icon}
-                size={24}
-                color={active ? colors.primary : colors.muted}
-              />
+            {/* Outer wrapper: overflow visible for badge */}
+            <View style={styles.iconWrapper}>
+              {/* Inner background: overflow hidden so borderRadius clips correctly */}
+              <View
+                style={[
+                  styles.iconBackground,
+                  {
+                    backgroundColor: active ? colors.primary + '20' : 'transparent',
+                  },
+                ]}
+              >
+                <MaterialIcons
+                  name={tab.icon}
+                  size={24}
+                  color={active ? colors.primary : colors.muted}
+                />
+              </View>
               {tab.route === '/(tabs)/alarms' && activeAlarmCount > 0 && (
                 <View
                   style={[
@@ -130,13 +134,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 3,
   },
-  iconContainer: {
+  iconWrapper: {
+    width: 48,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'visible',
+  },
+  iconBackground: {
     width: 48,
     height: 34,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
-    overflow: 'visible',
+    overflow: 'hidden',
   },
   label: {
     fontSize: 11,

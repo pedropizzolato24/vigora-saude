@@ -202,3 +202,7 @@
 
 ## Alarm Card UX Improvements
 - [x] Reorganize alarm card: move edit/delete buttons to bottom row (larger, distinct), increase sound/vibration buttons size
+
+## Alarm Card & Tab Bar Fixes
+- [x] Remove toggle from alarm card, make edit/delete buttons full-width at bottom of card
+- [x] Fix tab bar active indicator border radius (not rounding after tab change)
