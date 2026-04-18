@@ -196,3 +196,6 @@
 
 ## Health Metrics UX
 - [x] Add green check confirmation animation when saving a new health metric
+
+## Animation Refinements
+- [x] Fix pulse animation loop: add min-to-1 transition to eliminate jump/cut at loop restart

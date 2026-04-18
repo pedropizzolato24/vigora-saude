@@ -124,19 +124,26 @@ export function PulseView({
       return;
     }
 
-    // Use 2-step sequence: 1 → max → 1
-    // Easing.inOut(sin) ensures velocity=0 at both ends → perfectly seamless loop
+    // Use 3-step sequence: 1 → max → min → 1
+    // Each step uses Easing.inOut(sin) for smooth acceleration/deceleration
+    // Returns to 1 before loop restarts for seamless continuation
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(scale, {
           toValue: maxScale,
-          duration: duration / 2,
+          duration: duration / 3,
           useNativeDriver: true,
           easing: Easing.inOut(Easing.sin),
         }),
         Animated.timing(scale, {
           toValue: minScale,
-          duration: duration / 2,
+          duration: duration / 3,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        Animated.timing(scale, {
+          toValue: 1,
+          duration: duration / 3,
           useNativeDriver: true,
           easing: Easing.inOut(Easing.sin),
         }),
