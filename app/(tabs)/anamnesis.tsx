@@ -14,6 +14,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
+import { useFontSize } from '@/lib/font-size-context';
 import { useAppContext, type AnamnesesData } from '@/lib/app-context';
 import { exportAnamnesisToPDF } from '@/lib/pdf-utils-v2';
 
@@ -37,6 +38,7 @@ const EMPTY_FORM: AnamnesesData = {
 
 export default function AnamnesisScreen() {
   const colors = useColors();
+  const fs = useFontSize();
   const insets = useSafeAreaInsets();
   const { state, dispatch } = useAppContext();
   const [form, setForm] = useState<AnamnesesData>(state.anamnesis ?? EMPTY_FORM);
@@ -90,8 +92,8 @@ export default function AnamnesisScreen() {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
         <View>
-          <Text style={[styles.title, { color: colors.foreground }]}>Ficha de Anamnese</Text>
-          <Text style={[styles.subtitle, { color: colors.muted }]}>
+          <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'] }]}>Ficha de Anamnese</Text>
+          <Text style={[styles.subtitle, { color: colors.muted, fontSize: fs.sm }]}>
             Histórico médico pessoal
           </Text>
         </View>

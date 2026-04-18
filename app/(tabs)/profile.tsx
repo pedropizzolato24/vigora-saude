@@ -17,12 +17,14 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
+import { useFontSize } from '@/lib/font-size-context';
 import { useAppContext } from '@/lib/app-context';
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 export default function ProfileScreen() {
   const colors = useColors();
+  const fs = useFontSize();
   const insets = useSafeAreaInsets();
   const { state, dispatch } = useAppContext();
 
@@ -132,7 +134,7 @@ export default function ProfileScreen() {
   return (
     <ScreenContainer edges={['left', 'right']}>
       <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Meu Perfil</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: fs['2xl'] }]}>Meu Perfil</Text>
         {hasChanges && (
           <TouchableOpacity
             onPress={handleSave}
@@ -165,7 +167,7 @@ export default function ProfileScreen() {
 
         {/* Form Section */}
         <View style={[styles.formSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Informações Pessoais</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground, fontSize: fs.lg }]}>Informações Pessoais</Text>
 
           <View style={styles.fieldGroup}>
             <Text style={[styles.label, { color: colors.muted }]}>Nome Completo</Text>
@@ -216,7 +218,7 @@ export default function ProfileScreen() {
 
         {/* Blood Type Section */}
         <View style={[styles.formSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Tipo Sanguíneo</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground, fontSize: fs.lg }]}>Tipo Sanguíneo</Text>
           <View style={styles.bloodTypeGrid}>
             {BLOOD_TYPES.map((type) => (
               <TouchableOpacity

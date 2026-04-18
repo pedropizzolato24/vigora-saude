@@ -9,6 +9,8 @@ export interface Alarm {
   description: string;
   enabled: boolean;
   repeat: 'daily' | 'weekdays' | 'weekends' | 'custom';
+  /** Days of week for 'custom' repeat: 0=Sun, 1=Mon, ..., 6=Sat */
+  customDays?: number[];
   sound: boolean;
   vibration: boolean;
   notificationId?: string; // Expo notification ID for scheduled alarm

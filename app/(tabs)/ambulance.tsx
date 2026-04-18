@@ -14,6 +14,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
+import { useFontSize } from '@/lib/font-size-context';
 import { useAppContext } from '@/lib/app-context';
 
 type AmbulanceType = 'sus' | 'plan' | 'private';
@@ -29,6 +30,7 @@ interface AmbulanceOption {
 
 export default function AmbulanceScreen() {
   const colors = useColors();
+  const fs = useFontSize();
   const insets = useSafeAreaInsets();
   const { state } = useAppContext();
   const [selectedType, setSelectedType] = useState<AmbulanceType>('sus');
@@ -107,8 +109,8 @@ export default function AmbulanceScreen() {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
         <View>
-          <Text style={[styles.title, { color: colors.foreground }]}>Ambulância</Text>
-          <Text style={[styles.subtitle, { color: colors.muted }]}>
+          <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'] }]}>Ambulância</Text>
+          <Text style={[styles.subtitle, { color: colors.muted, fontSize: fs.sm }]}>
             Acione atendimento de emergência
           </Text>
         </View>

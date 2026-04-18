@@ -16,6 +16,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
+import { useFontSize } from '@/lib/font-size-context';
 import { generateId, getHealthStatus, useAppContext, type HealthMetric } from '@/lib/app-context';
 
 type MetricType = HealthMetric['type'];
@@ -59,6 +60,7 @@ function formatTimestamp(ts: number): string {
 
 export default function HealthScreen() {
   const colors = useColors();
+  const fs = useFontSize();
   const insets = useSafeAreaInsets();
   const { state, dispatch } = useAppContext();
   const [modalVisible, setModalVisible] = useState(false);
@@ -153,8 +155,8 @@ export default function HealthScreen() {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
         <View>
-          <Text style={[styles.title, { color: colors.foreground }]}>Saúde</Text>
-          <Text style={[styles.subtitle, { color: colors.muted }]}>
+          <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'] }]}>Saúde</Text>
+          <Text style={[styles.subtitle, { color: colors.muted, fontSize: fs.sm }]}>
             {state.healthMetrics.length} registro(s)
           </Text>
         </View>
@@ -205,7 +207,7 @@ export default function HealthScreen() {
       {state.healthMetrics.length === 0 ? (
         <View style={styles.emptyState}>
           <MaterialIcons name="monitor-heart" size={64} color={colors.border} />
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+          <Text style={[styles.emptyTitle, { color: colors.foreground, fontSize: fs.lg }]}>
             Nenhum registro de saúde
           </Text>
           <Text style={[styles.emptySubtext, { color: colors.muted }]}>
@@ -251,7 +253,7 @@ export default function HealthScreen() {
             >
               <Text style={[styles.modalCloseText, { color: colors.muted }]}>Cancelar</Text>
             </Pressable>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Nova Métrica</Text>
+            <Text style={[styles.modalTitle, { color: colors.foreground, fontSize: fs.xl }]}>Nova Métrica</Text>
             <Pressable
               onPress={handleSave}
               style={({ pressed }) => [styles.modalSave, pressed && { opacity: 0.7 }]}

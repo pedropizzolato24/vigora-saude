@@ -163,3 +163,8 @@
 - [x] Fix SOS button pulse animation loop (cuts at wrong moment, visually jarring)
 - [x] Improve FAQ text contrast for better readability against background
 - [x] Implement working font size setting (small/medium/large) with persistence via AsyncStorage, default medium — applied to Dashboard, Alarmes, Configurações, FAQ; remaining screens pending
+
+## Feature Expansion v4
+- [x] Expand font size system to all remaining screens (Contacts, Health, Ambulance, Anamnesis, Location, Profile)
+- [x] Add live font size preview in Settings font size section
+- [x] Implement weekday selector (Mon-Sun checkboxes) for custom alarm repeat mode

@@ -19,6 +19,7 @@ import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ContactCard } from '@/components/contact-card';
 import { useColors } from '@/hooks/use-colors';
+import { useFontSize } from '@/lib/font-size-context';
 import { generateId, useAppContext, type EmergencyContact } from '@/lib/app-context';
 
 const EMPTY_FORM: Omit<EmergencyContact, 'id'> = {
@@ -39,6 +40,7 @@ function formatPhone(value: string): string {
 
 export default function ContactsScreen() {
   const colors = useColors();
+  const fs = useFontSize();
   const insets = useSafeAreaInsets();
   const { state, dispatch } = useAppContext();
   const [modalVisible, setModalVisible] = useState(false);
@@ -170,8 +172,8 @@ export default function ContactsScreen() {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
         <View>
-          <Text style={[styles.title, { color: colors.foreground }]}>Contatos SOS</Text>
-          <Text style={[styles.subtitle, { color: colors.muted }]}>
+          <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'] }]}>Contatos SOS</Text>
+          <Text style={[styles.subtitle, { color: colors.muted, fontSize: fs.sm }]}>
             {state.emergencyContacts.length} contato(s) de emergência
           </Text>
         </View>
@@ -211,7 +213,7 @@ export default function ContactsScreen() {
       {state.emergencyContacts.length === 0 ? (
         <View style={styles.emptyState}>
           <MaterialIcons name="people" size={64} color={colors.border} />
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+          <Text style={[styles.emptyTitle, { color: colors.foreground, fontSize: fs.lg }]}>
             Nenhum contato cadastrado
           </Text>
           <Text style={[styles.emptySubtext, { color: colors.muted }]}>
@@ -259,7 +261,7 @@ export default function ContactsScreen() {
             >
               <Text style={[styles.modalCloseText, { color: colors.muted }]}>Cancelar</Text>
             </Pressable>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground, fontSize: fs.xl }]}>
               {editingContact ? 'Editar Contato' : 'Novo Contato'}
             </Text>
             <Pressable
@@ -361,7 +363,7 @@ export default function ContactsScreen() {
             >
               <Text style={[styles.modalCloseText, { color: colors.muted }]}>Fechar</Text>
             </Pressable>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground, fontSize: fs.xl }]}>
               Importar Contato
             </Text>
             <View style={{ minWidth: 70 }} />
@@ -419,7 +421,7 @@ export default function ContactsScreen() {
             ListEmptyComponent={
               <View style={styles.emptyState}>
                 <MaterialIcons name="search-off" size={48} color={colors.border} />
-                <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+                <Text style={[styles.emptyTitle, { color: colors.foreground, fontSize: fs.md }]}>
                   Nenhum contato encontrado
                 </Text>
               </View>

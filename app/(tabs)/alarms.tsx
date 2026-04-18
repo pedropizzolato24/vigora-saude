@@ -34,9 +34,20 @@ const EMPTY_FORM: Omit<Alarm, 'id'> = {
   description: '',
   enabled: true,
   repeat: 'daily',
+  customDays: [],
   sound: true,
   vibration: true,
 };
+
+const WEEKDAYS = [
+  { day: 0, label: 'D' },
+  { day: 1, label: 'S' },
+  { day: 2, label: 'T' },
+  { day: 3, label: 'Q' },
+  { day: 4, label: 'Q' },
+  { day: 5, label: 'S' },
+  { day: 6, label: 'S' },
+];
 
 export default function AlarmsScreen() {
   const colors = useColors();
@@ -452,6 +463,56 @@ export default function AlarmsScreen() {
                   </Pressable>
                 ))}
               </View>
+
+              {/* Custom weekday selector */}
+              {form.repeat === 'custom' && (
+                <View style={[styles.weekdaySelector, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                  <Text style={[styles.weekdayTitle, { color: colors.muted }]}>Dias da semana</Text>
+                  <View style={styles.weekdayRow}>
+                    {WEEKDAYS.map(({ day, label }) => {
+                      const selected = (form.customDays ?? []).includes(day);
+                      return (
+                        <Pressable
+                          key={day}
+                          onPress={() => {
+                            if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setForm((f) => {
+                              const days = f.customDays ?? [];
+                              return {
+                                ...f,
+                                customDays: selected
+                                  ? days.filter((d) => d !== day)
+                                  : [...days, day].sort(),
+                              };
+                            });
+                          }}
+                          style={[
+                            styles.weekdayBtn,
+                            {
+                              backgroundColor: selected ? colors.primary : colors.background,
+                              borderColor: selected ? colors.primary : colors.border,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.weekdayBtnText,
+                              { color: selected ? colors.onPrimary : colors.foreground },
+                            ]}
+                          >
+                            {label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  {(form.customDays ?? []).length === 0 && (
+                    <Text style={[styles.weekdayHint, { color: colors.error }]}>
+                      Selecione pelo menos um dia
+                    </Text>
+                  )}
+                </View>
+              )}
             </View>
 
             {/* Toggles */}
@@ -695,5 +756,41 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginTop: 2,
+  },
+  weekdaySelector: {
+    marginTop: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    gap: 8,
+  },
+  weekdayTitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  weekdayRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 4,
+  },
+  weekdayBtn: {
+    flex: 1,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekdayBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  weekdayHint: {
+    fontSize: 12,
+    marginTop: 4,
+    textAlign: 'center',
   },
 });

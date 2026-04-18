@@ -439,6 +439,23 @@ export default function SettingsScreen() {
                 </Pressable>
               ))}
             </View>
+
+            {/* Live Preview */}
+            <View style={[styles.fontPreviewBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.fontPreviewHeader}>
+                <MaterialIcons name="visibility" size={14} color={colors.muted} />
+                <Text style={[styles.fontPreviewLabel, { color: colors.muted }]}>Pré-visualização</Text>
+              </View>
+              <Text style={{ fontSize: fs['2xl'], fontWeight: '800', color: colors.foreground, marginBottom: 2 }}>
+                Vigora Saúde
+              </Text>
+              <Text style={{ fontSize: fs.base, color: colors.foreground, lineHeight: fs.scaled(22) }}>
+                Seu assistente pessoal de saúde e segurança.
+              </Text>
+              <Text style={{ fontSize: fs.sm, color: colors.muted, marginTop: 4 }}>
+                Próximo alarme: 08:00 — Remédio
+              </Text>
+            </View>
           </View>
         </CollapsibleSection>
 
@@ -712,6 +729,25 @@ const styles = StyleSheet.create({
   // Font Size
   fontSizeSection: { padding: 16 },
   fontSizeRow: { flexDirection: 'row', gap: 10 },
+  fontPreviewBox: {
+    marginTop: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 14,
+    gap: 2,
+  },
+  fontPreviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 8,
+  },
+  fontPreviewLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   fontSizeBtn: {
     flex: 1,
     paddingVertical: 12,

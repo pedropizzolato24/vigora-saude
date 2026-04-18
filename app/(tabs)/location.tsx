@@ -17,6 +17,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
+import { useFontSize } from '@/lib/font-size-context';
 
 interface LocationRecord {
   id: string;
@@ -28,6 +29,7 @@ interface LocationRecord {
 
 export default function LocationScreen() {
   const colors = useColors();
+  const fs = useFontSize();
   const insets = useSafeAreaInsets();
   const [currentLocation, setCurrentLocation] = useState<LocationRecord | null>(null);
   const [loading, setLoading] = useState(false);
@@ -125,8 +127,8 @@ export default function LocationScreen() {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
         <View>
-          <Text style={[styles.title, { color: colors.foreground }]}>Localização</Text>
-          <Text style={[styles.subtitle, { color: colors.muted }]}>
+          <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'] }]}>Localização</Text>
+          <Text style={[styles.subtitle, { color: colors.muted, fontSize: fs.sm }]}>
             Compartilhe sua posição
           </Text>
         </View>
