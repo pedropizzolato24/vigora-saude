@@ -40,13 +40,13 @@ const EMPTY_FORM: Omit<Alarm, 'id'> = {
 };
 
 const WEEKDAYS = [
-  { day: 0, label: 'D' },
-  { day: 1, label: 'S' },
-  { day: 2, label: 'T' },
-  { day: 3, label: 'Q' },
-  { day: 4, label: 'Q' },
-  { day: 5, label: 'S' },
-  { day: 6, label: 'S' },
+  { day: 0, label: 'D', full: 'Dom' },
+  { day: 1, label: 'S', full: 'Seg' },
+  { day: 2, label: 'T', full: 'Ter' },
+  { day: 3, label: 'Q', full: 'Qua' },
+  { day: 4, label: 'Q', full: 'Qui' },
+  { day: 5, label: 'S', full: 'Sex' },
+  { day: 6, label: 'S', full: 'Sáb' },
 ];
 
 export default function AlarmsScreen() {
@@ -469,7 +469,7 @@ export default function AlarmsScreen() {
                 <View style={[styles.weekdaySelector, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                   <Text style={[styles.weekdayTitle, { color: colors.muted }]}>Dias da semana</Text>
                   <View style={styles.weekdayRow}>
-                    {WEEKDAYS.map(({ day, label }) => {
+                    {WEEKDAYS.map(({ day, label, full }) => {
                       const selected = (form.customDays ?? []).includes(day);
                       return (
                         <Pressable
@@ -501,6 +501,14 @@ export default function AlarmsScreen() {
                             ]}
                           >
                             {label}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.weekdayBtnFull,
+                              { color: selected ? colors.onPrimary + 'CC' : colors.muted },
+                            ]}
+                          >
+                            {full}
                           </Text>
                         </Pressable>
                       );
@@ -778,15 +786,20 @@ const styles = StyleSheet.create({
   },
   weekdayBtn: {
     flex: 1,
-    height: 40,
+    height: 52,
     borderRadius: 10,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 1,
   },
   weekdayBtnText: {
     fontSize: 13,
     fontWeight: '700',
+  },
+  weekdayBtnFull: {
+    fontSize: 9,
+    fontWeight: '500',
   },
   weekdayHint: {
     fontSize: 12,

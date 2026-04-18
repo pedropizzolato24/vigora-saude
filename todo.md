@@ -168,3 +168,7 @@
 - [x] Expand font size system to all remaining screens (Contacts, Health, Ambulance, Anamnesis, Location, Profile)
 - [x] Add live font size preview in Settings font size section
 - [x] Implement weekday selector (Mon-Sun checkboxes) for custom alarm repeat mode
+
+## Alarm UX Improvements v2
+- [x] Show selected custom days in alarm list card (e.g., "Seg, Qua, Sex")
+- [x] Add full day name labels below weekday buttons in alarm modal

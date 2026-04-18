@@ -18,6 +18,14 @@ const REPEAT_LABELS: Record<Alarm['repeat'], string> = {
   custom: 'Personalizado',
 };
 
+const DAY_ABBR = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+function formatCustomDays(days: number[] | undefined): string {
+  if (!days || days.length === 0) return 'Personalizado';
+  if (days.length === 7) return 'Todos os dias';
+  return days.map((d) => DAY_ABBR[d]).join(', ');
+}
+
 export function AlarmCard({ alarm, onEdit, onDelete, onToggle }: AlarmCardProps) {
   const colors = useColors();
 
@@ -57,10 +65,12 @@ export function AlarmCard({ alarm, onEdit, onDelete, onToggle }: AlarmCardProps)
         >
           {alarm.description || 'Sem descrição'}
         </Text>
-        <View style={styles.tagsRow}>
+          <View style={styles.tagsRow}>
           <View style={[styles.tag, { backgroundColor: colors.border }]}>
             <Text style={[styles.tagText, { color: colors.muted }]}>
-              {REPEAT_LABELS[alarm.repeat]}
+              {alarm.repeat === 'custom'
+                ? formatCustomDays(alarm.customDays)
+                : REPEAT_LABELS[alarm.repeat]}
             </Text>
           </View>
           {alarm.sound && (
