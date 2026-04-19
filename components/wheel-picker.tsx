@@ -123,9 +123,9 @@ export function WheelPicker({
 
   return (
     <View style={styles.container}>
-      {/* ▲ — increases value */}
+      {/* ▲ — decreases value (scroll up = number goes down) */}
       <Pressable
-        onPress={() => increment(1)}
+        onPress={() => increment(-1)}
         style={({ pressed }) => [
           styles.stepBtn,
           {
@@ -203,9 +203,9 @@ export function WheelPicker({
         </ScrollView>
       </View>
 
-      {/* ▼ — decreases value */}
+      {/* ▼ — increases value (scroll down = number goes up) */}
       <Pressable
-        onPress={() => increment(-1)}
+        onPress={() => increment(1)}
         style={({ pressed }) => [
           styles.stepBtn,
           {
