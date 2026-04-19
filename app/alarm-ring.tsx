@@ -5,8 +5,11 @@
  * - Plays alarm sound on loop for up to 30 seconds
  * - Pulsing alarm icon
  * - Shows alarm name and description
+ * - Reads alarm name and description aloud via expo-speech (pt-BR)
+ * - "Ouvir novamente" button to replay speech
  * - Countdown timer (30s) — when it reaches 0, sends WhatsApp to all emergency contacts
  * - Large dismiss button
+ * - Accessibility mode: larger elements, high contrast, simplified layout
  */
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
@@ -22,7 +25,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
+import * as Speech from 'expo-speech';
 import { useAppContext } from '@/lib/app-context';
+import { useAccessibility } from '@/lib/accessibility-context';
 import { escalateAlarmToContacts } from '@/lib/alarm-escalation';
 import { stopNativeAlarm } from '@/lib/native-alarm-manager';
 import { PulseView } from '@/components/animated-components';
@@ -31,22 +36,54 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 const ALARM_SOUND = require('@/assets/alarm.mp3');
 const COUNTDOWN_SECONDS = 30;
 
+// Builds the speech text for the alarm announcement
+function buildSpeechText(alarmDescription?: string, alarmTime?: string): string {
+  const parts: string[] = [];
+  parts.push('Atenção! Alarme de medicamento.');
+  if (alarmTime) {
+    parts.push(`Horário: ${alarmTime.replace(':', ' horas e ')} minutos.`);
+  }
+  if (alarmDescription) {
+    parts.push(alarmDescription);
+  }
+  parts.push('Toque em Desligar Alarme para confirmar que tomou o medicamento.');
+  return parts.join(' ');
+}
+
 export default function AlarmRingScreen() {
   const router = useRouter();
   const { alarmId } = useLocalSearchParams<{ alarmId: string }>();
   const { state, dispatch } = useAppContext();
+  const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac } = useAccessibility();
 
   const alarm = state.alarms.find((a) => a.id === alarmId);
   const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SECONDS);
   const [escalated, setEscalated] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const escalationDoneRef = useRef(false);
 
   // Audio player
   const player = useAudioPlayer(ALARM_SOUND);
 
-  // Start audio and vibration on mount
+  // Speak alarm info aloud
+  const speakAlarm = useCallback(() => {
+    if (Platform.OS === 'web') return;
+    const text = buildSpeechText(alarm?.description, alarm?.time);
+    setIsSpeaking(true);
+    Speech.speak(text, {
+      language: 'pt-BR',
+      rate: 0.9,
+      pitch: 1.0,
+      onStart: () => setIsSpeaking(true),
+      onDone: () => setIsSpeaking(false),
+      onStopped: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+    });
+  }, [alarm]);
+
+  // Start audio, vibration, and speech on mount
   useEffect(() => {
     const startAlarm = async () => {
       try {
@@ -60,6 +97,11 @@ export default function AlarmRingScreen() {
 
           // Vibrate in a repeating pattern
           Vibration.vibrate([0, 500, 500, 500], true);
+
+          // Wait 1.5s for alarm sound to start, then speak alarm info
+          setTimeout(() => {
+            speakAlarm();
+          }, 1500);
         }
       } catch (e) {
         console.warn('[AlarmRing] Audio error:', e);
@@ -73,6 +115,7 @@ export default function AlarmRingScreen() {
         player.pause();
         player.remove();
         Vibration.cancel();
+        Speech.stop();
       } catch {}
     };
   }, []);
@@ -131,6 +174,8 @@ export default function AlarmRingScreen() {
     if (countdownRef.current) clearInterval(countdownRef.current);
     // Stop native alarm (Android AlarmManager)
     stopNativeAlarm().catch(() => {});
+    // Stop speech
+    Speech.stop().catch(() => {});
 
     try {
       player.pause();
@@ -148,6 +193,19 @@ export default function AlarmRingScreen() {
     router.replace('/(tabs)/alarms');
   }, [player, dispatch, router]);
 
+  const handleSpeakAgain = useCallback(async () => {
+    const speaking = await Speech.isSpeakingAsync();
+    if (speaking) {
+      await Speech.stop();
+      setIsSpeaking(false);
+    } else {
+      speakAlarm();
+    }
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  }, [speakAlarm]);
+
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = s % 60;
@@ -157,6 +215,117 @@ export default function AlarmRingScreen() {
   const isUrgent = secondsLeft <= 10 && secondsLeft > 0;
   const isExpired = secondsLeft === 0;
 
+  // ─── Accessibility Mode ───────────────────────────────────────────────────
+  if (isAccessibilityMode) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: ac.background }]}
+        edges={['top', 'bottom', 'left', 'right']}
+      >
+        {/* Icon */}
+        <View style={styles.topSection}>
+          <PulseView active minScale={0.85} maxScale={1.15} duration={800}>
+            <View
+              style={[
+                styles.iconCircle,
+                { width: 180, height: 180, borderRadius: 90 },
+                isUrgent && styles.iconCircleUrgent,
+                isExpired && styles.iconCircleExpired,
+              ]}
+            >
+              <MaterialIcons name="alarm" size={88} color="#FFFFFF" />
+            </View>
+          </PulseView>
+          <Text style={[styles.alarmLabel, { color: ac.muted, fontSize: af.sm + 2, letterSpacing: 3 }]}>
+            ALARME
+          </Text>
+        </View>
+
+        {/* Alarm info */}
+        <View style={styles.infoSection}>
+          <Text style={[styles.alarmTime, { color: ac.foreground, fontSize: 72 }]}>
+            {alarm?.time ?? '--:--'}
+          </Text>
+          <Text
+            style={[styles.alarmName, { color: ac.muted, fontSize: af.lg, lineHeight: af.lg * 1.4 }]}
+            numberOfLines={3}
+          >
+            {alarm?.description || 'Alarme'}
+          </Text>
+        </View>
+
+        {/* Speak again button — prominent in accessibility mode */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.speakButton,
+            {
+              backgroundColor: isSpeaking ? ac.primary + '33' : ac.primary + '22',
+              borderColor: ac.primary,
+              borderWidth: 3,
+              minHeight: 72,
+              paddingVertical: 18,
+            },
+            pressed && { opacity: 0.75 },
+          ]}
+          onPress={handleSpeakAgain}
+          accessibilityLabel={isSpeaking ? 'Parar leitura' : 'Ouvir alarme em voz alta'}
+        >
+          <MaterialIcons
+            name={isSpeaking ? 'stop' : 'volume-up'}
+            size={40}
+            color={ac.primary}
+          />
+          <Text style={[styles.speakButtonText, { color: ac.primary, fontSize: af.md, fontWeight: '700' }]}>
+            {isSpeaking ? 'Parar Leitura' : 'Ouvir em Voz Alta'}
+          </Text>
+        </Pressable>
+
+        {/* Countdown */}
+        <View style={[styles.countdownSection, { gap: 10 }]}>
+          {!isExpired ? (
+            <>
+              <Text style={[styles.countdownLabel, { color: isUrgent ? '#F59E0B' : ac.muted, fontSize: af.sm, fontWeight: isUrgent ? '700' : '400' }]}>
+                {isUrgent ? '⚠️ Mensagem de emergência em' : 'Mensagem de emergência em'}
+              </Text>
+              <Text style={[styles.countdownTimer, { color: isUrgent ? '#F59E0B' : ac.foreground, fontSize: 56 }]}>
+                {formatTime(secondsLeft)}
+              </Text>
+              <Text style={[styles.countdownSub, { color: ac.muted, fontSize: af.xs }]}>
+                Toque em "Desligar" para cancelar o envio
+              </Text>
+            </>
+          ) : (
+            <View style={[styles.escalatedBox, { borderColor: '#EF4444', borderWidth: 3 }]}>
+              <MaterialIcons name="warning" size={36} color="#EF4444" />
+              <Text style={[styles.escalatedText, { color: '#FCA5A5', fontSize: af.md, lineHeight: af.md * 1.4 }]}>
+                Mensagem de emergência enviada para seus contatos
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Dismiss button */}
+        <View style={styles.bottomSection}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.dismissButton,
+              { minHeight: 88, paddingVertical: 26 },
+              pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
+            ]}
+            onPress={handleDismiss}
+            accessibilityLabel="Desligar alarme"
+          >
+            <MaterialIcons name="alarm-off" size={44} color="#FFFFFF" />
+            <Text style={[styles.dismissText, { fontSize: af.lg, fontWeight: '900' }]}>
+              Desligar Alarme
+            </Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // ─── Normal Mode ──────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
       {/* Top section: pulsing icon */}
@@ -181,6 +350,26 @@ export default function AlarmRingScreen() {
           {alarm?.description || 'Alarme'}
         </Text>
       </View>
+
+      {/* Speak again button */}
+      <Pressable
+        style={({ pressed }) => [
+          styles.speakButton,
+          isSpeaking && styles.speakButtonActive,
+          pressed && { opacity: 0.75 },
+        ]}
+        onPress={handleSpeakAgain}
+        accessibilityLabel={isSpeaking ? 'Parar leitura' : 'Ouvir alarme em voz alta'}
+      >
+        <MaterialIcons
+          name={isSpeaking ? 'stop' : 'volume-up'}
+          size={24}
+          color="#93C5FD"
+        />
+        <Text style={styles.speakButtonText}>
+          {isSpeaking ? 'Parar Leitura' : 'Ouvir em Voz Alta'}
+        </Text>
+      </Pressable>
 
       {/* Countdown timer */}
       <View style={styles.countdownSection}>
@@ -281,6 +470,29 @@ const styles = StyleSheet.create({
     color: '#CBD5E1',
     textAlign: 'center',
     lineHeight: 30,
+  },
+  speakButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#93C5FD18',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderWidth: 1,
+    borderColor: '#93C5FD44',
+    minHeight: 48,
+    width: '100%',
+  },
+  speakButtonActive: {
+    backgroundColor: '#93C5FD30',
+    borderColor: '#93C5FD88',
+  },
+  speakButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#93C5FD',
   },
   countdownSection: {
     alignItems: 'center',

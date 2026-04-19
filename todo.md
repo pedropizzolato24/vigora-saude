@@ -236,3 +236,11 @@
 ## Correção do Ícone Android
 - [x] Corrigir zoom excessivo do ícone adaptativo Android (adicionar padding de zona segura ao foreground: artwork em 65% do canvas, 179px de margem em cada lado)
 - [x] Atualizar backgroundColor do ícone adaptativo para #0033CC (combina com fundo azul do ícone)
+
+## Leitura em Voz Alta (expo-speech)
+- [x] Instalar expo-speech
+- [x] Integrar Speech.speak() na tela alarm-ring para ler nome e descrição do alarme ao disparar
+- [x] Adicionar botão "Ouvir novamente" para reler o alarme em voz alta
+- [x] Parar speech ao dispensar o alarme (Speech.stop())
+- [x] Implementar versão acessível com botão maior e texto mais claro
+- [x] Usar idioma pt-BR (language: 'pt-BR') para voz em português
