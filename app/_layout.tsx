@@ -61,7 +61,10 @@ export default function RootLayout() {
 
   // Handle notification that launched the app (app was closed/killed)
   // This catches the case where the user taps a notification when the app is not running
+  // Note: Only runs on native platforms — not available on web
   useEffect(() => {
+    if (Platform.OS === 'web') return;
+
     const checkInitialNotification = async () => {
       const response = await Notifications.getLastNotificationResponseAsync();
       if (response) {
