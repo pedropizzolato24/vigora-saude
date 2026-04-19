@@ -244,3 +244,11 @@
 - [x] Parar speech ao dispensar o alarme (Speech.stop())
 - [x] Implementar versão acessível com botão maior e texto mais claro
 - [x] Usar idioma pt-BR (language: 'pt-BR') para voz em português
+
+## Configurações de Voz (expo-speech)
+- [x] Adicionar campos speechRate (0.5/0.75/1.0/1.25) e speechVolume (0.0–1.0) ao AppState/Settings
+- [x] Adicionar seção "Voz do Alarme" na tela de Configurações com seletor de velocidade e slider de volume
+- [x] Implementar modo acessível para a seção de configurações de voz
+- [x] Atualizar alarm-ring.tsx para usar speechRate e speechVolume das configurações
+- [x] Baixar volume do alarme durante a fala (ducking) para garantir que a voz seja audível
+- [x] Restaurar volume do alarme após a fala terminar

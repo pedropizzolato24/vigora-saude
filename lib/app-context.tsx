@@ -56,6 +56,8 @@ export interface AppSettings {
   fontSize: 'small' | 'medium' | 'large';
   emergencyMessage: string; // Custom message for WhatsApp escalation
   accessibilityMode: boolean; // High-contrast, large-font, simplified layout mode
+  speechRate: 0.5 | 0.75 | 1.0 | 1.25; // TTS speech rate
+  speechVolume: number; // TTS volume 0-100 (independent of alarm volume)
 }
 
 export interface UserProfile {
@@ -128,6 +130,8 @@ const initialState: AppState = {
     fontSize: 'medium',
     emergencyMessage: 'URGENTE: Não estou respondendo aos meus alarmes de saúde. Por favor, verifique se estou bem.',
     accessibilityMode: false,
+    speechRate: 0.75,
+    speechVolume: 90,
   },
   ads: [],
   missedAlarmCount: 0,

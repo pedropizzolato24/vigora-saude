@@ -67,21 +67,44 @@ export default function AlarmRingScreen() {
   // Audio player
   const player = useAudioPlayer(ALARM_SOUND);
 
-  // Speak alarm info aloud
+  // Speak alarm info aloud — uses speechRate and speechVolume from settings
+  // Ducks alarm volume during speech so the voice is clearly audible
   const speakAlarm = useCallback(() => {
     if (Platform.OS === 'web') return;
     const text = buildSpeechText(alarm?.description, alarm?.time);
+    const speechVol = (state.settings.speechVolume ?? 90) / 100;
+    const speechRate = state.settings.speechRate ?? 0.75;
+    // Alarm volume at full while speech is not yet started
+    const alarmVol = (state.settings.alarmVolume ?? 80) / 100;
+    // Ducked alarm volume: 25% of original so voice is clearly heard
+    const duckedAlarmVol = alarmVol * 0.25;
+
     setIsSpeaking(true);
     Speech.speak(text, {
       language: 'pt-BR',
-      rate: 0.9,
+      rate: speechRate,
       pitch: 1.0,
-      onStart: () => setIsSpeaking(true),
-      onDone: () => setIsSpeaking(false),
-      onStopped: () => setIsSpeaking(false),
-      onError: () => setIsSpeaking(false),
+      volume: speechVol,
+      onStart: () => {
+        setIsSpeaking(true);
+        // Duck alarm audio so voice is audible
+        try { player.volume = duckedAlarmVol; } catch {}
+      },
+      onDone: () => {
+        setIsSpeaking(false);
+        // Restore alarm volume
+        try { player.volume = alarmVol; } catch {}
+      },
+      onStopped: () => {
+        setIsSpeaking(false);
+        try { player.volume = alarmVol; } catch {}
+      },
+      onError: () => {
+        setIsSpeaking(false);
+        try { player.volume = alarmVol; } catch {}
+      },
     });
-  }, [alarm]);
+  }, [alarm, state.settings, player]);
 
   // Start audio, vibration, and speech on mount
   useEffect(() => {
@@ -90,8 +113,9 @@ export default function AlarmRingScreen() {
         if (Platform.OS !== 'web') {
           // Must await setAudioModeAsync before play() to ensure silent mode override
           await setAudioModeAsync({ playsInSilentMode: true });
-          // Set loop and seek to start before playing
+          // Set loop, volume and seek to start before playing
           player.loop = true;
+          player.volume = (state.settings.alarmVolume ?? 80) / 100;
           player.seekTo(0);
           player.play();
 

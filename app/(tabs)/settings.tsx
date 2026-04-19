@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
+import * as Speech from 'expo-speech';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
@@ -22,6 +23,14 @@ import { useFontSize } from '@/lib/font-size-context';
 import { useAccessibility } from '@/lib/accessibility-context';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
+
+// Speech rate options
+const SPEECH_RATES: { value: 0.5 | 0.75 | 1.0 | 1.25; label: string; sublabel: string }[] = [
+  { value: 0.5, label: 'Lenta', sublabel: '0.5×' },
+  { value: 0.75, label: 'Normal', sublabel: '0.75×' },
+  { value: 1.0, label: 'Rápida', sublabel: '1.0×' },
+  { value: 1.25, label: 'Muito Rápida', sublabel: '1.25×' },
+];
 
 // ─── Collapsible Section ────────────────────────────────────────────────────
 
@@ -189,6 +198,27 @@ export default function SettingsScreen() {
     playVolumePreview(newVolume);
   };
 
+  const handleSpeechVolumeChange = (delta: number) => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const newVol = Math.max(0, Math.min(100, settings.speechVolume + delta));
+    updateSetting('speechVolume', newVol);
+  };
+
+  const handleSpeechRateChange = (rate: 0.5 | 0.75 | 1.0 | 1.25) => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    updateSetting('speechRate', rate);
+    // Preview the new rate
+    if (Platform.OS !== 'web') {
+      Speech.stop().then(() => {
+        Speech.speak('Alarme de medicamento.', {
+          language: 'pt-BR',
+          rate,
+          volume: settings.speechVolume / 100,
+        });
+      });
+    }
+  };
+
   const handleClearData = () => {
     Alert.alert(
       'Limpar Todos os Dados',
@@ -296,6 +326,67 @@ export default function SettingsScreen() {
                 <MaterialIcons name="volume-up" size={28} color="#FFFFFF" />
                 <Text style={{ fontSize: af.lg, fontWeight: '800', color: '#FFFFFF' }}>+10</Text>
               </Pressable>
+            </View>
+          </View>
+
+          {/* Voice Settings */}
+          <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 16 }}>
+            <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>Voz do Alarme</Text>
+
+            {/* Speech Volume */}
+            <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Volume da Voz</Text>
+            <Text style={{ fontSize: af.sm, color: ac.muted }}>Independente do volume do alarme</Text>
+            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.primary, textAlign: 'center' }}>{settings.speechVolume}%</Text>
+            <View style={{ height: 12, backgroundColor: ac.border, borderRadius: 6, overflow: 'hidden' }}>
+              <View style={{ height: 12, backgroundColor: ac.primary, width: `${settings.speechVolume}%` as any, borderRadius: 6 }} />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              <Pressable
+                onPress={() => handleSpeechVolumeChange(-10)}
+                style={({ pressed }) => [{ flex: 1, backgroundColor: ac.surface, borderRadius: 16, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 3, borderColor: ac.border, opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="volume-down" size={28} color={ac.foreground} />
+                <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>-10</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => handleSpeechVolumeChange(10)}
+                style={({ pressed }) => [{ flex: 1, backgroundColor: ac.primary, borderRadius: 16, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 3, borderColor: '#003388', opacity: pressed ? 0.7 : 1 }]}
+              >
+                <MaterialIcons name="volume-up" size={28} color="#FFFFFF" />
+                <Text style={{ fontSize: af.lg, fontWeight: '800', color: '#FFFFFF' }}>+10</Text>
+              </Pressable>
+            </View>
+
+            <View style={{ height: 2, backgroundColor: ac.border }} />
+
+            {/* Speech Rate */}
+            <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Velocidade da Voz</Text>
+            <Text style={{ fontSize: af.sm, color: ac.muted }}>Toque para ouvir uma prévia</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+              {SPEECH_RATES.map((opt) => (
+                <Pressable
+                  key={opt.value}
+                  onPress={() => handleSpeechRateChange(opt.value)}
+                  style={({ pressed }) => [{
+                    flex: 1,
+                    minWidth: '40%',
+                    backgroundColor: settings.speechRate === opt.value ? ac.primary : ac.surface,
+                    borderRadius: 16,
+                    paddingVertical: 18,
+                    alignItems: 'center',
+                    borderWidth: 3,
+                    borderColor: settings.speechRate === opt.value ? '#003388' : ac.border,
+                    opacity: pressed ? 0.7 : 1,
+                  }]}
+                >
+                  <Text style={{ fontSize: af.md, fontWeight: '800', color: settings.speechRate === opt.value ? '#FFFFFF' : ac.foreground }}>
+                    {opt.label}
+                  </Text>
+                  <Text style={{ fontSize: af.sm, color: settings.speechRate === opt.value ? '#FFFFFFBB' : ac.muted, marginTop: 2 }}>
+                    {opt.sublabel}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
           </View>
 
@@ -457,6 +548,99 @@ export default function SettingsScreen() {
                 <MaterialIcons name="volume-up" size={18} color={colors.onPrimary} />
                 <Text style={[styles.volumeBtnText, { color: colors.onPrimary }]}>+10</Text>
               </Pressable>
+            </View>
+          </View>
+        </CollapsibleSection>
+
+        {/* ═══ SECTION 1b: Voz do Alarme ═══ */}
+        <CollapsibleSection
+          title="Voz do Alarme"
+          icon="record-voice-over"
+          iconBg={colors.primaryLight}
+          iconColor={colors.primary}
+          colors={colors}
+          defaultOpen={false}
+        >
+          {/* Speech Volume */}
+          <View style={styles.volumeSection}>
+            <View style={styles.volumeHeader}>
+              <Text style={[styles.settingLabel, { color: colors.foreground }]}>Volume da Voz</Text>
+              <Text style={[styles.volumeValue, { color: colors.primary }]}>
+                {settings.speechVolume}%
+              </Text>
+            </View>
+            <Text style={[styles.settingSubLabel, { color: colors.muted, marginBottom: 6 }]}>
+              Independente do volume do alarme
+            </Text>
+            <View style={[styles.volumeBarBg, { backgroundColor: colors.border }]}>
+              <View
+                style={[
+                  styles.volumeBarFill,
+                  { backgroundColor: colors.primary, width: `${settings.speechVolume}%` },
+                ]}
+              />
+            </View>
+            <View style={styles.volumeControls}>
+              <Pressable
+                onPress={() => handleSpeechVolumeChange(-10)}
+                style={({ pressed }) => [
+                  styles.volumeBtn,
+                  { backgroundColor: colors.border, opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <MaterialIcons name="volume-down" size={18} color={colors.foreground} />
+                <Text style={[styles.volumeBtnText, { color: colors.foreground }]}>-10</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => handleSpeechVolumeChange(10)}
+                style={({ pressed }) => [
+                  styles.volumeBtn,
+                  { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <MaterialIcons name="volume-up" size={18} color={colors.onPrimary} />
+                <Text style={[styles.volumeBtnText, { color: colors.onPrimary }]}>+10</Text>
+              </Pressable>
+            </View>
+          </View>
+          <Divider colors={colors} />
+
+          {/* Speech Rate */}
+          <View style={styles.fontSizeSection}>
+            <Text style={[styles.settingLabel, { color: colors.foreground }]}>Velocidade da Voz</Text>
+            <Text style={[styles.settingSubLabel, { color: colors.muted, marginBottom: 10 }]}>
+              Toque para ouvir uma prévia
+            </Text>
+            <View style={[styles.fontSizeRow, { flexWrap: 'wrap' }]}>
+              {SPEECH_RATES.map((opt) => (
+                <Pressable
+                  key={opt.value}
+                  onPress={() => handleSpeechRateChange(opt.value)}
+                  style={({ pressed }) => [
+                    styles.fontSizeBtn,
+                    {
+                      backgroundColor: settings.speechRate === opt.value ? colors.primary : colors.background,
+                      borderColor: settings.speechRate === opt.value ? colors.primary : colors.border,
+                      opacity: pressed ? 0.7 : 1,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.fontSizeBtnText,
+                      {
+                        color: settings.speechRate === opt.value ? colors.onPrimary : colors.foreground,
+                        fontSize: 13,
+                      },
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: settings.speechRate === opt.value ? colors.onPrimary + 'BB' : colors.muted }}>
+                    {opt.sublabel}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
           </View>
         </CollapsibleSection>
