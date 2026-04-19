@@ -45,7 +45,7 @@ function CollapsibleSection({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <View style={[styles.sectionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <View style={[styles.sectionCard, { backgroundColor: colors.surface, borderColor: iconColor + '55' }]}>
       <Pressable
         onPress={() => {
           if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
