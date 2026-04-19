@@ -38,6 +38,13 @@ Notifications.setNotificationHandler({
 export async function setupNotificationChannels(): Promise<void> {
   if (Platform.OS !== 'android') return;
 
+  // Android caches channel settings (including sound) on first creation.
+  // To apply updated sound/importance, we must delete the old channel first.
+  // This ensures the correct alarm_notification.wav is used.
+  try {
+    await Notifications.deleteNotificationChannelAsync(ALARM_CHANNEL_ID);
+  } catch {}
+
   // Alarm channel — MAX importance, custom sound, bypasses silent mode
   await Notifications.setNotificationChannelAsync(ALARM_CHANNEL_ID, {
     name: 'Alarmes de Medicamento',

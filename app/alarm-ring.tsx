@@ -47,16 +47,17 @@ export default function AlarmRingScreen() {
 
   // Start audio and vibration on mount
   useEffect(() => {
-    let vibrationInterval: ReturnType<typeof setInterval> | null = null;
-
     const startAlarm = async () => {
       try {
         if (Platform.OS !== 'web') {
+          // Must await setAudioModeAsync before play() to ensure silent mode override
           await setAudioModeAsync({ playsInSilentMode: true });
+          // Set loop and seek to start before playing
           player.loop = true;
+          player.seekTo(0);
           player.play();
 
-          // Vibrate in a pattern every 2 seconds
+          // Vibrate in a repeating pattern
           Vibration.vibrate([0, 500, 500, 500], true);
         }
       } catch (e) {
@@ -69,9 +70,8 @@ export default function AlarmRingScreen() {
     return () => {
       try {
         player.pause();
-        player.release();
+        player.remove();
         Vibration.cancel();
-        if (vibrationInterval) clearInterval(vibrationInterval);
       } catch {}
     };
   }, []);
@@ -131,7 +131,7 @@ export default function AlarmRingScreen() {
 
     try {
       player.pause();
-      player.release();
+      player.remove();
       Vibration.cancel();
     } catch {}
 
