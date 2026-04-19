@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
 import React, { useState } from 'react';
+import { useRouter } from 'expo-router';
 import { useAccessibility } from '@/lib/accessibility-context';
 import {
   Alert,
@@ -38,6 +39,8 @@ export default function AmbulanceScreen() {
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
 
   const anamnesis = state.anamnesis;
+  const router = useRouter();
+  const isHealthPlanConfigured = !!(anamnesis?.healthPlanProvider && anamnesis?.healthPlanNumber);
 
   const options: AmbulanceOption[] = [
     {
@@ -73,10 +76,17 @@ export default function AmbulanceScreen() {
   const handleCall = async () => {
     const phone = selectedOption.phone;
 
-    if (!phone) {
+    if (!phone || (selectedOption.type === 'plan' && !isHealthPlanConfigured)) {
       Alert.alert(
-        'Número não disponível',
-        'Cadastre o número do seu plano de saúde na Ficha de Anamnese.'
+        'Plano de Saúde não configurado',
+        'Você ainda não cadastrou seu plano de saúde. Deseja ir para a Ficha de Anamnese agora?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Configurar Agora',
+            onPress: () => router.push('/(tabs)/anamnesis'),
+          },
+        ]
       );
       return;
     }
@@ -265,17 +275,27 @@ export default function AmbulanceScreen() {
           style={({ pressed }) => [
             styles.callButton,
             {
-              backgroundColor: selectedOption.color,
+              backgroundColor: selectedOption.type === 'plan' && !isHealthPlanConfigured
+                ? colors.muted
+                : selectedOption.color,
               opacity: pressed ? 0.85 : 1,
               shadowColor: selectedOption.color,
             },
           ]}
         >
-          <MaterialIcons name="phone" size={28} color="#FFFFFF" />
+          <MaterialIcons
+            name={selectedOption.type === 'plan' && !isHealthPlanConfigured ? 'settings' : 'phone'}
+            size={28}
+            color="#FFFFFF"
+          />
           <Text style={styles.callButtonText}>
-            Chamar {selectedOption.label}
+            {selectedOption.type === 'plan' && !isHealthPlanConfigured
+              ? 'Configurar Plano de Saúde'
+              : `Chamar ${selectedOption.label}`}
           </Text>
-          <Text style={styles.callButtonPhone}>{selectedOption.phone}</Text>
+          {!(selectedOption.type === 'plan' && !isHealthPlanConfigured) && (
+            <Text style={styles.callButtonPhone}>{selectedOption.phone}</Text>
+          )}
         </Pressable>
 
         {/* Safety Instructions */}

@@ -14,6 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { WheelPicker } from '@/components/wheel-picker';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -642,95 +643,23 @@ export default function AlarmsScreen() {
             <View style={styles.formGroup}>
               <Text style={[styles.formLabel, { color: colors.foreground }]}>Horário</Text>
               <View style={styles.timePicker}>
-
-                {/* Hour column */}
-                <View style={styles.timeColumn}>
-                  <Pressable
-                    onPress={() => incrementHour(1)}
-                    style={({ pressed }) => [
-                      styles.timeStepBtn,
-                      { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
-                    ]}
-                  >
-                    <MaterialIcons name="keyboard-arrow-up" size={26} color={colors.primary} />
-                  </Pressable>
-                  <TextInput
-                    value={timeHour}
-                    onChangeText={handleHourChange}
-                    onBlur={handleHourBlur}
-                    placeholder="08"
-                    placeholderTextColor={colors.muted}
-                    keyboardType="number-pad"
-                    style={[
-                      styles.timeInput,
-                      {
-                        backgroundColor: colors.surface,
-                        color: colors.foreground,
-                        borderColor: colors.primary,
-                      },
-                    ]}
-                    returnKeyType="next"
-                    maxLength={2}
-                    selectTextOnFocus
-                    onSubmitEditing={() => minuteInputRef.current?.focus()}
-                  />
-                  <Pressable
-                    onPress={() => incrementHour(-1)}
-                    style={({ pressed }) => [
-                      styles.timeStepBtn,
-                      { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
-                    ]}
-                  >
-                    <MaterialIcons name="keyboard-arrow-down" size={26} color={colors.primary} />
-                  </Pressable>
-                  <Text style={[styles.timeInputLabel, { color: colors.muted }]}>hora</Text>
-                </View>
-
+                <WheelPicker
+                  count={24}
+                  value={parseInt(timeHour, 10) || 0}
+                  onChange={(h) =>
+                    setForm((f) => ({ ...f, time: `${String(h).padStart(2, '0')}:${f.time.split(':')[1] || '00'}` }))
+                  }
+                  label="hora"
+                />
                 <Text style={[styles.timeColon, { color: colors.foreground }]}>:</Text>
-
-                {/* Minute column */}
-                <View style={styles.timeColumn}>
-                  <Pressable
-                    onPress={() => incrementMinute(1)}
-                    style={({ pressed }) => [
-                      styles.timeStepBtn,
-                      { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
-                    ]}
-                  >
-                    <MaterialIcons name="keyboard-arrow-up" size={26} color={colors.primary} />
-                  </Pressable>
-                  <TextInput
-                    ref={minuteInputRef}
-                    value={timeMinute}
-                    onChangeText={handleMinuteChange}
-                    onBlur={handleMinuteBlur}
-                    placeholder="00"
-                    placeholderTextColor={colors.muted}
-                    keyboardType="number-pad"
-                    style={[
-                      styles.timeInput,
-                      {
-                        backgroundColor: colors.surface,
-                        color: colors.foreground,
-                        borderColor: colors.primary,
-                      },
-                    ]}
-                    returnKeyType="done"
-                    maxLength={2}
-                    selectTextOnFocus
-                  />
-                  <Pressable
-                    onPress={() => incrementMinute(-1)}
-                    style={({ pressed }) => [
-                      styles.timeStepBtn,
-                      { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
-                    ]}
-                  >
-                    <MaterialIcons name="keyboard-arrow-down" size={26} color={colors.primary} />
-                  </Pressable>
-                  <Text style={[styles.timeInputLabel, { color: colors.muted }]}>min</Text>
-                </View>
-
+                <WheelPicker
+                  count={60}
+                  value={parseInt(timeMinute, 10) || 0}
+                  onChange={(m) =>
+                    setForm((f) => ({ ...f, time: `${f.time.split(':')[0] || '00'}:${String(m).padStart(2, '0')}` }))
+                  }
+                  label="min"
+                />
               </View>
             </View>
 
@@ -1076,8 +1005,8 @@ const styles = StyleSheet.create({
   timeColon: {
     fontSize: 40,
     fontWeight: '800',
-    marginBottom: 56,
     paddingHorizontal: 4,
+    marginTop: 50, // align with center of wheel (stepBtn 44 + gap 6)
   },
   timeInputLabel: {
     fontSize: 12,
