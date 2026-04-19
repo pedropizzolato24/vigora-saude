@@ -1,7 +1,10 @@
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 import { Alarm } from './app-context';
 
 // Configure notification handler
+// Note: Android remote push notifications are not available in Expo Go (SDK 53+),
+// but local/scheduled notifications still work on all platforms.
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
