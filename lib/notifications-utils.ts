@@ -43,7 +43,7 @@ export async function setupNotificationChannels(): Promise<void> {
     name: 'Alarmes de Medicamento',
     description: 'Alarmes de alta prioridade para medicamentos e lembretes de saúde. Toca mesmo no modo silencioso.',
     importance: Notifications.AndroidImportance.MAX,
-    sound: 'alarm-notification.wav',
+    sound: 'alarm_notification.wav',
     vibrationPattern: [0, 500, 200, 500, 200, 500],
     enableLights: true,
     lightColor: '#0066CC',
@@ -105,7 +105,7 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
       body: alarm.description
         ? `Hora do alarme: ${alarm.time} — ${alarm.description}`
         : `Hora do alarme: ${alarm.time}`,
-      sound: alarm.sound ? 'alarm-notification.wav' : undefined,
+      sound: alarm.sound ? 'alarm_notification.wav' : undefined,
       vibrate: alarm.vibration ? [0, 500, 200, 500, 200, 500] : undefined,
       data: {
         alarmId: alarm.id,

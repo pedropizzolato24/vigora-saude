@@ -95,7 +95,7 @@ const config: ExpoConfig = {
     [
       "expo-notifications",
       {
-        "sounds": ["./assets/alarm-notification.wav"],
+        "sounds": ["./assets/alarm_notification.wav"],
         "defaultChannel": "default"
       }
     ],
