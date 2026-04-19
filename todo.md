@@ -214,4 +214,13 @@
 - [x] Alarmes reais: navegação automática para alarm-ring em foreground
 - [x] Alarmes reais: navegação via getLastNotificationResponseAsync para cold start
 - [x] Alarmes reais: navegação via addNotificationResponseReceivedListener para background
-- [ ] WhatsApp: integração real para envio automático de mensagens de emergência via número do próprio usuário
+- [x] WhatsApp: integração híbrida implementada (deep link pessoal + fallback Business API)
+
+## WhatsApp Hybrid Integration
+- [x] Criar módulo server/whatsapp.ts para envio via WhatsApp Business API (Meta Cloud API)
+- [x] Criar rota tRPC whatsapp.isConfigured e whatsapp.sendEmergencyAlert no servidor
+- [x] Implementar lógica híbrida no cliente: deep link primeiro, fallback para API do servidor
+- [x] Reescrever alarm-escalation.ts com sistema híbrido completo
+- [x] Atualizar alarm-notification-handler.tsx para usar escalação híbrida
+- [ ] Configurar secrets WHATSAPP_API_TOKEN e WHATSAPP_PHONE_NUMBER_ID (quando disponíveis)
+- [ ] Testar fluxo completo com Business API ativa

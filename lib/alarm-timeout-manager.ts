@@ -45,7 +45,7 @@ export function startAlarmTimeout(
     // Escalate to emergency contacts
     try {
       const result = await escalateAlarmToContacts(alarm, contacts, userLocation);
-      console.log(`[Alarm Timeout] Escalation complete: ${result.sent} sent, ${result.failed} failed`);
+      console.log(`[Alarm Timeout] Escalation complete: ${result.totalSent} sent, ${result.totalFailed} failed (method: ${result.method})`);
 
       // Send notification about escalation
       await Notifications.scheduleNotificationAsync({

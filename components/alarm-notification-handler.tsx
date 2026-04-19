@@ -1,65 +1,45 @@
 import React, { useEffect, useRef } from 'react';
-import { Alert, Linking, Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import { useAppContext, type EmergencyContact } from '@/lib/app-context';
+import { useAppContext } from '@/lib/app-context';
 import { startAlarmTimeout, clearAlarmTimeout } from '@/lib/alarm-timeout-manager';
+import { escalateAlarmToContacts, type EscalationResult } from '@/lib/alarm-escalation';
 
 /**
- * Sends WhatsApp messages to all emergency contacts with WhatsApp enabled.
- * Uses deep links to open WhatsApp with pre-filled message for each contact.
+ * Shows an alert to the user with the escalation result summary.
  */
-async function sendWhatsAppEscalation(contacts: EmergencyContact[], missedCount: number) {
-  const whatsappContacts = contacts.filter((c) => c.whatsapp);
-  if (whatsappContacts.length === 0) return;
+function showEscalationAlert(result: EscalationResult) {
+  if (result.totalSent === 0 && result.method === 'none') return;
 
-  let locationText = '';
-  try {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status === 'granted') {
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const mapsUrl = `https://www.google.com/maps?q=${loc.coords.latitude},${loc.coords.longitude}`;
-      locationText = `\n\nLocalização atual:\n${mapsUrl}`;
-    }
-  } catch {
-    // Location unavailable, send without it
+  let title = 'Escalação Automática';
+  let body = '';
+
+  switch (result.method) {
+    case 'deeplink':
+      body = `Mensagens WhatsApp abertas para ${result.deepLinkSent} contato(s) de emergência.\n\nAs mensagens foram abertas no seu WhatsApp pessoal. Confirme o envio de cada uma.`;
+      break;
+    case 'server_api':
+      body = `Mensagens enviadas automaticamente para ${result.serverApiSent} contato(s) de emergência via WhatsApp Business.\n\nAs mensagens foram enviadas do número do Vigora Saúde.`;
+      break;
+    case 'both':
+      body = `Escalação híbrida:\n• ${result.deepLinkSent} contato(s) via seu WhatsApp pessoal\n• ${result.serverApiSent} contato(s) via WhatsApp Business (automático)`;
+      break;
+    default:
+      body = 'Nenhum contato de emergência foi notificado. Verifique se há contatos com WhatsApp configurados.';
+      title = 'Escalação Falhou';
   }
 
-  const message =
-    `⚠️ ALERTA VIGORA SAÚDE ⚠️\n\n` +
-    `O usuário não respondeu a ${missedCount} alarme(s) consecutivo(s).\n` +
-    `Por favor, entre em contato para verificar se está tudo bem.${locationText}`;
-
-  let sentCount = 0;
-  for (const contact of whatsappContacts) {
-    try {
-      const phone = contact.phone.replace(/\D/g, '');
-      const fullPhone = phone.length <= 11 ? `55${phone}` : phone;
-      const url = `whatsapp://send?phone=${fullPhone}&text=${encodeURIComponent(message)}`;
-      const canOpen = await Linking.canOpenURL(url);
-      if (canOpen) {
-        await Linking.openURL(url);
-        sentCount++;
-        // Small delay between messages
-        await new Promise((r) => setTimeout(r, 1500));
-      }
-    } catch {
-      // Skip this contact
-    }
-  }
-
-  if (sentCount > 0) {
-    Alert.alert(
-      'Escalação Automática',
-      `Mensagens WhatsApp enviadas para ${sentCount} de ${whatsappContacts.length} contato(s) de emergência.`
-    );
-  }
+  Alert.alert(title, body);
 }
 
 /**
  * Component that handles alarm notifications, tracks missed alarms,
- * and triggers WhatsApp escalation when threshold is reached.
+ * and triggers hybrid WhatsApp escalation when threshold is reached.
+ *
+ * Hybrid escalation strategy:
+ * 1. PRIMARY: Deep link — opens WhatsApp with pre-filled message (user's personal number)
+ * 2. FALLBACK: Server API — sends via WhatsApp Business API (automatic, business number)
  *
  * Key behavior:
  * 1. When a notification is RECEIVED (app in foreground):
@@ -120,10 +100,24 @@ export function AlarmNotificationHandler() {
               // Check if threshold reached
               const newCount = state.missedAlarmCount + 1;
               if (newCount >= state.settings.missedAlarmThreshold) {
-                console.log('[AlarmHandler] Threshold reached! Sending WhatsApp escalation...');
+                console.log('[AlarmHandler] Threshold reached! Triggering hybrid WhatsApp escalation...');
+
                 if (Platform.OS !== 'web') {
-                  sendWhatsAppEscalation(state.emergencyContacts, newCount);
+                  // Use the hybrid escalation system
+                  escalateAlarmToContacts(
+                    alarm,
+                    state.emergencyContacts,
+                    undefined, // location will be fetched automatically
+                    state.profile?.name || undefined,
+                    newCount
+                  ).then((result) => {
+                    console.log(`[AlarmHandler] Escalation complete: method=${result.method}, sent=${result.totalSent}`);
+                    showEscalationAlert(result);
+                  }).catch((error) => {
+                    console.error('[AlarmHandler] Escalation error:', error);
+                  });
                 }
+
                 // Reset counter after escalation
                 dispatch({ type: 'RESET_MISSED_ALARM' });
               }
@@ -134,7 +128,7 @@ export function AlarmNotificationHandler() {
     });
 
     return () => subscription.remove();
-  }, [state.alarms, state.emergencyContacts, state.missedAlarmCount, state.settings.missedAlarmThreshold, dispatch, router]);
+  }, [state.alarms, state.emergencyContacts, state.missedAlarmCount, state.settings.missedAlarmThreshold, state.profile, dispatch, router]);
 
   // Handle notification response (user taps alarm notification from tray)
   // This handles the case where the app is in background and user taps the notification
