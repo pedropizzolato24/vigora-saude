@@ -2,139 +2,241 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { Alarm } from './app-context';
 
-// Configure notification handler
-// Note: Android remote push notifications are not available in Expo Go (SDK 53+),
-// but local/scheduled notifications still work on all platforms.
+// ─── Notification Channel IDs ──────────────────────────────────────────────
+export const ALARM_CHANNEL_ID = 'vigora-alarms';
+export const DEFAULT_CHANNEL_ID = 'default';
+
+// ─── Configure notification handler ────────────────────────────────────────
+// This controls how notifications are presented when the app is in the foreground.
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
+  handleNotification: async (notification) => {
+    const isAlarm = !!notification.request.content.data?.alarmId;
+    return {
+      shouldShowAlert: true,
+      shouldPlaySound: isAlarm, // Play sound for alarms
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    };
+  },
 });
 
 /**
- * Schedule a notification for an alarm
+ * Set up Android notification channels.
+ * Must be called once at app startup (before scheduling any notifications).
+ *
+ * The "vigora-alarms" channel uses:
+ * - AndroidImportance.MAX → bypasses Do Not Disturb / silent mode
+ * - Custom alarm sound (alarm-notification.wav bundled via expo-notifications plugin)
+ * - Vibration pattern
+ * - enableLights + lightColor for LED indicator
+ *
+ * On Android 8+, the channel importance determines whether the notification
+ * can make sound and vibrate even when the device is in silent/DND mode.
+ * MAX importance = alarm-level priority = overrides silent mode.
+ */
+export async function setupNotificationChannels(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+
+  // Alarm channel — MAX importance, custom sound, bypasses silent mode
+  await Notifications.setNotificationChannelAsync(ALARM_CHANNEL_ID, {
+    name: 'Alarmes de Medicamento',
+    description: 'Alarmes de alta prioridade para medicamentos e lembretes de saúde. Toca mesmo no modo silencioso.',
+    importance: Notifications.AndroidImportance.MAX,
+    sound: 'alarm-notification.wav',
+    vibrationPattern: [0, 500, 200, 500, 200, 500],
+    enableLights: true,
+    lightColor: '#0066CC',
+    enableVibrate: true,
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    bypassDnd: true,
+  });
+
+  // Default channel for non-alarm notifications
+  await Notifications.setNotificationChannelAsync(DEFAULT_CHANNEL_ID, {
+    name: 'Notificações Gerais',
+    description: 'Notificações gerais do Vigora Saúde.',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+    enableVibrate: true,
+  });
+}
+
+/**
+ * Request notification permissions from the user.
+ * Returns true if permissions were granted.
+ */
+export async function requestNotificationPermissions(): Promise<boolean> {
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync({
+      ios: {
+        allowAlert: true,
+        allowBadge: true,
+        allowSound: true,
+        allowCriticalAlerts: true, // iOS critical alerts bypass silent mode
+      },
+    });
+    finalStatus = status;
+  }
+
+  return finalStatus === 'granted';
+}
+
+/**
+ * Schedule a notification for an alarm.
+ *
+ * Key features:
+ * - Uses the "vigora-alarms" channel (MAX importance) → overrides silent mode on Android
+ * - Uses custom alarm sound (alarm-notification.wav)
+ * - Includes data.url for deep linking to alarm-ring screen
+ * - Includes data.alarmId for alarm identification
+ * - Sets priority to MAX for full-screen intent behavior
  */
 export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | null> {
   try {
-    // Parse time (HH:MM format)
     const [hours, minutes] = alarm.time.split(':').map(Number);
-    
-    // Create trigger for the next occurrence of this time
-    const trigger = new Date();
-    trigger.setHours(hours, minutes, 0, 0);
-    
-    // If the time has already passed today, schedule for tomorrow
-    if (trigger < new Date()) {
-      trigger.setDate(trigger.getDate() + 1);
-    }
-    
-    // Handle repeat patterns
+
+    // Notification content — same for all repeat types
+    const content: Notifications.NotificationContentInput = {
+      title: `⏰ ${alarm.description || 'Alarme'}`,
+      body: alarm.description
+        ? `Hora do alarme: ${alarm.time} — ${alarm.description}`
+        : `Hora do alarme: ${alarm.time}`,
+      sound: alarm.sound ? 'alarm-notification.wav' : undefined,
+      vibrate: alarm.vibration ? [0, 500, 200, 500, 200, 500] : undefined,
+      data: {
+        alarmId: alarm.id,
+        url: `/alarm-ring?alarmId=${alarm.id}`,
+      },
+      priority: Notifications.AndroidNotificationPriority.MAX,
+      // Android: sticky notification that requires user interaction
+      sticky: true,
+    };
+
+    // Handle different repeat patterns
     if (alarm.repeat === 'daily') {
-      // Schedule daily notification
       const notificationId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Alarme: ' + alarm.description,
-          body: alarm.description || 'Hora do seu alarme configurado',
-          sound: alarm.sound ? 'default' : undefined,
-          vibrate: alarm.vibration ? [0, 250, 250, 250] : undefined,
-          data: { alarmId: alarm.id },
-        },
+        content,
         trigger: {
-          type: 'daily',
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
           hour: hours,
           minute: minutes,
+          channelId: ALARM_CHANNEL_ID,
         } as any,
       });
       return notificationId;
+
     } else if (alarm.repeat === 'weekdays') {
-      // Schedule for weekdays (Monday-Friday)
+      // Schedule for Monday(2) through Friday(6) — expo uses 1=Sunday, 2=Monday...7=Saturday
       const notificationIds: string[] = [];
-      for (let day = 1; day <= 5; day++) {
+      for (let weekday = 2; weekday <= 6; weekday++) {
         const id = await Notifications.scheduleNotificationAsync({
-          content: {
-            title: 'Alarme: ' + alarm.description,
-            body: alarm.description || 'Hora do seu alarme configurado',
-            sound: alarm.sound ? 'default' : undefined,
-            vibrate: alarm.vibration ? [0, 250, 250, 250] : undefined,
-            data: { alarmId: alarm.id },
-          },
+          content,
           trigger: {
-            type: 'weekly',
-            weekday: day,
+            type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+            weekday,
             hour: hours,
             minute: minutes,
+            channelId: ALARM_CHANNEL_ID,
           } as any,
         });
         notificationIds.push(id);
       }
-      return notificationIds[0]; // Return first ID as reference
+      return notificationIds[0];
+
     } else if (alarm.repeat === 'weekends') {
-      // Schedule for weekends (Saturday-Sunday)
+      // Schedule for Saturday(7) and Sunday(1)
       const notificationIds: string[] = [];
-      for (const day of [6, 0]) {
+      for (const weekday of [1, 7]) {
         const id = await Notifications.scheduleNotificationAsync({
-          content: {
-            title: 'Alarme: ' + alarm.description,
-            body: alarm.description || 'Hora do seu alarme configurado',
-            sound: alarm.sound ? 'default' : undefined,
-            vibrate: alarm.vibration ? [0, 250, 250, 250] : undefined,
-            data: { alarmId: alarm.id },
-          },
+          content,
           trigger: {
-            type: 'weekly',
-            weekday: day,
+            type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+            weekday,
             hour: hours,
             minute: minutes,
+            channelId: ALARM_CHANNEL_ID,
           } as any,
         });
         notificationIds.push(id);
       }
-      return notificationIds[0]; // Return first ID as reference
+      return notificationIds[0];
+
+    } else if (alarm.repeat === 'custom' && alarm.customDays && alarm.customDays.length > 0) {
+      // Custom days — map day index (0=Mon..6=Sun) to expo weekday (1=Sun,2=Mon..7=Sat)
+      const dayMap: Record<number, number> = {
+        0: 2, // Mon
+        1: 3, // Tue
+        2: 4, // Wed
+        3: 5, // Thu
+        4: 6, // Fri
+        5: 7, // Sat
+        6: 1, // Sun
+      };
+      const notificationIds: string[] = [];
+      for (const dayIdx of alarm.customDays) {
+        const weekday = dayMap[dayIdx];
+        if (weekday) {
+          const id = await Notifications.scheduleNotificationAsync({
+            content,
+            trigger: {
+              type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+              weekday,
+              hour: hours,
+              minute: minutes,
+              channelId: ALARM_CHANNEL_ID,
+            } as any,
+          });
+          notificationIds.push(id);
+        }
+      }
+      return notificationIds.length > 0 ? notificationIds[0] : null;
+
     } else {
-      // One-time notification
+      // One-time alarm
+      const triggerDate = new Date();
+      triggerDate.setHours(hours, minutes, 0, 0);
+      if (triggerDate <= new Date()) {
+        triggerDate.setDate(triggerDate.getDate() + 1);
+      }
+
       const notificationId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Alarme: ' + alarm.description,
-          body: alarm.description || 'Hora do seu alarme configurado',
-          sound: alarm.sound ? 'default' : undefined,
-          vibrate: alarm.vibration ? [0, 250, 250, 250] : undefined,
-          data: { alarmId: alarm.id },
-        },
+        content,
         trigger: {
-          type: 'date' as any,
-          date: trigger,
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: triggerDate,
+          channelId: ALARM_CHANNEL_ID,
         } as any,
       });
       return notificationId;
     }
   } catch (error) {
-    console.error('Error scheduling alarm notification:', error);
+    console.error('[Notifications] Error scheduling alarm:', error);
     return null;
   }
 }
 
 /**
- * Cancel a scheduled notification
+ * Cancel a scheduled notification by ID.
  */
 export async function cancelAlarmNotification(notificationId: string): Promise<void> {
   try {
     await Notifications.cancelScheduledNotificationAsync(notificationId);
   } catch (error) {
-    console.error('Error canceling notification:', error);
+    console.error('[Notifications] Error canceling notification:', error);
   }
 }
 
 /**
- * Cancel all scheduled notifications
+ * Cancel all scheduled notifications.
  */
 export async function cancelAllNotifications(): Promise<void> {
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
   } catch (error) {
-    console.error('Error canceling all notifications:', error);
+    console.error('[Notifications] Error canceling all notifications:', error);
   }
 }

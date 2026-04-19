@@ -206,3 +206,12 @@
 ## Alarm Card & Tab Bar Fixes
 - [x] Remove toggle from alarm card, make edit/delete buttons full-width at bottom of card
 - [x] Fix tab bar active indicator border radius (not rounding after tab change)
+
+## Alarmes Reais & WhatsApp Integration
+- [x] Alarmes reais: canal Android MAX importance que sobrescreve modo silencioso/DND
+- [x] Alarmes reais: som customizado (alarm-notification.wav) empacotado no build
+- [x] Alarmes reais: permissões SCHEDULE_EXACT_ALARM, USE_FULL_SCREEN_INTENT, WAKE_LOCK
+- [x] Alarmes reais: navegação automática para alarm-ring em foreground
+- [x] Alarmes reais: navegação via getLastNotificationResponseAsync para cold start
+- [x] Alarmes reais: navegação via addNotificationResponseReceivedListener para background
+- [ ] WhatsApp: integração real para envio automático de mensagens de emergência via número do próprio usuário

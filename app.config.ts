@@ -64,7 +64,13 @@ const config: ExpoConfig = {
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
     package: env.androidPackage,
-    permissions: ["POST_NOTIFICATIONS"],
+    permissions: [
+      "POST_NOTIFICATIONS",
+      "SCHEDULE_EXACT_ALARM",
+      "USE_FULL_SCREEN_INTENT",
+      "VIBRATE",
+      "WAKE_LOCK"
+    ],
     intentFilters: [
       {
         action: "VIEW",
@@ -86,6 +92,13 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    [
+      "expo-notifications",
+      {
+        "sounds": ["./assets/alarm-notification.wav"],
+        "defaultChannel": "default"
+      }
+    ],
     [
       "expo-contacts",
       {

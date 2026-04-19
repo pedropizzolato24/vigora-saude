@@ -14,6 +14,9 @@ import { MenuProvider } from '@/lib/menu-context';
 import { FontSizeProvider } from '@/lib/font-size-context';
 import { AccessibilityProvider } from '@/lib/accessibility-context';
 import { syncAlarmsOnStartup } from "@/lib/alarm-sync";
+import { setupNotificationChannels, requestNotificationPermissions } from "@/lib/notifications-utils";
+import * as Notifications from 'expo-notifications';
+import { useRouter } from 'expo-router';
 import { AlarmSyncInitializer } from "@/components/alarm-sync-initializer";
 import { AlarmNotificationHandler } from '@/components/alarm-notification-handler';
 import { OnboardingGate } from '@/components/onboarding-gate';
@@ -45,6 +48,39 @@ export default function RootLayout() {
   // Initialize Manus runtime for cookie injection from parent container
   useEffect(() => {
     initManusRuntime();
+  }, []);
+
+  // Set up notification channels and request permissions on startup
+  useEffect(() => {
+    const init = async () => {
+      await setupNotificationChannels();
+      await requestNotificationPermissions();
+    };
+    init();
+  }, []);
+
+  // Handle notification that launched the app (app was closed/killed)
+  // This catches the case where the user taps a notification when the app is not running
+  useEffect(() => {
+    const checkInitialNotification = async () => {
+      const response = await Notifications.getLastNotificationResponseAsync();
+      if (response) {
+        const alarmId = response.notification.request.content.data?.alarmId as string | undefined;
+        if (alarmId) {
+          // Small delay to ensure router is ready
+          setTimeout(() => {
+            try {
+              const { router } = require('expo-router');
+              router.push(`/alarm-ring?alarmId=${alarmId}`);
+              Notifications.clearLastNotificationResponseAsync();
+            } catch (e) {
+              console.warn('[RootLayout] Could not navigate to alarm-ring:', e);
+            }
+          }, 500);
+        }
+      }
+    };
+    checkInitialNotification();
   }, []);
 
   const handleSafeAreaUpdate = useCallback((metrics: Metrics) => {

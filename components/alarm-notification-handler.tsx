@@ -8,7 +8,7 @@ import { startAlarmTimeout, clearAlarmTimeout } from '@/lib/alarm-timeout-manage
 
 /**
  * Sends WhatsApp messages to all emergency contacts with WhatsApp enabled.
- * Includes the user's current location if available.
+ * Uses deep links to open WhatsApp with pre-filled message for each contact.
  */
 async function sendWhatsAppEscalation(contacts: EmergencyContact[], missedCount: number) {
   const whatsappContacts = contacts.filter((c) => c.whatsapp);
@@ -60,20 +60,33 @@ async function sendWhatsAppEscalation(contacts: EmergencyContact[], missedCount:
 /**
  * Component that handles alarm notifications, tracks missed alarms,
  * and triggers WhatsApp escalation when threshold is reached.
- * Should be placed inside AppProvider in the component tree.
+ *
+ * Key behavior:
+ * 1. When a notification is RECEIVED (app in foreground):
+ *    → Automatically navigates to alarm-ring screen
+ *    → Starts escalation timeout
+ *
+ * 2. When a notification is TAPPED (app in background/killed):
+ *    → Navigates to alarm-ring screen
+ *    → Clears escalation timeout (user is responding)
+ *
+ * 3. When app is launched from a notification (cold start):
+ *    → Handled by _layout.tsx via getLastNotificationResponseAsync()
  */
 export function AlarmNotificationHandler() {
   const { state, dispatch } = useAppContext();
   const router = useRouter();
   const pendingAlarms = useRef<Set<string>>(new Set());
+  const navigatedAlarms = useRef<Set<string>>(new Set());
 
-  // Handle alarm notification received (alarm fires)
+  // Handle alarm notification received while app is in foreground
+  // → Automatically open the alarm-ring screen (real alarm behavior)
   useEffect(() => {
     const subscription = Notifications.addNotificationReceivedListener((notification) => {
       const alarmId = notification.request.content.data?.alarmId as string | undefined;
 
       if (alarmId) {
-        console.log(`[AlarmHandler] Alarm fired: ${alarmId}`);
+        console.log(`[AlarmHandler] Alarm fired (foreground): ${alarmId}`);
 
         const alarm = state.alarms.find((a) => a.id === alarmId);
         if (alarm && alarm.enabled) {
@@ -82,6 +95,16 @@ export function AlarmNotificationHandler() {
 
           // Start timeout for escalation (2 min)
           startAlarmTimeout(alarm, state.emergencyContacts);
+
+          // IMPORTANT: Automatically navigate to alarm-ring screen
+          // This makes it behave like a real alarm — the screen takes over immediately
+          if (!navigatedAlarms.current.has(alarmId)) {
+            navigatedAlarms.current.add(alarmId);
+            router.push(`/alarm-ring?alarmId=${alarmId}`);
+
+            // Clean up navigated set after 5 seconds to allow re-navigation
+            setTimeout(() => navigatedAlarms.current.delete(alarmId), 5000);
+          }
 
           // Set a timeout to check if alarm was responded to
           setTimeout(() => {
@@ -111,17 +134,21 @@ export function AlarmNotificationHandler() {
     });
 
     return () => subscription.remove();
-  }, [state.alarms, state.emergencyContacts, state.missedAlarmCount, state.settings.missedAlarmThreshold, dispatch]);
+  }, [state.alarms, state.emergencyContacts, state.missedAlarmCount, state.settings.missedAlarmThreshold, dispatch, router]);
 
-  // Handle notification response (user taps alarm notification → open alarm-ring screen)
+  // Handle notification response (user taps alarm notification from tray)
+  // This handles the case where the app is in background and user taps the notification
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const alarmId = response.notification.request.content.data?.alarmId as string | undefined;
 
       if (alarmId) {
-        console.log(`[AlarmHandler] Alarm tapped: ${alarmId}`);
-        // Clear escalation timeout — user is responding
+        console.log(`[AlarmHandler] Alarm tapped (from notification): ${alarmId}`);
+
+        // Clear pending state — user is responding
+        pendingAlarms.current.delete(alarmId);
         clearAlarmTimeout(alarmId);
+
         // Navigate to full-screen alarm ring screen
         router.push(`/alarm-ring?alarmId=${alarmId}`);
       }
