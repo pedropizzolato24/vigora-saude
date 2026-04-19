@@ -232,3 +232,7 @@
 - [x] Reescrever alarm-sync.ts com agendamento dual (AlarmManager + Notification)
 - [x] Atualizar alarms.tsx para usar scheduleFullAlarm/cancelFullAlarm
 - [x] Atualizar alarm-ring.tsx para chamar stopNativeAlarm ao dispensar
+
+## Correção do Ícone Android
+- [x] Corrigir zoom excessivo do ícone adaptativo Android (adicionar padding de zona segura ao foreground: artwork em 65% do canvas, 179px de margem em cada lado)
+- [x] Atualizar backgroundColor do ícone adaptativo para #0033CC (combina com fundo azul do ícone)
