@@ -1,13 +1,14 @@
 /**
  * WheelPicker — drum-roll style time selector
  *
- * Renders only the visible items (VISIBLE_ITEMS) plus a small buffer.
- * Uses a plain ScrollView (not FlatList) so it can be safely nested inside
- * another ScrollView without triggering the "VirtualizedLists nested" warning.
+ * Renders only COPIES × count items (e.g. 3×24=72 for hours) so the component
+ * stays lightweight and lag-free even inside a modal ScrollView.
  *
- * The list wraps: scrolling past the last item loops back to the first,
- * achieved by keeping the scroll position in the middle of a 3× repeated
- * sequence and silently re-centering after each settle.
+ * Uses a plain ScrollView (not FlatList) to avoid "VirtualizedLists nested" warnings.
+ *
+ * Supports two visual modes:
+ *   - Normal mode: compact wheel with ▲/▼ step buttons
+ *   - Accessibility mode: larger wheel + larger step buttons + high-contrast colours
  */
 import React, { useCallback, useEffect, useRef } from 'react';
 import {
@@ -23,10 +24,18 @@ import {
 import * as Haptics from 'expo-haptics';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useColors } from '@/hooks/use-colors';
+import { useAccessibility } from '@/lib/accessibility-context';
 
+// ─── Normal mode constants ────────────────────────────────────────────────────
 const ITEM_HEIGHT = 56;
 const VISIBLE_ITEMS = 5; // must be odd so the selected item is centred
 const WHEEL_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
+
+// ─── Accessibility mode constants ────────────────────────────────────────────
+const A11Y_ITEM_HEIGHT = 72;
+const A11Y_VISIBLE_ITEMS = 5;
+const A11Y_WHEEL_HEIGHT = A11Y_ITEM_HEIGHT * A11Y_VISIBLE_ITEMS;
+
 // We render 3 full copies of the list so the user can always scroll in both
 // directions without hitting an edge. After settling we silently re-centre.
 const COPIES = 3;
@@ -47,18 +56,27 @@ export function WheelPicker({
   padStart = true,
 }: WheelPickerProps) {
   const colors = useColors();
+  const { isAccessibilityMode, a11yColors: ac, a11yFontSize: af, a11ySpacing: as_ } = useAccessibility();
+
+  // Pick constants based on mode
+  const itemH = isAccessibilityMode ? A11Y_ITEM_HEIGHT : ITEM_HEIGHT;
+  const visibleItems = isAccessibilityMode ? A11Y_VISIBLE_ITEMS : VISIBLE_ITEMS;
+  const wheelH = isAccessibilityMode ? A11Y_WHEEL_HEIGHT : WHEEL_HEIGHT;
+  const wheelWidth = isAccessibilityMode ? 116 : 90;
+  const btnHeight = isAccessibilityMode ? as_.touchTarget : 44;
+  const iconSize = isAccessibilityMode ? 36 : 26;
+  const labelSize = isAccessibilityMode ? af.sm : 12;
+
   const scrollRef = useRef<ScrollView>(null);
-  // The "centre copy" starts at this offset
   const centreStart = count * Math.floor(COPIES / 2);
 
   const scrollToIndex = useCallback(
     (index: number, animated = false) => {
-      scrollRef.current?.scrollTo({ y: index * ITEM_HEIGHT, animated });
+      scrollRef.current?.scrollTo({ y: index * itemH, animated });
     },
-    [],
+    [itemH],
   );
 
-  // Scroll to the correct position whenever `value` changes externally
   useEffect(() => {
     const targetIndex = centreStart + value;
     const timer = setTimeout(() => scrollToIndex(targetIndex, false), 50);
@@ -68,7 +86,7 @@ export function WheelPicker({
   const handleScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const offset = e.nativeEvent.contentOffset.y;
-      const rawIndex = Math.round(offset / ITEM_HEIGHT);
+      const rawIndex = Math.round(offset / itemH);
       const newValue = ((rawIndex % count) + count) % count;
 
       if (newValue !== value) {
@@ -78,17 +96,14 @@ export function WheelPicker({
         onChange(newValue);
       }
 
-      // Re-centre silently so there is always room to scroll in both directions
       const centredIndex = centreStart + newValue;
       if (rawIndex !== centredIndex) {
-        scrollRef.current?.scrollTo({ y: centredIndex * ITEM_HEIGHT, animated: false });
+        scrollRef.current?.scrollTo({ y: centredIndex * itemH, animated: false });
       }
     },
-    [count, value, onChange, centreStart],
+    [count, value, onChange, centreStart, itemH],
   );
 
-  // ▲ button: advance value (scroll list upward visually = next number appears)
-  // ▼ button: decrease value (scroll list downward visually = prev number appears)
   const increment = (delta: number) => {
     const next = ((value + delta) + count) % count;
     onChange(next);
@@ -98,8 +113,13 @@ export function WheelPicker({
     }
   };
 
-  // Build items for COPIES copies of the sequence
   const totalItems = count * COPIES;
+
+  // ── Colours resolved per mode ──────────────────────────────────────────────
+  const primaryColor   = isAccessibilityMode ? ac.primary    : colors.primary;
+  const mutedColor     = isAccessibilityMode ? ac.muted      : colors.muted;
+  const surfaceColor   = isAccessibilityMode ? ac.surface    : colors.surface;
+  const borderColor    = isAccessibilityMode ? ac.border     : colors.border;
 
   return (
     <View style={styles.container}>
@@ -108,35 +128,56 @@ export function WheelPicker({
         onPress={() => increment(1)}
         style={({ pressed }) => [
           styles.stepBtn,
-          { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
+          {
+            width: wheelWidth,
+            height: btnHeight,
+            backgroundColor: surfaceColor,
+            borderColor: isAccessibilityMode ? ac.border : colors.border,
+            borderWidth: isAccessibilityMode ? 2 : 1,
+            opacity: pressed ? 0.6 : 1,
+          },
         ]}
       >
-        <MaterialIcons name="keyboard-arrow-up" size={26} color={colors.primary} />
+        <MaterialIcons name="keyboard-arrow-up" size={iconSize} color={primaryColor} />
       </Pressable>
 
       {/* Wheel */}
-      <View style={[styles.wheelWrapper, { borderColor: colors.primary }]}>
+      <View
+        style={[
+          styles.wheelWrapper,
+          {
+            width: wheelWidth,
+            height: wheelH,
+            borderColor: primaryColor,
+            borderWidth: isAccessibilityMode ? 3 : 2,
+          },
+        ]}
+      >
         {/* Selection highlight */}
         <View
           pointerEvents="none"
           style={[
             styles.selectionOverlay,
             {
-              borderColor: colors.primary + '60',
-              backgroundColor: colors.primary + '12',
+              top: itemH * Math.floor(visibleItems / 2),
+              height: itemH,
+              borderColor: primaryColor + '60',
+              backgroundColor: primaryColor + '18',
+              borderTopWidth: isAccessibilityMode ? 3 : 2,
+              borderBottomWidth: isAccessibilityMode ? 3 : 2,
             },
           ]}
         />
         <ScrollView
           ref={scrollRef}
           showsVerticalScrollIndicator={false}
-          snapToInterval={ITEM_HEIGHT}
+          snapToInterval={itemH}
           decelerationRate="fast"
           onMomentumScrollEnd={handleScrollEnd}
           onScrollEndDrag={handleScrollEnd}
           scrollEventThrottle={32}
           nestedScrollEnabled
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={{ paddingVertical: itemH * Math.floor(visibleItems / 2) }}
         >
           {Array.from({ length: totalItems }, (_, i) => {
             const itemValue = ((i % count) + count) % count;
@@ -144,15 +185,16 @@ export function WheelPicker({
             const displayText = padStart
               ? String(itemValue).padStart(2, '0')
               : String(itemValue);
+
+            const normalTextSize   = isSelected ? 36 : 28;
+            const a11yTextSize     = isSelected ? af['2xl'] : af.xl;
+            const textSize         = isAccessibilityMode ? a11yTextSize : normalTextSize;
+            const textColor        = isSelected ? primaryColor : mutedColor;
+            const fontWeight: any  = isSelected ? '800' : '500';
+
             return (
-              <View key={i} style={styles.item}>
-                <Text
-                  style={[
-                    styles.itemText,
-                    { color: isSelected ? colors.primary : colors.muted },
-                    isSelected && styles.itemTextSelected,
-                  ]}
-                >
+              <View key={i} style={{ height: itemH, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: textSize, fontWeight, color: textColor }}>
                   {displayText}
                 </Text>
               </View>
@@ -166,14 +208,23 @@ export function WheelPicker({
         onPress={() => increment(-1)}
         style={({ pressed }) => [
           styles.stepBtn,
-          { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
+          {
+            width: wheelWidth,
+            height: btnHeight,
+            backgroundColor: surfaceColor,
+            borderColor: isAccessibilityMode ? ac.border : colors.border,
+            borderWidth: isAccessibilityMode ? 2 : 1,
+            opacity: pressed ? 0.6 : 1,
+          },
         ]}
       >
-        <MaterialIcons name="keyboard-arrow-down" size={26} color={colors.primary} />
+        <MaterialIcons name="keyboard-arrow-down" size={iconSize} color={primaryColor} />
       </Pressable>
 
       {label && (
-        <Text style={[styles.label, { color: colors.muted }]}>{label}</Text>
+        <Text style={[styles.label, { color: mutedColor, fontSize: labelSize }]}>
+          {label}
+        </Text>
       )}
     </View>
   );
@@ -185,18 +236,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   stepBtn: {
-    width: 90,
-    height: 44,
     borderRadius: 12,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   wheelWrapper: {
-    width: 90,
-    height: WHEEL_HEIGHT,
     borderRadius: 16,
-    borderWidth: 2,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -204,30 +249,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    top: ITEM_HEIGHT * Math.floor(VISIBLE_ITEMS / 2),
-    height: ITEM_HEIGHT,
-    borderTopWidth: 2,
-    borderBottomWidth: 2,
     zIndex: 1,
   },
-  scrollContent: {
-    paddingVertical: ITEM_HEIGHT * Math.floor(VISIBLE_ITEMS / 2),
-  },
-  item: {
-    height: ITEM_HEIGHT,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  itemText: {
-    fontSize: 28,
-    fontWeight: '500',
-  },
-  itemTextSelected: {
-    fontSize: 36,
-    fontWeight: '800',
-  },
   label: {
-    fontSize: 12,
     fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 0.5,

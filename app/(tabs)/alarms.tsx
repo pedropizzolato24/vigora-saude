@@ -641,8 +641,8 @@ export default function AlarmsScreen() {
           <ScrollView contentContainerStyle={styles.modalContent}>
             {/* Time Picker */}
             <View style={styles.formGroup}>
-              <Text style={[styles.formLabel, { color: colors.foreground }]}>Horário</Text>
-              <View style={styles.timePicker}>
+              <Text style={[styles.formLabel, { color: isAccessibilityMode ? ac.foreground : colors.foreground, fontSize: isAccessibilityMode ? af.lg : undefined }]}>Horário</Text>
+              <View style={[styles.timePicker, isAccessibilityMode && { gap: 20 }]}>
                 <WheelPicker
                   count={24}
                   value={parseInt(timeHour, 10) || 0}
@@ -651,7 +651,11 @@ export default function AlarmsScreen() {
                   }
                   label="hora"
                 />
-                <Text style={[styles.timeColon, { color: colors.foreground }]}>:</Text>
+                <Text style={[
+                  styles.timeColon,
+                  { color: isAccessibilityMode ? ac.foreground : colors.foreground },
+                  isAccessibilityMode && { fontSize: 52, marginTop: 64 },
+                ]}>:</Text>
                 <WheelPicker
                   count={60}
                   value={parseInt(timeMinute, 10) || 0}
