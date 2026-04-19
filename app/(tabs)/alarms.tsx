@@ -22,7 +22,7 @@ import { AlarmCard } from '@/components/alarm-card';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { generateId, useAppContext, type Alarm } from '@/lib/app-context';
-import { scheduleAlarmNotification, cancelAlarmNotification } from '@/lib/notifications-utils';
+import { scheduleFullAlarm, cancelFullAlarm } from '@/lib/alarm-sync';
 import { useRouter } from 'expo-router';
 
 const REPEAT_OPTIONS: { value: Alarm['repeat']; label: string }[] = [
@@ -160,17 +160,14 @@ export default function AlarmsScreen() {
     try {
       if (editingAlarm) {
         // Cancel old notification if exists
-        if (editingAlarm.notificationId) {
-          await cancelAlarmNotification(editingAlarm.notificationId);
-        }
-        // Schedule new notification
-        const notificationId = await scheduleAlarmNotification({ ...form, id: editingAlarm.id } as Alarm);
-        dispatch({ type: 'UPDATE_ALARM', payload: { ...form, id: editingAlarm.id, notificationId: notificationId || undefined } });
+        await cancelFullAlarm(editingAlarm);
+        // Schedule new alarm (native + notification)
+        const updatedAlarm = await scheduleFullAlarm({ ...form, id: editingAlarm.id } as Alarm);
+        dispatch({ type: 'UPDATE_ALARM', payload: updatedAlarm });
       } else {
         const alarmId = generateId();
-        // Schedule notification for new alarm
-        const notificationId = await scheduleAlarmNotification({ ...form, id: alarmId } as Alarm);
-        dispatch({ type: 'ADD_ALARM', payload: { ...form, id: alarmId, notificationId: notificationId || undefined } });
+        const newAlarm = await scheduleFullAlarm({ ...form, id: alarmId } as Alarm);
+        dispatch({ type: 'ADD_ALARM', payload: newAlarm });
       }
       setModalVisible(false);
 
@@ -201,8 +198,8 @@ export default function AlarmsScreen() {
           }
           // Find alarm and cancel its notification
           const alarm = state.alarms.find(a => a.id === id);
-          if (alarm?.notificationId) {
-            await cancelAlarmNotification(alarm.notificationId);
+          if (alarm) {
+            await cancelFullAlarm(alarm);
           }
           dispatch({ type: 'DELETE_ALARM', payload: id });
         },
@@ -218,14 +215,14 @@ export default function AlarmsScreen() {
     const newEnabled = !alarm.enabled;
     
     try {
-      if (newEnabled && !alarm.notificationId) {
-        // Enable alarm: schedule notification
-        const notificationId = await scheduleAlarmNotification(alarm);
-        dispatch({ type: 'UPDATE_ALARM', payload: { ...alarm, enabled: true, notificationId: notificationId || undefined } });
-      } else if (!newEnabled && alarm.notificationId) {
-        // Disable alarm: cancel notification
-        await cancelAlarmNotification(alarm.notificationId);
-        dispatch({ type: 'UPDATE_ALARM', payload: { ...alarm, enabled: false, notificationId: undefined } });
+      if (newEnabled) {
+        // Enable alarm: schedule native + notification
+        const updatedAlarm = await scheduleFullAlarm({ ...alarm, enabled: true });
+        dispatch({ type: 'UPDATE_ALARM', payload: updatedAlarm });
+      } else if (!newEnabled) {
+        // Disable alarm: cancel both
+        await cancelFullAlarm(alarm);
+        dispatch({ type: 'UPDATE_ALARM', payload: { ...alarm, enabled: false, notificationId: undefined, nativeAlarmUids: [] } });
       } else {
         dispatch({ type: 'UPDATE_ALARM', payload: { ...alarm, enabled: newEnabled } });
       }

@@ -1,43 +1,95 @@
+/**
+ * alarm-sync.ts
+ *
+ * Dual-layer alarm scheduling:
+ * 1. expo-alarm-module (Android AlarmManager) — fires even with app closed
+ * 2. expo-notifications (fallback + deep-link trigger) — handles navigation
+ *
+ * Both are scheduled in parallel. The AlarmManager is the primary audio source;
+ * the notification is the secondary trigger that opens the alarm-ring screen.
+ */
+
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 import { Alarm } from './app-context';
-import { scheduleAlarmNotification, cancelAlarmNotification } from './notifications-utils';
+import {
+  scheduleAlarmNotification,
+  cancelAlarmNotification,
+} from './notifications-utils';
+import {
+  scheduleNativeAlarm,
+  cancelNativeAlarm,
+  cancelAllNativeAlarms,
+  isNativeAlarmAvailable,
+} from './native-alarm-manager';
 
 /**
- * Sync alarms on app startup - reschedule any lost notifications
- * This ensures alarms continue to work even after app crash or device restart
+ * Schedule both a native alarm (Android) and a notification for an alarm.
+ * Returns the updated alarm with notificationId and nativeAlarmUids populated.
+ */
+export async function scheduleFullAlarm(alarm: Alarm): Promise<Alarm> {
+  const updated = { ...alarm };
+
+  // 1. Schedule native alarm (Android AlarmManager)
+  if (isNativeAlarmAvailable) {
+    const uids = await scheduleNativeAlarm(alarm);
+    updated.nativeAlarmUids = uids;
+  }
+
+  // 2. Schedule notification (for deep-link navigation to alarm-ring screen)
+  const notificationId = await scheduleAlarmNotification(alarm);
+  if (notificationId) {
+    updated.notificationId = notificationId;
+  }
+
+  return updated;
+}
+
+/**
+ * Cancel both native alarm and notification for an alarm.
+ */
+export async function cancelFullAlarm(alarm: Alarm): Promise<void> {
+  // Cancel native alarm
+  if (isNativeAlarmAvailable && alarm.nativeAlarmUids && alarm.nativeAlarmUids.length > 0) {
+    await cancelNativeAlarm(alarm.nativeAlarmUids);
+  }
+
+  // Cancel notification
+  if (alarm.notificationId) {
+    await cancelAlarmNotification(alarm.notificationId);
+  }
+}
+
+/**
+ * Sync alarms on app startup — reschedule any missing alarms.
+ * This ensures alarms survive app crash, device restart, etc.
  */
 export async function syncAlarmsOnStartup(alarms: Alarm[]): Promise<void> {
   try {
-    // Get all scheduled notifications
-    const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+    // Get all scheduled notifications to check which are missing
+    const scheduledNotifications = Platform.OS !== 'web'
+      ? await Notifications.getAllScheduledNotificationsAsync()
+      : [];
     const scheduledIds = new Set(scheduledNotifications.map(n => n.identifier));
 
     console.log(`[Alarm Sync] Found ${alarms.length} alarms, ${scheduledIds.size} scheduled notifications`);
 
     for (const alarm of alarms) {
-      // Skip disabled alarms
       if (!alarm.enabled) {
-        // Cancel notification if it exists for disabled alarm
+        // Cancel any lingering scheduled items for disabled alarms
         if (alarm.notificationId && scheduledIds.has(alarm.notificationId)) {
           await cancelAlarmNotification(alarm.notificationId);
-          console.log(`[Alarm Sync] Cancelled notification for disabled alarm: ${alarm.id}`);
         }
         continue;
       }
 
-      // Check if alarm's notification is still scheduled
-      const isScheduled = alarm.notificationId && scheduledIds.has(alarm.notificationId);
+      // Check if notification is missing (native alarm may still be active)
+      const notificationMissing = !alarm.notificationId || !scheduledIds.has(alarm.notificationId);
 
-      if (!isScheduled) {
-        // Notification is missing - reschedule it
-        console.log(`[Alarm Sync] Rescheduling missing notification for alarm: ${alarm.id}`);
+      if (notificationMissing) {
+        console.log(`[Alarm Sync] Rescheduling alarm: ${alarm.id}`);
         try {
-          const newNotificationId = await scheduleAlarmNotification(alarm);
-          if (newNotificationId) {
-            // Update alarm with new notification ID
-            // Note: This is returned to the caller to dispatch UPDATE_ALARM action
-            alarm.notificationId = newNotificationId;
-          }
+          await scheduleFullAlarm(alarm);
         } catch (error) {
           console.error(`[Alarm Sync] Failed to reschedule alarm ${alarm.id}:`, error);
         }
@@ -53,22 +105,33 @@ export async function syncAlarmsOnStartup(alarms: Alarm[]): Promise<void> {
 }
 
 /**
- * Get alarms that need rescheduling
- * Returns array of alarms with missing or invalid notification IDs
+ * Cancel all alarms (native + notifications).
+ */
+export async function cancelAllAlarms(alarms: Alarm[]): Promise<void> {
+  // Cancel all native alarms at once
+  if (isNativeAlarmAvailable) {
+    await cancelAllNativeAlarms();
+  }
+
+  // Cancel all notifications
+  await Notifications.cancelAllScheduledNotificationsAsync();
+}
+
+/**
+ * Get alarms that need rescheduling (notification missing).
  */
 export async function getAlarmsNeedingSync(alarms: Alarm[]): Promise<Alarm[]> {
   try {
+    if (Platform.OS === 'web') return [];
+
     const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
     const scheduledIds = new Set(scheduledNotifications.map(n => n.identifier));
 
-    const alarmsToSync = alarms.filter(alarm => {
-      // Include enabled alarms that don't have a scheduled notification
+    return alarms.filter(alarm => {
       if (!alarm.enabled) return false;
       if (!alarm.notificationId) return true;
       return !scheduledIds.has(alarm.notificationId);
     });
-
-    return alarmsToSync;
   } catch (error) {
     console.error('[Alarm Sync] Error getting alarms needing sync:', error);
     return [];

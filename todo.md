@@ -224,3 +224,11 @@
 - [x] Atualizar alarm-notification-handler.tsx para usar escalação híbrida
 - [ ] Configurar secrets WHATSAPP_API_TOKEN e WHATSAPP_PHONE_NUMBER_ID (quando disponíveis)
 - [ ] Testar fluxo completo com Business API ativa
+
+## AlarmManager Nativo (expo-alarm-module)
+- [x] Instalar expo-alarm-module e adicionar plugin ao app.config.ts
+- [x] Criar lib/native-alarm-manager.ts com wrapper para scheduleAlarm/cancelAlarm/stopAlarm
+- [x] Adicionar campo nativeAlarmUids à interface Alarm no app-context.tsx
+- [x] Reescrever alarm-sync.ts com agendamento dual (AlarmManager + Notification)
+- [x] Atualizar alarms.tsx para usar scheduleFullAlarm/cancelFullAlarm
+- [x] Atualizar alarm-ring.tsx para chamar stopNativeAlarm ao dispensar

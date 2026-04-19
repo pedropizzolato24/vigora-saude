@@ -24,6 +24,7 @@ import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useAppContext } from '@/lib/app-context';
 import { escalateAlarmToContacts } from '@/lib/alarm-escalation';
+import { stopNativeAlarm } from '@/lib/native-alarm-manager';
 import { PulseView } from '@/components/animated-components';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
@@ -128,6 +129,8 @@ export default function AlarmRingScreen() {
   const handleDismiss = useCallback(() => {
     setDismissed(true);
     if (countdownRef.current) clearInterval(countdownRef.current);
+    // Stop native alarm (Android AlarmManager)
+    stopNativeAlarm().catch(() => {});
 
     try {
       player.pause();

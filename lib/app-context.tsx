@@ -14,6 +14,7 @@ export interface Alarm {
   sound: boolean;
   vibration: boolean;
   notificationId?: string; // Expo notification ID for scheduled alarm
+  nativeAlarmUids?: string[]; // Native AlarmManager UIDs (Android only)
 }
 
 export interface EmergencyContact {
