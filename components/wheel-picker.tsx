@@ -1,8 +1,13 @@
 /**
  * WheelPicker — drum-roll style time selector
  *
+ * Renders only the visible items (VISIBLE_ITEMS) plus a small buffer.
  * Uses a plain ScrollView (not FlatList) so it can be safely nested inside
  * another ScrollView without triggering the "VirtualizedLists nested" warning.
+ *
+ * The list wraps: scrolling past the last item loops back to the first,
+ * achieved by keeping the scroll position in the middle of a 3× repeated
+ * sequence and silently re-centering after each settle.
  */
 import React, { useCallback, useEffect, useRef } from 'react';
 import {
@@ -20,21 +25,17 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useColors } from '@/hooks/use-colors';
 
 const ITEM_HEIGHT = 56;
-const VISIBLE_ITEMS = 5; // odd number so selected is centred
+const VISIBLE_ITEMS = 5; // must be odd so the selected item is centred
 const WHEEL_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
-// Repeat the sequence many times so the user can scroll freely in both directions
-const LOOP_COUNT = 200;
+// We render 3 full copies of the list so the user can always scroll in both
+// directions without hitting an edge. After settling we silently re-centre.
+const COPIES = 3;
 
 interface WheelPickerProps {
-  /** Total number of values (e.g. 24 for hours, 60 for minutes) */
-  count: number;
-  /** Currently selected value (0-based) */
-  value: number;
-  /** Called when the user settles on a new value */
-  onChange: (value: number) => void;
-  /** Label shown below the wheel (e.g. "hora", "min") */
+  count: number;       // total values (24 for hours, 60 for minutes)
+  value: number;       // currently selected value (0-based)
+  onChange: (v: number) => void;
   label?: string;
-  /** Pad values with a leading zero */
   padStart?: boolean;
 }
 
@@ -47,32 +48,28 @@ export function WheelPicker({
 }: WheelPickerProps) {
   const colors = useColors();
   const scrollRef = useRef<ScrollView>(null);
-  const totalItems = count * LOOP_COUNT;
-  // Start in the middle of the loop
-  const midOffset = Math.floor(LOOP_COUNT / 2) * count;
+  // The "centre copy" starts at this offset
+  const centreStart = count * Math.floor(COPIES / 2);
 
-  const scrollToValue = useCallback(
-    (val: number, animated = false) => {
-      const targetIndex = midOffset + val;
-      scrollRef.current?.scrollTo({
-        y: targetIndex * ITEM_HEIGHT,
-        animated,
-      });
+  const scrollToIndex = useCallback(
+    (index: number, animated = false) => {
+      scrollRef.current?.scrollTo({ y: index * ITEM_HEIGHT, animated });
     },
-    [midOffset],
+    [],
   );
 
   // Scroll to the correct position whenever `value` changes externally
   useEffect(() => {
-    const timer = setTimeout(() => scrollToValue(value, false), 50);
+    const targetIndex = centreStart + value;
+    const timer = setTimeout(() => scrollToIndex(targetIndex, false), 50);
     return () => clearTimeout(timer);
-  }, [value, scrollToValue]);
+  }, [value, centreStart, scrollToIndex]);
 
   const handleScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const offset = e.nativeEvent.contentOffset.y;
-      const index = Math.round(offset / ITEM_HEIGHT);
-      const newValue = ((index % count) + count) % count;
+      const rawIndex = Math.round(offset / ITEM_HEIGHT);
+      const newValue = ((rawIndex % count) + count) % count;
 
       if (newValue !== value) {
         if (Platform.OS !== 'web') {
@@ -81,34 +78,32 @@ export function WheelPicker({
         onChange(newValue);
       }
 
-      // Re-centre in the middle section to prevent reaching the ends
-      const normalizedIndex = midOffset + newValue;
-      const normalizedOffset = normalizedIndex * ITEM_HEIGHT;
-      if (Math.abs(offset - normalizedOffset) > ITEM_HEIGHT * count) {
-        scrollRef.current?.scrollTo({ y: normalizedOffset, animated: false });
+      // Re-centre silently so there is always room to scroll in both directions
+      const centredIndex = centreStart + newValue;
+      if (rawIndex !== centredIndex) {
+        scrollRef.current?.scrollTo({ y: centredIndex * ITEM_HEIGHT, animated: false });
       }
     },
-    [count, value, onChange, midOffset],
+    [count, value, onChange, centreStart],
   );
 
+  // ▲ button: advance value (scroll list upward visually = next number appears)
+  // ▼ button: decrease value (scroll list downward visually = prev number appears)
   const increment = (delta: number) => {
     const next = ((value + delta) + count) % count;
     onChange(next);
-    scrollToValue(next, true);
+    scrollToIndex(centreStart + next, true);
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
 
-  // Build the full item list once
-  const items = Array.from({ length: totalItems }, (_, i) => {
-    const itemValue = ((i % count) + count) % count;
-    return { index: i, itemValue };
-  });
+  // Build items for COPIES copies of the sequence
+  const totalItems = count * COPIES;
 
   return (
     <View style={styles.container}>
-      {/* Up button */}
+      {/* ▲ — increases value */}
       <Pressable
         onPress={() => increment(1)}
         style={({ pressed }) => [
@@ -126,7 +121,10 @@ export function WheelPicker({
           pointerEvents="none"
           style={[
             styles.selectionOverlay,
-            { borderColor: colors.primary + '60', backgroundColor: colors.primary + '12' },
+            {
+              borderColor: colors.primary + '60',
+              backgroundColor: colors.primary + '12',
+            },
           ]}
         />
         <ScrollView
@@ -136,17 +134,18 @@ export function WheelPicker({
           decelerationRate="fast"
           onMomentumScrollEnd={handleScrollEnd}
           onScrollEndDrag={handleScrollEnd}
-          scrollEventThrottle={16}
+          scrollEventThrottle={32}
           nestedScrollEnabled
           contentContainerStyle={styles.scrollContent}
         >
-          {items.map(({ index, itemValue }) => {
+          {Array.from({ length: totalItems }, (_, i) => {
+            const itemValue = ((i % count) + count) % count;
             const isSelected = itemValue === value;
             const displayText = padStart
               ? String(itemValue).padStart(2, '0')
               : String(itemValue);
             return (
-              <View key={index} style={styles.item}>
+              <View key={i} style={styles.item}>
                 <Text
                   style={[
                     styles.itemText,
@@ -162,7 +161,7 @@ export function WheelPicker({
         </ScrollView>
       </View>
 
-      {/* Down button */}
+      {/* ▼ — decreases value */}
       <Pressable
         onPress={() => increment(-1)}
         style={({ pressed }) => [
@@ -173,7 +172,6 @@ export function WheelPicker({
         <MaterialIcons name="keyboard-arrow-down" size={26} color={colors.primary} />
       </Pressable>
 
-      {/* Label */}
       {label && (
         <Text style={[styles.label, { color: colors.muted }]}>{label}</Text>
       )}
@@ -213,7 +211,6 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   scrollContent: {
-    // Padding so first/last items can be centred in the visible area
     paddingVertical: ITEM_HEIGHT * Math.floor(VISIBLE_ITEMS / 2),
   },
   item: {
