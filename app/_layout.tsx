@@ -72,8 +72,9 @@ export default function RootLayout() {
     if (Platform.OS === 'web') return;
 
     const checkInitialAlarm = async () => {
-      // Small delay to ensure router and providers are ready
-      await new Promise(resolve => setTimeout(resolve, 600));
+      // Minimal delay to ensure router and providers are mounted
+      // 100ms is sufficient — the router is ready well before this point
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       try {
         // Strategy 1: Android native alarm (expo-alarm-module)

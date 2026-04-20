@@ -106,6 +106,16 @@ export function AlarmNotificationHandler() {
       console.log(`[AlarmHandler] New timer for ${alarmId}, ${timerDuration}s`);
     }
 
+    // Navigate to alarm-ring screen FIRST (before async operations) to minimize delay
+    if (!navigatedAlarms.current.has(alarmId)) {
+      navigatedAlarms.current.add(alarmId);
+      router.push(`/alarm-ring?alarmId=${alarmId}`);
+      setTimeout(() => navigatedAlarms.current.delete(alarmId), 5000);
+    }
+
+    // Track this alarm as pending response
+    pendingAlarms.current.add(alarmId);
+
     // Build full native alarm payloads for countdown updates.
     // IMPORTANT: expo-alarm-module.updateAlarm requires a complete alarm object.
     // Passing a partial object causes silent failures and blank notification text.
@@ -135,16 +145,6 @@ export function AlarmNotificationHandler() {
       undefined,
       nativePayloads
     );
-
-    // Track this alarm as pending response
-    pendingAlarms.current.add(alarmId);
-
-    // Navigate to alarm-ring screen
-    if (!navigatedAlarms.current.has(alarmId)) {
-      navigatedAlarms.current.add(alarmId);
-      router.push(`/alarm-ring?alarmId=${alarmId}`);
-      setTimeout(() => navigatedAlarms.current.delete(alarmId), 5000);
-    }
 
     // Escalation timeout — fires after timerDuration seconds
     const existingTimer = escalationTimers.current.get(alarmId);
@@ -198,7 +198,14 @@ export function AlarmNotificationHandler() {
           const alarmId = extractAlarmIdFromUid(activeUid);
           if (alarmId) {
             console.log(`[AlarmHandler] App foregrounded with active alarm: ${activeUid} → ${alarmId}`);
-            await handleAlarmFired(alarmId);
+            // Navigate immediately (before async timer ops) to minimize perceived delay
+            if (!navigatedAlarms.current.has(alarmId)) {
+              navigatedAlarms.current.add(alarmId);
+              router.push(`/alarm-ring?alarmId=${alarmId}`);
+              setTimeout(() => navigatedAlarms.current.delete(alarmId), 5000);
+            }
+            // Then run the rest of the alarm-fired logic asynchronously
+            handleAlarmFired(alarmId);
           }
         }
       } catch (e) {
