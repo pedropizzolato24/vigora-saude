@@ -26,6 +26,12 @@ import {
 /**
  * Schedule both a native alarm (Android) and a notification for an alarm.
  * Returns the updated alarm with notificationId and nativeAlarmUids populated.
+ *
+ * Strategy:
+ * - Android: use expo-alarm-module ONLY. It creates its own notification with
+ *   Dismiss/Snooze buttons and opens the app on tap. Adding expo-notifications
+ *   on top creates a duplicate notification.
+ * - iOS/Web: use expo-notifications only (no native alarm module available).
  */
 export async function scheduleFullAlarm(alarm: Alarm): Promise<Alarm> {
   const updated = { ...alarm };
@@ -34,9 +40,12 @@ export async function scheduleFullAlarm(alarm: Alarm): Promise<Alarm> {
   if (isNativeAlarmAvailable) {
     const uids = await scheduleNativeAlarm(alarm);
     updated.nativeAlarmUids = uids;
+    // On Android with native alarm available, skip expo-notifications to avoid
+    // duplicate notifications. The native alarm handles display + tap navigation.
+    return updated;
   }
 
-  // 2. Schedule notification (for deep-link navigation to alarm-ring screen)
+  // 2. iOS/Web fallback: schedule via expo-notifications
   const notificationId = await scheduleAlarmNotification(alarm);
   if (notificationId) {
     updated.notificationId = notificationId;
@@ -83,7 +92,14 @@ export async function syncAlarmsOnStartup(alarms: Alarm[]): Promise<void> {
         continue;
       }
 
-      // Check if notification is missing (native alarm may still be active)
+      // On Android with native alarm available, the native alarm handles everything.
+      // Skip expo-notifications sync to avoid creating duplicate notifications.
+      if (isNativeAlarmAvailable) {
+        console.log(`[Alarm Sync] Android native alarm — skipping notification sync for: ${alarm.id}`);
+        continue;
+      }
+
+      // iOS/Web: Check if notification is missing
       const notificationMissing = !alarm.notificationId || !scheduledIds.has(alarm.notificationId);
 
       if (notificationMissing) {

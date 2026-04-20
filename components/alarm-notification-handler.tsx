@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert, AppState, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useAppContext } from '@/lib/app-context';
@@ -7,6 +7,25 @@ import { clearAlarmTimeout } from '@/lib/alarm-timeout-manager';
 import { escalateAlarmToContacts, type EscalationResult } from '@/lib/alarm-escalation';
 import { saveAlarmTimer, clearAlarmTimer } from '@/lib/alarm-timer-store';
 import { startCountdownNotification, stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
+import { isNativeAlarmAvailable } from '@/lib/native-alarm-manager';
+
+// Lazy-load expo-alarm-module getAlarmState for Android
+let getAlarmStateNative: (() => Promise<string | null>) | null = null;
+if (Platform.OS === 'android') {
+  try {
+    const mod = require('expo-alarm-module');
+    getAlarmStateNative = mod.getAlarmState;
+  } catch {}
+}
+
+/**
+ * Extract the Vigora alarmId from a native alarm UID.
+ * Native UIDs look like: "vigora_<alarmId>" or "vigora_<alarmId>_mon" etc.
+ */
+function extractAlarmIdFromUid(uid: string): string | null {
+  const match = uid.match(/^vigora_(.+?)(?:_(?:mon|tue|wed|thu|fri|sat|sun|\d+))?$/);
+  return match ? match[1] : null;
+}
 
 /**
  * Shows an alert to the user with the escalation result summary.
@@ -36,15 +55,18 @@ function showEscalationAlert(result: EscalationResult) {
 }
 
 /**
- * Component that handles alarm notifications, tracks missed alarms,
- * and triggers hybrid WhatsApp escalation when threshold is reached.
+ * Component that handles alarm notifications and triggers escalation.
  *
- * Synchronized timer design:
+ * Architecture:
+ * - Android: expo-alarm-module fires the alarm natively (no expo-notifications needed).
+ *   The native module creates its own notification. We listen for the app being opened
+ *   by the native alarm and start the countdown + escalation timer.
+ * - iOS/Web: expo-notifications fires the alarm and we handle it here.
+ *
+ * Synchronized timer:
  * - When an alarm fires, we record startedAt + expiresAt in AsyncStorage.
  * - alarm-ring.tsx reads this on mount to compute the real secondsLeft.
- * - The original alarm notification is replaced by a countdown notification
- *   that updates every second (only ONE notification visible at a time).
- * - When the user taps the notification, it navigates to alarm-ring.
+ * - The native alarm notification title is updated every second with the countdown.
  */
 export function AlarmNotificationHandler() {
   const { state, dispatch } = useAppContext();
@@ -53,114 +75,139 @@ export function AlarmNotificationHandler() {
   const navigatedAlarms = useRef<Set<string>>(new Set());
   const escalationTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  // Handle alarm notification received while app is in foreground
+  /**
+   * Shared alarm-fired handler — called when an alarm fires (foreground or background).
+   * Sets up the timer, starts the countdown notification, and schedules escalation.
+   */
+  const handleAlarmFired = async (alarmId: string) => {
+    const alarm = state.alarms.find((a) => a.id === alarmId);
+    if (!alarm || !alarm.enabled) return;
+
+    console.log(`[AlarmHandler] Alarm fired: ${alarmId}`);
+
+    // ── Synchronized timer setup ────────────────────────────────────────────
+    const timerDuration = state.settings.timerDuration ?? 30;
+    const startedAt = Date.now();
+    const expiresAt = startedAt + timerDuration * 1000;
+
+    // Persist timer entry so alarm-ring can sync even after cold start
+    await saveAlarmTimer({ alarmId, startedAt, expiresAt, timerDuration });
+
+    // Start countdown notification — updates native alarm title every second
+    startCountdownNotification(
+      alarmId,
+      alarm.description || 'Alarme',
+      expiresAt,
+      timerDuration,
+      undefined,
+      alarm.nativeAlarmUids
+    );
+
+    // Track this alarm as pending response
+    pendingAlarms.current.add(alarmId);
+
+    // Navigate to alarm-ring screen
+    if (!navigatedAlarms.current.has(alarmId)) {
+      navigatedAlarms.current.add(alarmId);
+      router.push(`/alarm-ring?alarmId=${alarmId}`);
+      setTimeout(() => navigatedAlarms.current.delete(alarmId), 5000);
+    }
+
+    // Escalation timeout — fires after timerDuration seconds
+    const existingTimer = escalationTimers.current.get(alarmId);
+    if (existingTimer) clearTimeout(existingTimer);
+
+    const escalationTimer = setTimeout(() => {
+      escalationTimers.current.delete(alarmId);
+
+      if (pendingAlarms.current.has(alarmId)) {
+        pendingAlarms.current.delete(alarmId);
+        dispatch({ type: 'INCREMENT_MISSED_ALARM' });
+
+        const newCount = state.missedAlarmCount + 1;
+        if (newCount >= state.settings.missedAlarmThreshold) {
+          console.log('[AlarmHandler] Threshold reached! Triggering hybrid WhatsApp escalation...');
+
+          if (Platform.OS !== 'web') {
+            escalateAlarmToContacts(
+              alarm,
+              state.emergencyContacts,
+              undefined,
+              state.profile?.name || undefined,
+              newCount
+            ).then((result) => {
+              showEscalationAlert(result);
+            }).catch((error) => {
+              console.error('[AlarmHandler] Escalation error:', error);
+            });
+          }
+
+          dispatch({ type: 'RESET_MISSED_ALARM' });
+        }
+      }
+    }, timerDuration * 1000);
+
+    escalationTimers.current.set(alarmId, escalationTimer);
+  };
+
+  // Android: detect when app comes to foreground with a native alarm active.
+  // This handles the case where the user taps the native alarm notification
+  // while the app is in background (not killed).
   useEffect(() => {
+    if (!isNativeAlarmAvailable || !getAlarmStateNative) return;
+
+    const handleAppStateChange = async (nextState: string) => {
+      if (nextState !== 'active') return;
+
+      try {
+        const activeUid = await getAlarmStateNative!();
+        if (activeUid && typeof activeUid === 'string') {
+          const alarmId = extractAlarmIdFromUid(activeUid);
+          if (alarmId) {
+            console.log(`[AlarmHandler] App foregrounded with active alarm: ${activeUid} → ${alarmId}`);
+            await handleAlarmFired(alarmId);
+          }
+        }
+      } catch (e) {
+        console.warn('[AlarmHandler] AppState getAlarmState failed:', e);
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription.remove();
+  }, [state.alarms, state.settings.timerDuration]);
+
+  // Handle alarm notification received via expo-notifications (iOS/Web only)
+  // On Android, expo-alarm-module fires the alarm natively — no expo-notifications needed.
+  useEffect(() => {
+    if (isNativeAlarmAvailable) {
+      // Android: skip expo-notifications listener — native alarm handles everything
+      return;
+    }
+
     const subscription = Notifications.addNotificationReceivedListener(async (notification) => {
       const alarmId = notification.request.content.data?.alarmId as string | undefined;
-      const isCountdownUpdate = notification.request.content.data?.isCountdownUpdate as boolean | undefined;
-
-      // Ignore countdown update notifications — they are only for the notification shade
-      if (isCountdownUpdate) return;
-
       if (alarmId) {
-        console.log(`[AlarmHandler] Alarm fired (foreground): ${alarmId}`);
-
-        const alarm = state.alarms.find((a) => a.id === alarmId);
-        if (alarm && alarm.enabled) {
-          // ── Synchronized timer setup ──────────────────────────────────────
-          const timerDuration = state.settings.timerDuration ?? 30;
-          const startedAt = Date.now();
-          const expiresAt = startedAt + timerDuration * 1000;
-
-          // Persist timer entry so alarm-ring can sync even after cold start
-          await saveAlarmTimer({ alarmId, startedAt, expiresAt, timerDuration });
-
-          // Get the original notification ID so we can dismiss it and replace with countdown
-          const originalNotifId = notification.request.identifier;
-
-          // Start countdown notification — replaces the original alarm notification
-          if (Platform.OS !== 'web') {
-            startCountdownNotification(
-              alarmId,
-              alarm.description || 'Alarme',
-              expiresAt,
-              timerDuration,
-              originalNotifId
-            );
-          }
-
-          // Track this alarm as pending response
-          pendingAlarms.current.add(alarmId);
-
-          // Navigate to alarm-ring screen
-          if (!navigatedAlarms.current.has(alarmId)) {
-            navigatedAlarms.current.add(alarmId);
-            router.push(`/alarm-ring?alarmId=${alarmId}`);
-            setTimeout(() => navigatedAlarms.current.delete(alarmId), 5000);
-          }
-
-          // Escalation timeout — fires after timerDuration seconds
-          const existingTimer = escalationTimers.current.get(alarmId);
-          if (existingTimer) clearTimeout(existingTimer);
-
-          const escalationTimer = setTimeout(() => {
-            escalationTimers.current.delete(alarmId);
-
-            if (pendingAlarms.current.has(alarmId)) {
-              pendingAlarms.current.delete(alarmId);
-              dispatch({ type: 'INCREMENT_MISSED_ALARM' });
-
-              console.log(
-                `[AlarmHandler] Missed alarm count: ${state.missedAlarmCount + 1} / threshold: ${state.settings.missedAlarmThreshold}`
-              );
-
-              const newCount = state.missedAlarmCount + 1;
-              if (newCount >= state.settings.missedAlarmThreshold) {
-                console.log('[AlarmHandler] Threshold reached! Triggering hybrid WhatsApp escalation...');
-
-                if (Platform.OS !== 'web') {
-                  escalateAlarmToContacts(
-                    alarm,
-                    state.emergencyContacts,
-                    undefined,
-                    state.profile?.name || undefined,
-                    newCount
-                  ).then((result) => {
-                    console.log(`[AlarmHandler] Escalation complete: method=${result.method}, sent=${result.totalSent}`);
-                    showEscalationAlert(result);
-                  }).catch((error) => {
-                    console.error('[AlarmHandler] Escalation error:', error);
-                  });
-                }
-
-                dispatch({ type: 'RESET_MISSED_ALARM' });
-              }
-            }
-          }, timerDuration * 1000);
-
-          escalationTimers.current.set(alarmId, escalationTimer);
-        }
+        await handleAlarmFired(alarmId);
       }
     });
 
     return () => subscription.remove();
   }, [state.alarms, state.emergencyContacts, state.missedAlarmCount, state.settings.missedAlarmThreshold, state.settings.timerDuration, state.profile, dispatch, router]);
 
-  // Handle notification response (user taps any alarm notification from tray)
+  // Handle notification response (user taps notification from tray)
+  // On Android, this handles the expo-alarm-module notification tap.
+  // On iOS/Web, this handles expo-notifications tap.
   useEffect(() => {
+    if (Platform.OS === 'web') return;
+
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const alarmId = response.notification.request.content.data?.alarmId as string | undefined;
 
-      // Navigate on tap for ANY notification that has an alarmId — including countdown updates
       if (alarmId) {
         console.log(`[AlarmHandler] Alarm tapped (from notification): ${alarmId}`);
-
-        // Clear pending state — user is responding
         pendingAlarms.current.delete(alarmId);
         clearAlarmTimeout(alarmId);
-
-        // Navigate to full-screen alarm ring screen
-        // alarm-ring.tsx will read the persisted timer entry to show correct remaining time
         router.push(`/alarm-ring?alarmId=${alarmId}`);
       }
     });

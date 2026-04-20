@@ -60,30 +60,58 @@ export default function RootLayout() {
   }, []);
 
   // Handle notification that launched the app (app was closed/killed)
-  // This catches the case where the user taps a notification when the app is not running
-  // Note: Only runs on native platforms — not available on web
+  // This catches the case where the user taps a notification when the app is not running.
+  //
+  // Two strategies:
+  // 1. Android: expo-alarm-module fires the alarm natively. When the user taps the
+  //    notification, the MainActivity opens with ALARM_UID in the Intent. We detect
+  //    this by calling getAlarmState() which returns the active alarm UID.
+  // 2. iOS/Web: expo-notifications fires the alarm. We read the last notification
+  //    response to get the alarmId.
   useEffect(() => {
     if (Platform.OS === 'web') return;
 
-    const checkInitialNotification = async () => {
-      const response = await Notifications.getLastNotificationResponseAsync();
-      if (response) {
-        const alarmId = response.notification.request.content.data?.alarmId as string | undefined;
-        if (alarmId) {
-          // Small delay to ensure router is ready
-          setTimeout(() => {
-            try {
-              const { router } = require('expo-router');
-              router.push(`/alarm-ring?alarmId=${alarmId}`);
-              Notifications.clearLastNotificationResponseAsync();
-            } catch (e) {
-              console.warn('[RootLayout] Could not navigate to alarm-ring:', e);
+    const checkInitialAlarm = async () => {
+      // Small delay to ensure router and providers are ready
+      await new Promise(resolve => setTimeout(resolve, 600));
+
+      try {
+        // Strategy 1: Android native alarm (expo-alarm-module)
+        if (Platform.OS === 'android') {
+          try {
+            const { getAlarmState } = require('expo-alarm-module');
+            const activeUid = await getAlarmState();
+            if (activeUid && typeof activeUid === 'string') {
+              // activeUid is like "vigora_<alarmId>" — extract the alarmId
+              const alarmId = activeUid.replace(/^vigora_/, '').replace(/_(?:mon|tue|wed|thu|fri|sat|sun|\d+)$/, '');
+              if (alarmId) {
+                console.log(`[RootLayout] Native alarm active: ${activeUid} → alarmId: ${alarmId}`);
+                const { router } = require('expo-router');
+                router.push(`/alarm-ring?alarmId=${alarmId}`);
+                return;
+              }
             }
-          }, 500);
+          } catch (e) {
+            console.warn('[RootLayout] getAlarmState failed:', e);
+          }
         }
+
+        // Strategy 2: iOS/Web — expo-notifications last response
+        const response = await Notifications.getLastNotificationResponseAsync();
+        if (response) {
+          const alarmId = response.notification.request.content.data?.alarmId as string | undefined;
+          if (alarmId) {
+            const { router } = require('expo-router');
+            router.push(`/alarm-ring?alarmId=${alarmId}`);
+            Notifications.clearLastNotificationResponseAsync();
+          }
+        }
+      } catch (e) {
+        console.warn('[RootLayout] Could not navigate to alarm-ring:', e);
       }
     };
-    checkInitialNotification();
+
+    checkInitialAlarm();
   }, []);
 
   const handleSafeAreaUpdate = useCallback((metrics: Metrics) => {

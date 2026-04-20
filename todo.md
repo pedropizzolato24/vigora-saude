@@ -267,3 +267,8 @@
 - [x] Remover notificação duplicada do alarme (aparece 2 notificações ao mesmo tempo)
 - [x] Corrigir timer na notificação (contagem regressiva não está aparecendo)
 - [x] Restaurar redirecionamento ao clicar na notificação (não abre a tela de alarme)
+
+## Bug Fixes - Notificações v7
+- [ ] Eliminar notificação duplicada do AlarmManager nativo (segunda notificação com botões Dispensar/Soneca)
+- [ ] Implementar countdown funcional na notificação (texto com tempo restante)
+- [ ] Corrigir redirecionamento ao clicar na notificação (abrir tela de alarme)
