@@ -1,6 +1,7 @@
 // Load environment variables with proper priority (system > .env)
 import "./scripts/load-env.js";
 import type { ExpoConfig } from "expo/config";
+import type { WithAndroidWidgetsParams } from 'react-native-android-widget';
 
 // Bundle ID format: space.manus.<project_name_dots>.<timestamp>
 // e.g., "my-app" created at 2024-01-15 10:30:45 -> "space.manus.my.app.t20240115103045"
@@ -96,6 +97,30 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    [
+      'react-native-android-widget',
+      {
+        widgets: [
+          {
+            name: 'NextAlarm',
+            label: 'Próximo Alarme',
+            description: 'Mostra o próximo alarme de medicamento',
+            minWidth: '180dp',
+            minHeight: '110dp',
+            resizeMode: 'horizontal|vertical',
+            updatePeriodMillis: 1800000, // 30 min (mínimo permitido pelo Android)
+          },
+          {
+            name: 'Sos',
+            label: 'SOS Emergência',
+            description: 'Botão de emergência rápida',
+            minWidth: '110dp',
+            minHeight: '110dp',
+            resizeMode: 'none',
+          },
+        ],
+      } satisfies WithAndroidWidgetsParams,
+    ],
     "expo-alarm-module",
     [
       "expo-notifications",

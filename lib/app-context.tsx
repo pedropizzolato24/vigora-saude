@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useReducer } from 'react';
+import { updateAllWidgets } from './update-widgets';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -285,6 +286,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       () => {}
     );
   }, [state]);
+
+  // Atualiza widgets Android quando os alarmes mudarem
+  useEffect(() => {
+    if (state.isLoading) return;
+    updateAllWidgets(state.alarms).catch(() => {});
+  }, [state.alarms, state.isLoading]);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>

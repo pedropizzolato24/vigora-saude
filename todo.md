@@ -296,3 +296,14 @@
 - [x] Corrigir dessincronização do timer: passar expiresAt como URL param na navegação para alarm-ring (elimina race condition com AsyncStorage)
 - [x] Adicionar status de permissão de localização nas Configurações (seção Segurança e Emergência)
 - [x] Corrigir volume do alarme: stopNativeAlarm() no mount, volume definido 100ms após play()
+
+## Widgets Android
+
+- [x] Instalar react-native-android-widget
+- [x] Configurar plugin no app.config.ts (NextAlarm e Sos)
+- [x] Criar componente NextAlarmWidget (próximo alarme + medicamento)
+- [x] Criar componente SosWidget (botão de emergência)
+- [x] Criar widget-task-handler.tsx (WIDGET_ADDED, WIDGET_UPDATE, WIDGET_RESIZED, WIDGET_DELETED, WIDGET_CLICK)
+- [x] Criar index.ts como entry point com registerWidgetTaskHandler
+- [x] Criar update-widgets.ts para atualizar widgets quando alarmes mudarem
+- [x] Integrar updateAllWidgets no AppProvider (useEffect em state.alarms)
