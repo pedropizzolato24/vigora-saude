@@ -42,9 +42,9 @@ function showEscalationAlert(result: EscalationResult) {
  * Synchronized timer design:
  * - When an alarm fires, we record startedAt + expiresAt in AsyncStorage.
  * - alarm-ring.tsx reads this on mount to compute the real secondsLeft.
- * - A countdown notification is updated every second while the alarm is ringing.
- * - When the user taps the notification (even with 12s left), alarm-ring reads
- *   the persisted expiresAt and shows exactly 12s remaining.
+ * - The original alarm notification is replaced by a countdown notification
+ *   that updates every second (only ONE notification visible at a time).
+ * - When the user taps the notification, it navigates to alarm-ring.
  */
 export function AlarmNotificationHandler() {
   const { state, dispatch } = useAppContext();
@@ -75,13 +75,17 @@ export function AlarmNotificationHandler() {
           // Persist timer entry so alarm-ring can sync even after cold start
           await saveAlarmTimer({ alarmId, startedAt, expiresAt, timerDuration });
 
-          // Start countdown notification (updates every second in notification shade)
+          // Get the original notification ID so we can dismiss it and replace with countdown
+          const originalNotifId = notification.request.identifier;
+
+          // Start countdown notification — replaces the original alarm notification
           if (Platform.OS !== 'web') {
             startCountdownNotification(
               alarmId,
               alarm.description || 'Alarme',
               expiresAt,
-              timerDuration
+              timerDuration,
+              originalNotifId
             );
           }
 
@@ -142,13 +146,13 @@ export function AlarmNotificationHandler() {
     return () => subscription.remove();
   }, [state.alarms, state.emergencyContacts, state.missedAlarmCount, state.settings.missedAlarmThreshold, state.settings.timerDuration, state.profile, dispatch, router]);
 
-  // Handle notification response (user taps alarm notification from tray)
+  // Handle notification response (user taps any alarm notification from tray)
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const alarmId = response.notification.request.content.data?.alarmId as string | undefined;
-      const isCountdownUpdate = response.notification.request.content.data?.isCountdownUpdate as boolean | undefined;
 
-      if (alarmId && !isCountdownUpdate) {
+      // Navigate on tap for ANY notification that has an alarmId — including countdown updates
+      if (alarmId) {
         console.log(`[AlarmHandler] Alarm tapped (from notification): ${alarmId}`);
 
         // Clear pending state — user is responding

@@ -1,21 +1,16 @@
 /**
  * alarm-countdown-notifier.ts
  *
- * Updates the alarm notification body every second to show the countdown timer.
- * This creates the "live countdown" effect in the notification shade.
+ * Replaces the original alarm notification with an updated version that shows
+ * a live countdown timer. Instead of creating a second notification, we:
  *
- * Strategy:
- * - We use Notifications.presentNotificationAsync() to update the notification
- *   body in-place every second while the alarm is ringing.
- * - We keep a JS setInterval running in the app process (foreground or background).
- * - The notification identifier is kept stable so it updates rather than stacks.
- * - When the alarm is dismissed or escalated, we cancel the interval and dismiss
- *   the notification.
+ * 1. Dismiss the original alarm notification (by its ID).
+ * 2. Schedule a new notification with the countdown body and the same alarmId
+ *    data (so tapping it still navigates to alarm-ring).
+ * 3. Repeat every second until the alarm is dismissed or the timer expires.
  *
- * Limitation: When the app is fully killed (not just backgrounded), the JS
- * interval stops. In that case the notification shows the last known countdown
- * value. When the user taps it and opens the app, alarm-ring.tsx reads the
- * persisted startedAt from AsyncStorage and computes the real remaining time.
+ * This ensures only ONE notification is visible at any time, the countdown
+ * is always up-to-date, and tapping the notification navigates correctly.
  */
 
 import * as Notifications from 'expo-notifications';
@@ -24,11 +19,11 @@ import { ALARM_CHANNEL_ID } from './notifications-utils';
 
 // Map of alarmId → interval handle
 const countdownIntervals = new Map<string, ReturnType<typeof setInterval>>();
-// Map of alarmId → notification identifier used for the live countdown notification
+// Map of alarmId → current notification identifier
 const countdownNotifIds = new Map<string, string>();
 
 /**
- * Format seconds as MM:SS.
+ * Format seconds as MM:SS or Ns.
  */
 function formatCountdown(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -38,26 +33,46 @@ function formatCountdown(seconds: number): string {
 }
 
 /**
- * Start updating the notification body every second with the countdown.
+ * Start the countdown notification loop. Call this right after the alarm fires.
  *
- * @param alarmId - The alarm ID (used as the stable notification tag)
+ * @param alarmId - The alarm ID
  * @param alarmName - Display name of the alarm/medication
  * @param expiresAt - Unix ms when escalation fires
- * @param timerDuration - Total timer duration in seconds (for display context)
+ * @param timerDuration - Total timer duration in seconds
+ * @param originalNotifId - The notification ID of the original alarm notification to dismiss
  */
 export async function startCountdownNotification(
   alarmId: string,
   alarmName: string,
   expiresAt: number,
-  timerDuration: number
+  timerDuration: number,
+  originalNotifId?: string
 ): Promise<void> {
   // Stop any existing interval for this alarm
   stopCountdownNotification(alarmId);
 
   if (Platform.OS === 'web') return;
 
-  // Present the initial notification immediately
-  const presentAndUpdate = async () => {
+  // Dismiss the original alarm notification so we don't have duplicates
+  if (originalNotifId) {
+    try {
+      await Notifications.dismissNotificationAsync(originalNotifId);
+    } catch {}
+  }
+
+  // Also dismiss all currently presented notifications for this alarm
+  try {
+    const presented = await Notifications.getPresentedNotificationsAsync();
+    for (const notif of presented) {
+      if (notif.request.content.data?.alarmId === alarmId) {
+        try {
+          await Notifications.dismissNotificationAsync(notif.request.identifier);
+        } catch {}
+      }
+    }
+  } catch {}
+
+  const updateNotification = async () => {
     const now = Date.now();
     const secondsLeft = Math.max(0, Math.ceil((expiresAt - now) / 1000));
     const isUrgent = secondsLeft <= Math.ceil(timerDuration * 0.3);
@@ -71,37 +86,34 @@ export async function startCountdownNotification(
       : `🚨 Contatando emergência agora!`;
 
     try {
-      // Dismiss the previous countdown notification before showing the new one
+      // Dismiss the previous countdown notification
       const prevNotifId = countdownNotifIds.get(alarmId);
       if (prevNotifId) {
         try { await Notifications.dismissNotificationAsync(prevNotifId); } catch {}
       }
 
-      // Schedule an immediate notification (seconds: 0 fires instantly)
+      // Schedule an immediate replacement notification
+      // NOTE: No isCountdownUpdate flag — this is the ONLY notification for this alarm.
+      // Tapping it will navigate to alarm-ring because it has alarmId in data.
       const notifId = await Notifications.scheduleNotificationAsync({
         content: {
           title,
           body,
-          sound: undefined, // No sound on updates — only the initial alarm sound
+          sound: undefined, // Silent — the alarm sound is already playing in-app
           data: {
             alarmId,
             url: `/alarm-ring?alarmId=${alarmId}`,
-            isCountdownUpdate: true,
+            isCountdownUpdate: true, // Used internally to suppress foreground alert/sound
           },
           priority: Notifications.AndroidNotificationPriority.HIGH,
           sticky: true,
         } as any,
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: 1,
-          channelId: ALARM_CHANNEL_ID,
-        } as any,
+        trigger: null, // Immediate — shows right now
       });
 
-      // Store the latest notification ID so we can dismiss it
       countdownNotifIds.set(alarmId, notifId);
     } catch (e) {
-      // Silently ignore — notification updates are best-effort
+      // Best-effort — don't crash the alarm flow
     }
 
     // Stop interval when expired
@@ -110,9 +122,9 @@ export async function startCountdownNotification(
     }
   };
 
-  // Present immediately, then update every second
-  await presentAndUpdate();
-  const handle = setInterval(presentAndUpdate, 1000);
+  // Show first update immediately, then every second
+  await updateNotification();
+  const handle = setInterval(updateNotification, 1000);
   countdownIntervals.set(alarmId, handle);
 }
 
@@ -135,7 +147,7 @@ export function stopCountdownNotification(alarmId: string): void {
 }
 
 /**
- * Stop all active countdown notifications (e.g., on app reset).
+ * Stop all active countdown notifications.
  */
 export function stopAllCountdownNotifications(): void {
   for (const alarmId of countdownIntervals.keys()) {

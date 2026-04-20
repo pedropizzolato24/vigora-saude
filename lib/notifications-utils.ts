@@ -11,12 +11,14 @@ export const DEFAULT_CHANNEL_ID = 'default';
 Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const isAlarm = !!notification.request.content.data?.alarmId;
+    const isCountdownUpdate = !!notification.request.content.data?.isCountdownUpdate;
     return {
-      shouldShowAlert: true,
-      shouldPlaySound: isAlarm, // Play sound for alarms
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
+      // Countdown updates should be silent — only the original alarm notification plays sound
+      shouldShowAlert: !isCountdownUpdate,
+      shouldPlaySound: isAlarm && !isCountdownUpdate,
+      shouldSetBadge: !isCountdownUpdate,
+      shouldShowBanner: !isCountdownUpdate,
+      shouldShowList: !isCountdownUpdate,
     };
   },
 });

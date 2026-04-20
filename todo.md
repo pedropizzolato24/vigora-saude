@@ -262,3 +262,8 @@
 - [x] Implementar notificação com contagem regressiva atualizada a cada segundo
 - [x] Cancelar notificações de contagem ao dispensar o alarme
 - [x] Implementar modo acessível para a configuração de duração do timer
+
+## Bug Fixes - Notificações v6
+- [x] Remover notificação duplicada do alarme (aparece 2 notificações ao mesmo tempo)
+- [x] Corrigir timer na notificação (contagem regressiva não está aparecendo)
+- [x] Restaurar redirecionamento ao clicar na notificação (não abre a tela de alarme)

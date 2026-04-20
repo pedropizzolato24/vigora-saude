@@ -1,17 +1,14 @@
 import * as Notifications from 'expo-notifications';
-import React, { createContext, useContext, useEffect, useRef } from 'react';
+import React, { createContext, useContext } from 'react';
 import { Platform } from 'react-native';
 
-// Configure how notifications appear when app is in foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+/**
+ * Notifications context — provides helper methods for sending notifications.
+ *
+ * IMPORTANT: The global setNotificationHandler and channel setup are handled
+ * exclusively in notifications-utils.ts (called from _layout.tsx on startup).
+ * Do NOT duplicate them here to avoid conflicts.
+ */
 
 interface NotificationsContextValue {
   sendNotification: (
@@ -31,49 +28,6 @@ interface NotificationsContextValue {
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
 
 export function NotificationsProvider({ children }: { children: React.ReactNode }) {
-  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
-  const responseListener = useRef<Notifications.EventSubscription | null>(null);
-
-  useEffect(() => {
-    // Set up Android notification channels
-    if (Platform.OS === 'android') {
-      Notifications.setNotificationChannelAsync('sos', {
-        name: 'Emergência SOS',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 500, 200, 500, 200, 500],
-        lightColor: '#FF0000',
-        sound: 'default',
-      });
-      Notifications.setNotificationChannelAsync('alarm', {
-        name: 'Alarmes',
-        importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 250, 250, 250],
-        sound: 'default',
-      });
-      Notifications.setNotificationChannelAsync('default', {
-        name: 'Padrão',
-        importance: Notifications.AndroidImportance.DEFAULT,
-        sound: 'default',
-      });
-    }
-
-    // Request permissions on mount
-    requestPermissions();
-
-    notificationListener.current = Notifications.addNotificationReceivedListener(() => {
-      // Handle received notification
-    });
-
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(() => {
-      // Handle notification tap
-    });
-
-    return () => {
-      notificationListener.current?.remove();
-      responseListener.current?.remove();
-    };
-  }, []);
-
   const requestPermissions = async (): Promise<boolean> => {
     if (Platform.OS === 'web') return false;
     const { status: existing } = await Notifications.getPermissionsAsync();
@@ -88,14 +42,12 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     data: Record<string, unknown> = {}
   ): Promise<void> => {
     if (Platform.OS === 'web') return;
-    const channelId = data.type === 'sos' ? 'sos' : data.type === 'alarm' ? 'alarm' : 'default';
     await Notifications.scheduleNotificationAsync({
       content: {
         title,
         body,
         data,
         sound: 'default',
-        ...(Platform.OS === 'android' ? { channelId } : {}),
       },
       trigger: null, // immediate
     });
