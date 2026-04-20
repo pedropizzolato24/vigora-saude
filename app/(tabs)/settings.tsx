@@ -511,7 +511,7 @@ export default function SettingsScreen() {
           />
           <Divider colors={colors} />
 
-          {/* Volume */}
+          {/* Volume do Alarme */}
           <View style={styles.volumeSection}>
             <View style={styles.volumeHeader}>
               <Text style={[styles.settingLabel, { color: colors.foreground }]}>Volume do Alarme</Text>
@@ -550,18 +550,9 @@ export default function SettingsScreen() {
               </Pressable>
             </View>
           </View>
-        </CollapsibleSection>
+          <Divider colors={colors} />
 
-        {/* ═══ SECTION 1b: Voz do Alarme ═══ */}
-        <CollapsibleSection
-          title="Voz do Alarme"
-          icon="record-voice-over"
-          iconBg={colors.primaryLight}
-          iconColor={colors.primary}
-          colors={colors}
-          defaultOpen={false}
-        >
-          {/* Speech Volume */}
+          {/* Volume da Voz */}
           <View style={styles.volumeSection}>
             <View style={styles.volumeHeader}>
               <Text style={[styles.settingLabel, { color: colors.foreground }]}>Volume da Voz</Text>
@@ -605,7 +596,7 @@ export default function SettingsScreen() {
           </View>
           <Divider colors={colors} />
 
-          {/* Speech Rate */}
+          {/* Velocidade da Voz */}
           <View style={styles.fontSizeSection}>
             <Text style={[styles.settingLabel, { color: colors.foreground }]}>Velocidade da Voz</Text>
             <Text style={[styles.settingSubLabel, { color: colors.muted, marginBottom: 10 }]}>
