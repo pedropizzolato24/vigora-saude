@@ -118,6 +118,15 @@ const config: ExpoConfig = {
             minHeight: '110dp',
             resizeMode: 'none',
           },
+          {
+            name: 'Health',
+            label: 'Saúde',
+            description: 'Métricas de saúde: freq. cardíaca, pressão e glicemia',
+            minWidth: '250dp',
+            minHeight: '130dp',
+            resizeMode: 'horizontal|vertical',
+            updatePeriodMillis: 1800000, // 30 min
+          },
         ],
       } satisfies WithAndroidWidgetsParams,
     ],

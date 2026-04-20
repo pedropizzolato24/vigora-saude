@@ -34,6 +34,7 @@ import { PulseView } from '@/components/animated-components';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { loadAlarmTimer, clearAlarmTimer, computeSecondsLeft } from '@/lib/alarm-timer-store';
 import { stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
+import { updateAlarmWidgetOnDismiss } from '@/lib/update-widgets';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
 const COUNTDOWN_SECONDS = 30;
@@ -273,6 +274,8 @@ export default function AlarmRingScreen() {
 
     // Reset missed alarm counter — user responded
     dispatch({ type: 'RESET_MISSED_ALARM' });
+    // Atualiza widget Android para mostrar o próximo alarme pendente
+    updateAlarmWidgetOnDismiss(state.alarms).catch(() => {});
 
     router.replace('/(tabs)/alarms');
   }, [alarmId, player, dispatch, router]);

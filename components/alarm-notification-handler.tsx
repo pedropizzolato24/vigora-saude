@@ -8,6 +8,7 @@ import { escalateAlarmToContacts, type EscalationResult } from '@/lib/alarm-esca
 import { saveAlarmTimer, clearAlarmTimer, loadAlarmTimer, computeSecondsLeft } from '@/lib/alarm-timer-store';
 import { startCountdownNotification, stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 import { isNativeAlarmAvailable } from '@/lib/native-alarm-manager';
+import { updateAlarmWidgetOnFire } from '@/lib/update-widgets';
 
 // Lazy-load expo-alarm-module getAlarmState for Android
 let getAlarmStateNative: (() => Promise<string | null>) | null = null;
@@ -105,6 +106,9 @@ export function AlarmNotificationHandler() {
       await saveAlarmTimer({ alarmId, startedAt, expiresAt, timerDuration });
       console.log(`[AlarmHandler] New timer for ${alarmId}, ${timerDuration}s`);
     }
+
+    // Atualiza widget Android para mostrar estado "tocando agora"
+    updateAlarmWidgetOnFire(alarm.description || 'Alarme').catch(() => {});
 
     // Navigate to alarm-ring screen, passing expiresAt as URL param to avoid AsyncStorage race condition.
     // alarm-ring will use expiresAt directly instead of waiting for AsyncStorage.

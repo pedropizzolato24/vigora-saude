@@ -307,3 +307,10 @@
 - [x] Criar index.ts como entry point com registerWidgetTaskHandler
 - [x] Criar update-widgets.ts para atualizar widgets quando alarmes mudarem
 - [x] Integrar updateAllWidgets no AppProvider (useEffect em state.alarms)
+
+## Widgets Android — Melhorias
+
+- [x] Atualização do widget NextAlarm em tempo real quando alarme dispara (updateAlarmWidgetOnFire)
+- [x] Restauração do widget NextAlarm após dispensar alarme (updateAlarmWidgetOnDismiss)
+- [x] Novo widget Health com métricas de saúde (FC, PA, Glicemia) e indicadores de status
+- [x] Widget Health integrado no widget-task-handler, app.config.ts e update-widgets

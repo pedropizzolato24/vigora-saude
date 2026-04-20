@@ -287,11 +287,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
   }, [state]);
 
-  // Atualiza widgets Android quando os alarmes mudarem
+  // Atualiza widgets Android quando alarmes ou métricas de saúde mudarem
   useEffect(() => {
     if (state.isLoading) return;
-    updateAllWidgets(state.alarms).catch(() => {});
-  }, [state.alarms, state.isLoading]);
+    updateAllWidgets(state.alarms, state.healthMetrics).catch(() => {});
+  }, [state.alarms, state.healthMetrics, state.isLoading]);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>

@@ -1,15 +1,21 @@
 import React from 'react';
-import { FlexWidget, TextWidget, ImageWidget } from 'react-native-android-widget';
+import { FlexWidget, TextWidget } from 'react-native-android-widget';
 
 interface NextAlarmWidgetProps {
-  alarmTime?: string;   // e.g. "08:30"
+  alarmTime?: string;   // e.g. "08:30" ou "Agora"
   alarmName?: string;   // e.g. "Metformina"
   hasAlarm: boolean;
+  isRinging?: boolean;  // true quando o alarme está tocando agora
 }
 
 /**
  * Widget de Próximo Alarme — exibe o próximo alarme de medicamento
  * na tela inicial do Android.
+ *
+ * Estados:
+ * - Normal: mostra horário e nome do próximo alarme
+ * - Tocando (isRinging=true): destaque vermelho indicando alarme ativo
+ * - Sem alarme: mensagem "Nenhum alarme ativo"
  *
  * Layout:
  * ┌─────────────────────────────────┐
@@ -19,7 +25,13 @@ interface NextAlarmWidgetProps {
  * │  Metformina                     │
  * └─────────────────────────────────┘
  */
-export function NextAlarmWidget({ alarmTime, alarmName, hasAlarm }: NextAlarmWidgetProps) {
+export function NextAlarmWidget({ alarmTime, alarmName, hasAlarm, isRinging = false }: NextAlarmWidgetProps) {
+  const bgColor = isRinging ? '#CC0000' : '#FFFFFF';
+  const titleColor = isRinging ? '#FFCCCC' : '#0033CC';
+  const labelColor = isRinging ? '#FFAAAA' : '#687076';
+  const timeColor = isRinging ? '#FFFFFF' : '#11181C';
+  const nameColor = isRinging ? '#FFDDDD' : '#687076';
+
   return (
     <FlexWidget
       style={{
@@ -28,7 +40,7 @@ export function NextAlarmWidget({ alarmTime, alarmName, hasAlarm }: NextAlarmWid
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'flex-start',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: bgColor,
         borderRadius: 16,
         padding: 16,
       }}
@@ -43,7 +55,7 @@ export function NextAlarmWidget({ alarmTime, alarmName, hasAlarm }: NextAlarmWid
         }}
       >
         <TextWidget
-          text="💊"
+          text={isRinging ? '🔔' : '💊'}
           style={{
             fontSize: 16,
             marginRight: 6,
@@ -54,17 +66,17 @@ export function NextAlarmWidget({ alarmTime, alarmName, hasAlarm }: NextAlarmWid
           style={{
             fontSize: 12,
             fontWeight: 'bold',
-            color: '#0033CC',
+            color: titleColor,
           }}
         />
       </FlexWidget>
 
       {/* Label */}
       <TextWidget
-        text="Próximo alarme"
+        text={isRinging ? 'Alarme tocando!' : 'Próximo alarme'}
         style={{
           fontSize: 11,
-          color: '#687076',
+          color: labelColor,
           marginBottom: 4,
         }}
       />
@@ -77,7 +89,7 @@ export function NextAlarmWidget({ alarmTime, alarmName, hasAlarm }: NextAlarmWid
             style={{
               fontSize: 32,
               fontWeight: 'bold',
-              color: '#11181C',
+              color: timeColor,
               marginBottom: 2,
             }}
           />
@@ -87,7 +99,7 @@ export function NextAlarmWidget({ alarmTime, alarmName, hasAlarm }: NextAlarmWid
               text={alarmName}
               style={{
                 fontSize: 13,
-                color: '#687076',
+                color: nameColor,
               }}
               maxLines={1}
               truncate="END"
