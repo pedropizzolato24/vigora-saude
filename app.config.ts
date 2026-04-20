@@ -131,6 +131,7 @@ const config: ExpoConfig = {
       } satisfies WithAndroidWidgetsParams,
     ],
     "expo-alarm-module",
+    "./modules/expo-alarm-countdown/app.plugin.js",
     [
       "expo-notifications",
       {

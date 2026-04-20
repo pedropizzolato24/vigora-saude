@@ -1,0 +1,17 @@
+{
+  "name": "expo-alarm-countdown",
+  "version": "1.0.0",
+  "description": "Native module to update alarm notification text with live countdown",
+  "main": "src/index",
+  "react-native": "src/index",
+  "source": "src/index",
+  "files": [
+    "src",
+    "android",
+    "ios",
+    "app.plugin.js"
+  ],
+  "peerDependencies": {
+    "react-native": "*"
+  }
+}

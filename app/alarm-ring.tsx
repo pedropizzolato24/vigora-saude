@@ -271,7 +271,7 @@ export default function AlarmRingScreen() {
     Speech.stop().catch(() => {});
     // Stop countdown notification and clear persisted timer
     if (alarmId) {
-      stopCountdownNotification(alarmId);
+      stopCountdownNotification(alarmId, alarm?.description || 'Alarme de Medicamento');
       clearAlarmTimer(alarmId);
     }
 

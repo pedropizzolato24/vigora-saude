@@ -332,3 +332,14 @@
 - [x] Corrigir cold start: criar timer no _layout.tsx antes de navegar para alarm-ring quando não há timer salvo
 - [x] Remover dependências de state.alarms/state.settings do AppState listener no alarm-notification-handler (evita stale closure)
 - [x] Documentar limitação: countdown na notificação nativa do expo-alarm-module não é tecnicamente viável sem código nativo customizado
+
+## Módulo Nativo expo-alarm-countdown
+
+- [x] Criar estrutura do módulo local (modules/expo-alarm-countdown)
+- [x] Implementar módulo Android (Kotlin): ExpoAlarmCountdownModule.kt + ExpoAlarmCountdownPackage.kt
+- [x] Implementar módulo iOS (Swift): ExpoAlarmCountdown.swift + ExpoAlarmCountdown.mm
+- [x] Criar podspec iOS e build.gradle Android
+- [x] Criar app.plugin.js para registrar o módulo no build (settings.gradle + app/build.gradle)
+- [x] Reescrever alarm-countdown-notifier.ts para usar o módulo nativo
+- [x] Integrar startCountdownNotification no alarm-notification-handler.tsx
+- [x] Integrar stopCountdownNotification com alarmTitle no alarm-ring.tsx

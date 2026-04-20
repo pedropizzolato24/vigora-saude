@@ -7,7 +7,7 @@ import { useAppContext } from '@/lib/app-context';
 import { clearAlarmTimeout } from '@/lib/alarm-timeout-manager';
 import { escalateAlarmToContacts, type EscalationResult } from '@/lib/alarm-escalation';
 import { saveAlarmTimer, clearAlarmTimer, loadAlarmTimer } from '@/lib/alarm-timer-store';
-import { stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
+import { startCountdownNotification, stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 import { isNativeAlarmAvailable } from '@/lib/native-alarm-manager';
 import { updateAlarmWidgetOnFire } from '@/lib/update-widgets';
 
@@ -150,6 +150,13 @@ export function AlarmNotificationHandler() {
 
     // Atualiza widget Android para mostrar estado "tocando agora"
     updateAlarmWidgetOnFire(alarmData.description || 'Alarme').catch(() => {});
+
+    // Inicia countdown na notificação nativa via módulo nativo
+    startCountdownNotification(
+      alarmId,
+      alarmData.description || 'Alarme de Medicamento',
+      expiresAt,
+    );
 
     // Navigate to alarm-ring screen, passing expiresAt as URL param.
     // alarm-ring uses expiresAt directly — no AsyncStorage race condition.
