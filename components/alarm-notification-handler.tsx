@@ -1,12 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import { Alert, AppState, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useAppContext } from '@/lib/app-context';
 import { clearAlarmTimeout } from '@/lib/alarm-timeout-manager';
 import { escalateAlarmToContacts, type EscalationResult } from '@/lib/alarm-escalation';
-import { saveAlarmTimer, clearAlarmTimer, loadAlarmTimer, computeSecondsLeft } from '@/lib/alarm-timer-store';
-import { startCountdownNotification, stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
+import { saveAlarmTimer, clearAlarmTimer, loadAlarmTimer } from '@/lib/alarm-timer-store';
+import { stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 import { isNativeAlarmAvailable } from '@/lib/native-alarm-manager';
 import { updateAlarmWidgetOnFire } from '@/lib/update-widgets';
 
@@ -19,12 +20,31 @@ if (Platform.OS === 'android') {
   } catch {}
 }
 
+const STORAGE_KEY = 'vigora_app_state';
+
+/**
+ * Read timerDuration directly from AsyncStorage to avoid stale closure issues.
+ * Falls back to 30s if not found or not yet loaded.
+ */
+async function readTimerDurationFromStorage(): Promise<number> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const duration = parsed?.settings?.timerDuration;
+      if (typeof duration === 'number' && [15, 30, 45, 60].includes(duration)) {
+        return duration;
+      }
+    }
+  } catch {}
+  return 30;
+}
+
 /**
  * Extract the Vigora alarmId from a native alarm UID.
- * Native UIDs look like: "vigora_<alarmId>" or "vigora_<alarmId>_mon" etc.
+ * Native UIDs look like: "vigora_<alarmId>" or "vigora_<alarmId>_wd<0-6>"
  */
 function extractAlarmIdFromUid(uid: string): string | null {
-  // Native UIDs: "vigora_<alarmId>" (one-time/daily) or "vigora_<alarmId>_wd<0-6>" (weekday)
   const match = uid.match(/^vigora_(.+?)(?:_wd\d+)?$/);
   return match ? match[1] : null;
 }
@@ -62,13 +82,14 @@ function showEscalationAlert(result: EscalationResult) {
  * Architecture:
  * - Android: expo-alarm-module fires the alarm natively (no expo-notifications needed).
  *   The native module creates its own notification. We listen for the app being opened
- *   by the native alarm and start the countdown + escalation timer.
+ *   by the native alarm and start the escalation timer.
  * - iOS/Web: expo-notifications fires the alarm and we handle it here.
  *
  * Synchronized timer:
  * - When an alarm fires, we record startedAt + expiresAt in AsyncStorage.
  * - alarm-ring.tsx reads this on mount to compute the real secondsLeft.
- * - The native alarm notification title is updated every second with the countdown.
+ * - timerDuration is read directly from AsyncStorage (not from React state)
+ *   to avoid stale closure issues when the alarm fires before React state loads.
  */
 export function AlarmNotificationHandler() {
   const { state, dispatch } = useAppContext();
@@ -79,39 +100,59 @@ export function AlarmNotificationHandler() {
 
   /**
    * Shared alarm-fired handler — called when an alarm fires (foreground or background).
-   * Sets up the timer, starts the countdown notification, and schedules escalation.
+   * Sets up the timer, navigates to alarm-ring, and schedules escalation.
+   *
+   * Key fix: reads timerDuration directly from AsyncStorage to avoid stale closure
+   * issues when state.settings.timerDuration hasn't loaded yet from AsyncStorage.
    */
   const handleAlarmFired = async (alarmId: string) => {
+    // Read alarm from current state — if state is still loading, try to find it anyway
     const alarm = state.alarms.find((a) => a.id === alarmId);
-    if (!alarm || !alarm.enabled) return;
+
+    // If alarm not found in state yet (state still loading), try reading from AsyncStorage
+    let alarmData = alarm;
+    if (!alarmData || !alarmData.enabled) {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          alarmData = parsed?.alarms?.find((a: any) => a.id === alarmId && a.enabled);
+        }
+      } catch {}
+    }
+
+    if (!alarmData || !alarmData.enabled) {
+      console.log(`[AlarmHandler] Alarm ${alarmId} not found or disabled — skipping`);
+      return;
+    }
 
     console.log(`[AlarmHandler] Alarm fired: ${alarmId}`);
 
-    // ── Synchronized timer setup ──────────────────────────────────────────────────────────────────────
-    const timerDuration = state.settings.timerDuration ?? 30;
+    // ── Read timerDuration from AsyncStorage (avoids stale closure) ──────────────
+    const timerDuration = await readTimerDurationFromStorage();
 
+    // ── Synchronized timer setup ─────────────────────────────────────────────────
     // Check if a timer is already running for this alarm (e.g., app foregrounded
-    // after tapping notification). If so, reuse the existing expiresAt so the
-    // in-app countdown stays in sync with the notification countdown.
+    // after tapping notification). If so, reuse the existing expiresAt.
     let expiresAt: number;
     const existingEntry = await loadAlarmTimer(alarmId);
     if (existingEntry && existingEntry.expiresAt > Date.now()) {
       // Timer already running — reuse it
       expiresAt = existingEntry.expiresAt;
-      console.log(`[AlarmHandler] Reusing existing timer for ${alarmId}, ${computeSecondsLeft(existingEntry)}s left`);
+      console.log(`[AlarmHandler] Reusing existing timer for ${alarmId}, expires in ${Math.ceil((expiresAt - Date.now()) / 1000)}s`);
     } else {
       // Fresh alarm — create a new timer
       const startedAt = Date.now();
       expiresAt = startedAt + timerDuration * 1000;
       await saveAlarmTimer({ alarmId, startedAt, expiresAt, timerDuration });
-      console.log(`[AlarmHandler] New timer for ${alarmId}, ${timerDuration}s`);
+      console.log(`[AlarmHandler] New timer for ${alarmId}, ${timerDuration}s, expires at ${expiresAt}`);
     }
 
     // Atualiza widget Android para mostrar estado "tocando agora"
-    updateAlarmWidgetOnFire(alarm.description || 'Alarme').catch(() => {});
+    updateAlarmWidgetOnFire(alarmData.description || 'Alarme').catch(() => {});
 
-    // Navigate to alarm-ring screen, passing expiresAt as URL param to avoid AsyncStorage race condition.
-    // alarm-ring will use expiresAt directly instead of waiting for AsyncStorage.
+    // Navigate to alarm-ring screen, passing expiresAt as URL param.
+    // alarm-ring uses expiresAt directly — no AsyncStorage race condition.
     if (!navigatedAlarms.current.has(alarmId)) {
       navigatedAlarms.current.add(alarmId);
       router.push(`/alarm-ring?alarmId=${alarmId}&expiresAt=${expiresAt}`);
@@ -121,18 +162,11 @@ export function AlarmNotificationHandler() {
     // Track this alarm as pending response
     pendingAlarms.current.add(alarmId);
 
-    // Start countdown notification — shows expo-notifications with live countdown every second
-    startCountdownNotification(
-      alarmId,
-      alarm.description || 'Alarme',
-      expiresAt,
-      timerDuration,
-    );
-
     // Escalation timeout — fires after timerDuration seconds
     const existingTimer = escalationTimers.current.get(alarmId);
     if (existingTimer) clearTimeout(existingTimer);
 
+    const msUntilExpiry = Math.max(0, expiresAt - Date.now());
     const escalationTimer = setTimeout(() => {
       escalationTimers.current.delete(alarmId);
 
@@ -146,7 +180,7 @@ export function AlarmNotificationHandler() {
 
           if (Platform.OS !== 'web') {
             escalateAlarmToContacts(
-              alarm,
+              alarmData!,
               state.emergencyContacts,
               undefined,
               state.profile?.name || undefined,
@@ -161,7 +195,7 @@ export function AlarmNotificationHandler() {
           dispatch({ type: 'RESET_MISSED_ALARM' });
         }
       }
-    }, timerDuration * 1000);
+    }, msUntilExpiry);
 
     escalationTimers.current.set(alarmId, escalationTimer);
   };
@@ -181,18 +215,21 @@ export function AlarmNotificationHandler() {
           const alarmId = extractAlarmIdFromUid(activeUid);
           if (alarmId) {
             console.log(`[AlarmHandler] App foregrounded with active alarm: ${activeUid} → ${alarmId}`);
-            // Navigate immediately — expiresAt will be loaded from AsyncStorage in alarm-ring
-            // (by this point handleAlarmFired has already saved it or will save it shortly)
+
+            // Load existing timer to pass expiresAt in URL (avoids AsyncStorage race)
+            const existingForNav = await loadAlarmTimer(alarmId).catch(() => null);
+            const navExpiresAt = existingForNav?.expiresAt ?? null;
+
             if (!navigatedAlarms.current.has(alarmId)) {
               navigatedAlarms.current.add(alarmId);
-              // Load existing timer first to pass expiresAt in URL
-              const existingForNav = await loadAlarmTimer(alarmId).catch(() => null);
-              const navExpiresAt = existingForNav?.expiresAt ?? (Date.now() + (state.settings.timerDuration ?? 30) * 1000);
-              navigatedAlarms.current.add(alarmId);
-              router.push(`/alarm-ring?alarmId=${alarmId}&expiresAt=${navExpiresAt}`);
+              const navUrl = navExpiresAt
+                ? `/alarm-ring?alarmId=${alarmId}&expiresAt=${navExpiresAt}`
+                : `/alarm-ring?alarmId=${alarmId}`;
+              router.push(navUrl as any);
               setTimeout(() => navigatedAlarms.current.delete(alarmId), 5000);
             }
-            // Then run the rest of the alarm-fired logic asynchronously
+
+            // Run the rest of the alarm-fired logic asynchronously
             handleAlarmFired(alarmId);
           }
         }
@@ -203,7 +240,9 @@ export function AlarmNotificationHandler() {
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription.remove();
-  }, [state.alarms, state.settings.timerDuration]);
+    // Note: intentionally omitting state from deps — we read from AsyncStorage directly
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Handle alarm notification received via expo-notifications (iOS/Web only)
   // On Android, expo-alarm-module fires the alarm natively — no expo-notifications needed.
@@ -221,7 +260,8 @@ export function AlarmNotificationHandler() {
     });
 
     return () => subscription.remove();
-  }, [state.alarms, state.emergencyContacts, state.missedAlarmCount, state.settings.missedAlarmThreshold, state.settings.timerDuration, state.profile, dispatch, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Handle notification response (user taps notification from tray)
   // On Android, this handles the expo-alarm-module notification tap.
@@ -236,7 +276,7 @@ export function AlarmNotificationHandler() {
         console.log(`[AlarmHandler] Alarm tapped (from notification): ${alarmId}`);
         pendingAlarms.current.delete(alarmId);
         clearAlarmTimeout(alarmId);
-        router.push(`/alarm-ring?alarmId=${alarmId}`);
+        router.push(`/alarm-ring?alarmId=${alarmId}` as any);
       }
     });
 

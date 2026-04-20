@@ -324,3 +324,11 @@
 - [x] Cabeçalho com dados do paciente e período do relatório
 - [x] Componente HealthReportButton com geração via expo-print e compartilhamento via expo-sharing
 - [x] Botão compacto integrado no header da tela de Saúde
+
+## Bug Fixes - Timer e Notificação (Revisão Definitiva)
+
+- [x] Corrigir timer desync: ler timerDuration diretamente do AsyncStorage no alarm-notification-handler (evita stale closure)
+- [x] Corrigir timer desync: ler timerDuration do AsyncStorage no alarm-ring como fallback
+- [x] Corrigir cold start: criar timer no _layout.tsx antes de navegar para alarm-ring quando não há timer salvo
+- [x] Remover dependências de state.alarms/state.settings do AppState listener no alarm-notification-handler (evita stale closure)
+- [x] Documentar limitação: countdown na notificação nativa do expo-alarm-module não é tecnicamente viável sem código nativo customizado

@@ -32,6 +32,7 @@ import { escalateAlarmToContacts } from '@/lib/alarm-escalation';
 import { stopNativeAlarm } from '@/lib/native-alarm-manager';
 import { PulseView } from '@/components/animated-components';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loadAlarmTimer, clearAlarmTimer, computeSecondsLeft } from '@/lib/alarm-timer-store';
 import { stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 import { updateAlarmWidgetOnDismiss } from '@/lib/update-widgets';
@@ -60,7 +61,9 @@ export default function AlarmRingScreen() {
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac } = useAccessibility();
 
   const alarm = state.alarms.find((a) => a.id === alarmId);
-  // Initialize with the configured duration; will be overridden by persisted timer on mount
+  // Initialize with the configured duration; will be overridden by persisted timer on mount.
+  // Note: configuredDuration from state may be stale if state hasn't loaded yet.
+  // The initTimer function reads from AsyncStorage directly as fallback.
   const configuredDuration: number = state.settings.timerDuration ?? 30;
   const [secondsLeft, setSecondsLeft] = useState<number>(configuredDuration);
   const [escalated, setEscalated] = useState(false);
@@ -203,8 +206,18 @@ export default function AlarmRingScreen() {
         // Use the persisted expiresAt to compute real remaining time
         startCountdown(entry.expiresAt);
       } else {
-        // Last resort — start a fresh timer from configured duration
-        const duration = configuredDuration;
+        // Last resort — read timerDuration from AsyncStorage to avoid stale state
+        let duration = configuredDuration;
+        try {
+          const raw = await AsyncStorage.getItem('vigora_app_state');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            const stored = parsed?.settings?.timerDuration;
+            if (typeof stored === 'number' && [15, 30, 45, 60].includes(stored)) {
+              duration = stored;
+            }
+          }
+        } catch {}
         startCountdown(Date.now() + duration * 1000);
       }
     };

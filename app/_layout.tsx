@@ -90,15 +90,37 @@ export default function RootLayout() {
               if (alarmId) {
                 console.log(`[RootLayout] Native alarm active: ${activeUid} → alarmId: ${alarmId}`);
                 const { router } = require('expo-router');
-                // Try to load persisted timer to pass expiresAt in URL (avoids AsyncStorage race)
+                const { loadAlarmTimer, saveAlarmTimer } = require('@/lib/alarm-timer-store');
+                const AsyncStorageMod = require('@react-native-async-storage/async-storage').default;
+
+                // Try to load persisted timer first
                 let expiresAtForNav: number | null = null;
                 try {
-                  const { loadAlarmTimer } = require('@/lib/alarm-timer-store');
                   const timerEntry = await loadAlarmTimer(alarmId);
                   if (timerEntry && timerEntry.expiresAt > Date.now()) {
                     expiresAtForNav = timerEntry.expiresAt;
                   }
                 } catch {}
+
+                // If no valid timer exists, create one now from stored timerDuration
+                if (!expiresAtForNav) {
+                  try {
+                    let timerDuration = 30;
+                    const raw = await AsyncStorageMod.getItem('vigora_app_state');
+                    if (raw) {
+                      const parsed = JSON.parse(raw);
+                      const stored = parsed?.settings?.timerDuration;
+                      if (typeof stored === 'number' && [15, 30, 45, 60].includes(stored)) {
+                        timerDuration = stored;
+                      }
+                    }
+                    const startedAt = Date.now();
+                    expiresAtForNav = startedAt + timerDuration * 1000;
+                    await saveAlarmTimer({ alarmId, startedAt, expiresAt: expiresAtForNav, timerDuration });
+                    console.log(`[RootLayout] Created new timer for cold start: ${timerDuration}s`);
+                  } catch {}
+                }
+
                 const navUrl = expiresAtForNav
                   ? `/alarm-ring?alarmId=${alarmId}&expiresAt=${expiresAtForNav}`
                   : `/alarm-ring?alarmId=${alarmId}`;
