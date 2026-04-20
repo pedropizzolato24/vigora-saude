@@ -68,7 +68,12 @@ const config: ExpoConfig = {
       "SCHEDULE_EXACT_ALARM",
       "USE_FULL_SCREEN_INTENT",
       "VIBRATE",
-      "WAKE_LOCK"
+      "WAKE_LOCK",
+      "ACCESS_FINE_LOCATION",
+      "ACCESS_COARSE_LOCATION",
+      "ACCESS_BACKGROUND_LOCATION",
+      "FOREGROUND_SERVICE",
+      "FOREGROUND_SERVICE_LOCATION"
     ],
     intentFilters: [
       {
@@ -108,7 +113,11 @@ const config: ExpoConfig = {
     [
       "expo-location",
       {
-        locationAlwaysAndWhenInUsePermission: "Permitir que o Vigora Saúde acesse sua localização para compartilhar em emergências."
+        locationAlwaysAndWhenInUsePermission: "Permitir que o Vigora Saúde acesse sua localização para compartilhar em emergências.",
+        locationAlwaysPermission: "Permitir que o Vigora Saúde acesse sua localização mesmo em segundo plano, para enviar sua posição em emergências.",
+        locationWhenInUsePermission: "Permitir que o Vigora Saúde acesse sua localização para compartilhar em emergências.",
+        isAndroidBackgroundLocationEnabled: true,
+        isAndroidForegroundServiceEnabled: true
       }
     ],
     [

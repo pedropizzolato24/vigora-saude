@@ -277,3 +277,10 @@
 - [x] Corrigir countdown em branco na notificação (updateAlarm não funciona em tempo real)
 - [x] Corrigir sincronização do timer: ao entrar no app via notificação, countdown começa do zero
 - [x] Remover botão Soneca da notificação nativa do alarme
+
+## Permissão de Localização (2026-04-20)
+- [x] Solicitar permissão de localização (foreground) no onboarding na abertura do app
+- [x] Solicitar permissão de localização em background com guia passo a passo
+- [x] Adicionar tela/modal de guia para ativar "Permitir o tempo todo" nas configurações do Android
+- [x] Configurar ACCESS_BACKGROUND_LOCATION no app.config.ts
+- [x] Instalar expo-location se não estiver instalado
