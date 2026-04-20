@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import React, { useState } from 'react';
 import { useAccessibility } from '@/lib/accessibility-context';
+import { HealthReportButton } from '@/components/health-report-button';
 import {
   Alert,
   FlatList,
@@ -291,20 +292,23 @@ export default function HealthScreen() {
             {state.healthMetrics.length} registro(s)
           </Text>
         </View>
-        <Pressable
-          onPress={() => {
-            setValueText('');
-            setSelectedType('heart_rate');
-            setModalVisible(true);
-          }}
-          style={({ pressed }) => [
-            styles.addButton,
-            { backgroundColor: colors.success, opacity: pressed ? 0.85 : 1 },
-          ]}
-          accessibilityLabel="Adicionar métrica de saúde"
-        >
-          <MaterialIcons name="add" size={24} color="#FFFFFF" />
-        </Pressable>
+        <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+          <HealthReportButton compact />
+          <Pressable
+            onPress={() => {
+              setValueText('');
+              setSelectedType('heart_rate');
+              setModalVisible(true);
+            }}
+            style={({ pressed }) => [
+              styles.addButton,
+              { backgroundColor: colors.success, opacity: pressed ? 0.85 : 1 },
+            ]}
+            accessibilityLabel="Adicionar métrica de saúde"
+          >
+            <MaterialIcons name="add" size={24} color="#FFFFFF" />
+          </Pressable>
+        </View>
       </View>
 
       {/* Summary Cards */}

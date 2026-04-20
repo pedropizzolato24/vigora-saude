@@ -314,3 +314,13 @@
 - [x] Restauração do widget NextAlarm após dispensar alarme (updateAlarmWidgetOnDismiss)
 - [x] Novo widget Health com métricas de saúde (FC, PA, Glicemia) e indicadores de status
 - [x] Widget Health integrado no widget-task-handler, app.config.ts e update-widgets
+
+## Relatório de Saúde em PDF
+
+- [x] Gerador de HTML com gráficos SVG inline (health-report-generator.ts)
+- [x] Gráficos de evolução para FC, Pressão Arterial e Glicemia com faixa normal destacada
+- [x] Tabela de leituras recentes por métrica com indicadores de status
+- [x] Tabela de alarmes configurados com status
+- [x] Cabeçalho com dados do paciente e período do relatório
+- [x] Componente HealthReportButton com geração via expo-print e compartilhamento via expo-sharing
+- [x] Botão compacto integrado no header da tela de Saúde
