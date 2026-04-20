@@ -24,6 +24,14 @@ import { useAccessibility } from '@/lib/accessibility-context';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
 
+// Timer duration options
+const TIMER_DURATIONS: { value: 15 | 30 | 45 | 60; label: string; sublabel: string }[] = [
+  { value: 15, label: '15s', sublabel: 'Rápido' },
+  { value: 30, label: '30s', sublabel: 'Padrão' },
+  { value: 45, label: '45s', sublabel: 'Moderado' },
+  { value: 60, label: '60s', sublabel: 'Lento' },
+];
+
 // Speech rate options
 const SPEECH_RATES: { value: 0.5 | 0.75 | 1.0 | 1.25; label: string; sublabel: string }[] = [
   { value: 0.5, label: 'Lenta', sublabel: '0.5×' },
@@ -202,6 +210,11 @@ export default function SettingsScreen() {
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const newVol = Math.max(0, Math.min(100, settings.speechVolume + delta));
     updateSetting('speechVolume', newVol);
+  };
+
+  const handleTimerDurationChange = (duration: 15 | 30 | 45 | 60) => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    updateSetting('timerDuration', duration);
   };
 
   const handleSpeechRateChange = (rate: 0.5 | 0.75 | 1.0 | 1.25) => {
@@ -383,6 +396,38 @@ export default function SettingsScreen() {
                     {opt.label}
                   </Text>
                   <Text style={{ fontSize: af.sm, color: settings.speechRate === opt.value ? '#FFFFFFBB' : ac.muted, marginTop: 2 }}>
+                    {opt.sublabel}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <View style={{ height: 2, backgroundColor: ac.border }} />
+
+            {/* Timer de Emergência */}
+            <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Timer de Emergência</Text>
+            <Text style={{ fontSize: af.sm, color: ac.muted }}>Tempo até contatar emergência automaticamente</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+              {TIMER_DURATIONS.map((opt) => (
+                <Pressable
+                  key={opt.value}
+                  onPress={() => handleTimerDurationChange(opt.value)}
+                  style={({ pressed }) => [{
+                    flex: 1,
+                    minWidth: '40%',
+                    backgroundColor: settings.timerDuration === opt.value ? ac.primary : ac.surface,
+                    borderRadius: 16,
+                    paddingVertical: 18,
+                    alignItems: 'center',
+                    borderWidth: 3,
+                    borderColor: settings.timerDuration === opt.value ? '#003388' : ac.border,
+                    opacity: pressed ? 0.7 : 1,
+                  }]}
+                >
+                  <Text style={{ fontSize: af.lg, fontWeight: '900', color: settings.timerDuration === opt.value ? '#FFFFFF' : ac.foreground }}>
+                    {opt.label}
+                  </Text>
+                  <Text style={{ fontSize: af.sm, color: settings.timerDuration === opt.value ? '#FFFFFFBB' : ac.muted, marginTop: 2 }}>
                     {opt.sublabel}
                   </Text>
                 </Pressable>
@@ -628,6 +673,47 @@ export default function SettingsScreen() {
                     {opt.label}
                   </Text>
                   <Text style={{ fontSize: 11, color: settings.speechRate === opt.value ? colors.onPrimary + 'BB' : colors.muted }}>
+                    {opt.sublabel}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+          <Divider colors={colors} />
+
+          {/* Timer de Emergência */}
+          <View style={styles.fontSizeSection}>
+            <Text style={[styles.settingLabel, { color: colors.foreground }]}>Timer de Emergência</Text>
+            <Text style={[styles.settingSubLabel, { color: colors.muted, marginBottom: 10 }]}>
+              Tempo até contatar emergência automaticamente
+            </Text>
+            <View style={[styles.fontSizeRow, { flexWrap: 'wrap' }]}>
+              {TIMER_DURATIONS.map((opt) => (
+                <Pressable
+                  key={opt.value}
+                  onPress={() => handleTimerDurationChange(opt.value)}
+                  style={({ pressed }) => [
+                    styles.fontSizeBtn,
+                    {
+                      backgroundColor: settings.timerDuration === opt.value ? colors.primary : colors.background,
+                      borderColor: settings.timerDuration === opt.value ? colors.primary : colors.border,
+                      opacity: pressed ? 0.7 : 1,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.fontSizeBtnText,
+                      {
+                        color: settings.timerDuration === opt.value ? colors.onPrimary : colors.foreground,
+                        fontSize: 15,
+                        fontWeight: '700',
+                      },
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: settings.timerDuration === opt.value ? colors.onPrimary + 'BB' : colors.muted }}>
                     {opt.sublabel}
                   </Text>
                 </Pressable>

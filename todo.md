@@ -252,3 +252,13 @@
 - [x] Atualizar alarm-ring.tsx para usar speechRate e speechVolume das configurações
 - [x] Baixar volume do alarme durante a fala (ducking) para garantir que a voz seja audível
 - [x] Restaurar volume do alarme após a fala terminar
+
+## Timer Sincronizado e Notificação com Contagem Regressiva
+
+- [x] Adicionar timerDuration (15/30/45/60s) ao AppSettings com padrão de 30s
+- [x] Adicionar configuração de duração do timer no grupo Notificações e Alarmes do settings.tsx
+- [x] Gravar timestamp de início do alarme no AsyncStorage ao disparar
+- [x] Calcular tempo restante ao abrir alarm-ring.tsx (sincronização app ↔ notificação)
+- [x] Implementar notificação com contagem regressiva atualizada a cada segundo
+- [x] Cancelar notificações de contagem ao dispensar o alarme
+- [x] Implementar modo acessível para a configuração de duração do timer

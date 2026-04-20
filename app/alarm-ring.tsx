@@ -32,6 +32,8 @@ import { escalateAlarmToContacts } from '@/lib/alarm-escalation';
 import { stopNativeAlarm } from '@/lib/native-alarm-manager';
 import { PulseView } from '@/components/animated-components';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { loadAlarmTimer, clearAlarmTimer, computeSecondsLeft } from '@/lib/alarm-timer-store';
+import { stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
 const COUNTDOWN_SECONDS = 30;
@@ -57,12 +59,15 @@ export default function AlarmRingScreen() {
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac } = useAccessibility();
 
   const alarm = state.alarms.find((a) => a.id === alarmId);
-  const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SECONDS);
+  // Initialize with the configured duration; will be overridden by persisted timer on mount
+  const configuredDuration: number = state.settings.timerDuration ?? 30;
+  const [secondsLeft, setSecondsLeft] = useState<number>(configuredDuration);
   const [escalated, setEscalated] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const escalationDoneRef = useRef(false);
+  const expiresAtRef = useRef<number | null>(null);
 
   // Audio player
   const player = useAudioPlayer(ALARM_SOUND);
@@ -144,22 +149,56 @@ export default function AlarmRingScreen() {
     };
   }, []);
 
-  // Countdown timer
+  // Synchronized countdown timer
+  // On mount, load the persisted timer entry to sync with the real elapsed time.
+  // This ensures that if the user taps the notification with 12s left, the app
+  // shows exactly 12s — not a fresh 30s countdown.
   useEffect(() => {
-    countdownRef.current = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdownRef.current!);
-          return 0;
+    let cancelled = false;
+
+    const initTimer = async () => {
+      if (!alarmId) return;
+
+      const entry = await loadAlarmTimer(alarmId);
+      if (!cancelled) {
+        if (entry) {
+          // Use the persisted expiresAt to compute real remaining time
+          expiresAtRef.current = entry.expiresAt;
+          const remaining = computeSecondsLeft(entry);
+          setSecondsLeft(remaining);
+
+          // If already expired (e.g., app was killed and reopened after timer ran out)
+          if (remaining <= 0) {
+            escalationDoneRef.current = true;
+            setEscalated(true);
+            return;
+          }
+        } else {
+          // No persisted entry — use configured duration (alarm fired in foreground
+          // before handler could save it, or entry was already cleared)
+          const duration = configuredDuration;
+          expiresAtRef.current = Date.now() + duration * 1000;
         }
-        return prev - 1;
-      });
-    }, 1000);
+
+        // Start the interval — tick every second using real elapsed time
+        countdownRef.current = setInterval(() => {
+          if (!expiresAtRef.current) return;
+          const remaining = Math.max(0, Math.ceil((expiresAtRef.current - Date.now()) / 1000));
+          setSecondsLeft(remaining);
+          if (remaining <= 0) {
+            clearInterval(countdownRef.current!);
+          }
+        }, 1000);
+      }
+    };
+
+    initTimer();
 
     return () => {
+      cancelled = true;
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, []);
+  }, [alarmId]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // When countdown reaches 0, send WhatsApp escalation
   useEffect(() => {
@@ -200,6 +239,11 @@ export default function AlarmRingScreen() {
     stopNativeAlarm().catch(() => {});
     // Stop speech
     Speech.stop().catch(() => {});
+    // Stop countdown notification and clear persisted timer
+    if (alarmId) {
+      stopCountdownNotification(alarmId);
+      clearAlarmTimer(alarmId);
+    }
 
     try {
       player.pause();
@@ -215,7 +259,7 @@ export default function AlarmRingScreen() {
     dispatch({ type: 'RESET_MISSED_ALARM' });
 
     router.replace('/(tabs)/alarms');
-  }, [player, dispatch, router]);
+  }, [alarmId, player, dispatch, router]);
 
   const handleSpeakAgain = useCallback(async () => {
     const speaking = await Speech.isSpeakingAsync();
@@ -236,7 +280,9 @@ export default function AlarmRingScreen() {
     return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   };
 
-  const isUrgent = secondsLeft <= 10 && secondsLeft > 0;
+  // Urgent when less than 30% of the total duration remains
+  const urgentThreshold = Math.ceil(configuredDuration * 0.3);
+  const isUrgent = secondsLeft <= urgentThreshold && secondsLeft > 0;
   const isExpired = secondsLeft === 0;
 
   // ─── Accessibility Mode ───────────────────────────────────────────────────

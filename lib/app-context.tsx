@@ -58,6 +58,7 @@ export interface AppSettings {
   accessibilityMode: boolean; // High-contrast, large-font, simplified layout mode
   speechRate: 0.5 | 0.75 | 1.0 | 1.25; // TTS speech rate
   speechVolume: number; // TTS volume 0-100 (independent of alarm volume)
+  timerDuration: 15 | 30 | 45 | 60; // Seconds before emergency escalation
 }
 
 export interface UserProfile {
@@ -132,6 +133,7 @@ const initialState: AppState = {
     accessibilityMode: false,
     speechRate: 0.75,
     speechVolume: 90,
+    timerDuration: 30,
   },
   ads: [],
   missedAlarmCount: 0,

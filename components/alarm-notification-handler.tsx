@@ -3,8 +3,10 @@ import { Alert, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useAppContext } from '@/lib/app-context';
-import { startAlarmTimeout, clearAlarmTimeout } from '@/lib/alarm-timeout-manager';
+import { clearAlarmTimeout } from '@/lib/alarm-timeout-manager';
 import { escalateAlarmToContacts, type EscalationResult } from '@/lib/alarm-escalation';
+import { saveAlarmTimer, clearAlarmTimer } from '@/lib/alarm-timer-store';
+import { startCountdownNotification, stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 
 /**
  * Shows an alert to the user with the escalation result summary.
@@ -37,59 +39,70 @@ function showEscalationAlert(result: EscalationResult) {
  * Component that handles alarm notifications, tracks missed alarms,
  * and triggers hybrid WhatsApp escalation when threshold is reached.
  *
- * Hybrid escalation strategy:
- * 1. PRIMARY: Deep link — opens WhatsApp with pre-filled message (user's personal number)
- * 2. FALLBACK: Server API — sends via WhatsApp Business API (automatic, business number)
- *
- * Key behavior:
- * 1. When a notification is RECEIVED (app in foreground):
- *    → Automatically navigates to alarm-ring screen
- *    → Starts escalation timeout
- *
- * 2. When a notification is TAPPED (app in background/killed):
- *    → Navigates to alarm-ring screen
- *    → Clears escalation timeout (user is responding)
- *
- * 3. When app is launched from a notification (cold start):
- *    → Handled by _layout.tsx via getLastNotificationResponseAsync()
+ * Synchronized timer design:
+ * - When an alarm fires, we record startedAt + expiresAt in AsyncStorage.
+ * - alarm-ring.tsx reads this on mount to compute the real secondsLeft.
+ * - A countdown notification is updated every second while the alarm is ringing.
+ * - When the user taps the notification (even with 12s left), alarm-ring reads
+ *   the persisted expiresAt and shows exactly 12s remaining.
  */
 export function AlarmNotificationHandler() {
   const { state, dispatch } = useAppContext();
   const router = useRouter();
   const pendingAlarms = useRef<Set<string>>(new Set());
   const navigatedAlarms = useRef<Set<string>>(new Set());
+  const escalationTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // Handle alarm notification received while app is in foreground
-  // → Automatically open the alarm-ring screen (real alarm behavior)
   useEffect(() => {
-    const subscription = Notifications.addNotificationReceivedListener((notification) => {
+    const subscription = Notifications.addNotificationReceivedListener(async (notification) => {
       const alarmId = notification.request.content.data?.alarmId as string | undefined;
+      const isCountdownUpdate = notification.request.content.data?.isCountdownUpdate as boolean | undefined;
+
+      // Ignore countdown update notifications — they are only for the notification shade
+      if (isCountdownUpdate) return;
 
       if (alarmId) {
         console.log(`[AlarmHandler] Alarm fired (foreground): ${alarmId}`);
 
         const alarm = state.alarms.find((a) => a.id === alarmId);
         if (alarm && alarm.enabled) {
+          // ── Synchronized timer setup ──────────────────────────────────────
+          const timerDuration = state.settings.timerDuration ?? 30;
+          const startedAt = Date.now();
+          const expiresAt = startedAt + timerDuration * 1000;
+
+          // Persist timer entry so alarm-ring can sync even after cold start
+          await saveAlarmTimer({ alarmId, startedAt, expiresAt, timerDuration });
+
+          // Start countdown notification (updates every second in notification shade)
+          if (Platform.OS !== 'web') {
+            startCountdownNotification(
+              alarmId,
+              alarm.description || 'Alarme',
+              expiresAt,
+              timerDuration
+            );
+          }
+
           // Track this alarm as pending response
           pendingAlarms.current.add(alarmId);
 
-          // Start timeout for escalation (2 min)
-          startAlarmTimeout(alarm, state.emergencyContacts);
-
-          // IMPORTANT: Automatically navigate to alarm-ring screen
-          // This makes it behave like a real alarm — the screen takes over immediately
+          // Navigate to alarm-ring screen
           if (!navigatedAlarms.current.has(alarmId)) {
             navigatedAlarms.current.add(alarmId);
             router.push(`/alarm-ring?alarmId=${alarmId}`);
-
-            // Clean up navigated set after 5 seconds to allow re-navigation
             setTimeout(() => navigatedAlarms.current.delete(alarmId), 5000);
           }
 
-          // Set a timeout to check if alarm was responded to
-          setTimeout(() => {
+          // Escalation timeout — fires after timerDuration seconds
+          const existingTimer = escalationTimers.current.get(alarmId);
+          if (existingTimer) clearTimeout(existingTimer);
+
+          const escalationTimer = setTimeout(() => {
+            escalationTimers.current.delete(alarmId);
+
             if (pendingAlarms.current.has(alarmId)) {
-              // Alarm was NOT responded to — increment missed counter
               pendingAlarms.current.delete(alarmId);
               dispatch({ type: 'INCREMENT_MISSED_ALARM' });
 
@@ -97,17 +110,15 @@ export function AlarmNotificationHandler() {
                 `[AlarmHandler] Missed alarm count: ${state.missedAlarmCount + 1} / threshold: ${state.settings.missedAlarmThreshold}`
               );
 
-              // Check if threshold reached
               const newCount = state.missedAlarmCount + 1;
               if (newCount >= state.settings.missedAlarmThreshold) {
                 console.log('[AlarmHandler] Threshold reached! Triggering hybrid WhatsApp escalation...');
 
                 if (Platform.OS !== 'web') {
-                  // Use the hybrid escalation system
                   escalateAlarmToContacts(
                     alarm,
                     state.emergencyContacts,
-                    undefined, // location will be fetched automatically
+                    undefined,
                     state.profile?.name || undefined,
                     newCount
                   ).then((result) => {
@@ -118,25 +129,26 @@ export function AlarmNotificationHandler() {
                   });
                 }
 
-                // Reset counter after escalation
                 dispatch({ type: 'RESET_MISSED_ALARM' });
               }
             }
-          }, 2 * 60 * 1000); // 2 minutes timeout
+          }, timerDuration * 1000);
+
+          escalationTimers.current.set(alarmId, escalationTimer);
         }
       }
     });
 
     return () => subscription.remove();
-  }, [state.alarms, state.emergencyContacts, state.missedAlarmCount, state.settings.missedAlarmThreshold, state.profile, dispatch, router]);
+  }, [state.alarms, state.emergencyContacts, state.missedAlarmCount, state.settings.missedAlarmThreshold, state.settings.timerDuration, state.profile, dispatch, router]);
 
   // Handle notification response (user taps alarm notification from tray)
-  // This handles the case where the app is in background and user taps the notification
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const alarmId = response.notification.request.content.data?.alarmId as string | undefined;
+      const isCountdownUpdate = response.notification.request.content.data?.isCountdownUpdate as boolean | undefined;
 
-      if (alarmId) {
+      if (alarmId && !isCountdownUpdate) {
         console.log(`[AlarmHandler] Alarm tapped (from notification): ${alarmId}`);
 
         // Clear pending state — user is responding
@@ -144,6 +156,7 @@ export function AlarmNotificationHandler() {
         clearAlarmTimeout(alarmId);
 
         // Navigate to full-screen alarm ring screen
+        // alarm-ring.tsx will read the persisted timer entry to show correct remaining time
         router.push(`/alarm-ring?alarmId=${alarmId}`);
       }
     });
