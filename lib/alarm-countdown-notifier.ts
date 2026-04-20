@@ -5,7 +5,8 @@
  *
  * Android strategy (expo-alarm-module available):
  * - Call updateAlarm() every second to update the alarm title/description with
- *   the remaining time. This updates the notification shown by the native module.
+ *   the remaining time. IMPORTANT: updateAlarm requires a FULL alarm object —
+ *   passing a partial object causes silent failures and blank notification text.
  *
  * iOS/Web fallback:
  * - No live countdown in notification (not supported by expo-notifications without
@@ -36,6 +37,20 @@ function formatCountdown(seconds: number): string {
   return `${s}s`;
 }
 
+export interface NativeAlarmUpdatePayload {
+  uid: string;
+  day: Date;
+  title: string;
+  description: string;
+  active: boolean;
+  repeating: boolean;
+  showDismiss: boolean;
+  showSnooze: boolean;
+  snoozeInterval: number;
+  dismissText: string;
+  snoozeText: string;
+}
+
 /**
  * Start updating the native alarm notification every second with the countdown.
  *
@@ -43,7 +58,8 @@ function formatCountdown(seconds: number): string {
  * @param alarmName - Display name of the alarm/medication
  * @param expiresAt - Unix ms when escalation fires
  * @param timerDuration - Total timer duration in seconds
- * @param nativeAlarmUids - UIDs of the native alarm(s) to update
+ * @param _originalNotifId - Unused (kept for API compatibility)
+ * @param nativeAlarmBasePayloads - Full alarm payloads for each native UID to update
  */
 export async function startCountdownNotification(
   alarmId: string,
@@ -51,7 +67,7 @@ export async function startCountdownNotification(
   expiresAt: number,
   timerDuration: number,
   _originalNotifId?: string,
-  nativeAlarmUids?: string[]
+  nativeAlarmBasePayloads?: NativeAlarmUpdatePayload[]
 ): Promise<void> {
   // Stop any existing interval for this alarm
   stopCountdownNotification(alarmId);
@@ -59,9 +75,22 @@ export async function startCountdownNotification(
   // Only update native alarm notification on Android
   if (Platform.OS !== 'android' || !updateAlarmNative) return;
 
-  const uids = nativeAlarmUids && nativeAlarmUids.length > 0
-    ? nativeAlarmUids
-    : [`vigora_${alarmId}`];
+  // Build base payloads: use provided payloads or create a minimal fallback
+  const basePayloads: NativeAlarmUpdatePayload[] = nativeAlarmBasePayloads && nativeAlarmBasePayloads.length > 0
+    ? nativeAlarmBasePayloads
+    : [{
+        uid: `vigora_${alarmId}`,
+        day: new Date(),
+        title: alarmName,
+        description: '',
+        active: true,
+        repeating: false,
+        showDismiss: true,
+        showSnooze: true,
+        snoozeInterval: 5,
+        dismissText: 'Dispensar',
+        snoozeText: 'Soneca (5 min)',
+      }];
 
   const updateNativeAlarm = async () => {
     const now = Date.now();
@@ -76,15 +105,13 @@ export async function startCountdownNotification(
       ? `Abra o app para desligar o alarme`
       : `🚨 Contatando emergência agora!`;
 
-    // Update all UIDs for this alarm (e.g., repeating alarms have multiple UIDs)
-    for (const uid of uids) {
+    // Update all UIDs — MUST pass the full alarm object or updateAlarm silently fails
+    for (const base of basePayloads) {
       try {
         await updateAlarmNative!({
-          uid,
+          ...base,
           title,
           description,
-          // Keep the alarm active and preserve other settings
-          active: true,
         });
       } catch {
         // Best-effort — don't crash the alarm flow

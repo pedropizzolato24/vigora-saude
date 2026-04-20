@@ -5,8 +5,8 @@ import { useRouter } from 'expo-router';
 import { useAppContext } from '@/lib/app-context';
 import { clearAlarmTimeout } from '@/lib/alarm-timeout-manager';
 import { escalateAlarmToContacts, type EscalationResult } from '@/lib/alarm-escalation';
-import { saveAlarmTimer, clearAlarmTimer } from '@/lib/alarm-timer-store';
-import { startCountdownNotification, stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
+import { saveAlarmTimer, clearAlarmTimer, loadAlarmTimer, computeSecondsLeft } from '@/lib/alarm-timer-store';
+import { startCountdownNotification, stopCountdownNotification, type NativeAlarmUpdatePayload } from '@/lib/alarm-countdown-notifier';
 import { isNativeAlarmAvailable } from '@/lib/native-alarm-manager';
 
 // Lazy-load expo-alarm-module getAlarmState for Android
@@ -23,7 +23,8 @@ if (Platform.OS === 'android') {
  * Native UIDs look like: "vigora_<alarmId>" or "vigora_<alarmId>_mon" etc.
  */
 function extractAlarmIdFromUid(uid: string): string | null {
-  const match = uid.match(/^vigora_(.+?)(?:_(?:mon|tue|wed|thu|fri|sat|sun|\d+))?$/);
+  // Native UIDs: "vigora_<alarmId>" (one-time/daily) or "vigora_<alarmId>_wd<0-6>" (weekday)
+  const match = uid.match(/^vigora_(.+?)(?:_wd\d+)?$/);
   return match ? match[1] : null;
 }
 
@@ -85,13 +86,45 @@ export function AlarmNotificationHandler() {
 
     console.log(`[AlarmHandler] Alarm fired: ${alarmId}`);
 
-    // ── Synchronized timer setup ────────────────────────────────────────────
+    // ── Synchronized timer setup ──────────────────────────────────────────────────────────────────────
     const timerDuration = state.settings.timerDuration ?? 30;
-    const startedAt = Date.now();
-    const expiresAt = startedAt + timerDuration * 1000;
 
-    // Persist timer entry so alarm-ring can sync even after cold start
-    await saveAlarmTimer({ alarmId, startedAt, expiresAt, timerDuration });
+    // Check if a timer is already running for this alarm (e.g., app foregrounded
+    // after tapping notification). If so, reuse the existing expiresAt so the
+    // in-app countdown stays in sync with the notification countdown.
+    let expiresAt: number;
+    const existingEntry = await loadAlarmTimer(alarmId);
+    if (existingEntry && existingEntry.expiresAt > Date.now()) {
+      // Timer already running — reuse it
+      expiresAt = existingEntry.expiresAt;
+      console.log(`[AlarmHandler] Reusing existing timer for ${alarmId}, ${computeSecondsLeft(existingEntry)}s left`);
+    } else {
+      // Fresh alarm — create a new timer
+      const startedAt = Date.now();
+      expiresAt = startedAt + timerDuration * 1000;
+      await saveAlarmTimer({ alarmId, startedAt, expiresAt, timerDuration });
+      console.log(`[AlarmHandler] New timer for ${alarmId}, ${timerDuration}s`);
+    }
+
+    // Build full native alarm payloads for countdown updates.
+    // IMPORTANT: expo-alarm-module.updateAlarm requires a complete alarm object.
+    // Passing a partial object causes silent failures and blank notification text.
+    const nativePayloads: NativeAlarmUpdatePayload[] | undefined =
+      alarm.nativeAlarmUids && alarm.nativeAlarmUids.length > 0
+        ? alarm.nativeAlarmUids.map((uid) => ({
+            uid,
+            day: new Date(), // current date — updateAlarm uses this to keep alarm active
+            title: alarm.description || 'Alarme',
+            description: alarm.description || '',
+            active: true,
+            repeating: alarm.repeat === 'daily' || alarm.repeat === 'weekdays' || alarm.repeat === 'weekends' || alarm.repeat === 'custom',
+            showDismiss: true,
+            showSnooze: true,
+            snoozeInterval: 5,
+            dismissText: 'Dispensar',
+            snoozeText: 'Soneca (5 min)',
+          }))
+        : undefined;
 
     // Start countdown notification — updates native alarm title every second
     startCountdownNotification(
@@ -100,7 +133,7 @@ export function AlarmNotificationHandler() {
       expiresAt,
       timerDuration,
       undefined,
-      alarm.nativeAlarmUids
+      nativePayloads
     );
 
     // Track this alarm as pending response
