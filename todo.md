@@ -343,3 +343,5 @@
 - [x] Reescrever alarm-countdown-notifier.ts para usar o módulo nativo
 - [x] Integrar startCountdownNotification no alarm-notification-handler.tsx
 - [x] Integrar stopCountdownNotification com alarmTitle no alarm-ring.tsx
+- [x] Adicionar botão "Testar Countdown na Notificação" na tela de Configurações (modo normal + acessibilidade)
+- [x] Botão mostra countdown de 10s com barra de progresso e estado ativo/cancelar

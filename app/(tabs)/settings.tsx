@@ -1,4 +1,5 @@
 import * as Haptics from 'expo-haptics';
+import { startCountdownNotification, stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Alert,
@@ -166,6 +167,56 @@ export default function SettingsScreen() {
   const { colorScheme, setColorScheme } = useThemeContext();
   const fs = useFontSize();
   const { settings } = state;
+
+  const [countdownTestActive, setCountdownTestActive] = useState(false);
+  const [countdownTestSecondsLeft, setCountdownTestSecondsLeft] = useState(10);
+  const countdownTestIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const TEST_ALARM_ID = 'settings_test';
+  const TEST_DURATION = 10;
+
+  const handleTestCountdown = useCallback(() => {
+    if (countdownTestActive) {
+      // Cancel running test
+      if (countdownTestIntervalRef.current) {
+        clearInterval(countdownTestIntervalRef.current);
+        countdownTestIntervalRef.current = null;
+      }
+      stopCountdownNotification(TEST_ALARM_ID, 'Teste de Notificação');
+      setCountdownTestActive(false);
+      setCountdownTestSecondsLeft(TEST_DURATION);
+      return;
+    }
+
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const expiresAt = Date.now() + TEST_DURATION * 1000;
+    setCountdownTestActive(true);
+    setCountdownTestSecondsLeft(TEST_DURATION);
+
+    // Start native countdown notification
+    startCountdownNotification(TEST_ALARM_ID, 'Teste de Notificação', expiresAt);
+
+    // Update local UI counter
+    countdownTestIntervalRef.current = setInterval(() => {
+      const left = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+      setCountdownTestSecondsLeft(left);
+      if (left <= 0) {
+        if (countdownTestIntervalRef.current) clearInterval(countdownTestIntervalRef.current);
+        countdownTestIntervalRef.current = null;
+        stopCountdownNotification(TEST_ALARM_ID, 'Teste de Notificação');
+        setCountdownTestActive(false);
+        setCountdownTestSecondsLeft(TEST_DURATION);
+        if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    }, 500);
+  }, [countdownTestActive]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownTestIntervalRef.current) clearInterval(countdownTestIntervalRef.current);
+      stopCountdownNotification(TEST_ALARM_ID, 'Teste de Notificação');
+    };
+  }, []);
 
   const updateSetting = <K extends keyof typeof settings>(key: K, value: (typeof settings)[K]) => {
     dispatch({ type: 'UPDATE_SETTINGS', payload: { [key]: value } });
@@ -469,6 +520,48 @@ export default function SettingsScreen() {
                 </Pressable>
               ))}
             </View>
+          </View>
+
+          {/* Teste do Módulo Nativo de Countdown - Accessibility */}
+          <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 14 }}>
+            <Text style={{ fontSize: af.md, fontWeight: '900', color: ac.foreground }}>Testar Countdown na Notificação</Text>
+            <Text style={{ fontSize: af.sm, color: ac.muted }}>Minimize o app para ver o countdown na bandeja de notificações.</Text>
+            <Pressable
+              onPress={handleTestCountdown}
+              style={({ pressed }) => [{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 12,
+                backgroundColor: countdownTestActive ? '#CC0000' : ac.primary,
+                borderRadius: 16,
+                paddingVertical: as_.buttonPadding,
+                borderWidth: 3,
+                borderColor: countdownTestActive ? '#990000' : '#003388',
+                opacity: pressed ? 0.8 : 1,
+              }]}
+            >
+              <MaterialIcons
+                name={countdownTestActive ? 'stop' : 'notifications-active'}
+                size={32}
+                color="#FFFFFF"
+              />
+              <Text style={{ fontSize: af.lg, fontWeight: '900', color: '#FFFFFF' }}>
+                {countdownTestActive
+                  ? `Parar Teste (${countdownTestSecondsLeft}s)`
+                  : 'Iniciar Teste (10s)'}
+              </Text>
+            </Pressable>
+            {countdownTestActive && (
+              <View style={{ height: 10, backgroundColor: ac.border, borderRadius: 5, overflow: 'hidden' }}>
+                <View style={{
+                  height: 10,
+                  backgroundColor: '#CC0000',
+                  borderRadius: 5,
+                  width: `${(countdownTestSecondsLeft / TEST_DURATION) * 100}%` as any,
+                }} />
+              </View>
+            )}
           </View>
 
           {/* SOS confirmation */}
@@ -789,6 +882,50 @@ export default function SettingsScreen() {
                 </Pressable>
               ))}
             </View>
+          </View>
+          <Divider colors={colors} />
+
+          {/* Teste do Módulo Nativo de Countdown */}
+          <View style={styles.fontSizeSection}>
+            <Text style={[styles.settingLabel, { color: colors.foreground }]}>Testar Countdown na Notificação</Text>
+            <Text style={[styles.settingSubLabel, { color: colors.muted, marginBottom: 10 }]}>
+              Verifica se o módulo nativo está funcionando. Minimize o app para ver o countdown na bandeja.
+            </Text>
+            <Pressable
+              onPress={handleTestCountdown}
+              style={({ pressed }) => [{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+                backgroundColor: countdownTestActive ? colors.error : colors.primary,
+                borderRadius: 14,
+                paddingVertical: 14,
+                paddingHorizontal: 20,
+                opacity: pressed ? 0.8 : 1,
+              }]}
+            >
+              <MaterialIcons
+                name={countdownTestActive ? 'stop' : 'notifications-active'}
+                size={22}
+                color="#FFFFFF"
+              />
+              <Text style={{ fontSize: fs.md, fontWeight: '700', color: '#FFFFFF' }}>
+                {countdownTestActive
+                  ? `Cancelar Teste (${countdownTestSecondsLeft}s)`
+                  : 'Iniciar Teste (10s)'}
+              </Text>
+            </Pressable>
+            {countdownTestActive && (
+              <View style={{ marginTop: 10, height: 6, backgroundColor: colors.border, borderRadius: 3, overflow: 'hidden' }}>
+                <View style={{
+                  height: 6,
+                  backgroundColor: colors.error,
+                  borderRadius: 3,
+                  width: `${(countdownTestSecondsLeft / TEST_DURATION) * 100}%` as any,
+                }} />
+              </View>
+            )}
           </View>
         </CollapsibleSection>
 
