@@ -1,7 +1,8 @@
 import * as Haptics from 'expo-haptics';
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Alert,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -13,6 +14,7 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
+import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -232,6 +234,40 @@ export default function SettingsScreen() {
     }
   };
 
+  // ─── Location Permission Status ───────────────────────────────────────────
+  const [locationStatus, setLocationStatus] = useState<'granted' | 'background' | 'denied' | 'unknown'>('unknown');
+
+  const checkLocationPermission = useCallback(async () => {
+    if (Platform.OS === 'web') return;
+    try {
+      const fg = await Location.getForegroundPermissionsAsync();
+      if (fg.status !== 'granted') {
+        setLocationStatus('denied');
+        return;
+      }
+      const bg = await Location.getBackgroundPermissionsAsync();
+      setLocationStatus(bg.status === 'granted' ? 'background' : 'granted');
+    } catch {
+      setLocationStatus('unknown');
+    }
+  }, []);
+
+  useEffect(() => {
+    checkLocationPermission();
+  }, [checkLocationPermission]);
+
+  const handleOpenLocationSettings = () => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Linking.openSettings();
+  };
+
+  const locationStatusInfo = {
+    background: { label: 'Ativo (Tempo Todo)', color: '#22C55E', icon: 'location-on' as const },
+    granted: { label: 'Ativo (Apenas em Uso)', color: '#F59E0B', icon: 'location-on' as const },
+    denied: { label: 'Negado', color: '#EF4444', icon: 'location-off' as const },
+    unknown: { label: 'Verificando...', color: '#687076', icon: 'location-searching' as const },
+  };
+
   const handleClearData = () => {
     Alert.alert(
       'Limpar Todos os Dados',
@@ -444,6 +480,40 @@ export default function SettingsScreen() {
               </View>
               <Switch value={settings.sosConfirmation} onValueChange={(v) => updateSetting('sosConfirmation', v)} trackColor={{ false: ac.border, true: ac.emergency }} thumbColor="#FFFFFF" />
             </View>
+          </View>
+
+          {/* Location Permission Status - Accessibility */}
+          <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 12 }}>
+            <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Permissão de Localização</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <MaterialIcons
+                name={locationStatusInfo[locationStatus].icon}
+                size={20}
+                color={locationStatusInfo[locationStatus].color}
+              />
+              <Text style={{ fontSize: af.sm, fontWeight: '700', color: locationStatusInfo[locationStatus].color }}>
+                {locationStatusInfo[locationStatus].label}
+              </Text>
+            </View>
+            {locationStatus !== 'background' && locationStatus !== 'unknown' && (
+              <Text style={{ fontSize: af.sm, color: ac.muted }}>
+                {locationStatus === 'denied'
+                  ? 'Ative a localização para enviar SOS com GPS'
+                  : 'Ative "Tempo Todo" para SOS com app fechado'}
+              </Text>
+            )}
+            <Pressable
+              onPress={handleOpenLocationSettings}
+              style={({ pressed }) => [{
+                backgroundColor: ac.primary,
+                paddingVertical: 14,
+                borderRadius: 16,
+                alignItems: 'center',
+                opacity: pressed ? 0.7 : 1,
+              }]}
+            >
+              <Text style={{ fontSize: af.md, fontWeight: '800', color: '#FFFFFF' }}>Abrir Configurações</Text>
+            </Pressable>
           </View>
 
           {/* Version info */}
@@ -748,6 +818,43 @@ export default function SettingsScreen() {
             colors={colors}
             trackColor={colors.success}
           />
+          <Divider colors={colors} />
+
+          {/* Location Permission Status */}
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextBlock}>
+              <Text style={[styles.settingLabel, { color: colors.foreground }]}>Permissão de Localização</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <MaterialIcons
+                  name={locationStatusInfo[locationStatus].icon}
+                  size={14}
+                  color={locationStatusInfo[locationStatus].color}
+                />
+                <Text style={[styles.settingSubLabel, { color: locationStatusInfo[locationStatus].color, marginTop: 0 }]}>
+                  {locationStatusInfo[locationStatus].label}
+                </Text>
+              </View>
+              {locationStatus !== 'background' && locationStatus !== 'unknown' && (
+                <Text style={[styles.settingSubLabel, { color: colors.muted, marginTop: 2 }]}>
+                  {locationStatus === 'denied'
+                    ? 'Ative a localização para enviar SOS com GPS'
+                    : 'Ative "Tempo Todo" para SOS com app fechado'}
+                </Text>
+              )}
+            </View>
+            <Pressable
+              onPress={handleOpenLocationSettings}
+              style={({ pressed }) => [{
+                backgroundColor: colors.primary,
+                paddingHorizontal: 12,
+                paddingVertical: 7,
+                borderRadius: 8,
+                opacity: pressed ? 0.7 : 1,
+              }]}
+            >
+              <Text style={{ color: colors.onPrimary, fontSize: 12, fontWeight: '600' }}>Configurar</Text>
+            </Pressable>
+          </View>
           <Divider colors={colors} />
 
           {/* Missed Alarm Threshold */}

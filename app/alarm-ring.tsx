@@ -116,13 +116,22 @@ export default function AlarmRingScreen() {
     const startAlarm = async () => {
       try {
         if (Platform.OS !== 'web') {
+          // Stop the native alarm sound (expo-alarm-module plays its own audio)
+          // so that expo-audio takes full control of the alarm sound
+          try { await stopNativeAlarm(); } catch {}
+
           // Must await setAudioModeAsync before play() to ensure silent mode override
           await setAudioModeAsync({ playsInSilentMode: true });
-          // Set loop, volume and seek to start before playing
+          // Set loop and seek to start before playing
           player.loop = true;
-          player.volume = (state.settings.alarmVolume ?? 80) / 100;
           player.seekTo(0);
           player.play();
+
+          // Set volume AFTER play() — expo-audio requires the player to be
+          // actively playing before volume changes take effect
+          setTimeout(() => {
+            try { player.volume = (state.settings.alarmVolume ?? 80) / 100; } catch {}
+          }, 100);
 
           // Vibrate in a repeating pattern
           Vibration.vibrate([0, 500, 500, 500], true);

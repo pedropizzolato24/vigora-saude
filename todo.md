@@ -284,3 +284,8 @@
 - [x] Adicionar tela/modal de guia para ativar "Permitir o tempo todo" nas configurações do Android
 - [x] Configurar ACCESS_BACKGROUND_LOCATION no app.config.ts
 - [x] Instalar expo-location se não estiver instalado
+
+## Status de Localização nas Configurações e Bug de Volume (2026-04-20)
+- [ ] Adicionar status de permissão de localização (foreground/background/negada) na tela de Configurações
+- [ ] Botão para abrir Configurações do sistema a partir da tela de Configurações do app
+- [ ] Corrigir bug: volume do alarme não está sendo aplicado (alarme toca mesmo com volume em zero)
