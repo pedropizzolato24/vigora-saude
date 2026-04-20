@@ -156,39 +156,40 @@ export default function AlarmRingScreen() {
   useEffect(() => {
     let cancelled = false;
 
-    const initTimer = async () => {
-      if (!alarmId) return;
+    const startCountdown = (expiresAt: number) => {
+      expiresAtRef.current = expiresAt;
+      const remaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+      setSecondsLeft(remaining);
+      if (remaining <= 0) {
+        escalationDoneRef.current = true;
+        setEscalated(true);
+        return;
+      }
+      countdownRef.current = setInterval(() => {
+        if (!expiresAtRef.current) return;
+        const rem = Math.max(0, Math.ceil((expiresAtRef.current - Date.now()) / 1000));
+        setSecondsLeft(rem);
+        if (rem <= 0) clearInterval(countdownRef.current!);
+      }, 1000);
+    };
+
+    const initTimer = async (retryCount = 0) => {
+      if (!alarmId || cancelled) return;
 
       const entry = await loadAlarmTimer(alarmId);
-      if (!cancelled) {
-        if (entry) {
-          // Use the persisted expiresAt to compute real remaining time
-          expiresAtRef.current = entry.expiresAt;
-          const remaining = computeSecondsLeft(entry);
-          setSecondsLeft(remaining);
+      if (cancelled) return;
 
-          // If already expired (e.g., app was killed and reopened after timer ran out)
-          if (remaining <= 0) {
-            escalationDoneRef.current = true;
-            setEscalated(true);
-            return;
-          }
-        } else {
-          // No persisted entry — use configured duration (alarm fired in foreground
-          // before handler could save it, or entry was already cleared)
-          const duration = configuredDuration;
-          expiresAtRef.current = Date.now() + duration * 1000;
-        }
-
-        // Start the interval — tick every second using real elapsed time
-        countdownRef.current = setInterval(() => {
-          if (!expiresAtRef.current) return;
-          const remaining = Math.max(0, Math.ceil((expiresAtRef.current - Date.now()) / 1000));
-          setSecondsLeft(remaining);
-          if (remaining <= 0) {
-            clearInterval(countdownRef.current!);
-          }
-        }, 1000);
+      if (entry) {
+        // Use the persisted expiresAt to compute real remaining time
+        startCountdown(entry.expiresAt);
+      } else if (retryCount < 5) {
+        // No entry yet — the handler may still be saving it (navigation happened first).
+        // Retry up to 5 times with 150ms delay (total max wait: 750ms).
+        setTimeout(() => initTimer(retryCount + 1), 150);
+      } else {
+        // Gave up waiting — start a fresh timer from configured duration
+        const duration = configuredDuration;
+        startCountdown(Date.now() + duration * 1000);
       }
     };
 

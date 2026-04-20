@@ -6,7 +6,7 @@ import { useAppContext } from '@/lib/app-context';
 import { clearAlarmTimeout } from '@/lib/alarm-timeout-manager';
 import { escalateAlarmToContacts, type EscalationResult } from '@/lib/alarm-escalation';
 import { saveAlarmTimer, clearAlarmTimer, loadAlarmTimer, computeSecondsLeft } from '@/lib/alarm-timer-store';
-import { startCountdownNotification, stopCountdownNotification, type NativeAlarmUpdatePayload } from '@/lib/alarm-countdown-notifier';
+import { startCountdownNotification, stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 import { isNativeAlarmAvailable } from '@/lib/native-alarm-manager';
 
 // Lazy-load expo-alarm-module getAlarmState for Android
@@ -116,34 +116,12 @@ export function AlarmNotificationHandler() {
     // Track this alarm as pending response
     pendingAlarms.current.add(alarmId);
 
-    // Build full native alarm payloads for countdown updates.
-    // IMPORTANT: expo-alarm-module.updateAlarm requires a complete alarm object.
-    // Passing a partial object causes silent failures and blank notification text.
-    const nativePayloads: NativeAlarmUpdatePayload[] | undefined =
-      alarm.nativeAlarmUids && alarm.nativeAlarmUids.length > 0
-        ? alarm.nativeAlarmUids.map((uid) => ({
-            uid,
-            day: new Date(), // current date — updateAlarm uses this to keep alarm active
-            title: alarm.description || 'Alarme',
-            description: alarm.description || '',
-            active: true,
-            repeating: alarm.repeat === 'daily' || alarm.repeat === 'weekdays' || alarm.repeat === 'weekends' || alarm.repeat === 'custom',
-            showDismiss: true,
-            showSnooze: true,
-            snoozeInterval: 5,
-            dismissText: 'Dispensar',
-            snoozeText: 'Soneca (5 min)',
-          }))
-        : undefined;
-
-    // Start countdown notification — updates native alarm title every second
+    // Start countdown notification — shows expo-notifications with live countdown every second
     startCountdownNotification(
       alarmId,
       alarm.description || 'Alarme',
       expiresAt,
       timerDuration,
-      undefined,
-      nativePayloads
     );
 
     // Escalation timeout — fires after timerDuration seconds

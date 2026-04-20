@@ -1,151 +1,114 @@
 /**
  * alarm-countdown-notifier.ts
  *
- * Updates the native alarm notification body every second to show a live countdown.
+ * Shows a countdown notification that updates every second using expo-notifications.
  *
- * Android strategy (expo-alarm-module available):
- * - Call updateAlarm() every second to update the alarm title/description with
- *   the remaining time. IMPORTANT: updateAlarm requires a FULL alarm object —
- *   passing a partial object causes silent failures and blank notification text.
+ * Strategy:
+ * - Uses a FIXED notification identifier per alarm so each scheduleNotificationAsync
+ *   call REPLACES the previous notification with the same identifier.
+ * - The native expo-alarm-module notification (with "Dispensar" button) remains
+ *   separate — it fires the alarm sound and cannot be updated in real time.
+ * - This countdown notification is a SECOND notification that shows the live timer.
+ * - When the alarm is dismissed, both notifications are cancelled.
  *
- * iOS/Web fallback:
- * - No live countdown in notification (not supported by expo-notifications without
- *   Live Activities). The countdown is only visible inside the alarm-ring screen.
+ * NOTE: updateAlarm() from expo-alarm-module only reschedules the alarm — it does NOT
+ * update the visible notification text. expo-notifications is the correct tool here.
  */
 
-import { Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
 
 // Map of alarmId → interval handle
 const countdownIntervals = new Map<string, ReturnType<typeof setInterval>>();
 
-// Lazy import of expo-alarm-module to avoid crashing on iOS/web
-let updateAlarmNative: ((alarm: any) => Promise<void>) | null = null;
-if (Platform.OS === 'android') {
-  try {
-    const mod = require('expo-alarm-module');
-    updateAlarmNative = mod.updateAlarm;
-  } catch {}
+// Fixed notification identifier prefix for countdown notifications
+const COUNTDOWN_NOTIF_PREFIX = 'vigora_countdown_';
+
+function getCountdownNotifId(alarmId: string): string {
+  return `${COUNTDOWN_NOTIF_PREFIX}${alarmId}`;
 }
 
 /**
- * Format seconds as MM:SS or Ns.
- */
-function formatCountdown(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  if (m > 0) return `${m}:${s.toString().padStart(2, '0')}`;
-  return `${s}s`;
-}
-
-export interface NativeAlarmUpdatePayload {
-  uid: string;
-  day: Date;
-  title: string;
-  description: string;
-  active: boolean;
-  repeating: boolean;
-  showDismiss: boolean;
-  showSnooze: boolean;
-  snoozeInterval: number;
-  dismissText: string;
-  snoozeText: string;
-}
-
-/**
- * Start updating the native alarm notification every second with the countdown.
- *
- * @param alarmId - The alarm ID (used as the native alarm UID prefix)
- * @param alarmName - Display name of the alarm/medication
- * @param expiresAt - Unix ms when escalation fires
- * @param timerDuration - Total timer duration in seconds
- * @param _originalNotifId - Unused (kept for API compatibility)
- * @param nativeAlarmBasePayloads - Full alarm payloads for each native UID to update
+ * Start a countdown notification that updates every second.
+ * Uses a fixed identifier so each update replaces the previous notification.
  */
 export async function startCountdownNotification(
   alarmId: string,
-  alarmName: string,
+  alarmTitle: string,
   expiresAt: number,
-  timerDuration: number,
-  _originalNotifId?: string,
-  nativeAlarmBasePayloads?: NativeAlarmUpdatePayload[]
+  totalDuration: number,
 ): Promise<void> {
-  // Stop any existing interval for this alarm
+  // Stop any existing countdown for this alarm
   stopCountdownNotification(alarmId);
 
-  // Only update native alarm notification on Android
-  if (Platform.OS !== 'android' || !updateAlarmNative) return;
+  const notifId = getCountdownNotifId(alarmId);
 
-  // Build base payloads: use provided payloads or create a minimal fallback
-  const basePayloads: NativeAlarmUpdatePayload[] = nativeAlarmBasePayloads && nativeAlarmBasePayloads.length > 0
-    ? nativeAlarmBasePayloads
-    : [{
-        uid: `vigora_${alarmId}`,
-        day: new Date(),
-        title: alarmName,
-        description: '',
-        active: true,
-        repeating: false,
-        showDismiss: true,
-        showSnooze: true,
-        snoozeInterval: 5,
-        dismissText: 'Dispensar',
-        snoozeText: 'Soneca (5 min)',
-      }];
+  const updateNotification = async () => {
+    const secondsLeft = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+    const minutes = Math.floor(secondsLeft / 60);
+    const secs = secondsLeft % 60;
+    const timeStr = minutes > 0 ? `${minutes}m ${secs}s` : `${secondsLeft}s`;
 
-  const updateNativeAlarm = async () => {
-    const now = Date.now();
-    const secondsLeft = Math.max(0, Math.ceil((expiresAt - now) / 1000));
-    const isUrgent = secondsLeft <= Math.ceil(timerDuration * 0.3);
+    const isUrgent = secondsLeft <= Math.ceil(totalDuration * 0.3);
+    const urgentPrefix = isUrgent ? '🚨 ' : '⏰ ';
 
-    const title = isUrgent
-      ? `⚠️ ${alarmName} — Emergência em ${formatCountdown(secondsLeft)}`
-      : `⏰ ${alarmName} — Emergência em ${formatCountdown(secondsLeft)}`;
+    const body =
+      secondsLeft > 0
+        ? `${urgentPrefix}Emergência em ${timeStr} — Abra o app para desligar`
+        : '🚨 Contatando emergência agora!';
 
-    const description = secondsLeft > 0
-      ? `Abra o app para desligar o alarme`
-      : `🚨 Contatando emergência agora!`;
-
-    // Update all UIDs — MUST pass the full alarm object or updateAlarm silently fails
-    for (const base of basePayloads) {
-      try {
-        await updateAlarmNative!({
-          ...base,
-          title,
-          description,
-        });
-      } catch {
-        // Best-effort — don't crash the alarm flow
-      }
+    try {
+      // Cancel previous countdown notification and schedule new one immediately.
+      // Using the same identifier replaces the existing notification on Android.
+      await Notifications.cancelScheduledNotificationAsync(notifId).catch(() => {});
+      await Notifications.scheduleNotificationAsync({
+        identifier: notifId,
+        content: {
+          title: alarmTitle,
+          body,
+          sound: false,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+          data: { alarmId, isCountdownUpdate: true },
+        },
+        trigger: null, // show immediately
+      });
+    } catch {
+      // Best-effort — don't crash the alarm flow
     }
 
-    // Stop interval when expired
     if (secondsLeft <= 0) {
       stopCountdownNotification(alarmId);
     }
   };
 
-  // Update immediately, then every second
-  await updateNativeAlarm();
-  const handle = setInterval(updateNativeAlarm, 1000);
-  countdownIntervals.set(alarmId, handle);
+  // Show immediately, then update every second
+  await updateNotification();
+  const interval = setInterval(updateNotification, 1000);
+  countdownIntervals.set(alarmId, interval);
 }
 
 /**
- * Stop the countdown notification interval.
+ * Stop the countdown notification for a given alarm and dismiss it.
  */
-export function stopCountdownNotification(alarmId: string): void {
-  const handle = countdownIntervals.get(alarmId);
-  if (handle !== undefined) {
-    clearInterval(handle);
+export async function stopCountdownNotification(alarmId: string): Promise<void> {
+  const interval = countdownIntervals.get(alarmId);
+  if (interval !== undefined) {
+    clearInterval(interval);
     countdownIntervals.delete(alarmId);
   }
+
+  // Dismiss the countdown notification
+  const notifId = getCountdownNotifId(alarmId);
+  try {
+    await Notifications.cancelScheduledNotificationAsync(notifId).catch(() => {});
+    await Notifications.dismissNotificationAsync(notifId).catch(() => {});
+  } catch {}
 }
 
 /**
  * Stop all active countdown notifications.
  */
-export function stopAllCountdownNotifications(): void {
+export async function stopAllCountdownNotifications(): Promise<void> {
   for (const alarmId of [...countdownIntervals.keys()]) {
-    stopCountdownNotification(alarmId);
+    await stopCountdownNotification(alarmId);
   }
 }

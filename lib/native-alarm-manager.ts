@@ -97,10 +97,10 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         active: true,
         repeating: true,
         showDismiss: true,
-        showSnooze: true,
-        snoozeInterval: 5,
+        showSnooze: false,
+        snoozeInterval: 0,
         dismissText: 'Dispensar',
-        snoozeText: 'Soneca (5 min)',
+        snoozeText: '',
       });
       uids.push(baseUid);
 
@@ -117,10 +117,10 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
           active: true,
           repeating: true,
           showDismiss: true,
-          showSnooze: true,
-          snoozeInterval: 5,
+          showSnooze: false,
+          snoozeInterval: 0,
           dismissText: 'Dispensar',
-          snoozeText: 'Soneca (5 min)',
+          snoozeText: '',
         });
         uids.push(uid);
       }
@@ -138,10 +138,10 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
           active: true,
           repeating: true,
           showDismiss: true,
-          showSnooze: true,
-          snoozeInterval: 5,
+          showSnooze: false,
+          snoozeInterval: 0,
           dismissText: 'Dispensar',
-          snoozeText: 'Soneca (5 min)',
+          snoozeText: '',
         });
         uids.push(uid);
       }
@@ -158,10 +158,10 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
           active: true,
           repeating: true,
           showDismiss: true,
-          showSnooze: true,
-          snoozeInterval: 5,
+          showSnooze: false,
+          snoozeInterval: 0,
           dismissText: 'Dispensar',
-          snoozeText: 'Soneca (5 min)',
+          snoozeText: '',
         });
         uids.push(uid);
       }
@@ -177,10 +177,10 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         active: true,
         repeating: false,
         showDismiss: true,
-        showSnooze: true,
-        snoozeInterval: 5,
+        showSnooze: false,
+        snoozeInterval: 0,
         dismissText: 'Dispensar',
-        snoozeText: 'Soneca (5 min)',
+        snoozeText: '',
       });
       uids.push(baseUid);
     }

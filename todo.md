@@ -272,3 +272,8 @@
 - [ ] Eliminar notificação duplicada do AlarmManager nativo (segunda notificação com botões Dispensar/Soneca)
 - [ ] Implementar countdown funcional na notificação (texto com tempo restante)
 - [ ] Corrigir redirecionamento ao clicar na notificação (abrir tela de alarme)
+
+## Bug Fixes - Notificações v8 (2026-04-20)
+- [x] Corrigir countdown em branco na notificação (updateAlarm não funciona em tempo real)
+- [x] Corrigir sincronização do timer: ao entrar no app via notificação, countdown começa do zero
+- [x] Remover botão Soneca da notificação nativa do alarme
