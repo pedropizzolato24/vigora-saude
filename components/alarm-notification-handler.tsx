@@ -106,10 +106,11 @@ export function AlarmNotificationHandler() {
       console.log(`[AlarmHandler] New timer for ${alarmId}, ${timerDuration}s`);
     }
 
-    // Navigate to alarm-ring screen FIRST (before async operations) to minimize delay
+    // Navigate to alarm-ring screen, passing expiresAt as URL param to avoid AsyncStorage race condition.
+    // alarm-ring will use expiresAt directly instead of waiting for AsyncStorage.
     if (!navigatedAlarms.current.has(alarmId)) {
       navigatedAlarms.current.add(alarmId);
-      router.push(`/alarm-ring?alarmId=${alarmId}`);
+      router.push(`/alarm-ring?alarmId=${alarmId}&expiresAt=${expiresAt}`);
       setTimeout(() => navigatedAlarms.current.delete(alarmId), 5000);
     }
 
@@ -176,10 +177,15 @@ export function AlarmNotificationHandler() {
           const alarmId = extractAlarmIdFromUid(activeUid);
           if (alarmId) {
             console.log(`[AlarmHandler] App foregrounded with active alarm: ${activeUid} → ${alarmId}`);
-            // Navigate immediately (before async timer ops) to minimize perceived delay
+            // Navigate immediately — expiresAt will be loaded from AsyncStorage in alarm-ring
+            // (by this point handleAlarmFired has already saved it or will save it shortly)
             if (!navigatedAlarms.current.has(alarmId)) {
               navigatedAlarms.current.add(alarmId);
-              router.push(`/alarm-ring?alarmId=${alarmId}`);
+              // Load existing timer first to pass expiresAt in URL
+              const existingForNav = await loadAlarmTimer(alarmId).catch(() => null);
+              const navExpiresAt = existingForNav?.expiresAt ?? (Date.now() + (state.settings.timerDuration ?? 30) * 1000);
+              navigatedAlarms.current.add(alarmId);
+              router.push(`/alarm-ring?alarmId=${alarmId}&expiresAt=${navExpiresAt}`);
               setTimeout(() => navigatedAlarms.current.delete(alarmId), 5000);
             }
             // Then run the rest of the alarm-fired logic asynchronously

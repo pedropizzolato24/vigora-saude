@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { Alarm } from './app-context';
+import { setupCountdownChannel } from './alarm-countdown-notifier';
 
 // ─── Notification Channel IDs ──────────────────────────────────────────────
 export const ALARM_CHANNEL_ID = 'vigora-alarms';
@@ -13,12 +14,12 @@ Notifications.setNotificationHandler({
     const isAlarm = !!notification.request.content.data?.alarmId;
     const isCountdownUpdate = !!notification.request.content.data?.isCountdownUpdate;
     return {
-      // Countdown updates should be silent — only the original alarm notification plays sound
-      shouldShowAlert: !isCountdownUpdate,
+      // Countdown updates: show in tray but no sound/badge
+      shouldShowAlert: true,
       shouldPlaySound: isAlarm && !isCountdownUpdate,
       shouldSetBadge: !isCountdownUpdate,
-      shouldShowBanner: !isCountdownUpdate,
-      shouldShowList: !isCountdownUpdate,
+      shouldShowBanner: true,
+      shouldShowList: true,
     };
   },
 });
@@ -46,6 +47,9 @@ export async function setupNotificationChannels(): Promise<void> {
   try {
     await Notifications.deleteNotificationChannelAsync(ALARM_CHANNEL_ID);
   } catch {}
+
+  // Set up countdown channel (no sound, DEFAULT importance)
+  await setupCountdownChannel();
 
   // Alarm channel — MAX importance, custom sound, bypasses silent mode
   await Notifications.setNotificationChannelAsync(ALARM_CHANNEL_ID, {

@@ -21,8 +21,8 @@ export function OnboardingGate() {
       try {
         const completed = await AsyncStorage.getItem(ONBOARDING_KEY);
         if (!completed) {
-          // First launch — show onboarding
-          router.replace('/onboarding');
+          // First launch — show onboarding with firstLaunch flag to hide skip button
+          router.replace('/onboarding?firstLaunch=true');
         }
       } catch {
         // If error reading, skip onboarding

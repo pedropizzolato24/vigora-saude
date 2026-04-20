@@ -289,3 +289,10 @@
 - [ ] Adicionar status de permissão de localização (foreground/background/negada) na tela de Configurações
 - [ ] Botão para abrir Configurações do sistema a partir da tela de Configurações do app
 - [ ] Corrigir bug: volume do alarme não está sendo aplicado (alarme toca mesmo com volume em zero)
+
+## Bug Fixes - Onboarding e Notificações v9 (2026-04-20)
+- [x] Remover botão "Pular" do onboarding na primeira abertura (firstLaunch=true via URL param)
+- [x] Corrigir countdown na notificação: canal separado vigora-countdown, dismissNotificationAsync antes de criar nova, remover supressão isCountdownUpdate no setNotificationHandler
+- [x] Corrigir dessincronização do timer: passar expiresAt como URL param na navegação para alarm-ring (elimina race condition com AsyncStorage)
+- [x] Adicionar status de permissão de localização nas Configurações (seção Segurança e Emergência)
+- [x] Corrigir volume do alarme: stopNativeAlarm() no mount, volume definido 100ms após play()

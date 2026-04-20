@@ -54,7 +54,7 @@ function buildSpeechText(alarmDescription?: string, alarmTime?: string): string 
 
 export default function AlarmRingScreen() {
   const router = useRouter();
-  const { alarmId } = useLocalSearchParams<{ alarmId: string }>();
+  const { alarmId, expiresAt: expiresAtParam } = useLocalSearchParams<{ alarmId: string; expiresAt?: string }>();
   const { state, dispatch } = useAppContext();
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac } = useAccessibility();
 
@@ -182,21 +182,27 @@ export default function AlarmRingScreen() {
       }, 1000);
     };
 
-    const initTimer = async (retryCount = 0) => {
+    const initTimer = async () => {
       if (!alarmId || cancelled) return;
 
+      // Priority 1: expiresAt passed as URL param (most reliable, no AsyncStorage race)
+      if (expiresAtParam) {
+        const parsedExpiresAt = parseInt(expiresAtParam, 10);
+        if (!isNaN(parsedExpiresAt) && parsedExpiresAt > Date.now()) {
+          startCountdown(parsedExpiresAt);
+          return;
+        }
+      }
+
+      // Priority 2: AsyncStorage persisted timer (fallback for cold start / re-entry)
       const entry = await loadAlarmTimer(alarmId);
       if (cancelled) return;
 
-      if (entry) {
+      if (entry && entry.expiresAt > Date.now()) {
         // Use the persisted expiresAt to compute real remaining time
         startCountdown(entry.expiresAt);
-      } else if (retryCount < 5) {
-        // No entry yet — the handler may still be saving it (navigation happened first).
-        // Retry up to 5 times with 150ms delay (total max wait: 750ms).
-        setTimeout(() => initTimer(retryCount + 1), 150);
       } else {
-        // Gave up waiting — start a fresh timer from configured duration
+        // Last resort — start a fresh timer from configured duration
         const duration = configuredDuration;
         startCountdown(Date.now() + duration * 1000);
       }

@@ -13,7 +13,7 @@ import {
   type ViewToken,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -119,6 +119,9 @@ export default function OnboardingScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { firstLaunch } = useLocalSearchParams<{ firstLaunch?: string }>();
+  // Hide skip button on first launch to ensure location permission is granted
+  const isFirstLaunch = firstLaunch === 'true';
   const [currentIndex, setCurrentIndex] = useState(0);
   const [locationGranted, setLocationGranted] = useState(false);
   const [backgroundGranted, setBackgroundGranted] = useState(false);
@@ -343,7 +346,7 @@ export default function OnboardingScreen() {
         <Text style={[styles.pageIndicator, { color: colors.muted }]}>
           {currentIndex + 1} / {SLIDES.length}
         </Text>
-        {currentIndex < SLIDES.length - 1 ? (
+        {!isFirstLaunch && currentIndex < SLIDES.length - 1 ? (
           <Pressable
             onPress={handleSkip}
             style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.6 }]}

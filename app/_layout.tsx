@@ -90,7 +90,19 @@ export default function RootLayout() {
               if (alarmId) {
                 console.log(`[RootLayout] Native alarm active: ${activeUid} → alarmId: ${alarmId}`);
                 const { router } = require('expo-router');
-                router.push(`/alarm-ring?alarmId=${alarmId}`);
+                // Try to load persisted timer to pass expiresAt in URL (avoids AsyncStorage race)
+                let expiresAtForNav: number | null = null;
+                try {
+                  const { loadAlarmTimer } = require('@/lib/alarm-timer-store');
+                  const timerEntry = await loadAlarmTimer(alarmId);
+                  if (timerEntry && timerEntry.expiresAt > Date.now()) {
+                    expiresAtForNav = timerEntry.expiresAt;
+                  }
+                } catch {}
+                const navUrl = expiresAtForNav
+                  ? `/alarm-ring?alarmId=${alarmId}&expiresAt=${expiresAtForNav}`
+                  : `/alarm-ring?alarmId=${alarmId}`;
+                router.push(navUrl);
                 return;
               }
             }
