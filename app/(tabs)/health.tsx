@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { useAccessibility } from '@/lib/accessibility-context';
 import { HealthReportButton } from '@/components/health-report-button';
 import {
-  Alert,
   FlatList,
   Modal,
   Platform,
@@ -14,6 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { SuccessConfirmation } from '@/components/success-confirmation';
@@ -73,11 +73,12 @@ export default function HealthScreen() {
   const METRIC_CONFIG = getMetricConfig(colors);
   const STATUS_CONFIG = getStatusConfig(colors);
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
+  const { dialogProps, showDialog } = useAppDialog();
 
   const handleSave = () => {
     const value = parseFloat(valueText);
     if (isNaN(value) || value <= 0) {
-      Alert.alert('Valor inválido', 'Por favor, insira um valor numérico válido.');
+      showDialog({ title: 'Valor inválido', message: 'Por favor, insira um valor numérico válido.', variant: 'warning', buttons: [{ text: 'OK' }] });
       return;
     }
 
@@ -107,14 +108,15 @@ export default function HealthScreen() {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('Excluir registro', 'Deseja excluir este registro de saúde?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Excluir',
-        style: 'destructive',
-        onPress: () => dispatch({ type: 'DELETE_HEALTH_METRIC', payload: id }),
-      },
-    ]);
+    showDialog({
+      title: 'Excluir registro',
+      message: 'Deseja excluir este registro de saúde?',
+      variant: 'confirm',
+      buttons: [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Excluir', style: 'destructive', onPress: () => dispatch({ type: 'DELETE_HEALTH_METRIC', payload: id }) },
+      ],
+    });
   };
 
   const renderMetric = ({ item }: { item: HealthMetric }) => {
@@ -277,6 +279,7 @@ export default function HealthScreen() {
           </View>
         </Modal>
         <SuccessConfirmation visible={showSuccess} onComplete={() => setShowSuccess(false)} />
+        <AppDialog {...dialogProps} />
       </ScreenContainer>
     );
   }
@@ -465,6 +468,7 @@ export default function HealthScreen() {
         </View>
       </Modal>
       <SuccessConfirmation visible={showSuccess} onComplete={() => setShowSuccess(false)} />
+      <AppDialog {...dialogProps} />
     </ScreenContainer>
   );
 }

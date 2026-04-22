@@ -4,7 +4,6 @@ import * as Location from 'expo-location';
 import React, { useState } from 'react';
 import { useAccessibility } from '@/lib/accessibility-context';
 import {
-  Alert,
   FlatList,
   Platform,
   Pressable,
@@ -14,6 +13,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,10 +36,11 @@ export default function LocationScreen() {
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<LocationRecord[]>([]);
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
+  const { dialogProps, showDialog } = useAppDialog();
 
   const getLocation = async () => {
     if ((Platform.OS as string) === 'web') {
-      Alert.alert('Não disponível', 'O acesso ao GPS não está disponível na versão web.');
+      showDialog({ title: 'Não disponível', message: 'O acesso ao GPS não está disponível na versão web.', variant: 'info', buttons: [{ text: 'OK' }] });
       return;
     }
 
@@ -48,10 +49,7 @@ export default function LocationScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
-          'Permissão negada',
-          'Para compartilhar sua localização, permita o acesso ao GPS nas configurações do dispositivo.'
-        );
+        showDialog({ title: 'Permissão negada', message: 'Para compartilhar sua localização, permita o acesso ao GPS nas configurações do dispositivo.', variant: 'warning', buttons: [{ text: 'OK' }] });
         setLoading(false);
         return;
       }
@@ -91,7 +89,7 @@ export default function LocationScreen() {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch {
-      Alert.alert('Erro', 'Não foi possível obter sua localização. Tente novamente.');
+      showDialog({ title: 'Erro', message: 'Não foi possível obter sua localização. Tente novamente.', variant: 'error', buttons: [{ text: 'OK' }] });
     } finally {
       setLoading(false);
     }
@@ -183,6 +181,7 @@ export default function LocationScreen() {
             </View>
           )}
         </ScrollView>
+        <AppDialog {...dialogProps} />
       </ScreenContainer>
     );
   }
@@ -331,6 +330,7 @@ export default function LocationScreen() {
           </Text>
         </View>
       </ScrollView>
+      <AppDialog {...dialogProps} />
     </ScreenContainer>
   );
 }

@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import React, { useState } from 'react';
 import {
-  Alert,
   Dimensions,
   Platform,
   Pressable,
@@ -12,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,6 +32,7 @@ export default function DashboardScreen() {
   const { sendNotification } = useNotifications();
   const [sosPressing, setSosPressing] = useState(false);
   const { isAccessibilityMode, a11yFontSize, a11yColors, a11ySpacing } = useAccessibility();
+  const { dialogProps, showDialog } = useAppDialog();
 
   const nextAlarm = getNextAlarm(state.alarms);
 
@@ -39,10 +40,11 @@ export default function DashboardScreen() {
     if (Platform.OS !== 'web') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     }
-    Alert.alert(
-      '🚨 ATIVAR SOS?',
-      'Isso enviará uma notificação de emergência para todos os seus contatos cadastrados.',
-      [
+    showDialog({
+      title: 'ATIVAR SOS?',
+      message: 'Isso enviará uma notificação de emergência para todos os seus contatos cadastrados.',
+      variant: 'confirm',
+      buttons: [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'CONFIRMAR SOS',
@@ -54,29 +56,30 @@ export default function DashboardScreen() {
             dispatch({ type: 'TRIGGER_SOS' });
             for (const contact of state.emergencyContacts) {
               await sendNotification(
-                '🚨 EMERGÊNCIA SOS',
+                'EMERGÊNCIA SOS',
                 `${contact.name} precisa de ajuda urgente!`,
                 { type: 'sos', contactId: contact.id }
               );
             }
             if (state.emergencyContacts.length === 0) {
               await sendNotification(
-                '🚨 EMERGÊNCIA SOS ATIVADO',
+                'EMERGÊNCIA SOS ATIVADO',
                 'SOS ativado. Cadastre contatos de emergência para notificá-los.',
                 { type: 'sos' }
               );
             }
-            Alert.alert(
-              '✅ SOS Enviado',
-              state.emergencyContacts.length > 0
+            showDialog({
+              title: 'SOS Enviado',
+              message: state.emergencyContacts.length > 0
                 ? `Notificações enviadas para ${state.emergencyContacts.length} contato(s).`
                 : 'SOS registrado. Adicione contatos de emergência para notificá-los.',
-              [{ text: 'OK' }]
-            );
+              variant: 'info',
+              buttons: [{ text: 'OK' }],
+            });
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const navigate = (route: string) => {
@@ -253,6 +256,7 @@ export default function DashboardScreen() {
             </Text>
           </View>
         </ScrollView>
+      <AppDialog {...dialogProps} />
       </ScreenContainer>
     );
   }
@@ -475,6 +479,7 @@ export default function DashboardScreen() {
           </Text>
         </View>
       </ScrollView>
+      <AppDialog {...dialogProps} />
     </ScreenContainer>
   );
 }

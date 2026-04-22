@@ -345,3 +345,16 @@
 - [x] Integrar stopCountdownNotification com alarmTitle no alarm-ring.tsx
 - [x] Adicionar botão "Testar Countdown na Notificação" na tela de Configurações (modo normal + acessibilidade)
 - [x] Botão mostra countdown de 10s com barra de progresso e estado ativo/cancelar
+
+## AppDialog — Substituição de Alert.alert()
+- [x] Criar components/app-dialog.tsx com hook useAppDialog, variantes info/warning/error/confirm, suporte a tema claro/escuro e modo acessível
+- [x] Substituir Alert.alert() em app/(tabs)/profile.tsx
+- [x] Substituir Alert.alert() em app/(tabs)/anamnesis.tsx (+ corrigir TS2657 com Fragment)
+- [x] Substituir Alert.alert() em app/(tabs)/ambulance.tsx (+ corrigir TS2657 com Fragment)
+- [x] Substituir Alert.alert() em app/(tabs)/health.tsx
+- [x] Substituir Alert.alert() em app/(tabs)/settings.tsx
+- [x] Substituir Alert.alert() em app/(tabs)/alarms.tsx
+- [x] Substituir Alert.alert() em app/(tabs)/contacts.tsx
+- [x] Substituir Alert.alert() em app/(tabs)/location.tsx
+- [x] Substituir Alert.alert() em app/(tabs)/index.tsx (Dashboard/SOS)
+- [x] Verificar TypeScript: zero erros novos (apenas pré-existente do storageProxy.ts)

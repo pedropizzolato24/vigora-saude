@@ -2,7 +2,6 @@ import * as Haptics from 'expo-haptics';
 import { startCountdownNotification, stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
-  Alert,
   Linking,
   Platform,
   Pressable,
@@ -13,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import * as Location from 'expo-location';
@@ -167,6 +167,7 @@ export default function SettingsScreen() {
   const { colorScheme, setColorScheme } = useThemeContext();
   const fs = useFontSize();
   const { settings } = state;
+  const { dialogProps, showDialog } = useAppDialog();
 
   const [countdownTestActive, setCountdownTestActive] = useState(false);
   const [countdownTestSecondsLeft, setCountdownTestSecondsLeft] = useState(10);
@@ -320,10 +321,11 @@ export default function SettingsScreen() {
   };
 
   const handleClearData = () => {
-    Alert.alert(
-      'Limpar Todos os Dados',
-      'Esta ação removerá todos os alarmes, contatos, ficha de anamnese e histórico de saúde. Esta ação não pode ser desfeita.',
-      [
+    showDialog({
+      title: 'Limpar Todos os Dados',
+      message: 'Esta ação removerá todos os alarmes, contatos, ficha de anamnese e histórico de saúde. Esta ação não pode ser desfeita.',
+      variant: 'confirm',
+      buttons: [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Limpar Tudo',
@@ -333,8 +335,8 @@ export default function SettingsScreen() {
             dispatch({ type: 'CLEAR_ALL_DATA' });
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const fontSizeLabels = { small: 'Pequeno', medium: 'Médio', large: 'Grande' };
@@ -343,10 +345,11 @@ export default function SettingsScreen() {
   const handleToggleAccessibility = () => {
     if (!settings.accessibilityMode) {
       // Show confirmation before enabling
-      Alert.alert(
-        'Ativar Modo de Acessibilidade?',
-        'O Modo de Acessibilidade simplifica o layout do app para facilitar o uso:\n\n• Fontes maiores e mais legíveis\n• Cores de alto contraste\n• Botões maiores e mais fáceis de tocar\n• Interface simplificada, sem detalhes desnecessários\n• Ideal para pessoas idosas ou com dificuldades visuais\n\nVocê pode desativar a qualquer momento nesta mesma tela.',
-        [
+      showDialog({
+        title: 'Ativar Modo de Acessibilidade?',
+        message: 'O Modo de Acessibilidade simplifica o layout do app para facilitar o uso:\n\n• Fontes maiores e mais legíveis\n• Cores de alto contraste\n• Botões maiores e mais fáceis de tocar\n• Interface simplificada, sem detalhes desnecessários\n• Ideal para pessoas idosas ou com dificuldades visuais\n\nVocê pode desativar a qualquer momento nesta mesma tela.',
+        variant: 'info',
+        buttons: [
           { text: 'Cancelar', style: 'cancel' },
           {
             text: 'Ativar',
@@ -355,8 +358,8 @@ export default function SettingsScreen() {
               updateSetting('accessibilityMode', true);
             },
           },
-        ]
-      );
+        ],
+      });
     } else {
       if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       updateSetting('accessibilityMode', false);
@@ -615,6 +618,7 @@ export default function SettingsScreen() {
             <Text style={{ fontSize: af.sm, color: ac.muted }}>Dados armazenados localmente no dispositivo.</Text>
           </View>
         </ScrollView>
+        <AppDialog {...dialogProps} />
       </ScreenContainer>
     );
   }
@@ -1267,10 +1271,7 @@ export default function SettingsScreen() {
           <View style={styles.footerLinks}>
             <Pressable
               onPress={() =>
-                Alert.alert(
-                  'Termos de Serviço',
-                  'Vigora Saúde - Termos de Serviço\n\nEste aplicativo é fornecido para fins informativos. Não substitui atendimento médico profissional.'
-                )
+                showDialog({ title: 'Termos de Serviço', message: 'Vigora Saúde - Termos de Serviço\n\nEste aplicativo é fornecido para fins informativos. Não substitui atendimento médico profissional.', variant: 'info', buttons: [{ text: 'OK' }] })
               }
               style={({ pressed }) => [pressed && { opacity: 0.6 }]}
             >
@@ -1279,10 +1280,7 @@ export default function SettingsScreen() {
             <Text style={[styles.footerDot, { color: colors.muted }]}>·</Text>
             <Pressable
               onPress={() =>
-                Alert.alert(
-                  'Política de Privacidade',
-                  'Vigora Saúde - Política de Privacidade\n\nTodos os seus dados são armazenados localmente neste dispositivo. Nenhum dado é enviado para servidores externos.'
-                )
+                showDialog({ title: 'Política de Privacidade', message: 'Vigora Saúde - Política de Privacidade\n\nTodos os seus dados são armazenados localmente neste dispositivo. Nenhum dado é enviado para servidores externos.', variant: 'info', buttons: [{ text: 'OK' }] })
               }
               style={({ pressed }) => [pressed && { opacity: 0.6 }]}
             >
@@ -1291,7 +1289,7 @@ export default function SettingsScreen() {
             <Text style={[styles.footerDot, { color: colors.muted }]}>·</Text>
             <Pressable
               onPress={() =>
-                Alert.alert('Licenças', 'Este aplicativo utiliza bibliotecas de código aberto. Obrigado à comunidade de desenvolvedores!')
+                showDialog({ title: 'Licenças', message: 'Este aplicativo utiliza bibliotecas de código aberto. Obrigado à comunidade de desenvolvedores!', variant: 'info', buttons: [{ text: 'OK' }] })
               }
               style={({ pressed }) => [pressed && { opacity: 0.6 }]}
             >
@@ -1306,6 +1304,7 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </ScrollView>
+      <AppDialog {...dialogProps} />
     </ScreenContainer>
   );
 }

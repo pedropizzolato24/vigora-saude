@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Alert,
   Platform,
   Image,
 } from 'react-native';
@@ -20,6 +19,7 @@ import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { useAppContext } from '@/lib/app-context';
 import { useAccessibility } from '@/lib/accessibility-context';
+import { AppDialog, useAppDialog } from '@/components/app-dialog';
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -36,6 +36,7 @@ export default function ProfileScreen() {
   const [phone, setPhone] = useState(state.profile.phone);
   const [photoUri, setPhotoUri] = useState<string | null>(state.profile.photoUri);
   const [hasChanges, setHasChanges] = useState(false);
+  const { dialogProps, showDialog } = useAppDialog();
 
   useEffect(() => {
     setName(state.profile.name);
@@ -54,7 +55,7 @@ export default function ProfileScreen() {
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permissão necessária', 'Precisamos de acesso à galeria para selecionar sua foto.');
+      showDialog({ title: 'Permissão necessária', message: 'Precisamos de acesso à galeria para selecionar sua foto.', variant: 'warning', buttons: [{ text: 'OK' }] });
       return;
     }
 
@@ -78,7 +79,7 @@ export default function ProfileScreen() {
 
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permissão necessária', 'Precisamos de acesso à câmera para tirar sua foto.');
+      showDialog({ title: 'Permissão necessária', message: 'Precisamos de acesso à câmera para tirar sua foto.', variant: 'warning', buttons: [{ text: 'OK' }] });
       return;
     }
 
@@ -95,12 +96,16 @@ export default function ProfileScreen() {
   };
 
   const handlePhotoOptions = () => {
-    Alert.alert('Foto de Perfil', 'Escolha uma opção', [
-      { text: 'Câmera', onPress: handleTakePhoto },
-      { text: 'Galeria', onPress: handlePickPhoto },
-      ...(photoUri ? [{ text: 'Remover Foto', onPress: () => { setPhotoUri(null); markChanged(); }, style: 'destructive' as const }] : []),
-      { text: 'Cancelar', style: 'cancel' as const },
-    ]);
+    showDialog({
+      title: 'Foto de Perfil',
+      message: 'Escolha uma opção',
+      variant: 'select',
+      options: [
+        { label: 'Câmera', icon: '📷', onPress: handleTakePhoto },
+        { label: 'Galeria', icon: '🖼', onPress: handlePickPhoto },
+        ...(photoUri ? [{ label: 'Remover Foto', icon: '🗑', onPress: () => { setPhotoUri(null); markChanged(); }, destructive: true }] : []),
+      ],
+    });
   };
 
   const formatBirthDate = (text: string) => {
@@ -130,7 +135,7 @@ export default function ProfileScreen() {
       payload: { name, birthDate, bloodType, phone, photoUri },
     });
     setHasChanges(false);
-    Alert.alert('Salvo', 'Perfil atualizado com sucesso!');
+    showDialog({ title: 'Perfil salvo', message: 'Suas informações foram atualizadas com sucesso.', variant: 'success', buttons: [{ text: 'OK' }] });
   };
 
   // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
@@ -141,6 +146,7 @@ export default function ProfileScreen() {
       { label: 'Telefone', value: phone, onChange: formatPhone, placeholder: '(11) 99999-9999', keyboard: 'phone-pad' },
     ];
     return (
+      <>
       <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
         <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: ac.background }}>
           <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Meu Perfil</Text>
@@ -212,6 +218,8 @@ export default function ProfileScreen() {
           )}
         </ScrollView>
       </ScreenContainer>
+      <AppDialog {...dialogProps} />
+      </>
     );
   }
 
@@ -352,6 +360,7 @@ export default function ProfileScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+      <AppDialog {...dialogProps} />
     </ScreenContainer>
   );
 }

@@ -2,7 +2,6 @@ import * as Haptics from 'expo-haptics';
 import React, { useEffect, useState } from 'react';
 import { useAccessibility } from '@/lib/accessibility-context';
 import {
-  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -18,6 +17,7 @@ import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { useAppContext, type AnamnesesData } from '@/lib/app-context';
 import { exportAnamnesisToPDF } from '@/lib/pdf-utils-v2';
+import { AppDialog, useAppDialog } from '@/components/app-dialog';
 
 const GENDER_OPTIONS: { value: AnamnesesData['gender']; label: string }[] = [
   { value: 'M', label: 'Masculino' },
@@ -44,6 +44,7 @@ export default function AnamnesisScreen() {
   const { state, dispatch } = useAppContext();
   const [form, setForm] = useState<AnamnesesData>(state.anamnesis ?? EMPTY_FORM);
   const [saved, setSaved] = useState(false);
+  const { dialogProps, showDialog } = useAppDialog();
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
 
   useEffect(() => {
@@ -54,11 +55,11 @@ export default function AnamnesisScreen() {
 
   const handleSave = () => {
     if (!form.fullName.trim()) {
-      Alert.alert('Campo obrigatório', 'Por favor, informe seu nome completo.');
+      showDialog({ title: 'Campo obrigatório', message: 'Por favor, informe seu nome completo.', variant: 'warning', buttons: [{ text: 'OK' }] });
       return;
     }
     if (!form.birthDate.trim()) {
-      Alert.alert('Campo obrigatório', 'Por favor, informe sua data de nascimento.');
+      showDialog({ title: 'Campo obrigatório', message: 'Por favor, informe sua data de nascimento.', variant: 'warning', buttons: [{ text: 'OK' }] });
       return;
     }
 
@@ -79,7 +80,7 @@ export default function AnamnesisScreen() {
       }
       await exportAnamnesisToPDF(form);
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível exportar a ficha médica.');
+      showDialog({ title: 'Erro ao exportar', message: 'Não foi possível exportar a ficha médica.', variant: 'error', buttons: [{ text: 'OK' }] });
       console.error('Export error:', error);
     }
   };
@@ -99,6 +100,7 @@ export default function AnamnesisScreen() {
       { label: 'Doenças crônicas', key: 'diseases', placeholder: 'Ex: Diabetes, Hipertensão...', multiline: true },
     ];
     return (
+      <>
       <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
         <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.background }}>
           <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Ficha Médica</Text>
@@ -142,6 +144,8 @@ export default function AnamnesisScreen() {
           </Pressable>
         </ScrollView>
       </ScreenContainer>
+      <AppDialog {...dialogProps} />
+      </>
     );
   }
 
@@ -357,6 +361,7 @@ export default function AnamnesisScreen() {
           </Text>
         </View>
       </ScrollView>
+      <AppDialog {...dialogProps} />
     </ScreenContainer>
   );
 }

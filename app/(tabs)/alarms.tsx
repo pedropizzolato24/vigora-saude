@@ -2,7 +2,6 @@ import * as Haptics from 'expo-haptics';
 import React, { useRef, useState } from 'react';
 import { useAccessibility } from '@/lib/accessibility-context';
 import {
-  Alert,
   FlatList,
   Modal,
   Platform,
@@ -14,6 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { WheelPicker } from '@/components/wheel-picker';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
@@ -63,6 +63,7 @@ export default function AlarmsScreen() {
   const [form, setForm] = useState<Omit<Alarm, 'id'>>(EMPTY_FORM);
   const minuteInputRef = useRef<TextInput>(null);
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
+  const { dialogProps, showDialog } = useAppDialog();
 
   // Derived hour/minute from form.time for the split picker
   const [timeHour, timeMinute] = form.time.split(':');
@@ -124,7 +125,7 @@ export default function AlarmsScreen() {
 
   const openAddModal = () => {
     if (state.alarms.length >= 24) {
-      Alert.alert('Limite atingido', 'Você pode ter no máximo 24 alarmes.');
+      showDialog({ title: 'Limite atingido', message: 'Você pode ter no máximo 24 alarmes.', variant: 'warning', buttons: [{ text: 'OK' }] });
       return;
     }
     setEditingAlarm(null);
@@ -149,7 +150,7 @@ export default function AlarmsScreen() {
     // Validate time format
     const timeRegex = /^([01]?\d|2[0-3]):([0-5]\d)$/;
     if (!timeRegex.test(form.time)) {
-      Alert.alert('Hora inválida', 'Use o formato HH:MM (ex: 08:30)');
+      showDialog({ title: 'Hora inválida', message: 'Use o formato HH:MM (ex: 08:30)', variant: 'warning', buttons: [{ text: 'OK' }] });
       return;
     }
 
@@ -175,36 +176,36 @@ export default function AlarmsScreen() {
       const repeatLabel = REPEAT_OPTIONS.find(r => r.value === form.repeat)?.label ?? form.repeat;
       const desc = form.description ? `\n"${form.description}"` : '';
       const action = editingAlarm ? 'atualizado' : 'criado';
-      Alert.alert(
-        `✅ Alarme ${action}!`,
-        `${form.time} • ${repeatLabel}${desc}`,
-        [{ text: 'OK' }]
-      );
+      showDialog({ title: `Alarme ${action}!`, message: `${form.time} • ${repeatLabel}${desc}`, variant: 'info', buttons: [{ text: 'OK' }] });
     } catch (error) {
       console.error('Error scheduling alarm notification:', error);
-      Alert.alert('Erro', 'Não foi possível agendar a notificação do alarme.');
+      showDialog({ title: 'Erro', message: 'Não foi possível agendar a notificação do alarme.', variant: 'error', buttons: [{ text: 'OK' }] });
     }
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('Excluir Alarme', 'Tem certeza que deseja excluir este alarme?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Excluir',
-        style: 'destructive',
-        onPress: async () => {
-          if (Platform.OS !== 'web') {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-          }
-          // Find alarm and cancel its notification
-          const alarm = state.alarms.find(a => a.id === id);
-          if (alarm) {
-            await cancelFullAlarm(alarm);
-          }
-          dispatch({ type: 'DELETE_ALARM', payload: id });
+    showDialog({
+      title: 'Excluir Alarme',
+      message: 'Tem certeza que deseja excluir este alarme?',
+      variant: 'confirm',
+      buttons: [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            if (Platform.OS !== 'web') {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            }
+            const alarm = state.alarms.find(a => a.id === id);
+            if (alarm) {
+              await cancelFullAlarm(alarm);
+            }
+            dispatch({ type: 'DELETE_ALARM', payload: id });
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   const handleToggle = async (alarm: Alarm) => {
@@ -542,6 +543,7 @@ export default function AlarmsScreen() {
             </ScrollView>
           </View>
         </Modal>
+        <AppDialog {...dialogProps} />
       </ScreenContainer>
     );
   }
@@ -818,6 +820,7 @@ export default function AlarmsScreen() {
           </ScrollView>
         </View>
       </Modal>
+      <AppDialog {...dialogProps} />
     </ScreenContainer>
   );
 }

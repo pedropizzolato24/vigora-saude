@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useAccessibility } from '@/lib/accessibility-context';
 import {
-  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -12,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,6 +41,7 @@ export default function AmbulanceScreen() {
   const anamnesis = state.anamnesis;
   const router = useRouter();
   const isHealthPlanConfigured = !!(anamnesis?.healthPlanProvider && anamnesis?.healthPlanNumber);
+  const { dialogProps, showDialog } = useAppDialog();
 
   const options: AmbulanceOption[] = [
     {
@@ -77,17 +78,15 @@ export default function AmbulanceScreen() {
     const phone = selectedOption.phone;
 
     if (!phone || (selectedOption.type === 'plan' && !isHealthPlanConfigured)) {
-      Alert.alert(
-        'Plano de Saúde não configurado',
-        'Você ainda não cadastrou seu plano de saúde. Deseja ir para a Ficha de Anamnese agora?',
-        [
+      showDialog({
+        title: 'Plano de Saúde não configurado',
+        message: 'Você ainda não cadastrou seu plano de saúde. Deseja ir para a Ficha de Anamnese agora?',
+        variant: 'warning',
+        buttons: [
           { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Configurar Agora',
-            onPress: () => router.push('/(tabs)/anamnesis'),
-          },
-        ]
-      );
+          { text: 'Configurar Agora', onPress: () => router.push('/(tabs)/anamnesis') },
+        ],
+      });
       return;
     }
 
@@ -95,10 +94,11 @@ export default function AmbulanceScreen() {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     }
 
-    Alert.alert(
-      `Chamar ${selectedOption.label}?`,
-      `Você será redirecionado para ligar para ${phone}.`,
-      [
+    showDialog({
+      title: `Chamar ${selectedOption.label}?`,
+      message: `Você será redirecionado para ligar para ${phone}.`,
+      variant: 'confirm',
+      buttons: [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: `Ligar para ${phone}`,
@@ -108,12 +108,12 @@ export default function AmbulanceScreen() {
             if (canOpen) {
               await Linking.openURL(url);
             } else {
-              Alert.alert('Erro', 'Não foi possível abrir o discador. Ligue manualmente para ' + phone);
+              showDialog({ title: 'Erro', message: 'Não foi possível abrir o discador. Ligue manualmente para ' + phone, variant: 'error', buttons: [{ text: 'OK' }] });
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
@@ -123,6 +123,7 @@ export default function AmbulanceScreen() {
       { label: 'Bombeiros', phone: '193', icon: 'warning' as const, color: '#885500', borderColor: '#553300' },
     ];
     return (
+      <>
       <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
         <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.background }}>
           <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Ambuância</Text>
@@ -142,10 +143,15 @@ export default function AmbulanceScreen() {
               key={opt.phone}
               onPress={async () => {
                 if (Platform.OS !== 'web') await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                Alert.alert(`Ligar para ${opt.label}?`, `Você será redirecionado para ligar para ${opt.phone}.`, [
-                  { text: 'Cancelar', style: 'cancel' },
-                  { text: `Ligar ${opt.phone}`, onPress: async () => { const url = `tel:${opt.phone}`; const canOpen = await Linking.canOpenURL(url); if (canOpen) await Linking.openURL(url); else Alert.alert('Erro', 'Ligue manualmente para ' + opt.phone); } },
-                ]);
+                showDialog({
+                  title: `Ligar para ${opt.label}?`,
+                  message: `Você será redirecionado para ligar para ${opt.phone}.`,
+                  variant: 'confirm',
+                  buttons: [
+                    { text: 'Cancelar', style: 'cancel' },
+                    { text: `Ligar ${opt.phone}`, onPress: async () => { const url = `tel:${opt.phone}`; const canOpen = await Linking.canOpenURL(url); if (canOpen) await Linking.openURL(url); else showDialog({ title: 'Erro', message: 'Ligue manualmente para ' + opt.phone, variant: 'error', buttons: [{ text: 'OK' }] }); } },
+                  ],
+                });
               }}
               style={({ pressed }) => [{
                 backgroundColor: opt.color,
@@ -182,6 +188,8 @@ export default function AmbulanceScreen() {
           </View>
         </ScrollView>
       </ScreenContainer>
+      <AppDialog {...dialogProps} />
+      </>
     );
   }
 
@@ -321,6 +329,7 @@ export default function AmbulanceScreen() {
           ))}
         </View>
       </ScrollView>
+      <AppDialog {...dialogProps} />
     </ScreenContainer>
   );
 }

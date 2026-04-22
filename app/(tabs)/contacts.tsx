@@ -3,7 +3,6 @@ import * as Contacts from 'expo-contacts';
 import React, { useState } from 'react';
 import { useAccessibility } from '@/lib/accessibility-context';
 import {
-  Alert,
   FlatList,
   Modal,
   Platform,
@@ -15,6 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -51,6 +51,7 @@ export default function ContactsScreen() {
   const [importModalVisible, setImportModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
+  const { dialogProps, showDialog } = useAppDialog();
 
   const openAddModal = () => {
     setEditingContact(null);
@@ -60,13 +61,13 @@ export default function ContactsScreen() {
 
   const handleImportFromDevice = async () => {
     if (Platform.OS === 'web') {
-      Alert.alert('Indisponível', 'Importação de contatos não está disponível na web.');
+      showDialog({ title: 'Indisponível', message: 'Importação de contatos não está disponível na web.', variant: 'info', buttons: [{ text: 'OK' }] });
       return;
     }
     try {
       const { status } = await Contacts.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permissão negada', 'Permita o acesso aos contatos nas configurações do dispositivo.');
+        showDialog({ title: 'Permissão negada', message: 'Permita o acesso aos contatos nas configurações do dispositivo.', variant: 'warning', buttons: [{ text: 'OK' }] });
         return;
       }
       const { data } = await Contacts.getContactsAsync({
@@ -79,7 +80,7 @@ export default function ContactsScreen() {
       setSearchQuery('');
       setImportModalVisible(true);
     } catch (err) {
-      Alert.alert('Erro', 'Não foi possível acessar os contatos do dispositivo.');
+      showDialog({ title: 'Erro', message: 'Não foi possível acessar os contatos do dispositivo.', variant: 'error', buttons: [{ text: 'OK' }] });
     }
   };
 
@@ -93,7 +94,7 @@ export default function ContactsScreen() {
       (c) => c.phone.replace(/\D/g, '') === cleanPhone
     );
     if (exists) {
-      Alert.alert('Contato já existe', `${contact.name} já está na sua lista de contatos de emergência.`);
+      showDialog({ title: 'Contato já existe', message: `${contact.name} já está na sua lista de contatos de emergência.`, variant: 'warning', buttons: [{ text: 'OK' }] });
       return;
     }
 
@@ -112,7 +113,7 @@ export default function ContactsScreen() {
       },
     });
     setImportModalVisible(false);
-    Alert.alert('Contato importado', `${contact.name} foi adicionado como contato de emergência.`);
+    showDialog({ title: 'Contato importado', message: `${contact.name} foi adicionado como contato de emergência.`, variant: 'info', buttons: [{ text: 'OK' }] });
   };
 
   const filteredDeviceContacts = deviceContacts.filter((c) =>
@@ -132,11 +133,11 @@ export default function ContactsScreen() {
 
   const handleSave = () => {
     if (!form.name.trim()) {
-      Alert.alert('Campo obrigatório', 'Por favor, informe o nome do contato.');
+      showDialog({ title: 'Campo obrigatório', message: 'Por favor, informe o nome do contato.', variant: 'warning', buttons: [{ text: 'OK' }] });
       return;
     }
     if (!form.phone.trim()) {
-      Alert.alert('Campo obrigatório', 'Por favor, informe o telefone do contato.');
+      showDialog({ title: 'Campo obrigatório', message: 'Por favor, informe o telefone do contato.', variant: 'warning', buttons: [{ text: 'OK' }] });
       return;
     }
 
@@ -153,19 +154,24 @@ export default function ContactsScreen() {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('Excluir Contato', 'Tem certeza que deseja excluir este contato?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Excluir',
-        style: 'destructive',
-        onPress: () => {
-          if (Platform.OS !== 'web') {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-          }
-          dispatch({ type: 'DELETE_CONTACT', payload: id });
+    showDialog({
+      title: 'Excluir Contato',
+      message: 'Tem certeza que deseja excluir este contato?',
+      variant: 'confirm',
+      buttons: [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: () => {
+            if (Platform.OS !== 'web') {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            }
+            dispatch({ type: 'DELETE_CONTACT', payload: id });
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
@@ -274,6 +280,7 @@ export default function ContactsScreen() {
             </ScrollView>
           </View>
         </Modal>
+        <AppDialog {...dialogProps} />
       </ScreenContainer>
     );
   }
@@ -541,6 +548,7 @@ export default function ContactsScreen() {
           />
         </View>
       </Modal>
+      <AppDialog {...dialogProps} />
     </ScreenContainer>
   );
 }
