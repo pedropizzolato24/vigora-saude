@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
+import { AppToast, useAppToast } from '@/components/app-toast';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { SuccessConfirmation } from '@/components/success-confirmation';
@@ -74,6 +75,7 @@ export default function HealthScreen() {
   const STATUS_CONFIG = getStatusConfig(colors);
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
   const { dialogProps, showDialog } = useAppDialog();
+  const { toastProps, showToast } = useAppToast();
 
   const handleSave = () => {
     const value = parseFloat(valueText);
@@ -100,6 +102,7 @@ export default function HealthScreen() {
     setShowSuccess(true);
     setValueText('');
     setModalVisible(false);
+    showToast({ message: `${METRIC_CONFIG[selectedType].label} registrado com sucesso!`, variant: 'success' });
 
     // Auto-close success animation after 2.5 seconds
     setTimeout(() => {
@@ -280,6 +283,7 @@ export default function HealthScreen() {
         </Modal>
         <SuccessConfirmation visible={showSuccess} onComplete={() => setShowSuccess(false)} />
         <AppDialog {...dialogProps} />
+        <AppToast {...toastProps} />
       </ScreenContainer>
     );
   }
@@ -469,6 +473,7 @@ export default function HealthScreen() {
       </Modal>
       <SuccessConfirmation visible={showSuccess} onComplete={() => setShowSuccess(false)} />
       <AppDialog {...dialogProps} />
+      <AppToast {...toastProps} />
     </ScreenContainer>
   );
 }

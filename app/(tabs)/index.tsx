@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
+import { AppToast, useAppToast } from '@/components/app-toast';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,6 +34,7 @@ export default function DashboardScreen() {
   const [sosPressing, setSosPressing] = useState(false);
   const { isAccessibilityMode, a11yFontSize, a11yColors, a11ySpacing } = useAccessibility();
   const { dialogProps, showDialog } = useAppDialog();
+  const { toastProps, showToast } = useAppToast();
 
   const nextAlarm = getNextAlarm(state.alarms);
 
@@ -43,7 +45,7 @@ export default function DashboardScreen() {
     showDialog({
       title: 'ATIVAR SOS?',
       message: 'Isso enviará uma notificação de emergência para todos os seus contatos cadastrados.',
-      variant: 'confirm',
+      variant: 'sos',
       buttons: [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -68,13 +70,12 @@ export default function DashboardScreen() {
                 { type: 'sos' }
               );
             }
-            showDialog({
-              title: 'SOS Enviado',
+            showToast({
               message: state.emergencyContacts.length > 0
-                ? `Notificações enviadas para ${state.emergencyContacts.length} contato(s).`
-                : 'SOS registrado. Adicione contatos de emergência para notificá-los.',
-              variant: 'info',
-              buttons: [{ text: 'OK' }],
+                ? `SOS enviado para ${state.emergencyContacts.length} contato(s).`
+                : 'SOS registrado. Adicione contatos de emergência.',
+              variant: 'error',
+              duration: 4000,
             });
           },
         },
@@ -257,6 +258,7 @@ export default function DashboardScreen() {
           </View>
         </ScrollView>
       <AppDialog {...dialogProps} />
+      <AppToast {...toastProps} />
       </ScreenContainer>
     );
   }
@@ -480,6 +482,7 @@ export default function DashboardScreen() {
         </View>
       </ScrollView>
       <AppDialog {...dialogProps} />
+      <AppToast {...toastProps} />
     </ScreenContainer>
   );
 }

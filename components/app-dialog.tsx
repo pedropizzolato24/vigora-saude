@@ -3,12 +3,18 @@
  *
  * Substitui Alert.alert() nativo com visual consistente com o tema do app.
  * Suporta modo claro/escuro automaticamente via useColors().
- * Variantes: info, success, warning, error, confirm, select
+ * Variantes: info, success, warning, error, confirm, select, sos
+ *
+ * Melhorias v2:
+ * - Ícones MaterialIcons animados com entrada em escala + fade
+ * - Variante 'sos' com fundo vermelho e ícone de sirene pulsante
+ * - Animação de checkmark para variante 'success'
  */
 
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
+  Easing,
   Modal,
   Pressable,
   ScrollView,
@@ -17,12 +23,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAccessibility } from '@/lib/accessibility-context';
 import { useColors } from '@/hooks/use-colors';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
-export type DialogVariant = 'info' | 'success' | 'warning' | 'error' | 'confirm' | 'select';
+export type DialogVariant = 'info' | 'success' | 'warning' | 'error' | 'confirm' | 'select' | 'sos';
 
 export interface DialogButton {
   text: string;
@@ -49,16 +56,137 @@ export interface AppDialogProps {
   onDismiss?: () => void;
 }
 
-// ─── Ícones por variante ──────────────────────────────────────────────────────
+// ─── Config de variantes ──────────────────────────────────────────────────────
 
-const VARIANT_ICONS: Record<DialogVariant, string> = {
-  info: 'ℹ',
-  success: '✓',
-  warning: '⚠',
-  error: '✕',
-  confirm: '?',
-  select: '☰',
+type IconName = React.ComponentProps<typeof MaterialIcons>['name'];
+
+const VARIANT_CONFIG: Record<DialogVariant, { icon: IconName; bgLight: string; bgDark: string; iconBg: string }> = {
+  info:    { icon: 'info',            bgLight: '#0a7ea4', bgDark: '#0a7ea4', iconBg: '#0a7ea418' },
+  success: { icon: 'check-circle',    bgLight: '#22C55E', bgDark: '#4ADE80', iconBg: '#22C55E18' },
+  warning: { icon: 'warning',         bgLight: '#F59E0B', bgDark: '#FBBF24', iconBg: '#F59E0B18' },
+  error:   { icon: 'error',           bgLight: '#EF4444', bgDark: '#F87171', iconBg: '#EF444418' },
+  confirm: { icon: 'help',            bgLight: '#0a7ea4', bgDark: '#0a7ea4', iconBg: '#0a7ea418' },
+  select:  { icon: 'list',            bgLight: '#0a7ea4', bgDark: '#0a7ea4', iconBg: '#0a7ea418' },
+  sos:     { icon: 'emergency',       bgLight: '#DC2626', bgDark: '#EF4444', iconBg: '#DC262618' },
 };
+
+// ─── Componente de Ícone Animado ──────────────────────────────────────────────
+
+function AnimatedDialogIcon({
+  variant,
+  accentColor,
+  visible,
+  isSos,
+}: {
+  variant: DialogVariant;
+  accentColor: string;
+  visible: boolean;
+  isSos: boolean;
+}) {
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  const config = VARIANT_CONFIG[variant];
+
+  useEffect(() => {
+    if (visible) {
+      // Entrada: scale de 0 → 1 com spring
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          damping: 14,
+          stiffness: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Pulso contínuo para variante SOS
+      if (isSos) {
+        pulseRef.current = Animated.loop(
+          Animated.sequence([
+            Animated.timing(pulseAnim, {
+              toValue: 1.25,
+              duration: 500,
+              easing: Easing.out(Easing.ease),
+              useNativeDriver: true,
+            }),
+            Animated.timing(pulseAnim, {
+              toValue: 1,
+              duration: 500,
+              easing: Easing.in(Easing.ease),
+              useNativeDriver: true,
+            }),
+          ])
+        );
+        pulseRef.current.start();
+      }
+    } else {
+      scaleAnim.setValue(0);
+      opacityAnim.setValue(0);
+      pulseAnim.setValue(1);
+      pulseRef.current?.stop();
+      pulseRef.current = null;
+    }
+
+    return () => {
+      pulseRef.current?.stop();
+    };
+  }, [visible]);
+
+  const iconSize = isSos ? 44 : 32;
+  const circleSize = isSos ? 80 : 56;
+
+  return (
+    <Animated.View
+      style={{
+        transform: [{ scale: isSos ? pulseAnim : scaleAnim }],
+        opacity: opacityAnim,
+        alignSelf: 'center',
+        marginBottom: 4,
+      }}
+    >
+      {/* Anel externo pulsante para SOS */}
+      {isSos && (
+        <View
+          style={{
+            position: 'absolute',
+            top: -8,
+            left: -8,
+            right: -8,
+            bottom: -8,
+            borderRadius: (circleSize + 16) / 2,
+            backgroundColor: accentColor + '22',
+          }}
+        />
+      )}
+      <View
+        style={{
+          width: circleSize,
+          height: circleSize,
+          borderRadius: circleSize / 2,
+          backgroundColor: isSos ? accentColor + '20' : config.iconBg,
+          borderWidth: isSos ? 2.5 : 0,
+          borderColor: isSos ? accentColor : 'transparent',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <MaterialIcons
+          name={config.icon}
+          size={iconSize}
+          color={accentColor}
+        />
+      </View>
+    </Animated.View>
+  );
+}
 
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
@@ -72,10 +200,13 @@ export function AppDialog({
   onDismiss,
 }: AppDialogProps) {
   const colors = useColors();
-  const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
+  const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac } = useAccessibility();
 
-  const scaleAnim = useRef(new Animated.Value(0.85)).current;
+  const scaleAnim = useRef(new Animated.Value(0.88)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  const isSos = variant === 'sos';
+  const config = VARIANT_CONFIG[variant];
 
   useEffect(() => {
     if (visible) {
@@ -93,20 +224,13 @@ export function AppDialog({
         }),
       ]).start();
     } else {
-      scaleAnim.setValue(0.85);
+      scaleAnim.setValue(0.88);
       opacityAnim.setValue(0);
     }
   }, [visible]);
 
-  // Cor do ícone/acento por variante
-  const accentColor = {
-    info: colors.primary,
-    success: colors.success,
-    warning: colors.warning,
-    error: colors.error,
-    confirm: colors.primary,
-    select: colors.primary,
-  }[variant];
+  // Cor de acento por variante (respeita tema claro/escuro)
+  const accentColor = isSos ? config.bgLight : config.bgLight;
 
   const isSelect = variant === 'select' && options && options.length > 0;
 
@@ -125,7 +249,7 @@ export function AppDialog({
             style={[
               styles.dialogA11y,
               {
-                backgroundColor: ac.surface,
+                backgroundColor: isSos ? '#1a0000' : ac.surface,
                 borderColor: accentColor,
                 borderWidth: 3,
                 transform: [{ scale: scaleAnim }],
@@ -133,21 +257,22 @@ export function AppDialog({
               },
             ]}
           >
-            {/* Ícone */}
-            <View style={[styles.iconCircleA11y, { backgroundColor: accentColor + '22' }]}>
-              <Text style={[styles.iconTextA11y, { color: accentColor, fontSize: af.xl }]}>
-                {VARIANT_ICONS[variant]}
-              </Text>
-            </View>
+            {/* Ícone animado */}
+            <AnimatedDialogIcon
+              variant={variant}
+              accentColor={accentColor}
+              visible={visible}
+              isSos={isSos}
+            />
 
             {/* Título */}
-            <Text style={[styles.titleA11y, { color: ac.foreground, fontSize: af.lg }]}>
+            <Text style={[styles.titleA11y, { color: isSos ? '#FFFFFF' : ac.foreground, fontSize: af.lg }]}>
               {title}
             </Text>
 
             {/* Mensagem */}
             {message ? (
-              <Text style={[styles.messageA11y, { color: ac.muted, fontSize: af.md }]}>
+              <Text style={[styles.messageA11y, { color: isSos ? '#FFCCCC' : ac.muted, fontSize: af.md }]}>
                 {message}
               </Text>
             ) : null}
@@ -252,8 +377,8 @@ export function AppDialog({
           style={[
             styles.dialog,
             {
-              backgroundColor: colors.surface,
-              shadowColor: '#000',
+              backgroundColor: isSos ? '#1C0000' : colors.surface,
+              shadowColor: isSos ? '#DC2626' : '#000',
               transform: [{ scale: scaleAnim }],
               opacity: opacityAnim,
             },
@@ -262,23 +387,30 @@ export function AppDialog({
           {/* Barra de acento no topo */}
           <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
 
-          {/* Cabeçalho com ícone */}
-          <View style={styles.header}>
-            <View style={[styles.iconCircle, { backgroundColor: accentColor + '18' }]}>
-              <Text style={[styles.iconText, { color: accentColor }]}>
-                {VARIANT_ICONS[variant]}
-              </Text>
-            </View>
-            <Text style={[styles.title, { color: colors.foreground }]}>{title}</Text>
+          {/* Ícone animado centralizado */}
+          <View style={styles.iconWrapper}>
+            <AnimatedDialogIcon
+              variant={variant}
+              accentColor={accentColor}
+              visible={visible}
+              isSos={isSos}
+            />
           </View>
+
+          {/* Título */}
+          <Text style={[styles.title, { color: isSos ? '#FFFFFF' : colors.foreground }]}>
+            {title}
+          </Text>
 
           {/* Mensagem */}
           {message ? (
-            <Text style={[styles.message, { color: colors.muted }]}>{message}</Text>
+            <Text style={[styles.message, { color: isSos ? '#FFAAAA' : colors.muted }]}>
+              {message}
+            </Text>
           ) : null}
 
           {/* Separador */}
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <View style={[styles.divider, { backgroundColor: isSos ? '#FF000040' : colors.border }]} />
 
           {/* Opções (select) */}
           {isSelect ? (
@@ -325,9 +457,9 @@ export function AppDialog({
               {buttons.map((btn, i) => {
                 const btnColor =
                   btn.style === 'destructive'
-                    ? colors.error
+                    ? (isSos ? '#FF4444' : colors.error)
                     : btn.style === 'cancel'
-                    ? colors.muted
+                    ? (isSos ? '#FF888888' : colors.muted)
                     : accentColor;
                 const isPrimary = btn.style !== 'cancel';
                 const isLast = i === buttons.length - 1;
@@ -338,7 +470,11 @@ export function AppDialog({
                       styles.button,
                       isPrimary
                         ? { backgroundColor: btnColor }
-                        : { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border },
+                        : {
+                            backgroundColor: 'transparent',
+                            borderWidth: 1,
+                            borderColor: isSos ? '#FF444466' : colors.border,
+                          },
                       !isLast && buttons.length <= 2 && { marginRight: 8 },
                       !isLast && buttons.length > 2 && { marginBottom: 8 },
                     ]}
@@ -348,7 +484,7 @@ export function AppDialog({
                     <Text
                       style={[
                         styles.buttonText,
-                        { color: isPrimary ? '#fff' : colors.muted },
+                        { color: isPrimary ? '#fff' : (isSos ? '#FF8888' : colors.muted) },
                       ]}
                     >
                       {btn.text}
@@ -366,27 +502,6 @@ export function AppDialog({
 
 // ─── Hook utilitário ──────────────────────────────────────────────────────────
 
-/**
- * useAppDialog — hook para controlar um AppDialog de forma imperativa,
- * similar ao Alert.alert() mas com visual personalizado.
- *
- * Uso:
- * ```tsx
- * const { dialogProps, showDialog } = useAppDialog();
- *
- * showDialog({
- *   title: 'Confirmar',
- *   message: 'Deseja excluir?',
- *   variant: 'error',
- *   buttons: [
- *     { text: 'Cancelar', style: 'cancel' },
- *     { text: 'Excluir', style: 'destructive', onPress: handleDelete },
- *   ],
- * });
- *
- * return <AppDialog {...dialogProps} />;
- * ```
- */
 export function useAppDialog() {
   const [state, setState] = React.useState<AppDialogProps>({
     visible: false,
@@ -414,7 +529,7 @@ export function useAppDialog() {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.55)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
@@ -427,44 +542,33 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
+    shadowOpacity: 0.22,
     shadowRadius: 24,
-    elevation: 12,
+    elevation: 14,
   },
   accentBar: {
     height: 4,
     width: '100%',
   },
-  header: {
-    flexDirection: 'row',
+  iconWrapper: {
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 10,
-    gap: 12,
-  },
-  iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  iconText: {
-    fontSize: 18,
-    fontWeight: '700',
+    paddingTop: 24,
+    paddingBottom: 8,
   },
   title: {
-    flex: 1,
     fontSize: 17,
     fontWeight: '700',
     lineHeight: 22,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 8,
   },
   message: {
     fontSize: 14,
     lineHeight: 20,
     paddingHorizontal: 20,
     paddingBottom: 16,
+    textAlign: 'center',
   },
   divider: {
     height: StyleSheet.hairlineWidth,
@@ -518,17 +622,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     gap: 16,
-  },
-  iconCircleA11y: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'center',
-  },
-  iconTextA11y: {
-    fontWeight: '800',
   },
   titleA11y: {
     fontWeight: '800',

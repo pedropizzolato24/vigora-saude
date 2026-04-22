@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
+import { AppToast, useAppToast } from '@/components/app-toast';
 import { WheelPicker } from '@/components/wheel-picker';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
@@ -64,6 +65,7 @@ export default function AlarmsScreen() {
   const minuteInputRef = useRef<TextInput>(null);
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
   const { dialogProps, showDialog } = useAppDialog();
+  const { toastProps, showToast } = useAppToast();
 
   // Derived hour/minute from form.time for the split picker
   const [timeHour, timeMinute] = form.time.split(':');
@@ -176,7 +178,7 @@ export default function AlarmsScreen() {
       const repeatLabel = REPEAT_OPTIONS.find(r => r.value === form.repeat)?.label ?? form.repeat;
       const desc = form.description ? `\n"${form.description}"` : '';
       const action = editingAlarm ? 'atualizado' : 'criado';
-      showDialog({ title: `Alarme ${action}!`, message: `${form.time} • ${repeatLabel}${desc}`, variant: 'info', buttons: [{ text: 'OK' }] });
+      showToast({ message: `Alarme ${action}: ${form.time} • ${repeatLabel}${desc}`, variant: 'success' });
     } catch (error) {
       console.error('Error scheduling alarm notification:', error);
       showDialog({ title: 'Erro', message: 'Não foi possível agendar a notificação do alarme.', variant: 'error', buttons: [{ text: 'OK' }] });
@@ -544,6 +546,7 @@ export default function AlarmsScreen() {
           </View>
         </Modal>
         <AppDialog {...dialogProps} />
+        <AppToast {...toastProps} />
       </ScreenContainer>
     );
   }
@@ -821,6 +824,7 @@ export default function AlarmsScreen() {
         </View>
       </Modal>
       <AppDialog {...dialogProps} />
+      <AppToast {...toastProps} />
     </ScreenContainer>
   );
 }

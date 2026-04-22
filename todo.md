@@ -358,3 +358,10 @@
 - [x] Substituir Alert.alert() em app/(tabs)/location.tsx
 - [x] Substituir Alert.alert() em app/(tabs)/index.tsx (Dashboard/SOS)
 - [x] Verificar TypeScript: zero erros novos (apenas pré-existente do storageProxy.ts)
+
+## UX Improvements v5 — Dialog & Toast
+- [x] Adicionar ícone animado (checkmark/warning/error) ao AppDialog para cada variante
+- [x] Criar componente AppToast (snackbar) para confirmações rápidas sem modal
+- [x] Integrar AppToast nas telas: contatos importados, alarme salvo, métrica salva, etc.
+- [x] Criar variante SOS especial no AppDialog: fundo vermelho, ícone sirene pulsante
+- [x] Atualizar diálogo SOS no index.tsx para usar variante 'sos'

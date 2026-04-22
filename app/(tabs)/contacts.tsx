@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
+import { AppToast, useAppToast } from '@/components/app-toast';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -52,6 +53,7 @@ export default function ContactsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
   const { dialogProps, showDialog } = useAppDialog();
+  const { toastProps, showToast } = useAppToast();
 
   const openAddModal = () => {
     setEditingContact(null);
@@ -113,7 +115,7 @@ export default function ContactsScreen() {
       },
     });
     setImportModalVisible(false);
-    showDialog({ title: 'Contato importado', message: `${contact.name} foi adicionado como contato de emergência.`, variant: 'info', buttons: [{ text: 'OK' }] });
+    showToast({ message: `${contact.name} adicionado como contato de emergência.`, variant: 'success' });
   };
 
   const filteredDeviceContacts = deviceContacts.filter((c) =>
@@ -281,6 +283,7 @@ export default function ContactsScreen() {
           </View>
         </Modal>
         <AppDialog {...dialogProps} />
+        <AppToast {...toastProps} />
       </ScreenContainer>
     );
   }
@@ -549,6 +552,7 @@ export default function ContactsScreen() {
         </View>
       </Modal>
       <AppDialog {...dialogProps} />
+      <AppToast {...toastProps} />
     </ScreenContainer>
   );
 }
