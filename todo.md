@@ -405,3 +405,7 @@
 ## Bug Fix: Safe Area em Modais/Sheets
 - [x] Corrigir AlarmHistorySheet: título sobrepõe barra de notificação (falta insets.top no header)
 - [x] Verificar outros modais/sheets com o mesmo problema (demais já têm insets.top correto)
+
+## Notificação de Alarmes Offline
+- [x] Detectar alarmes não enviados ao religar e exibir toast/dialog informativo
+- [x] Mostrar quantidade de alarmes perdidos e se avisos foram enviados aos contatos
