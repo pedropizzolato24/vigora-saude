@@ -365,3 +365,9 @@
 - [x] Integrar AppToast nas telas: contatos importados, alarme salvo, métrica salva, etc.
 - [x] Criar variante SOS especial no AppDialog: fundo vermelho, ícone sirene pulsante
 - [x] Atualizar diálogo SOS no index.tsx para usar variante 'sos'
+
+## UX Improvements v6 — Haptic Toast & SOS Countdown
+- [x] Adicionar haptic feedback no AppToast (success=Success, error=Error, warning=Medium, info=Light)
+- [x] Criar SOSCountdownDialog com contador regressivo 3→2→1→0 e animação circular
+- [x] Botão de cancelar durante a contagem regressiva do SOS
+- [x] Integrar SOSCountdownDialog no index.tsx substituindo o AppDialog de confirmação SOS

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { AppToast, useAppToast } from '@/components/app-toast';
+import { SOSCountdownDialog } from '@/components/sos-countdown-dialog';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,54 +34,41 @@ export default function DashboardScreen() {
   const { sendNotification } = useNotifications();
   const [sosPressing, setSosPressing] = useState(false);
   const { isAccessibilityMode, a11yFontSize, a11yColors, a11ySpacing } = useAccessibility();
-  const { dialogProps, showDialog } = useAppDialog();
+    const { dialogProps, showDialog } = useAppDialog();
   const { toastProps, showToast } = useAppToast();
-
+  const [sosCountdownVisible, setSosCountdownVisible] = React.useState(false);
   const nextAlarm = getNextAlarm(state.alarms);
+
+  const activateSOS = React.useCallback(async () => {
+    dispatch({ type: 'TRIGGER_SOS' });
+    for (const contact of state.emergencyContacts) {
+      await sendNotification(
+        'EMERGÊNCIA SOS',
+        `${contact.name} precisa de ajuda urgente!`,
+        { type: 'sos', contactId: contact.id }
+      );
+    }
+    if (state.emergencyContacts.length === 0) {
+      await sendNotification(
+        'EMERGÊNCIA SOS ATIVADO',
+        'SOS ativado. Cadastre contatos de emergência para notificá-los.',
+        { type: 'sos' }
+      );
+    }
+    showToast({
+      message: state.emergencyContacts.length > 0
+        ? `SOS enviado para ${state.emergencyContacts.length} contato(s).`
+        : 'SOS registrado. Adicione contatos de emergência.',
+      variant: 'error',
+      duration: 4000,
+    });
+  }, [state.emergencyContacts, dispatch, sendNotification, showToast]);
 
   const handleSOS = () => {
     if (Platform.OS !== 'web') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     }
-    showDialog({
-      title: 'ATIVAR SOS?',
-      message: 'Isso enviará uma notificação de emergência para todos os seus contatos cadastrados.',
-      variant: 'sos',
-      buttons: [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'CONFIRMAR SOS',
-          style: 'destructive',
-          onPress: async () => {
-            if (Platform.OS !== 'web') {
-              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            }
-            dispatch({ type: 'TRIGGER_SOS' });
-            for (const contact of state.emergencyContacts) {
-              await sendNotification(
-                'EMERGÊNCIA SOS',
-                `${contact.name} precisa de ajuda urgente!`,
-                { type: 'sos', contactId: contact.id }
-              );
-            }
-            if (state.emergencyContacts.length === 0) {
-              await sendNotification(
-                'EMERGÊNCIA SOS ATIVADO',
-                'SOS ativado. Cadastre contatos de emergência para notificá-los.',
-                { type: 'sos' }
-              );
-            }
-            showToast({
-              message: state.emergencyContacts.length > 0
-                ? `SOS enviado para ${state.emergencyContacts.length} contato(s).`
-                : 'SOS registrado. Adicione contatos de emergência.',
-              variant: 'error',
-              duration: 4000,
-            });
-          },
-        },
-      ],
-    });
+    setSosCountdownVisible(true);
   };
 
   const navigate = (route: string) => {
@@ -259,6 +247,11 @@ export default function DashboardScreen() {
         </ScrollView>
       <AppDialog {...dialogProps} />
       <AppToast {...toastProps} />
+      <SOSCountdownDialog
+        visible={sosCountdownVisible}
+        onConfirm={() => { setSosCountdownVisible(false); activateSOS(); }}
+        onCancel={() => setSosCountdownVisible(false)}
+      />
       </ScreenContainer>
     );
   }
@@ -483,6 +476,11 @@ export default function DashboardScreen() {
       </ScrollView>
       <AppDialog {...dialogProps} />
       <AppToast {...toastProps} />
+      <SOSCountdownDialog
+        visible={sosCountdownVisible}
+        onConfirm={() => { setSosCountdownVisible(false); activateSOS(); }}
+        onCancel={() => setSosCountdownVisible(false)}
+      />
     </ScreenContainer>
   );
 }

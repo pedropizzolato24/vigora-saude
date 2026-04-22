@@ -25,12 +25,14 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
 
@@ -100,6 +102,19 @@ export function AppToast({
     if (visible) {
       // Limpar timer anterior
       if (timerRef.current) clearTimeout(timerRef.current);
+
+      // Haptic feedback por variante
+      if (Platform.OS !== 'web') {
+        if (variant === 'success') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } else if (variant === 'error') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        } else if (variant === 'warning') {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        } else {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+      }
 
       // Entrada: slide de baixo + fade
       Animated.parallel([
