@@ -33,6 +33,8 @@ const emergencyContactSchema = z.object({
   phone: z.string(),
   relation: z.string(),
   whatsapp: z.boolean(),
+  /** Optional email address for fallback notifications (Email → SMS) */
+  email: z.string().email().optional(),
 });
 
 export const monitoringRouter = router({

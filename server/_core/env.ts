@@ -10,4 +10,11 @@ export const ENV = {
   // WhatsApp Business API (Meta Cloud API)
   whatsappApiToken: process.env.WHATSAPP_API_TOKEN ?? "",
   whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? "",
+  // Email via Resend API (https://resend.com)
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
+  resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "",
+  // SMS via Twilio
+  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
+  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
+  twilioFromNumber: process.env.TWILIO_FROM_NUMBER ?? "",
 };

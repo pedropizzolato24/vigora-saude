@@ -85,6 +85,7 @@ export function MonitoringInitializer() {
           phone: c.phone,
           relation: c.relation,
           whatsapp: c.whatsapp ?? false,
+          email: c.email,
         }));
 
         // Register device with server
@@ -172,6 +173,7 @@ export function MonitoringInitializer() {
       phone: c.phone,
       relation: c.relation,
       whatsapp: c.whatsapp ?? false,
+      email: c.email,
     }));
 
     registerDevice({

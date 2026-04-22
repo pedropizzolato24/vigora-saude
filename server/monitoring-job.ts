@@ -6,7 +6,8 @@
  *    → If device was offline (no heartbeat): mark as "not_sent"
  *    → If device was online but user didn't respond: mark as "missed"
  * 2. Check for devices that have been offline for 24h+ with unresolved alarms
- *    → Send progressive warning messages to emergency contacts via WhatsApp
+ *    → Send progressive warning messages to emergency contacts via:
+ *       WhatsApp (primary) → Email (fallback) → SMS (last resort)
  *
  * Warning escalation levels:
  *   Level 1 (24h)  → Aviso leve: dispositivo sem atividade
@@ -24,7 +25,9 @@ import {
   recordWarning,
   updateAlarmEventStatus,
 } from "./db-monitoring";
-import { sendEmergencyAlerts } from "./whatsapp";
+import { sendWhatsAppMessage, isWhatsAppApiConfigured } from "./whatsapp";
+import { sendEmail, isEmailConfigured } from "./email";
+import { sendSms, isSmsConfigured } from "./sms";
 
 // Grace period: how long after scheduledAt we wait before resolving a pending event
 const GRACE_PERIOD_MINUTES = 15;
@@ -89,11 +92,73 @@ function buildWarningMessage(
 }
 
 /**
+ * Build email subject based on warning level.
+ */
+function buildEmailSubject(userName: string, level: number): string {
+  const name = userName || "Usuário do Vigora Saúde";
+  if (level === 1) return `⚠️ Aviso: ${name} sem atividade no Vigora Saúde`;
+  if (level === 2) return `⚠️⚠️ Atenção: ${name} sem atividade há 48h — Vigora Saúde`;
+  return `🚨 ALERTA SÉRIO: ${name} sem atividade há 72h+ — Vigora Saúde`;
+}
+
+/**
+ * Send a message to a single contact using fallback chain:
+ * WhatsApp → Email → SMS
+ *
+ * Returns the channel that succeeded, or null if all failed.
+ */
+async function sendWithFallback(
+  contact: { name: string; phone: string; email?: string; whatsapp?: boolean },
+  message: string,
+  emailSubject: string
+): Promise<{ channel: "whatsapp" | "email" | "sms" | null; error?: string }> {
+
+  // ── 1. WhatsApp (primary) ─────────────────────────────────────────────────
+  if (contact.whatsapp && contact.phone && isWhatsAppApiConfigured()) {
+    const result = await sendWhatsAppMessage(contact.phone, message);
+    if (result.success) {
+      console.log(`[Monitor] ✅ WhatsApp sent to ${contact.name} (${contact.phone})`);
+      return { channel: "whatsapp" };
+    }
+    console.warn(`[Monitor] ⚠️ WhatsApp failed for ${contact.name}: ${result.error}`);
+  } else if (!isWhatsAppApiConfigured()) {
+    console.log(`[Monitor] WhatsApp API not configured, trying next channel`);
+  }
+
+  // ── 2. Email (fallback) ───────────────────────────────────────────────────
+  if (contact.email && isEmailConfigured()) {
+    const result = await sendEmail(contact.email, emailSubject, message);
+    if (result.success) {
+      console.log(`[Monitor] ✅ Email sent to ${contact.name} (${contact.email})`);
+      return { channel: "email" };
+    }
+    console.warn(`[Monitor] ⚠️ Email failed for ${contact.name}: ${result.error}`);
+  } else if (contact.email && !isEmailConfigured()) {
+    console.log(`[Monitor] Email API not configured, trying next channel`);
+  }
+
+  // ── 3. SMS (last resort) ──────────────────────────────────────────────────
+  if (contact.phone && isSmsConfigured()) {
+    const result = await sendSms(contact.phone, message);
+    if (result.success) {
+      console.log(`[Monitor] ✅ SMS sent to ${contact.name} (${contact.phone})`);
+      return { channel: "sms" };
+    }
+    console.warn(`[Monitor] ⚠️ SMS failed for ${contact.name}: ${result.error}`);
+    return { channel: null, error: result.error };
+  }
+
+  return {
+    channel: null,
+    error: "No configured channel available (WhatsApp, Email, or SMS)",
+  };
+}
+
+/**
  * Determine the appropriate warning level based on offline hours.
  * Returns null if no warning should be sent yet.
  */
 function getWarningLevel(offlineHours: number): number | null {
-  // Find the highest applicable level
   let level: number | null = null;
   for (const threshold of WARNING_LEVELS) {
     if (offlineHours >= threshold.hours) {
@@ -123,13 +188,11 @@ export async function runMonitoringJob(): Promise<void> {
           event.scheduledAt.getTime() - OFFLINE_THRESHOLD_MINUTES * 60 * 1000;
 
       if (!deviceOnline) {
-        // Device was offline when the alarm was due → not_sent
         await updateAlarmEventStatus(event.id, "not_sent");
         console.log(
           `[Monitor] Event ${event.id} (alarm ${event.alarmId}) → not_sent (device offline)`
         );
       } else {
-        // Device was online but user didn't respond → missed
         await updateAlarmEventStatus(event.id, "missed");
         console.log(
           `[Monitor] Event ${event.id} (alarm ${event.alarmId}) → missed (user didn't respond)`
@@ -171,11 +234,10 @@ export async function runMonitoringJob(): Promise<void> {
       }
 
       const contacts = (appUser.emergencyContacts as any[]) || [];
-      const whatsappContacts = contacts.filter((c) => c.whatsapp && c.phone);
 
-      if (whatsappContacts.length === 0) {
+      if (contacts.length === 0) {
         console.log(
-          `[Monitor] Device ${device.deviceId}: no WhatsApp contacts configured, skipping`
+          `[Monitor] Device ${device.deviceId}: no contacts configured, skipping`
         );
         continue;
       }
@@ -195,26 +257,56 @@ export async function runMonitoringJob(): Promise<void> {
         offlineHours,
         locationUrl
       );
+      const emailSubject = buildEmailSubject(appUser.userName || "", warningLevel);
 
       console.log(
         `[Monitor] Sending level ${warningLevel} warning for device ${device.deviceId} (${offlineHours}h offline)`
       );
-
-      const result = await sendEmergencyAlerts(
-        whatsappContacts.map((c: any) => ({ phone: c.phone, name: c.name })),
-        message
+      console.log(
+        `[Monitor] Available channels: WhatsApp=${isWhatsAppApiConfigured()}, Email=${isEmailConfigured()}, SMS=${isSmsConfigured()}`
       );
+
+      let totalSent = 0;
+      let totalFailed = 0;
+      const channelSummary: Record<string, number> = { whatsapp: 0, email: 0, sms: 0, failed: 0 };
+
+      for (const contact of contacts) {
+        const result = await sendWithFallback(
+          {
+            name: contact.name,
+            phone: contact.phone,
+            email: contact.email,
+            whatsapp: contact.whatsapp,
+          },
+          message,
+          emailSubject
+        );
+
+        if (result.channel) {
+          totalSent++;
+          channelSummary[result.channel] = (channelSummary[result.channel] || 0) + 1;
+        } else {
+          totalFailed++;
+          channelSummary.failed++;
+          console.warn(
+            `[Monitor] ❌ All channels failed for ${contact.name}: ${result.error}`
+          );
+        }
+
+        // Small delay between contacts
+        await new Promise((r) => setTimeout(r, 500));
+      }
 
       await recordWarning({
         deviceId: device.deviceId,
         level: warningLevel,
         offlineHours,
-        contactsReached: result.sent,
+        contactsReached: totalSent,
         locationIncluded: !!locationUrl,
       });
 
       console.log(
-        `[Monitor] Warning sent: ${result.sent} contacts reached, ${result.failed} failed`
+        `[Monitor] Warning sent: ${totalSent} contacts reached (WhatsApp: ${channelSummary.whatsapp}, Email: ${channelSummary.email}, SMS: ${channelSummary.sms}), ${totalFailed} failed`
       );
     }
 

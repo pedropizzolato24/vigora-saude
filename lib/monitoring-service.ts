@@ -60,6 +60,8 @@ export async function registerDevice(options: {
     phone: string;
     relation: string;
     whatsapp: boolean;
+    /** Optional email for fallback notifications */
+    email?: string;
   }>;
   lastLocation?: string;
 }): Promise<void> {

@@ -29,6 +29,7 @@ const EMPTY_FORM: Omit<EmergencyContact, 'id'> = {
   phone: '',
   relation: '',
   whatsapp: false,
+  email: '',
 };
 
 function formatPhone(value: string): string {
@@ -129,6 +130,7 @@ export default function ContactsScreen() {
       phone: contact.phone,
       relation: contact.relation,
       whatsapp: contact.whatsapp,
+      email: contact.email ?? '',
     });
     setModalVisible(true);
   };
@@ -279,6 +281,22 @@ export default function ContactsScreen() {
                   />
                 </View>
               ))}
+              <View style={{ gap: 10 }}>
+                <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>E-mail <Text style={{ fontSize: af.sm, color: ac.muted, fontWeight: '400' }}>(opcional)</Text></Text>
+                <TextInput
+                  value={form.email ?? ''}
+                  onChangeText={(v) => setForm((f) => ({ ...f, email: v.trim() }))}
+                  placeholder="Ex: maria@email.com"
+                  placeholderTextColor={ac.muted}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={{ backgroundColor: ac.surface, color: ac.foreground, borderColor: ac.border, borderWidth: 2, borderRadius: 16, padding: 18, fontSize: af.md, fontWeight: '500' }}
+                  returnKeyType="done"
+                  maxLength={320}
+                />
+                <Text style={{ fontSize: af.sm, color: ac.muted }}>Usado se o WhatsApp não funcionar.</Text>
+              </View>
             </ScrollView>
           </View>
         </Modal>
@@ -442,6 +460,29 @@ export default function ContactsScreen() {
                 returnKeyType="done"
                 maxLength={40}
               />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={[styles.formLabel, { color: colors.foreground }]}>E-mail <Text style={{ color: colors.muted, fontWeight: '400', fontSize: 13 }}>(opcional)</Text></Text>
+              <TextInput
+                value={form.email ?? ''}
+                onChangeText={(v) => setForm((f) => ({ ...f, email: v.trim() }))
+                }
+                placeholder="Ex: maria@email.com"
+                placeholderTextColor={colors.muted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={[
+                  styles.textInput,
+                  { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border },
+                ]}
+                returnKeyType="next"
+                maxLength={320}
+              />
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
+                Usado como alternativa ao WhatsApp para envio de avisos de emergência.
+              </Text>
             </View>
 
             <View

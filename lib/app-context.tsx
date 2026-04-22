@@ -24,6 +24,7 @@ export interface EmergencyContact {
   phone: string;
   relation: string;
   whatsapp: boolean;
+  email?: string; // Optional email for fallback notifications
 }
 
 export interface AnamnesesData {

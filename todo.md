@@ -413,3 +413,14 @@
 ## Painel de Status do Monitoramento (Configurações)
 - [x] Criar componente MonitoringStatusPanel com linguagem simples
 - [x] Integrar na tela de Configurações (modo normal e acessível)
+
+## Sistema de Fallback SOS (WhatsApp → Email → SMS)
+- [x] Adicionar campo `email` opcional na interface EmergencyContact
+- [x] Adicionar campo de email no formulário de criar/editar contato (contacts.tsx)
+- [x] Criar serviço de email no servidor (Resend API) — server/email.ts
+- [x] Criar serviço de SMS no servidor (Twilio) — server/sms.ts
+- [x] Atualizar monitoring-job para tentar WhatsApp → Email → SMS em cascata
+- [x] Atualizar schema do banco: adicionar email na interface EmergencyContactRecord (JSON column)
+- [x] Atualizar sincronização de contatos para incluir email (monitoring-initializer + monitoring-service)
+- [x] Adicionar variáveis de ambiente para email e SMS nas configurações do servidor (env.ts)
+- [x] Atualizar schema Zod no router de monitoramento para aceitar email nos contatos

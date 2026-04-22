@@ -44,6 +44,8 @@ export interface EmergencyContactRecord {
   phone: string;
   relation: string;
   whatsapp: boolean;
+  /** Optional email address for fallback notifications (Email → SMS) */
+  email?: string;
 }
 
 export const appUsers = mysqlTable("app_users", {
