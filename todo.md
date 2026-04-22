@@ -371,3 +371,7 @@
 - [x] Criar SOSCountdownDialog com contador regressivo 3→2→1→0 e animação circular
 - [x] Botão de cancelar durante a contagem regressiva do SOS
 - [x] Integrar SOSCountdownDialog no index.tsx substituindo o AppDialog de confirmação SOS
+
+## Bug: Countdown na notificação do alarme real (Android)
+- [x] Investigar por que startCountdownNotification não é chamado quando o alarme nativo dispara
+- [x] Corrigir o fluxo para que a notificação do alarme real mostre o countdown igual ao teste

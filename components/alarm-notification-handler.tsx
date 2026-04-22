@@ -270,6 +270,49 @@ export function AlarmNotificationHandler() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Android: poll getAlarmState() while app is in foreground to detect when a native
+  // alarm fires without the app going to background first.
+  // This is necessary because expo-alarm-module does NOT emit a JS event when the alarm
+  // fires — it only creates the native notification directly via AlarmService (Java).
+  // Without polling, startCountdownNotification() would never be called when the app
+  // is already open at the moment the alarm fires.
+  useEffect(() => {
+    if (!isNativeAlarmAvailable || !getAlarmStateNative) return;
+
+    // Track the last UID we acted on to avoid re-triggering the same alarm
+    const lastActedUid = { current: null as string | null };
+
+    const poll = async () => {
+      try {
+        const activeUid = await getAlarmStateNative!();
+        if (activeUid && typeof activeUid === 'string') {
+          // New alarm detected that we haven't acted on yet
+          if (activeUid !== lastActedUid.current) {
+            lastActedUid.current = activeUid;
+            const alarmId = extractAlarmIdFromUid(activeUid);
+            if (alarmId && !pendingAlarms.current.has(alarmId)) {
+              console.log(`[AlarmHandler] Foreground poll detected active alarm: ${activeUid} → ${alarmId}`);
+              handleAlarmFired(alarmId);
+            }
+          }
+        } else {
+          // No alarm active — reset so the next alarm can be detected
+          lastActedUid.current = null;
+        }
+      } catch {
+        // Silent — module may not be linked in dev/Expo Go
+      }
+    };
+
+    // Poll every 2 seconds while app is mounted
+    const interval = setInterval(poll, 2000);
+    // Also run immediately on mount to catch alarms that fired before this component mounted
+    poll();
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Handle notification response (user taps notification from tray)
   // On Android, this handles the expo-alarm-module notification tap.
   // On iOS/Web, this handles expo-notifications tap.
