@@ -10,6 +10,7 @@ import { saveAlarmTimer, clearAlarmTimer, loadAlarmTimer } from '@/lib/alarm-tim
 import { startCountdownNotification, stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 import { isNativeAlarmAvailable } from '@/lib/native-alarm-manager';
 import { updateAlarmWidgetOnFire } from '@/lib/update-widgets';
+import { Alarm } from '@/lib/app-context';
 
 // Lazy-load expo-alarm-module getAlarmState for Android
 let getAlarmStateNative: (() => Promise<string | null>) | null = null;
@@ -47,6 +48,63 @@ async function readTimerDurationFromStorage(): Promise<number> {
 function extractAlarmIdFromUid(uid: string): string | null {
   const match = uid.match(/^vigora_(.+?)(?:_wd\d+)?$/);
   return match ? match[1] : null;
+}
+
+/**
+ * Compute the next fire timestamp (ms) for an alarm given its time string (HH:MM)
+ * and repeat settings. Returns null if the alarm is disabled or has no valid time.
+ */
+function getNextAlarmFireMs(alarm: Alarm): number | null {
+  if (!alarm.enabled) return null;
+
+  const [hours, minutes] = alarm.time.split(':').map(Number);
+  if (isNaN(hours) || isNaN(minutes)) return null;
+
+  const now = new Date();
+  const todayJs = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+
+  // Helper: next Date for a given JS weekday at alarm time
+  const nextDateForJsDay = (jsDay: number): Date => {
+    const d = new Date();
+    d.setHours(hours, minutes, 0, 0);
+    let daysUntil = (jsDay - todayJs + 7) % 7;
+    if (daysUntil === 0 && d <= now) daysUntil = 7;
+    d.setDate(d.getDate() + daysUntil);
+    return d;
+  };
+
+  let candidates: Date[] = [];
+
+  if (alarm.repeat === 'daily') {
+    const d = new Date();
+    d.setHours(hours, minutes, 0, 0);
+    if (d <= now) d.setDate(d.getDate() + 1);
+    candidates.push(d);
+  } else if (alarm.repeat === 'weekdays') {
+    // Mon(1)–Fri(5) in JS
+    for (const jsDay of [1, 2, 3, 4, 5]) {
+      candidates.push(nextDateForJsDay(jsDay));
+    }
+  } else if (alarm.repeat === 'weekends') {
+    // Sat(6) and Sun(0)
+    for (const jsDay of [0, 6]) {
+      candidates.push(nextDateForJsDay(jsDay));
+    }
+  } else if (alarm.repeat === 'custom' && alarm.customDays && alarm.customDays.length > 0) {
+    // customDays: 0=Sun, 1=Mon, ..., 6=Sat (same as JS getDay)
+    for (const jsDay of alarm.customDays) {
+      candidates.push(nextDateForJsDay(jsDay));
+    }
+  } else {
+    // One-time or unknown repeat — treat as daily
+    const d = new Date();
+    d.setHours(hours, minutes, 0, 0);
+    if (d <= now) d.setDate(d.getDate() + 1);
+    candidates.push(d);
+  }
+
+  if (candidates.length === 0) return null;
+  return Math.min(...candidates.map((d) => d.getTime()));
 }
 
 /**
@@ -270,48 +328,111 @@ export function AlarmNotificationHandler() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Android: poll getAlarmState() while app is in foreground to detect when a native
-  // alarm fires without the app going to background first.
-  // This is necessary because expo-alarm-module does NOT emit a JS event when the alarm
-  // fires — it only creates the native notification directly via AlarmService (Java).
-  // Without polling, startCountdownNotification() would never be called when the app
-  // is already open at the moment the alarm fires.
+  // Android: smart conditional polling for foreground alarm detection.
+  //
+  // Problem: expo-alarm-module does NOT emit a JS event when an alarm fires — it only
+  // creates the native notification directly via AlarmService (Java). Without polling,
+  // startCountdownNotification() is never called when the app is already open.
+  //
+  // Solution: instead of polling constantly (battery drain), we:
+  //   1. Find the next enabled alarm's fire time from state.
+  //   2. Schedule a setTimeout to open a polling window ~30s before that time.
+  //   3. Poll every 2s for up to 90s (covers the full alarm window).
+  //   4. Stop polling once the alarm is detected or the window expires.
+  //   5. Re-schedule for the next alarm automatically.
+  //
+  // This means polling runs for at most ~90s per alarm, not continuously.
   useEffect(() => {
     if (!isNativeAlarmAvailable || !getAlarmStateNative) return;
 
-    // Track the last UID we acted on to avoid re-triggering the same alarm
+    const PRE_ALARM_WINDOW_MS = 30_000;  // start polling 30s before alarm time
+    const POLL_WINDOW_MS = 90_000;       // stop polling after 90s if alarm not detected
+    const POLL_INTERVAL_MS = 2_000;      // check every 2s during active window
+
+    let scheduleTimer: ReturnType<typeof setTimeout> | null = null;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let pollWindowTimer: ReturnType<typeof setTimeout> | null = null;
     const lastActedUid = { current: null as string | null };
 
-    const poll = async () => {
-      try {
-        const activeUid = await getAlarmStateNative!();
-        if (activeUid && typeof activeUid === 'string') {
-          // New alarm detected that we haven't acted on yet
-          if (activeUid !== lastActedUid.current) {
-            lastActedUid.current = activeUid;
-            const alarmId = extractAlarmIdFromUid(activeUid);
-            if (alarmId && !pendingAlarms.current.has(alarmId)) {
-              console.log(`[AlarmHandler] Foreground poll detected active alarm: ${activeUid} → ${alarmId}`);
-              handleAlarmFired(alarmId);
-            }
-          }
-        } else {
-          // No alarm active — reset so the next alarm can be detected
-          lastActedUid.current = null;
-        }
-      } catch {
-        // Silent — module may not be linked in dev/Expo Go
-      }
+    const stopPolling = () => {
+      if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+      if (pollWindowTimer) { clearTimeout(pollWindowTimer); pollWindowTimer = null; }
     };
 
-    // Poll every 2 seconds while app is mounted
-    const interval = setInterval(poll, 2000);
-    // Also run immediately on mount to catch alarms that fired before this component mounted
-    poll();
+    const scheduleNextPollWindow = (alarms: Alarm[]) => {
+      // Cancel any pending schedule
+      if (scheduleTimer) { clearTimeout(scheduleTimer); scheduleTimer = null; }
 
-    return () => clearInterval(interval);
+      // Find the soonest next alarm fire time
+      const nextFireMs = alarms
+        .map(getNextAlarmFireMs)
+        .filter((t): t is number => t !== null)
+        .reduce((min, t) => (t < min ? t : min), Infinity);
+
+      if (!isFinite(nextFireMs)) {
+        console.log('[AlarmHandler] No upcoming alarms — foreground poll disabled');
+        return;
+      }
+
+      const now = Date.now();
+      const msUntilPollStart = Math.max(0, nextFireMs - now - PRE_ALARM_WINDOW_MS);
+      const nextFireIn = Math.round((nextFireMs - now) / 1000);
+
+      console.log(`[AlarmHandler] Next alarm in ${nextFireIn}s — poll window opens in ${Math.round(msUntilPollStart / 1000)}s`);
+
+      scheduleTimer = setTimeout(() => {
+        scheduleTimer = null;
+        if (pollInterval) return; // already polling (e.g. AppState change triggered it)
+
+        console.log('[AlarmHandler] Foreground poll window opened');
+
+        const poll = async () => {
+          try {
+            const activeUid = await getAlarmStateNative!();
+            if (activeUid && typeof activeUid === 'string') {
+              if (activeUid !== lastActedUid.current) {
+                lastActedUid.current = activeUid;
+                const alarmId = extractAlarmIdFromUid(activeUid);
+                if (alarmId && !pendingAlarms.current.has(alarmId)) {
+                  console.log(`[AlarmHandler] Foreground poll detected active alarm: ${activeUid} → ${alarmId}`);
+                  stopPolling();
+                  handleAlarmFired(alarmId);
+                  // Re-schedule for the next alarm after a short delay
+                  setTimeout(() => scheduleNextPollWindow(state.alarms), 5_000);
+                }
+              }
+            } else {
+              lastActedUid.current = null;
+            }
+          } catch {
+            // Silent — module may not be linked in dev/Expo Go
+          }
+        };
+
+        pollInterval = setInterval(poll, POLL_INTERVAL_MS);
+        poll(); // run immediately
+
+        // Auto-close the poll window after POLL_WINDOW_MS
+        pollWindowTimer = setTimeout(() => {
+          console.log('[AlarmHandler] Foreground poll window closed (timeout)');
+          stopPolling();
+          lastActedUid.current = null;
+          // Re-schedule for the next alarm
+          scheduleNextPollWindow(state.alarms);
+        }, POLL_WINDOW_MS);
+      }, msUntilPollStart);
+    };
+
+    // Initial schedule based on current alarms
+    scheduleNextPollWindow(state.alarms);
+
+    return () => {
+      if (scheduleTimer) clearTimeout(scheduleTimer);
+      stopPolling();
+    };
+    // Re-run when alarms list changes (alarm added, removed, or time changed)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [state.alarms]);
 
   // Handle notification response (user taps notification from tray)
   // On Android, this handles the expo-alarm-module notification tap.

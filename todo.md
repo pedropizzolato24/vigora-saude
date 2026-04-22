@@ -375,3 +375,7 @@
 ## Bug: Countdown na notificação do alarme real (Android)
 - [x] Investigar por que startCountdownNotification não é chamado quando o alarme nativo dispara
 - [x] Corrigir o fluxo para que a notificação do alarme real mostre o countdown igual ao teste
+
+## Otimização: Polling condicional do alarme nativo
+- [x] Ativar polling apenas quando um alarme está próximo de disparar (janela de ~60s)
+- [x] Parar polling automaticamente após alarme ser tratado ou dispensado
