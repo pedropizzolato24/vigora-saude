@@ -401,3 +401,7 @@
 - [x] Cliente: detectar alarme não enviado ao religar e registrar como "não enviado"
 - [x] Histórico de eventos: AlarmHistorySheet com botão na tela de alarmes
 - [x] Banco de dados: tabelas criadas no TiDB via SQL direto
+
+## Bug Fix: Safe Area em Modais/Sheets
+- [x] Corrigir AlarmHistorySheet: título sobrepõe barra de notificação (falta insets.top no header)
+- [x] Verificar outros modais/sheets com o mesmo problema (demais já têm insets.top correto)

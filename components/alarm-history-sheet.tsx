@@ -143,7 +143,7 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
     >
       <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: insets.bottom }]}>
         {/* Header */}
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: Math.max(insets.top, 16) }]}>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>
             Histórico de Alarmes
           </Text>
