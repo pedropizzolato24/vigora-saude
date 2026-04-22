@@ -388,6 +388,9 @@ export default function SettingsScreen() {
             <Switch value={true} onValueChange={handleToggleAccessibility} trackColor={{ false: '#888', true: '#0033AA' }} thumbColor="#FFFFFF" />
           </Pressable>
 
+          {/* Status do Monitoramento — logo abaixo do toggle de acessibilidade */}
+          <MonitoringStatusPanel accessible={true} />
+
           {/* Notifications toggle */}
           <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 16 }}>
             <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>Notificações</Text>
@@ -612,9 +615,6 @@ export default function SettingsScreen() {
               <Text style={{ fontSize: af.md, fontWeight: '800', color: '#FFFFFF' }}>Abrir Configurações</Text>
             </Pressable>
           </View>
-
-          {/* Status do Monitoramento */}
-          <MonitoringStatusPanel accessible={true} />
 
           {/* Version info */}
           <View style={{ alignItems: 'center', gap: 4, paddingTop: 8 }}>

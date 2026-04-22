@@ -25,6 +25,7 @@ import { getNextAlarm, useAppContext } from '@/lib/app-context';
 import { useNotifications } from '@/lib/notifications-context';
 import { AdBanner } from '@/components/ad-banner';
 import { FadeInView, ScaleInView, PulseView, StaggeredItem } from '@/components/animated-components';
+import { MonitoringStatusBadge } from '@/components/monitoring-status-badge';
 
 export default function DashboardScreen() {
   const colors = useColors();
@@ -91,15 +92,18 @@ export default function DashboardScreen() {
           style={{ backgroundColor: ac.background }}
         >
           {/* Header */}
-          <View style={{ paddingTop: insets.top + 12, paddingBottom: 8 }}>
-            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>
-              Vigora Saúde
-            </Text>
-            {state.profile.name ? (
-              <Text style={{ fontSize: af.md, color: ac.muted, marginTop: 4 }}>
-                Olá, {state.profile.name}
+          <View style={{ paddingTop: insets.top + 12, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>
+                Vigora Saúde
               </Text>
-            ) : null}
+              {state.profile.name ? (
+                <Text style={{ fontSize: af.md, color: ac.muted, marginTop: 4 }}>
+                  Olá, {state.profile.name}
+                </Text>
+              ) : null}
+            </View>
+            <MonitoringStatusBadge accessible={true} />
           </View>
 
           {/* SOS Button — very large */}
@@ -310,8 +314,11 @@ export default function DashboardScreen() {
             <Text style={[styles.greeting, { color: colors.muted, fontSize: fs.sm }]}>Bem-vindo ao</Text>
             <Text style={[styles.appName, { color: colors.foreground, fontSize: fs.scaled(26) }]}>Vigora Saúde</Text>
           </View>
-          <View style={[styles.heartBadge, { backgroundColor: '#FF000015' }]}>
-            <MaterialIcons name="favorite" size={28} color="#FF0000" />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <MonitoringStatusBadge accessible={false} />
+            <View style={[styles.heartBadge, { backgroundColor: '#FF000015' }]}>
+              <MaterialIcons name="favorite" size={28} color="#FF0000" />
+            </View>
           </View>
         </View>
         </FadeInView>

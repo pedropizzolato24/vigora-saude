@@ -432,3 +432,10 @@
 ## UX: Posição do painel de Monitoramento nas Configurações
 - [x] Mover MonitoringStatusPanel para logo abaixo do toggle de Acessibilidade (modo normal)
 - [x] Remover MonitoringStatusPanel da posição antiga (entre Segurança e Aparência)
+
+## UX: Melhorias de Monitoramento v2
+- [x] Mover MonitoringStatusPanel para logo abaixo do toggle de acessibilidade no modo acessível (settings.tsx)
+- [x] Adicionar indicador visual de status do monitoramento no header do Dashboard (index.tsx)
+- [x] Criar hook useMonitoringStatus reutilizável (hooks/use-monitoring-status.ts)
+- [x] Criar componente MonitoringStatusBadge para o header (components/monitoring-status-badge.tsx)
+- [x] Refatorar MonitoringStatusPanel para usar o hook useMonitoringStatus
