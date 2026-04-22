@@ -31,7 +31,9 @@ async function trpcMutation(procedure: string, input: unknown): Promise<any> {
     });
     if (!res.ok) return null;
     const data = await res.json();
-    return (data as any)?.result?.data ?? null;
+    // Server uses superjson transformer: response is {result: {data: {json: {...}}}}
+    const resultData = (data as any)?.result?.data;
+    return resultData?.json ?? resultData ?? null;
   } catch {
     return null;
   }
@@ -44,7 +46,9 @@ async function trpcQuery(procedure: string, input: unknown): Promise<any> {
     const res = await fetch(url, { credentials: "include" });
     if (!res.ok) return null;
     const data = await res.json();
-    return (data as any)?.result?.data ?? null;
+    // Server uses superjson transformer: response is {result: {data: {json: {...}}}}
+    const resultData = (data as any)?.result?.data;
+    return resultData?.json ?? resultData ?? null;
   } catch {
     return null;
   }

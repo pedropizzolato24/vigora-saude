@@ -424,3 +424,11 @@
 - [x] Atualizar sincronização de contatos para incluir email (monitoring-initializer + monitoring-service)
 - [x] Adicionar variáveis de ambiente para email e SMS nas configurações do servidor (env.ts)
 - [x] Atualizar schema Zod no router de monitoramento para aceitar email nos contatos
+
+## Bug Fix: Conexão com servidor (superjson wrapper)
+- [x] Corrigir trpcQuery e trpcMutation para extrair result.data.json (superjson wrapper)
+- [x] O servidor usa superjson transformer: resposta era {result:{data:{json:{...}}}} mas código lia result.data em vez de result.data.json
+
+## UX: Posição do painel de Monitoramento nas Configurações
+- [x] Mover MonitoringStatusPanel para logo abaixo do toggle de Acessibilidade (modo normal)
+- [x] Remover MonitoringStatusPanel da posição antiga (entre Segurança e Aparência)

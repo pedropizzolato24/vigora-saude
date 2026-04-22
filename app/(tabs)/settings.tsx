@@ -701,6 +701,9 @@ export default function SettingsScreen() {
           </View>
         </Pressable>
 
+        {/* ═══ STATUS DO MONITORAMENTO (abaixo de Acessibilidade) ═══ */}
+        <MonitoringStatusPanel accessible={false} />
+
         {/* ═══ SECTION 1: Notificações e Alarmes ═══ */}
         <CollapsibleSection
           title="Notificações e Alarmes"
@@ -1102,8 +1105,6 @@ export default function SettingsScreen() {
             />
           </View>
          </CollapsibleSection>
-        {/* ═══ SECTION 2.5: Status do Monitoramento ═══ */}
-        <MonitoringStatusPanel accessible={false} />
         {/* ═══ SECTION 3: Aparência ═══ */}
         <CollapsibleSection
           title="Aparência"
