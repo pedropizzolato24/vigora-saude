@@ -198,10 +198,10 @@ export default function RootLayout() {
         <AppProvider>
           <AlarmSyncInitializer />
           <AlarmNotificationHandler />
-          <MonitoringInitializer />
           <OnboardingGate />
           <FontSizeProvider>
           <AccessibilityProvider>
+          <MonitoringInitializer />
           <MenuProvider>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
