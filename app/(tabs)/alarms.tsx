@@ -20,6 +20,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AlarmCard } from '@/components/alarm-card';
+import { AlarmHistorySheet } from '@/components/alarm-history-sheet';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { generateId, useAppContext, type Alarm } from '@/lib/app-context';
@@ -62,6 +63,7 @@ export default function AlarmsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingAlarm, setEditingAlarm] = useState<Alarm | null>(null);
   const [form, setForm] = useState<Omit<Alarm, 'id'>>(EMPTY_FORM);
+  const [historyVisible, setHistoryVisible] = useState(false);
   const minuteInputRef = useRef<TextInput>(null);
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
   const { dialogProps, showDialog } = useAppDialog();
@@ -562,17 +564,30 @@ export default function AlarmsScreen() {
             {state.alarms.length}/24 alarmes configurados
           </Text>
         </View>
-        <Pressable
-          onPress={openAddModal}
-          style={({ pressed }) => [
-            styles.addButton,
-            { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
-          ]}
-          accessibilityLabel="Adicionar alarme"
-        >
-          <MaterialIcons name="add" size={24} color="#FFFFFF" />
-        </Pressable>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Pressable
+            onPress={() => setHistoryVisible(true)}
+            style={({ pressed }) => [
+              styles.addButton,
+              { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.75 : 1 },
+            ]}
+            accessibilityLabel="Histórico de alarmes"
+          >
+            <MaterialIcons name="history" size={22} color={colors.foreground} />
+          </Pressable>
+          <Pressable
+            onPress={openAddModal}
+            style={({ pressed }) => [
+              styles.addButton,
+              { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
+            ]}
+            accessibilityLabel="Adicionar alarme"
+          >
+            <MaterialIcons name="add" size={24} color="#FFFFFF" />
+          </Pressable>
+        </View>
       </View>
+      <AlarmHistorySheet visible={historyVisible} onClose={() => setHistoryVisible(false)} />
 
       {/* List */}
       {sortedAlarms.length === 0 ? (

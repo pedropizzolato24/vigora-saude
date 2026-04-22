@@ -36,6 +36,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loadAlarmTimer, clearAlarmTimer, computeSecondsLeft } from '@/lib/alarm-timer-store';
 import { stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 import { updateAlarmWidgetOnDismiss } from '@/lib/update-widgets';
+import { confirmAlarmResponded, confirmAlarmMissed } from '@/lib/monitoring-service';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
 const COUNTDOWN_SECONDS = 30;
@@ -235,6 +236,10 @@ export default function AlarmRingScreen() {
     if (secondsLeft === 0 && !escalationDoneRef.current && !dismissed) {
       escalationDoneRef.current = true;
       setEscalated(true);
+      // Confirm alarm as missed on server monitoring system
+      if (alarm) {
+        confirmAlarmMissed(alarm, new Date()).catch(() => {});
+      }
 
       const doEscalate = async () => {
         let userLocation: { latitude: number; longitude: number } | undefined;
@@ -287,6 +292,10 @@ export default function AlarmRingScreen() {
 
     // Reset missed alarm counter — user responded
     dispatch({ type: 'RESET_MISSED_ALARM' });
+    // Confirm alarm as responded on server monitoring system
+    if (alarm) {
+      confirmAlarmResponded(alarm, new Date()).catch(() => {});
+    }
     // Atualiza widget Android para mostrar o próximo alarme pendente
     updateAlarmWidgetOnDismiss(state.alarms).catch(() => {});
 

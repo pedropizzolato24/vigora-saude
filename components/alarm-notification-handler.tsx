@@ -9,6 +9,7 @@ import { escalateAlarmToContacts, type EscalationResult } from '@/lib/alarm-esca
 import { saveAlarmTimer, clearAlarmTimer, loadAlarmTimer } from '@/lib/alarm-timer-store';
 import { startCountdownNotification, stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 import { isNativeAlarmAvailable } from '@/lib/native-alarm-manager';
+import { createPendingAlarmEvent } from '@/lib/monitoring-service';
 import { updateAlarmWidgetOnFire } from '@/lib/update-widgets';
 import { Alarm } from '@/lib/app-context';
 
@@ -208,6 +209,8 @@ export function AlarmNotificationHandler() {
 
     // Atualiza widget Android para mostrar estado "tocando agora"
     updateAlarmWidgetOnFire(alarmData.description || 'Alarme').catch(() => {});
+    // Create pending alarm event on server monitoring system
+    createPendingAlarmEvent(alarmData, new Date()).catch(() => {});
 
     // Inicia countdown na notificação nativa via módulo nativo
     startCountdownNotification(

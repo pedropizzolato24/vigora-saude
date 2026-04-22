@@ -385,3 +385,19 @@
 - [x] Exibir status de envio de mensagens para contatos de emergência
 - [x] Botão para desativar o estado de emergência
 - [x] Integrar no fluxo do index.tsx após confirmação do SOS
+
+## Sistema de Monitoramento via Servidor
+- [x] Schema DB: tabelas app_users, synced_alarms, device_heartbeat, alarm_events, warning_log
+- [x] tRPC: registrar usuário do app (deviceId + contatos)
+- [x] tRPC: sincronizar alarmes com o servidor
+- [x] tRPC: registrar heartbeat periódico do dispositivo
+- [x] tRPC: confirmar alarme (respondido/não respondido/não enviado)
+- [x] Job servidor: verificar alarmes vencidos sem confirmação a cada 5min
+- [x] Job servidor: detectar celular inativo (sem heartbeat) e marcar alarmes como "não enviado"
+- [x] Job servidor: enviar mensagens progressivas (24h=aviso, 48h=preocupação, 72h+=alerta sério)
+- [x] Cliente: serviço de heartbeat periódico (a cada 5min quando app ativo)
+- [x] Cliente: sincronizar alarmes ao criar/editar/deletar
+- [x] Cliente: confirmar alarme no alarm-ring (respondido/não respondido)
+- [x] Cliente: detectar alarme não enviado ao religar e registrar como "não enviado"
+- [x] Histórico de eventos: AlarmHistorySheet com botão na tela de alarmes
+- [x] Banco de dados: tabelas criadas no TiDB via SQL direto

@@ -19,6 +19,7 @@ import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { AlarmSyncInitializer } from "@/components/alarm-sync-initializer";
 import { AlarmNotificationHandler } from '@/components/alarm-notification-handler';
+import { MonitoringInitializer } from '@/components/monitoring-initializer';
 import { OnboardingGate } from '@/components/onboarding-gate';
 import {
   SafeAreaFrameContext,
@@ -197,6 +198,7 @@ export default function RootLayout() {
         <AppProvider>
           <AlarmSyncInitializer />
           <AlarmNotificationHandler />
+          <MonitoringInitializer />
           <OnboardingGate />
           <FontSizeProvider>
           <AccessibilityProvider>

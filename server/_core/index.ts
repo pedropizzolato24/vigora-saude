@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import { startMonitoringScheduler } from "../monitoring-job";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
@@ -79,6 +80,8 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`[api] server listening on port ${port}`);
+    // Start the alarm monitoring background job
+    startMonitoringScheduler();
   });
 }
 
