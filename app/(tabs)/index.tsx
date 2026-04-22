@@ -14,6 +14,7 @@ import {
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { AppToast, useAppToast } from '@/components/app-toast';
 import { SOSCountdownDialog } from '@/components/sos-countdown-dialog';
+import { SOSActiveScreen } from '@/components/sos-active-screen';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -37,6 +38,8 @@ export default function DashboardScreen() {
     const { dialogProps, showDialog } = useAppDialog();
   const { toastProps, showToast } = useAppToast();
   const [sosCountdownVisible, setSosCountdownVisible] = React.useState(false);
+  const [sosActiveVisible, setSosActiveVisible] = React.useState(false);
+  const [sosActivatedAt, setSosActivatedAt] = React.useState<number | null>(null);
   const nextAlarm = getNextAlarm(state.alarms);
 
   const activateSOS = React.useCallback(async () => {
@@ -55,14 +58,10 @@ export default function DashboardScreen() {
         { type: 'sos' }
       );
     }
-    showToast({
-      message: state.emergencyContacts.length > 0
-        ? `SOS enviado para ${state.emergencyContacts.length} contato(s).`
-        : 'SOS registrado. Adicione contatos de emergência.',
-      variant: 'error',
-      duration: 4000,
-    });
-  }, [state.emergencyContacts, dispatch, sendNotification, showToast]);
+    const now = Date.now();
+    setSosActivatedAt(now);
+    setSosActiveVisible(true);
+  }, [state.emergencyContacts, dispatch, sendNotification]);
 
   const handleSOS = () => {
     if (Platform.OS !== 'web') {
@@ -252,11 +251,16 @@ export default function DashboardScreen() {
         onConfirm={() => { setSosCountdownVisible(false); activateSOS(); }}
         onCancel={() => setSosCountdownVisible(false)}
       />
+      <SOSActiveScreen
+        visible={sosActiveVisible}
+        contacts={state.emergencyContacts}
+        activatedAt={sosActivatedAt}
+        onDeactivate={() => setSosActiveVisible(false)}
+      />
       </ScreenContainer>
     );
   }
-
-  // ─── NORMAL MODE ───────────────────────────────────────────────────────────
+  // ─── NORMAL MODEE ───────────────────────────────────────────────────────────
 
   const statusCards = [
     {
@@ -481,10 +485,15 @@ export default function DashboardScreen() {
         onConfirm={() => { setSosCountdownVisible(false); activateSOS(); }}
         onCancel={() => setSosCountdownVisible(false)}
       />
+      <SOSActiveScreen
+        visible={sosActiveVisible}
+        contacts={state.emergencyContacts}
+        activatedAt={sosActivatedAt}
+        onDeactivate={() => setSosActiveVisible(false)}
+      />
     </ScreenContainer>
   );
 }
-
 const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,

@@ -379,3 +379,9 @@
 ## Otimização: Polling condicional do alarme nativo
 - [x] Ativar polling apenas quando um alarme está próximo de disparar (janela de ~60s)
 - [x] Parar polling automaticamente após alarme ser tratado ou dispensado
+
+## Tela pós-SOS
+- [x] Criar componente SOSActiveScreen (modal full-screen) com instruções de emergência
+- [x] Exibir status de envio de mensagens para contatos de emergência
+- [x] Botão para desativar o estado de emergência
+- [x] Integrar no fluxo do index.tsx após confirmação do SOS
