@@ -409,3 +409,7 @@
 ## Notificação de Alarmes Offline
 - [x] Detectar alarmes não enviados ao religar e exibir toast/dialog informativo
 - [x] Mostrar quantidade de alarmes perdidos e se avisos foram enviados aos contatos
+
+## Painel de Status do Monitoramento (Configurações)
+- [x] Criar componente MonitoringStatusPanel com linguagem simples
+- [x] Integrar na tela de Configurações (modo normal e acessível)

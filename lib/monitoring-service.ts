@@ -226,6 +226,20 @@ export async function getWarningLog(limit = 20): Promise<any[]> {
 }
 
 /**
+ * Get monitoring status summary for the settings panel.
+ */
+export async function getMonitoringStatus(): Promise<{
+  lastCheckIn: string | null;
+  syncedAlarmCount: number;
+  enabledAlarmCount: number;
+  recentEvents: { respondedCount: number; missedCount: number; notSentCount: number };
+} | null> {
+  const deviceId = await getDeviceId();
+  const result = await trpcQuery("monitoring.getStatus", { deviceId });
+  return result ?? null;
+}
+
+/**
  * Check for alarms that were missed while device was offline.
  * Call this on app startup to detect "not_sent" events retroactively.
  * The server handles this automatically via the monitoring job,

@@ -24,6 +24,7 @@ import { useAppContext } from '@/lib/app-context';
 import { useThemeContext } from '@/lib/theme-provider';
 import { useFontSize } from '@/lib/font-size-context';
 import { useAccessibility } from '@/lib/accessibility-context';
+import { MonitoringStatusPanel } from '@/components/monitoring-status-panel';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
 
@@ -612,6 +613,9 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
+          {/* Status do Monitoramento */}
+          <MonitoringStatusPanel accessible={true} />
+
           {/* Version info */}
           <View style={{ alignItems: 'center', gap: 4, paddingTop: 8 }}>
             <Text style={{ fontSize: af.sm, color: ac.muted, fontWeight: '600' }}>Vigora Saúde — Versão 1.0.0</Text>
@@ -1097,8 +1101,9 @@ export default function SettingsScreen() {
               placeholderTextColor={colors.muted}
             />
           </View>
-        </CollapsibleSection>
-
+         </CollapsibleSection>
+        {/* ═══ SECTION 2.5: Status do Monitoramento ═══ */}
+        <MonitoringStatusPanel accessible={false} />
         {/* ═══ SECTION 3: Aparência ═══ */}
         <CollapsibleSection
           title="Aparência"

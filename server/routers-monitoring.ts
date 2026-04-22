@@ -18,6 +18,8 @@ import {
   createAlarmEvent,
   getAlarmEventHistory,
   getAppUser,
+  getLastHeartbeat,
+  getSyncedAlarms,
   getWarningHistory,
   recordHeartbeat,
   replaceAllSyncedAlarms,
@@ -191,5 +193,30 @@ export const monitoringRouter = router({
     .query(async ({ input }) => {
       const user = await getAppUser(input.deviceId);
       return { user };
+    }),
+
+  /**
+   * Get monitoring status summary for the settings panel.
+   * Returns last check-in time, synced alarm count, and recent event counts.
+   */
+  getStatus: publicProcedure
+    .input(z.object({ deviceId: z.string().min(1).max(64) }))
+    .query(async ({ input }) => {
+      const [heartbeat, alarms, events] = await Promise.all([
+        getLastHeartbeat(input.deviceId),
+        getSyncedAlarms(input.deviceId),
+        getAlarmEventHistory(input.deviceId, 30),
+      ]);
+
+      const respondedCount = events.filter((e) => e.status === "responded").length;
+      const missedCount = events.filter((e) => e.status === "missed").length;
+      const notSentCount = events.filter((e) => e.status === "not_sent").length;
+
+      return {
+        lastCheckIn: heartbeat?.lastSeenAt ?? null,
+        syncedAlarmCount: alarms.length,
+        enabledAlarmCount: alarms.filter((a) => a.enabled).length,
+        recentEvents: { respondedCount, missedCount, notSentCount },
+      };
     }),
 });
