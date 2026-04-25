@@ -25,6 +25,8 @@ import { useThemeContext } from '@/lib/theme-provider';
 import { useFontSize } from '@/lib/font-size-context';
 import { useAccessibility } from '@/lib/accessibility-context';
 import { MonitoringStatusPanel } from '@/components/monitoring-status-panel';
+import { usePurchases } from '@/hooks/use-purchases';
+import { useRouter } from 'expo-router';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
 
@@ -169,6 +171,8 @@ export default function SettingsScreen() {
   const fs = useFontSize();
   const { settings } = state;
   const { dialogProps, showDialog } = useAppDialog();
+  const { isPro } = usePurchases();
+  const router = useRouter();
 
   const [countdownTestActive, setCountdownTestActive] = useState(false);
   const [countdownTestSecondsLeft, setCountdownTestSecondsLeft] = useState(10);
@@ -1262,6 +1266,40 @@ export default function SettingsScreen() {
           </View>
         </CollapsibleSection>
 
+        {/* ═══ SECTION 6: Vigora Pro ═══ */}
+        <View style={[styles.proCard, { backgroundColor: isPro ? colors.success + '18' : colors.primary + '12', borderColor: isPro ? colors.success + '55' : colors.primary + '44' }]}>
+          <View style={styles.proCardHeader}>
+            <View style={[styles.proIconBadge, { backgroundColor: isPro ? colors.success + '22' : colors.primary + '22' }]}>
+              <MaterialIcons name={isPro ? 'verified' : 'star'} size={24} color={isPro ? colors.success : colors.primary} />
+            </View>
+            <View style={styles.proCardInfo}>
+              <Text style={[styles.proCardTitle, { color: colors.foreground, fontSize: fs.base }]}>
+                {isPro ? 'Vigora Saúde Pro ✓' : 'Vigora Saúde Pro'}
+              </Text>
+              <Text style={[styles.proCardSubtitle, { color: colors.muted, fontSize: fs.sm }]}>
+                {isPro ? 'Assinatura ativa — todos os recursos desbloqueados' : 'Desbloqueie todos os recursos premium'}
+              </Text>
+            </View>
+          </View>
+          {isPro ? (
+            <Pressable
+              onPress={() => router.push('/(modal)/customer-center')}
+              style={({ pressed }) => [styles.proButton, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Text style={[styles.proButtonText, { color: colors.foreground, fontSize: fs.sm }]}>Gerenciar assinatura</Text>
+              <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => router.push('/(modal)/paywall')}
+              style={({ pressed }) => [styles.proButton, { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <MaterialIcons name="star" size={16} color="#fff" />
+              <Text style={[styles.proButtonText, { color: '#fff', fontSize: fs.sm }]}>Assinar Vigora Pro</Text>
+            </Pressable>
+          )}
+        </View>
+
         {/* ═══ Footer: Sobre e Legal ═══ */}
         <View style={styles.footerSection}>
           <View style={[styles.footerDivider, { backgroundColor: colors.border }]} />
@@ -1580,5 +1618,47 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: 'center',
     lineHeight: 16,
+  },
+  proCard: {
+    borderRadius: 16,
+    borderWidth: 1.5,
+    padding: 16,
+    gap: 12,
+  },
+  proCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  proIconBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proCardInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  proCardTitle: {
+    fontWeight: '700',
+  },
+  proCardSubtitle: {
+    lineHeight: 18,
+  },
+  proButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  proButtonText: {
+    fontWeight: '600',
   },
 });

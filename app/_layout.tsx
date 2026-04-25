@@ -30,6 +30,8 @@ import {
 import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
 
 import { trpc, createTRPCClient } from "@/lib/trpc";
+import { initializePurchases } from "@/lib/purchases";
+import { PurchasesProvider } from "@/context/purchases-context";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -49,6 +51,11 @@ export default function RootLayout() {
   // Initialize Manus runtime for cookie injection from parent container
   useEffect(() => {
     initManusRuntime();
+  }, []);
+
+  // Initialize RevenueCat SDK on app startup
+  useEffect(() => {
+    initializePurchases();
   }, []);
 
   // Set up notification channels and request permissions on startup
@@ -194,6 +201,7 @@ export default function RootLayout() {
 
   const content = (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <PurchasesProvider>
       <NotificationsProvider>
         <AppProvider>
           <AlarmSyncInitializer />
@@ -220,6 +228,20 @@ export default function RootLayout() {
             />
             <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
             <Stack.Screen name="oauth/callback" />
+            <Stack.Screen
+              name="(modal)/paywall"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="(modal)/customer-center"
+              options={{
+                presentation: 'transparentModal',
+                animation: 'fade',
+              }}
+            />
           </Stack>
           <StatusBar style="auto" />
         </QueryClientProvider>
@@ -229,6 +251,7 @@ export default function RootLayout() {
           </FontSizeProvider>
         </AppProvider>
       </NotificationsProvider>
+      </PurchasesProvider>
     </GestureHandlerRootView>
   );
 

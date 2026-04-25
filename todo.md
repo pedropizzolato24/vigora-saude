@@ -464,3 +464,19 @@
 - [x] Adicionar timeout de 15s com AbortController para evitar fetch pendente infinito
 - [x] Adicionar logging detalhado ([Monitoring] URL, status, erro) para diagnóstico
 - [x] Adicionar botão "Testar conexão" no MonitoringStatusPanel para diagnóstico no dispositivo
+
+## RevenueCat SDK Integration
+
+- [x] Instalar react-native-purchases e react-native-purchases-ui via pnpm
+- [x] Adicionar permissão BILLING ao Android no app.config.ts
+- [x] Criar lib/purchases.ts — serviço de compras com inicialização do SDK
+- [x] Criar hooks/use-purchases.ts — hook para customerInfo, entitlements, compras
+- [x] Criar context/purchases-context.tsx — contexto global de assinatura
+- [x] Criar app/(modal)/paywall.tsx — tela modal de paywall com RevenueCatUI
+- [x] Criar app/(modal)/customer-center.tsx — rota modal para Customer Center
+- [x] Integrar inicialização do SDK no app/_layout.tsx
+- [x] Adicionar PurchasesProvider no _layout.tsx
+- [x] Adicionar rotas (modal)/paywall e (modal)/customer-center no Stack
+- [x] Adicionar card "Vigora Pro" nas Configurações (com botão Assinar/Gerenciar)
+- [x] Adicionar badge "PRO" no Dashboard quando assinante
+- [x] Verificar TypeScript após integração — sem erros novos

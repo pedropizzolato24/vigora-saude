@@ -74,7 +74,8 @@ const config: ExpoConfig = {
       "ACCESS_COARSE_LOCATION",
       "ACCESS_BACKGROUND_LOCATION",
       "FOREGROUND_SERVICE",
-      "FOREGROUND_SERVICE_LOCATION"
+      "FOREGROUND_SERVICE_LOCATION",
+      "com.android.vending.BILLING"
     ],
     intentFilters: [
       {

@@ -26,6 +26,7 @@ import { useNotifications } from '@/lib/notifications-context';
 import { AdBanner } from '@/components/ad-banner';
 import { FadeInView, ScaleInView, PulseView, StaggeredItem } from '@/components/animated-components';
 import { MonitoringStatusBadge } from '@/components/monitoring-status-badge';
+import { usePurchases } from '@/hooks/use-purchases';
 
 export default function DashboardScreen() {
   const colors = useColors();
@@ -36,6 +37,7 @@ export default function DashboardScreen() {
   const { sendNotification } = useNotifications();
   const [sosPressing, setSosPressing] = useState(false);
   const { isAccessibilityMode, a11yFontSize, a11yColors, a11ySpacing } = useAccessibility();
+  const { isPro } = usePurchases();
     const { dialogProps, showDialog } = useAppDialog();
   const { toastProps, showToast } = useAppToast();
   const [sosCountdownVisible, setSosCountdownVisible] = React.useState(false);
@@ -315,6 +317,24 @@ export default function DashboardScreen() {
             <Text style={[styles.appName, { color: colors.foreground, fontSize: fs.scaled(26) }]}>Vigora Saúde</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {isPro && (
+              <Pressable
+                onPress={() => router.push('/(modal)/paywall')}
+                style={({ pressed }) => [{
+                  backgroundColor: colors.success + '20',
+                  borderRadius: 10,
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 3,
+                  opacity: pressed ? 0.7 : 1,
+                }]}
+              >
+                <MaterialIcons name="verified" size={14} color={colors.success} />
+                <Text style={{ color: colors.success, fontSize: 11, fontWeight: '700' }}>PRO</Text>
+              </Pressable>
+            )}
             <MonitoringStatusBadge accessible={false} />
             <View style={[styles.heartBadge, { backgroundColor: '#FF000015' }]}>
               <MaterialIcons name="favorite" size={28} color="#FF0000" />
