@@ -439,3 +439,9 @@
 - [x] Criar hook useMonitoringStatus reutilizável (hooks/use-monitoring-status.ts)
 - [x] Criar componente MonitoringStatusBadge para o header (components/monitoring-status-badge.tsx)
 - [x] Refatorar MonitoringStatusPanel para usar o hook useMonitoringStatus
+
+## Bug Fix: Conexão com servidor (diagnóstico aprofundado - 2026-04-25)
+- [x] Identificar causa raiz 1: EXPO_PUBLIC_API_BASE_URL aponta para URL temporária do sandbox (muda a cada restart)
+- [x] Corrigir constants/oauth.ts: adicionar PRODUCTION_API_URL (vigoraapp-2ncfsgrj.manus.space) como fallback permanente para app nativo
+- [x] Identificar causa raiz 2: ECONNRESET por timeout de conexão MySQL inativa (~8h sem keepAlive)
+- [x] Corrigir server/db.ts: usar mysql2.createPool com enableKeepAlive e keepAliveInitialDelay em vez de drizzle(url)

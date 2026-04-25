@@ -1,15 +1,35 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2";
 import { InsertUser, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
+/**
+ * Lazily create the drizzle instance with a properly configured connection pool.
+ *
+ * Uses keepAlive and reconnect settings to survive MySQL's idle connection timeout
+ * (which causes ECONNRESET errors after ~8 hours of inactivity).
+ *
+ * The pool is created once and reused across all requests.
+ */
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      // Create a pool with keepAlive to prevent ECONNRESET from MySQL idle timeout
+      // (MySQL closes idle connections after ~8 hours by default)
+      const pool = mysql.createPool({
+        uri: process.env.DATABASE_URL,
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0,
+        enableKeepAlive: true,
+        keepAliveInitialDelay: 30000, // 30 seconds
+        connectTimeout: 10000,
+      });
+      _db = drizzle(pool);
+      console.log("[Database] Connection pool created");
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;

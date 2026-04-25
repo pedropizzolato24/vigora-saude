@@ -25,9 +25,21 @@ export const OWNER_NAME = env.ownerName;
 export const API_BASE_URL = env.apiBaseUrl;
 
 /**
+ * Permanent production domain for the API server.
+ * Used as fallback when EXPO_PUBLIC_API_BASE_URL is not set (e.g., Expo Go on native).
+ * This domain is stable and does not change between sandbox restarts.
+ */
+const PRODUCTION_API_URL = "https://vigoraapp-2ncfsgrj.manus.space";
+
+/**
  * Get the API base URL, deriving from current hostname if not set.
  * Metro runs on 8081, API server runs on 3000.
  * URL pattern: https://PORT-sandboxid.region.domain
+ *
+ * Priority:
+ * 1. EXPO_PUBLIC_API_BASE_URL env var (set in sandbox dev environment)
+ * 2. Web: derive from current hostname (8081 -> 3000)
+ * 3. Native fallback: permanent production domain
  */
 export function getApiBaseUrl(): string {
   // If API_BASE_URL is set, use it
@@ -43,10 +55,13 @@ export function getApiBaseUrl(): string {
     if (apiHostname !== hostname) {
       return `${protocol}//${apiHostname}`;
     }
+    // Web fallback: use production domain
+    return PRODUCTION_API_URL;
   }
 
-  // Fallback to empty (will use relative URL)
-  return "";
+  // Native fallback: use permanent production domain
+  // This ensures Expo Go and APK builds always connect to the correct server
+  return PRODUCTION_API_URL;
 }
 
 export const SESSION_TOKEN_KEY = "app_session_token";
