@@ -445,3 +445,11 @@
 - [x] Corrigir constants/oauth.ts: adicionar PRODUCTION_API_URL (vigoraapp-2ncfsgrj.manus.space) como fallback permanente para app nativo
 - [x] Identificar causa raiz 2: ECONNRESET por timeout de conexão MySQL inativa (~8h sem keepAlive)
 - [x] Corrigir server/db.ts: usar mysql2.createPool com enableKeepAlive e keepAliveInitialDelay em vez de drizzle(url)
+
+## Integrações de Serviços de Mensagens (2026-04-25)
+- [x] Validar chave Resend API (re_hs8dYCef_...) — 7/7 testes passaram
+- [x] Validar credenciais Twilio (conta Trial ativa, número +15705590772 com SMS)
+- [x] Configurar TWILIO_FROM_NUMBER=+15705590772 nas variáveis de ambiente
+- [x] Melhorar server/email.ts: template HTML profissional com cores por severidade (info/warning/alert)
+- [x] Melhorar server/sms.ts: tratamento de erro específico para conta Trial (código 21608), normalização E.164 melhorada
+- [x] Criar tests/integration-services.test.ts para validar credenciais automaticamente

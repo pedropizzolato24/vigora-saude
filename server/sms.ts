@@ -7,9 +7,12 @@
  * Requires:
  *   TWILIO_ACCOUNT_SID  — Twilio Account SID (from twilio.com console)
  *   TWILIO_AUTH_TOKEN   — Twilio Auth Token
- *   TWILIO_FROM_NUMBER  — Twilio phone number in E.164 format (e.g., "+15551234567")
+ *   TWILIO_FROM_NUMBER  — Twilio phone number in E.164 format (e.g., "+15705590772")
  *
- * Free trial: Twilio offers a free trial with ~$15 credit (~150 SMS messages).
+ * Note on Trial accounts:
+ *   Twilio Trial accounts can only send SMS to verified phone numbers.
+ *   To verify a number: https://www.twilio.com/console/phone-numbers/verified
+ *   Upgrade to a paid account to send to any number.
  */
 
 import { ENV } from "./_core/env";
@@ -30,6 +33,23 @@ export function isSmsConfigured(): boolean {
 }
 
 /**
+ * Normalize a Brazilian phone number to E.164 format.
+ * Handles formats: (11) 99999-9999, 11999999999, +5511999999999, etc.
+ */
+function normalizePhoneToE164(phone: string): string {
+  // Remove all non-digit characters
+  const digits = phone.replace(/\D/g, "");
+
+  // Already has country code
+  if (digits.startsWith("55") && digits.length >= 12) {
+    return `+${digits}`;
+  }
+
+  // Add Brazil country code
+  return `+55${digits}`;
+}
+
+/**
  * Send an SMS via Twilio REST API.
  */
 export async function sendSms(
@@ -43,11 +63,7 @@ export async function sendSms(
     };
   }
 
-  // Ensure phone is in E.164 format
-  const cleanPhone = to.replace(/\D/g, "");
-  const e164Phone = cleanPhone.startsWith("55")
-    ? `+${cleanPhone}`
-    : `+55${cleanPhone}`;
+  const e164Phone = normalizePhoneToE164(to);
 
   // Twilio limits SMS to 1600 chars; truncate if needed
   const truncatedMessage = message.length > 1600
@@ -77,18 +93,32 @@ export async function sendSms(
       }
     );
 
+    const data = (await response.json()) as any;
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMsg =
-        (errorData as any)?.message ||
-        `HTTP ${response.status}: ${response.statusText}`;
-      console.error(`[SMS] Failed to send to ${e164Phone}:`, errorMsg);
+      // Twilio error codes: https://www.twilio.com/docs/api/errors
+      const errorMsg = data?.message || `HTTP ${response.status}: ${response.statusText}`;
+      const errorCode = data?.code;
+
+      // Trial account restriction: number not verified
+      if (errorCode === 21608) {
+        console.warn(
+          `[SMS] Trial account: ${e164Phone} is not a verified number. ` +
+          `Verify at: https://www.twilio.com/console/phone-numbers/verified`
+        );
+        return {
+          success: false,
+          error: `Número não verificado na conta Trial do Twilio. Verifique em twilio.com/console.`,
+        };
+      }
+
+      console.error(`[SMS] Failed to send to ${e164Phone} (code ${errorCode}):`, errorMsg);
       return { success: false, error: errorMsg };
     }
 
-    const data = (await response.json()) as any;
     const messageId = data?.sid;
-    console.log(`[SMS] Message sent to ${e164Phone}, SID: ${messageId}`);
+    const status = data?.status;
+    console.log(`[SMS] Message sent to ${e164Phone}, SID: ${messageId}, status: ${status}`);
     return { success: true, messageId };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
@@ -122,7 +152,7 @@ export async function sendEmergencySmsAlerts(
       failed++;
     }
 
-    // Small delay between messages
+    // Small delay between messages to avoid rate limiting
     if (contacts.indexOf(contact) < contacts.length - 1) {
       await new Promise((r) => setTimeout(r, 500));
     }
