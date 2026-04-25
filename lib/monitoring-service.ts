@@ -18,40 +18,125 @@ import { Alarm } from "./app-context";
 
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
-// ─── Low-level fetch helper ───────────────────────────────────────────────────
+// ─── Low-level fetch helper with retry ──────────────────────────────────────
 
-async function trpcMutation(procedure: string, input: unknown): Promise<any> {
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 2000;
+const FETCH_TIMEOUT_MS = 15000;
+
+/** Fetch with timeout to avoid hanging on slow/dead connections */
+async function fetchWithTimeout(
+  url: string,
+  options?: RequestInit
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const url = `${getApiBaseUrl()}/api/trpc/${procedure}`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ json: input }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    // Server uses superjson transformer: response is {result: {data: {json: {...}}}}
-    const resultData = (data as any)?.result?.data;
-    return resultData?.json ?? resultData ?? null;
-  } catch {
-    return null;
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
   }
 }
 
-async function trpcQuery(procedure: string, input: unknown): Promise<any> {
-  try {
-    const params = encodeURIComponent(JSON.stringify({ json: input }));
-    const url = `${getApiBaseUrl()}/api/trpc/${procedure}?input=${params}`;
-    const res = await fetch(url, { credentials: "include" });
-    if (!res.ok) return null;
-    const data = await res.json();
-    // Server uses superjson transformer: response is {result: {data: {json: {...}}}}
-    const resultData = (data as any)?.result?.data;
-    return resultData?.json ?? resultData ?? null;
-  } catch {
-    return null;
+/** Wait ms milliseconds */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Parse superjson tRPC response: {result: {data: {json: {...}}}} */
+function parseSuperjsonResponse(data: any): any {
+  const resultData = data?.result?.data;
+  return resultData?.json ?? resultData ?? null;
+}
+
+async function trpcMutation(
+  procedure: string,
+  input: unknown
+): Promise<any> {
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}/api/trpc/${procedure}`;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(
+          `[Monitoring] POST ${procedure} retry ${attempt}/${MAX_RETRIES}`
+        );
+        await delay(RETRY_DELAY_MS * attempt);
+      } else {
+        console.log(`[Monitoring] POST ${procedure} → ${url}`);
+      }
+      const res = await fetchWithTimeout(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ json: input }),
+      });
+      console.log(`[Monitoring] POST ${procedure} status: ${res.status}`);
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "(no body)");
+        console.warn(
+          `[Monitoring] POST ${procedure} failed: ${res.status} ${errText}`
+        );
+        // Retry on 5xx server errors or network-like errors
+        if (res.status >= 500 && attempt < MAX_RETRIES) continue;
+        return null;
+      }
+      const data = await res.json();
+      return parseSuperjsonResponse(data);
+    } catch (err: any) {
+      const msg = err?.name === "AbortError" ? "timeout" : err?.message ?? String(err);
+      console.error(
+        `[Monitoring] POST ${procedure} error (attempt ${attempt + 1}):`,
+        msg
+      );
+      if (attempt >= MAX_RETRIES) return null;
+    }
   }
+  return null;
+}
+
+async function trpcQuery(
+  procedure: string,
+  input: unknown
+): Promise<any> {
+  const baseUrl = getApiBaseUrl();
+  const params = encodeURIComponent(JSON.stringify({ json: input }));
+  const url = `${baseUrl}/api/trpc/${procedure}?input=${params}`;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(
+          `[Monitoring] GET ${procedure} retry ${attempt}/${MAX_RETRIES}`
+        );
+        await delay(RETRY_DELAY_MS * attempt);
+      } else {
+        console.log(
+          `[Monitoring] GET ${procedure} → ${url.substring(0, 120)}...`
+        );
+      }
+      const res = await fetchWithTimeout(url);
+      console.log(`[Monitoring] GET ${procedure} status: ${res.status}`);
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "(no body)");
+        console.warn(
+          `[Monitoring] GET ${procedure} failed: ${res.status} ${errText}`
+        );
+        if (res.status >= 500 && attempt < MAX_RETRIES) continue;
+        return null;
+      }
+      const data = await res.json();
+      return parseSuperjsonResponse(data);
+    } catch (err: any) {
+      const msg = err?.name === "AbortError" ? "timeout" : err?.message ?? String(err);
+      console.error(
+        `[Monitoring] GET ${procedure} error (attempt ${attempt + 1}):`,
+        msg
+      );
+      if (attempt >= MAX_RETRIES) return null;
+    }
+  }
+  return null;
 }
 
 // ─── Device Registration ──────────────────────────────────────────────────────
@@ -94,7 +179,9 @@ async function sendHeartbeat(location?: string): Promise<void> {
   console.log("[Monitoring] Heartbeat sent");
 }
 
-export function startHeartbeat(getLocation?: () => Promise<string | undefined>): void {
+export function startHeartbeat(
+  getLocation?: () => Promise<string | undefined>
+): void {
   if (heartbeatTimer) return; // Already running
 
   // Send immediately
@@ -218,7 +305,10 @@ export async function confirmAlarmMissed(
  */
 export async function getAlarmHistory(limit = 50): Promise<any[]> {
   const deviceId = await getDeviceId();
-  const result = await trpcQuery("monitoring.getHistory", { deviceId, limit });
+  const result = await trpcQuery("monitoring.getHistory", {
+    deviceId,
+    limit,
+  });
   return result?.events ?? [];
 }
 
@@ -227,7 +317,10 @@ export async function getAlarmHistory(limit = 50): Promise<any[]> {
  */
 export async function getWarningLog(limit = 20): Promise<any[]> {
   const deviceId = await getDeviceId();
-  const result = await trpcQuery("monitoring.getWarnings", { deviceId, limit });
+  const result = await trpcQuery("monitoring.getWarnings", {
+    deviceId,
+    limit,
+  });
   return result?.warnings ?? [];
 }
 
@@ -238,7 +331,11 @@ export async function getMonitoringStatus(): Promise<{
   lastCheckIn: string | null;
   syncedAlarmCount: number;
   enabledAlarmCount: number;
-  recentEvents: { respondedCount: number; missedCount: number; notSentCount: number };
+  recentEvents: {
+    respondedCount: number;
+    missedCount: number;
+    notSentCount: number;
+  };
 } | null> {
   const deviceId = await getDeviceId();
   const result = await trpcQuery("monitoring.getStatus", { deviceId });
@@ -251,7 +348,9 @@ export async function getMonitoringStatus(): Promise<{
  * The server handles this automatically via the monitoring job,
  * but this function updates the local UI state.
  */
-export async function checkOfflineAlarms(alarms: Alarm[]): Promise<{
+export async function checkOfflineAlarms(
+  alarms: Alarm[]
+): Promise<{
   notSentCount: number;
   missedCount: number;
 }> {

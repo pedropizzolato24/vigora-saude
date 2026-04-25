@@ -7,22 +7,74 @@
  * - Quantos alarmes estão sendo monitorados
  * - Resumo dos últimos 30 eventos
  */
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  Alert,
+  Platform,
 } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useColors } from "@/hooks/use-colors";
 import { useMonitoringStatus } from "@/hooks/use-monitoring-status";
+import { getApiBaseUrl } from "@/constants/oauth";
 
 type Props = {
   /** Se true, usa o layout do modo de acessibilidade (fonte maior, mais espaçamento) */
   accessible?: boolean;
 };
+
+/** Botão de diagnóstico que testa a conexão com o servidor e mostra o resultado */
+function DiagnosticButton({ accessible, colors, fs }: { accessible: boolean; colors: any; fs: number }) {
+  const [diagnosing, setDiagnosing] = useState(false);
+
+  const runDiagnostic = async () => {
+    setDiagnosing(true);
+    const baseUrl = getApiBaseUrl();
+    const testUrl = `${baseUrl}/api/trpc/monitoring.getStatus?input=${encodeURIComponent(JSON.stringify({ json: { deviceId: "diag-test" } }))}`;
+    let result = `URL: ${baseUrl}\nPlataforma: ${Platform.OS}\n\n`;
+
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10000);
+      const start = Date.now();
+      const res = await fetch(testUrl, { signal: controller.signal });
+      clearTimeout(timer);
+      const elapsed = Date.now() - start;
+      const body = await res.text().catch(() => "(sem corpo)");
+      result += `Status: ${res.status}\nTempo: ${elapsed}ms\n\nResposta:\n${body.substring(0, 200)}`;
+    } catch (err: any) {
+      const msg = err?.name === "AbortError" ? "Timeout (10s)" : err?.message ?? String(err);
+      result += `Erro: ${msg}`;
+    }
+
+    setDiagnosing(false);
+    Alert.alert("Diagnóstico de Conexão", result);
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={runDiagnostic}
+      disabled={diagnosing}
+      style={[
+        styles.diagBtn,
+        { borderColor: colors.border },
+      ]}
+    >
+      {diagnosing ? (
+        <ActivityIndicator size="small" color={colors.primary} />
+      ) : (
+        <MaterialIcons name="bug-report" size={accessible ? 18 : 14} color={colors.muted} />
+      )}
+      <Text style={[styles.diagText, { color: colors.muted, fontSize: fs - 1 }]}>
+        {diagnosing ? "Testando..." : "Testar conexão"}
+      </Text>
+    </TouchableOpacity>
+  );
+}
 
 export function MonitoringStatusPanel({ accessible = false }: Props) {
   const colors = useColors();
@@ -84,11 +136,14 @@ export function MonitoringStatusPanel({ accessible = false }: Props) {
           </Text>
         </View>
       ) : error || !status ? (
-        <View style={styles.errorRow}>
-          <MaterialIcons name="cloud-off" size={accessible ? 20 : 16} color={colors.muted} />
-          <Text style={[styles.errorText, { color: colors.muted, fontSize: fs }]}>
-            Sem conexão com o servidor
-          </Text>
+        <View>
+          <View style={styles.errorRow}>
+            <MaterialIcons name="cloud-off" size={accessible ? 20 : 16} color={colors.muted} />
+            <Text style={[styles.errorText, { color: colors.muted, fontSize: fs }]}>
+              Sem conexão com o servidor
+            </Text>
+          </View>
+          <DiagnosticButton accessible={accessible} colors={colors} fs={fs} />
         </View>
       ) : (
         <View style={styles.content}>
@@ -348,5 +403,20 @@ const styles = StyleSheet.create({
   noteText: {
     flex: 1,
     lineHeight: 16,
+  },
+  diagBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignSelf: "flex-start",
+  },
+  diagText: {
+    fontWeight: "500",
   },
 });

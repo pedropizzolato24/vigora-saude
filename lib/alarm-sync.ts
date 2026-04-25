@@ -40,8 +40,19 @@ export async function scheduleFullAlarm(alarm: Alarm): Promise<Alarm> {
   if (isNativeAlarmAvailable) {
     const uids = await scheduleNativeAlarm(alarm);
     updated.nativeAlarmUids = uids;
-    // On Android with native alarm available, skip expo-notifications to avoid
-    // duplicate notifications. The native alarm handles display + tap navigation.
+    // Also schedule expo-notifications as a backup on Android.
+    // The native alarm creates its own notification via AlarmService, but if
+    // Storage.getAlarm() fails (serialization issue), the native notification
+    // appears blank. The expo-notification serves as a safety net with proper
+    // title/body. The countdown module will overwrite it once the app opens.
+    try {
+      const notificationId = await scheduleAlarmNotification(alarm);
+      if (notificationId) {
+        updated.notificationId = notificationId;
+      }
+    } catch (e) {
+      console.warn('[AlarmSync] Backup notification scheduling failed:', e);
+    }
     return updated;
   }
 
@@ -92,10 +103,14 @@ export async function syncAlarmsOnStartup(alarms: Alarm[]): Promise<void> {
         continue;
       }
 
-      // On Android with native alarm available, the native alarm handles everything.
-      // Skip expo-notifications sync to avoid creating duplicate notifications.
+      // On Android with native alarm available, also schedule backup expo-notification
       if (isNativeAlarmAvailable) {
-        console.log(`[Alarm Sync] Android native alarm — skipping notification sync for: ${alarm.id}`);
+        try {
+          const notificationId = await scheduleAlarmNotification(alarm);
+          console.log(`[Alarm Sync] Android: backup notification scheduled for: ${alarm.id} (${notificationId})`);
+        } catch (e) {
+          console.warn(`[Alarm Sync] Backup notification failed for ${alarm.id}:`, e);
+        }
         continue;
       }
 

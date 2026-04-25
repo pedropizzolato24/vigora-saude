@@ -453,3 +453,14 @@
 - [x] Melhorar server/email.ts: template HTML profissional com cores por severidade (info/warning/alert)
 - [x] Melhorar server/sms.ts: tratamento de erro específico para conta Trial (código 21608), normalização E.164 melhorada
 - [x] Criar tests/integration-services.test.ts para validar credenciais automaticamente
+
+## Bug Fix: Notificações em branco (exceto teste)
+- [x] Investigar causa raiz: expo-alarm-module pode falhar ao recuperar alarme do Storage (ZonedDateTime parse)
+- [x] Corrigir: adicionado backup de notificação via expo-notifications no alarm-sync.ts (Android também agenda notificação como fallback)
+
+## Bug Fix: Conexão persistente com o servidor
+- [x] Remover credentials: "include" do fetch (causa problemas no React Native nativo)
+- [x] Adicionar retry automático com backoff exponencial (até 2 tentativas) no trpcQuery e trpcMutation
+- [x] Adicionar timeout de 15s com AbortController para evitar fetch pendente infinito
+- [x] Adicionar logging detalhado ([Monitoring] URL, status, erro) para diagnóstico
+- [x] Adicionar botão "Testar conexão" no MonitoringStatusPanel para diagnóstico no dispositivo
