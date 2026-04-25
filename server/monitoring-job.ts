@@ -5,14 +5,14 @@
  * 1. Detect alarm events that expired without device confirmation
  *    → If device was offline (no heartbeat): mark as "not_sent"
  *    → If device was online but user didn't respond: mark as "missed"
- * 2. Check for devices that have been offline for 24h+ with unresolved alarms
+ * 2. Check for devices that have been offline for 12h+ with unresolved alarms
  *    → Send progressive warning messages to emergency contacts via:
  *       WhatsApp (primary) → Email (fallback) → SMS (last resort)
  *
  * Warning escalation levels:
- *   Level 1 (24h)  → Aviso leve: dispositivo sem atividade
- *   Level 2 (48h)  → Preocupação moderada: múltiplos alarmes perdidos
- *   Level 3 (72h+) → Alerta sério: possível emergência
+ *   Level 1 (12h)  → Aviso leve: dispositivo sem atividade
+ *   Level 2 (24h)  → Preocupação moderada: múltiplos alarmes perdidos
+ *   Level 3 (48h+) → Alerta sério: possível emergência
  */
 import {
   getAppUser,
@@ -37,9 +37,9 @@ const OFFLINE_THRESHOLD_MINUTES = 30;
 
 // Warning thresholds in hours
 const WARNING_LEVELS = [
-  { level: 1, hours: 24, label: "aviso leve" },
-  { level: 2, hours: 48, label: "preocupação moderada" },
-  { level: 3, hours: 72, label: "alerta sério" },
+  { level: 1, hours: 12, label: "aviso leve" },
+  { level: 2, hours: 24, label: "preocupação moderada" },
+  { level: 3, hours: 48, label: "alerta sério" },
 ];
 
 // Minimum interval between warnings of the same level (hours)
@@ -97,8 +97,8 @@ function buildWarningMessage(
 function buildEmailSubject(userName: string, level: number): string {
   const name = userName || "Usuário do Vigora Saúde";
   if (level === 1) return `⚠️ Aviso: ${name} sem atividade no Vigora Saúde`;
-  if (level === 2) return `⚠️⚠️ Atenção: ${name} sem atividade há 48h — Vigora Saúde`;
-  return `🚨 ALERTA SÉRIO: ${name} sem atividade há 72h+ — Vigora Saúde`;
+  if (level === 2) return `⚠️⚠️ Atenção: ${name} sem atividade há 24h — Vigora Saúde`;
+  return `🚨 ALERTA SÉRIO: ${name} sem atividade há 48h+ — Vigora Saúde`;
 }
 
 /**
