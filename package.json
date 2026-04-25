@@ -16,7 +16,14 @@
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "qr": "node scripts/generate_qr.mjs"
+    "qr": "node scripts/generate_qr.mjs",
+    "eas:build:dev": "eas build --profile development --platform all",
+    "eas:build:dev:android": "eas build --profile development --platform android",
+    "eas:build:dev:ios": "eas build --profile development --platform ios",
+    "eas:build:preview": "eas build --profile preview --platform all",
+    "eas:build:preview:android": "eas build --profile preview --platform android",
+    "eas:build:production": "eas build --profile production --platform all",
+    "eas:submit": "eas submit --profile production --platform all"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -40,6 +47,7 @@
     "expo-build-properties": "^1.0.10",
     "expo-constants": "~18.0.12",
     "expo-contacts": "~15.0.11",
+    "expo-dev-client": "^55.0.28",
     "expo-font": "~14.0.10",
     "expo-haptics": "~15.0.8",
     "expo-image": "~3.0.11",

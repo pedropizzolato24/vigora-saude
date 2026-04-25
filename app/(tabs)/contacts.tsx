@@ -23,6 +23,7 @@ import { ContactCard } from '@/components/contact-card';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { generateId, useAppContext, type EmergencyContact } from '@/lib/app-context';
+import { useProFeature, FREE_LIMITS, ProLimitBadge } from '@/components/pro-gate';
 
 const EMPTY_FORM: Omit<EmergencyContact, 'id'> = {
   name: '',
@@ -55,8 +56,10 @@ export default function ContactsScreen() {
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
   const { dialogProps, showDialog } = useAppDialog();
   const { toastProps, showToast } = useAppToast();
+  const { checkLimit } = useProFeature();
 
   const openAddModal = () => {
+    if (!checkLimit(state.emergencyContacts.length, FREE_LIMITS.CONTACTS)) return;
     setEditingContact(null);
     setForm(EMPTY_FORM);
     setModalVisible(true);
@@ -339,6 +342,15 @@ export default function ContactsScreen() {
             <MaterialIcons name="add" size={24} color="#FFFFFF" />
           </Pressable>
         </View>
+      </View>
+
+      {/* Pro Limit Badge */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+        <ProLimitBadge
+          current={state.emergencyContacts.length}
+          limit={FREE_LIMITS.CONTACTS}
+          label="contatos"
+        />
       </View>
 
       {/* Info Banner */}

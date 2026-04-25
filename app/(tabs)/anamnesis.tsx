@@ -18,6 +18,7 @@ import { useFontSize } from '@/lib/font-size-context';
 import { useAppContext, type AnamnesesData } from '@/lib/app-context';
 import { exportAnamnesisToPDF } from '@/lib/pdf-utils-v2';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
+import { useProFeature, ProBanner } from '@/components/pro-gate';
 
 const GENDER_OPTIONS: { value: AnamnesesData['gender']; label: string }[] = [
   { value: 'M', label: 'Masculino' },
@@ -46,6 +47,7 @@ export default function AnamnesisScreen() {
   const [saved, setSaved] = useState(false);
   const { dialogProps, showDialog } = useAppDialog();
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
+  const { requirePro } = useProFeature();
 
   useEffect(() => {
     if (state.anamnesis) {
@@ -74,6 +76,7 @@ export default function AnamnesisScreen() {
   };
 
   const handleExport = async () => {
+    if (!requirePro()) return;
     try {
       if (Platform.OS !== 'web') {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -350,6 +353,7 @@ export default function AnamnesisScreen() {
           >
             <MaterialIcons name="share" size={20} color={colors.onPrimary} />
             <Text style={[styles.exportButtonText, { color: colors.onPrimary }]}>Compartilhar</Text>
+            <MaterialIcons name="star" size={13} color="rgba(255,255,255,0.8)" />
           </Pressable>
         </View>
 

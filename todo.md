@@ -480,3 +480,20 @@
 - [x] Adicionar card "Vigora Pro" nas Configurações (com botão Assinar/Gerenciar)
 - [x] Adicionar badge "PRO" no Dashboard quando assinante
 - [x] Verificar TypeScript após integração — sem erros novos
+
+## RevenueCat — Melhorias v2
+
+### Opção 1: Guia de configuração do painel RevenueCat
+- [x] Criar docs/REVENUECAT_SETUP.md com passo a passo completo (App Store Connect, Google Play, painel RC)
+
+### Opção 2: Build EAS para desenvolvimento
+- [x] Criar eas.json com profiles: development, simulator, preview, production
+- [x] Adicionar scripts eas:build:* ao package.json
+- [x] Instalar expo-dev-client e adicionar plugin no app.config.ts
+
+### Opção 3: Restrição de recursos premium com isPro
+- [x] Criar components/pro-gate.tsx com ProGate, ProBanner, ProLimitBadge, useProFeature, FREE_LIMITS
+- [x] Contatos de emergência: limitar a 3 no plano gratuito (checkLimit + ProLimitBadge)
+- [x] Exportação PDF de Anamnese: bloquear no plano gratuito (requirePro + ícone star no botão)
+- [x] Monitoramento contínuo: ProGate com ProBanner fallback nas Configurações
+- [x] Alarmes: limitar a 5 no plano gratuito (checkLimit + ProLimitBadge)

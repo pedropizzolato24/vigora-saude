@@ -26,6 +26,7 @@ import { useFontSize } from '@/lib/font-size-context';
 import { generateId, useAppContext, type Alarm } from '@/lib/app-context';
 import { scheduleFullAlarm, cancelFullAlarm } from '@/lib/alarm-sync';
 import { useRouter } from 'expo-router';
+import { useProFeature, FREE_LIMITS, ProLimitBadge } from '@/components/pro-gate';
 
 const REPEAT_OPTIONS: { value: Alarm['repeat']; label: string }[] = [
   { value: 'daily', label: 'Diário' },
@@ -68,6 +69,7 @@ export default function AlarmsScreen() {
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
   const { dialogProps, showDialog } = useAppDialog();
   const { toastProps, showToast } = useAppToast();
+  const { checkLimit } = useProFeature();
 
   // Derived hour/minute from form.time for the split picker
   const [timeHour, timeMinute] = form.time.split(':');
@@ -128,10 +130,13 @@ export default function AlarmsScreen() {
   });
 
   const openAddModal = () => {
-    if (state.alarms.length >= 24) {
+    // Pro users: max 24 alarms; Free users: max FREE_LIMITS.ALARMS
+    const limit = 24; // absolute max
+    if (state.alarms.length >= limit) {
       showDialog({ title: 'Limite atingido', message: 'Você pode ter no máximo 24 alarmes.', variant: 'warning', buttons: [{ text: 'OK' }] });
       return;
     }
+    if (!checkLimit(state.alarms.length, FREE_LIMITS.ALARMS)) return;
     setEditingAlarm(null);
     setForm(EMPTY_FORM);
     setModalVisible(true);
@@ -561,7 +566,7 @@ export default function AlarmsScreen() {
         <View>
           <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'] }]}>Alarmes</Text>
           <Text style={[styles.subtitle, { color: colors.muted, fontSize: fs.sm }]}>
-            {state.alarms.length}/24 alarmes configurados
+            {state.alarms.length} alarme(s) configurado(s)
           </Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -588,6 +593,15 @@ export default function AlarmsScreen() {
         </View>
       </View>
       <AlarmHistorySheet visible={historyVisible} onClose={() => setHistoryVisible(false)} />
+
+      {/* Pro Limit Badge */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+        <ProLimitBadge
+          current={state.alarms.length}
+          limit={FREE_LIMITS.ALARMS}
+          label="alarmes"
+        />
+      </View>
 
       {/* List */}
       {sortedAlarms.length === 0 ? (

@@ -27,6 +27,7 @@ import { useAccessibility } from '@/lib/accessibility-context';
 import { MonitoringStatusPanel } from '@/components/monitoring-status-panel';
 import { usePurchases } from '@/hooks/use-purchases';
 import { useRouter } from 'expo-router';
+import { ProGate, ProBanner } from '@/components/pro-gate';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
 
@@ -706,7 +707,18 @@ export default function SettingsScreen() {
         </Pressable>
 
         {/* ═══ STATUS DO MONITORAMENTO (abaixo de Acessibilidade) ═══ */}
-        <MonitoringStatusPanel accessible={false} />
+        <ProGate
+          fallback={
+            <ProBanner
+              title="Monitoramento Contínuo"
+              description="Receba alertas automáticos quando seus alarmes não forem respondidos. Exclusivo para assinantes Pro."
+              icon="monitor-heart"
+              variant="card"
+            />
+          }
+        >
+          <MonitoringStatusPanel accessible={false} />
+        </ProGate>
 
         {/* ═══ SECTION 1: Notificações e Alarmes ═══ */}
         <CollapsibleSection
