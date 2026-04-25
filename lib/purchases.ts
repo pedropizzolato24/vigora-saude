@@ -40,10 +40,12 @@ export const PRODUCT_IDS = {
 
 /**
  * Chave de API do RevenueCat.
- * Usando a mesma chave para iOS e Android (chave de teste).
- * Em produção, use chaves separadas por plataforma.
+ * Lida da variável de ambiente EXPO_PUBLIC_REVENUECAT_API_KEY.
+ * Configure via painel Manus → Settings → Secrets.
+ * Em produção: use chaves separadas por plataforma (appl_* para iOS, goog_* para Android).
  */
-const REVENUECAT_API_KEY = "test_vRsfCVmxAKkKikyiJxZLkiqYliI";
+const REVENUECAT_API_KEY =
+  process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? "test_vRsfCVmxAKkKikyiJxZLkiqYliI";
 
 // ─── Inicialização ────────────────────────────────────────────────────────────
 
@@ -65,8 +67,8 @@ export function initializePurchases(appUserId?: string): void {
       Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
     }
 
-    // Configurar SDK — mesma chave para iOS e Android (teste)
-    // Em produção: use chaves separadas por plataforma
+    // Configurar SDK — chave lida de EXPO_PUBLIC_REVENUECAT_API_KEY
+    // Configure via painel Manus → Settings → Secrets
     if (Platform.OS === "ios" || Platform.OS === "android") {
       Purchases.configure({
         apiKey: REVENUECAT_API_KEY,
