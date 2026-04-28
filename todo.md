@@ -497,3 +497,27 @@
 - [x] Exportação PDF de Anamnese: bloquear no plano gratuito (requirePro + ícone star no botão)
 - [x] Monitoramento contínuo: ProGate com ProBanner fallback nas Configurações
 - [x] Alarmes: limitar a 5 no plano gratuito (checkLimit + ProLimitBadge)
+
+## RevenueCat — Melhorias v3
+
+### Opção 2: Configurar Entitlement no painel RevenueCat
+- [ ] Fazer login no painel RevenueCat com a chave sk_fK...
+- [ ] Criar Entitlement "Vigora Saúde Pro"
+- [ ] Criar produtos lifetime, yearly, monthly
+- [ ] Criar Offering "default" com os 3 pacotes
+- [ ] Vincular produtos ao Entitlement
+
+### Opção 3: Testes automatizados do fluxo de compra
+- [ ] Criar mock do react-native-purchases para testes
+- [ ] Testar initializePurchases
+- [ ] Testar checkProEntitlement (ativo/inativo)
+- [ ] Testar purchasePackage (sucesso/erro)
+- [ ] Testar restorePurchases
+- [ ] Testar getOfferings
+
+## RevenueCat — Melhorias v3
+- [x] Configurar Entitlement "Vigora Saúde Pro" no painel RevenueCat
+- [x] Verificar Offering default com 3 pacotes (lifetime, yearly, monthly)
+- [x] Criar e publicar Paywall visual no painel RevenueCat (template Health)
+- [x] Criar tests/purchases_isolated.test.ts com 35 testes automatizados
+- [x] Criar vitest.config.ts com alias @, suporte JSX e define __DEV__
