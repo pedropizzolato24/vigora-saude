@@ -27,6 +27,7 @@ import { generateId, useAppContext, type Alarm } from '@/lib/app-context';
 import { scheduleFullAlarm, cancelFullAlarm } from '@/lib/alarm-sync';
 import { useRouter } from 'expo-router';
 import { useProFeature, FREE_LIMITS, ProLimitBadge } from '@/components/pro-gate';
+import { useProUpsell } from '@/components/pro-upsell-modal';
 
 const REPEAT_OPTIONS: { value: Alarm['repeat']; label: string }[] = [
   { value: 'daily', label: 'Diário' },
@@ -70,6 +71,7 @@ export default function AlarmsScreen() {
   const { dialogProps, showDialog } = useAppDialog();
   const { toastProps, showToast } = useAppToast();
   const { checkLimit } = useProFeature();
+  const { showUpsell, UpsellModal } = useProUpsell();
 
   // Derived hour/minute from form.time for the split picker
   const [timeHour, timeMinute] = form.time.split(':');
@@ -136,7 +138,21 @@ export default function AlarmsScreen() {
       showDialog({ title: 'Limite atingido', message: 'Você pode ter no máximo 24 alarmes.', variant: 'warning', buttons: [{ text: 'OK' }] });
       return;
     }
-    if (!checkLimit(state.alarms.length, FREE_LIMITS.ALARMS)) return;
+    if (state.alarms.length >= FREE_LIMITS.ALARMS) {
+      showUpsell({
+        icon: 'alarm',
+        title: 'Alarmes Ilimitados',
+        description: `Você atingiu o limite de ${FREE_LIMITS.ALARMS} alarmes no plano gratuito.`,
+        benefit: 'Com o Vigora Pro, crie quantos alarmes de medicação e saúde precisar.',
+        features: [
+          'Alarmes ilimitados',
+          'Contatos de emergência ilimitados',
+          'Exportação PDF da Anamnese',
+          'Monitoramento contínuo de saúde',
+        ],
+      });
+      return;
+    }
     setEditingAlarm(null);
     setForm(EMPTY_FORM);
     setModalVisible(true);
@@ -854,6 +870,7 @@ export default function AlarmsScreen() {
       </Modal>
       <AppDialog {...dialogProps} />
       <AppToast {...toastProps} />
+      <UpsellModal />
     </ScreenContainer>
   );
 }

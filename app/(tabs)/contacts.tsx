@@ -24,6 +24,7 @@ import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { generateId, useAppContext, type EmergencyContact } from '@/lib/app-context';
 import { useProFeature, FREE_LIMITS, ProLimitBadge } from '@/components/pro-gate';
+import { useProUpsell } from '@/components/pro-upsell-modal';
 
 const EMPTY_FORM: Omit<EmergencyContact, 'id'> = {
   name: '',
@@ -57,9 +58,24 @@ export default function ContactsScreen() {
   const { dialogProps, showDialog } = useAppDialog();
   const { toastProps, showToast } = useAppToast();
   const { checkLimit } = useProFeature();
+  const { showUpsell, UpsellModal } = useProUpsell();
 
   const openAddModal = () => {
-    if (!checkLimit(state.emergencyContacts.length, FREE_LIMITS.CONTACTS)) return;
+    if (state.emergencyContacts.length >= FREE_LIMITS.CONTACTS) {
+      showUpsell({
+        icon: 'people',
+        title: 'Contatos Ilimitados',
+        description: `Você atingiu o limite de ${FREE_LIMITS.CONTACTS} contatos no plano gratuito.`,
+        benefit: 'Com o Vigora Pro, adicione quantos contatos de emergência precisar — sem restrições.',
+        features: [
+          'Contatos de emergência ilimitados',
+          'Importação ilimitada da agenda',
+          'Alarmes ilimitados',
+          'Exportação PDF da Anamnese',
+        ],
+      });
+      return;
+    }
     setEditingContact(null);
     setForm(EMPTY_FORM);
     setModalVisible(true);
@@ -606,6 +622,7 @@ export default function ContactsScreen() {
       </Modal>
       <AppDialog {...dialogProps} />
       <AppToast {...toastProps} />
+      <UpsellModal />
     </ScreenContainer>
   );
 }

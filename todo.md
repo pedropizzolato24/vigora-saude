@@ -521,3 +521,20 @@
 - [x] Criar e publicar Paywall visual no painel RevenueCat (template Health)
 - [x] Criar tests/purchases_isolated.test.ts com 35 testes automatizados
 - [x] Criar vitest.config.ts com alias @, suporte JSX e define __DEV__
+
+## RevenueCat — Upsell Contextual v4
+- [ ] Criar components/pro-upsell-modal.tsx — modal de upsell contextual reutilizável
+- [ ] Atualizar useProFeature para aceitar configuração de upsell contextual
+- [ ] Integrar upsell contextual em contatos (4º contato bloqueado)
+- [ ] Integrar upsell contextual em alarmes (6º alarme bloqueado)
+- [ ] Integrar upsell contextual em exportação PDF da anamnese
+- [ ] Integrar upsell contextual no monitoramento contínuo (Settings)
+
+## RevenueCat — Upsell Contextual
+- [x] Criar components/pro-upsell-modal.tsx com hook useProUpsell e componente UpsellModal
+- [x] Integrar upsell contextual em contacts.tsx (limite de contatos)
+- [x] Integrar upsell contextual em alarms.tsx (limite de alarmes)
+- [x] Integrar upsell contextual em anamnesis.tsx (exportação PDF)
+- [x] Integrar upsell contextual em settings.tsx (monitoramento contínuo)
+- [x] Verificar TypeScript — sem erros novos (apenas pré-existente no storageProxy)
+- [x] 35 testes automatizados passando

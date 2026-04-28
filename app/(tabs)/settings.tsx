@@ -28,6 +28,7 @@ import { MonitoringStatusPanel } from '@/components/monitoring-status-panel';
 import { usePurchases } from '@/hooks/use-purchases';
 import { useRouter } from 'expo-router';
 import { ProGate, ProBanner } from '@/components/pro-gate';
+import { useProUpsell } from '@/components/pro-upsell-modal';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
 
@@ -174,6 +175,7 @@ export default function SettingsScreen() {
   const { dialogProps, showDialog } = useAppDialog();
   const { isPro } = usePurchases();
   const router = useRouter();
+  const { showUpsell, UpsellModal } = useProUpsell();
 
   const [countdownTestActive, setCountdownTestActive] = useState(false);
   const [countdownTestSecondsLeft, setCountdownTestSecondsLeft] = useState(10);
@@ -709,12 +711,28 @@ export default function SettingsScreen() {
         {/* ═══ STATUS DO MONITORAMENTO (abaixo de Acessibilidade) ═══ */}
         <ProGate
           fallback={
-            <ProBanner
-              title="Monitoramento Contínuo"
-              description="Receba alertas automáticos quando seus alarmes não forem respondidos. Exclusivo para assinantes Pro."
-              icon="monitor-heart"
-              variant="card"
-            />
+            <Pressable
+              onPress={() => showUpsell({
+                icon: 'monitor-heart',
+                title: 'Monitoramento Contínuo',
+                description: 'O monitoramento contínuo de saúde é exclusivo do plano Vigora Pro.',
+                benefit: 'Receba alertas automáticos quando seus alarmes não forem respondidos e mantenha sua saúde sempre monitorada.',
+                features: [
+                  'Monitoramento contínuo de saúde',
+                  'Alertas automáticos de alarmes perdidos',
+                  'Contatos de emergência ilimitados',
+                  'Exportação PDF da Anamnese',
+                ],
+              })}
+              style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
+            >
+              <ProBanner
+                title="Monitoramento Contínuo"
+                description="Receba alertas automáticos quando seus alarmes não forem respondidos. Exclusivo para assinantes Pro."
+                icon="monitor-heart"
+                variant="card"
+              />
+            </Pressable>
           }
         >
           <MonitoringStatusPanel accessible={false} />
@@ -1361,6 +1379,7 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
       <AppDialog {...dialogProps} />
+      <UpsellModal />
     </ScreenContainer>
   );
 }

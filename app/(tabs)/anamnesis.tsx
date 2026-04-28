@@ -19,6 +19,7 @@ import { useAppContext, type AnamnesesData } from '@/lib/app-context';
 import { exportAnamnesisToPDF } from '@/lib/pdf-utils-v2';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { useProFeature, ProBanner } from '@/components/pro-gate';
+import { useProUpsell } from '@/components/pro-upsell-modal';
 
 const GENDER_OPTIONS: { value: AnamnesesData['gender']; label: string }[] = [
   { value: 'M', label: 'Masculino' },
@@ -47,7 +48,8 @@ export default function AnamnesisScreen() {
   const [saved, setSaved] = useState(false);
   const { dialogProps, showDialog } = useAppDialog();
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
-  const { requirePro } = useProFeature();
+  const { requirePro, isPro } = useProFeature();
+  const { showUpsell, UpsellModal } = useProUpsell();
 
   useEffect(() => {
     if (state.anamnesis) {
@@ -76,7 +78,21 @@ export default function AnamnesisScreen() {
   };
 
   const handleExport = async () => {
-    if (!requirePro()) return;
+    if (!isPro) {
+      showUpsell({
+        icon: 'picture-as-pdf',
+        title: 'Exportação PDF',
+        description: 'A exportação da ficha médica em PDF é exclusiva do plano Vigora Pro.',
+        benefit: 'Compartilhe sua Anamnese completa com médicos e hospitais em formato PDF profissional.',
+        features: [
+          'Exportação PDF da Anamnese',
+          'Compartilhamento por WhatsApp e e-mail',
+          'Contatos de emergência ilimitados',
+          'Alarmes ilimitados',
+        ],
+      });
+      return;
+    }
     try {
       if (Platform.OS !== 'web') {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -366,6 +382,7 @@ export default function AnamnesisScreen() {
         </View>
       </ScrollView>
       <AppDialog {...dialogProps} />
+      <UpsellModal />
     </ScreenContainer>
   );
 }
