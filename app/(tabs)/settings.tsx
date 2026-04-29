@@ -2,6 +2,7 @@ import * as Haptics from 'expo-haptics';
 import { startCountdownNotification, stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
+  Clipboard,
   Linking,
   Platform,
   Pressable,
@@ -12,6 +13,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { getDeviceId } from '@/lib/device-id';
+import { getApiBaseUrl } from '@/constants/oauth';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
@@ -161,6 +164,241 @@ function SettingLink({
 
 function Divider({ colors }: { colors: ReturnType<typeof useColors> }) {
   return <View style={[styles.divider, { backgroundColor: colors.border }]} />;
+}
+
+// --- Caregiver Invite Code Section ------------------------------------------
+
+function parseSuperjsonResponse(data: any): any {
+  const r = data?.result?.data;
+  return r?.json ?? r ?? null;
+}
+
+async function caregiverMutation(procedure: string, input: unknown): Promise<any> {
+  const url = `${getApiBaseUrl()}/api/trpc/${procedure}`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ json: input }),
+    });
+    if (!res.ok) return null;
+    return parseSuperjsonResponse(await res.json());
+  } catch { return null; }
+}
+
+async function caregiverQuery(procedure: string, input: unknown): Promise<any> {
+  const params = encodeURIComponent(JSON.stringify({ json: input }));
+  const url = `${getApiBaseUrl()}/api/trpc/${procedure}?input=${params}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return parseSuperjsonResponse(await res.json());
+  } catch { return null; }
+}
+
+interface LinkedCaregiver { deviceId: string; name: string | null; linkedAt: string }
+
+function CaregiverSection({ colors, fs }: { colors: ReturnType<typeof useColors>; fs: ReturnType<typeof useFontSize> }) {
+  const [open, setOpen] = useState(false);
+  const [code, setCode] = useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = useState<Date | null>(null);
+  const [caregivers, setCaregivers] = useState<LinkedCaregiver[]>([]);
+  const [loadingCode, setLoadingCode] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const loadData = useCallback(async () => {
+    const deviceId = await getDeviceId();
+    const [codeResult, caregiversResult] = await Promise.all([
+      caregiverQuery('caregiver.getActiveCode', { deviceId }),
+      caregiverQuery('caregiver.getLinkedCaregivers', { deviceId }),
+    ]);
+    if (codeResult) {
+      setCode(codeResult.code);
+      setExpiresAt(new Date(codeResult.expiresAt));
+    }
+    if (caregiversResult?.caregivers) {
+      setCaregivers(caregiversResult.caregivers);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) loadData();
+  }, [open, loadData]);
+
+  const handleGenerateCode = async () => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setLoadingCode(true);
+    const deviceId = await getDeviceId();
+    const result = await caregiverMutation('caregiver.generateCode', { deviceId });
+    setLoadingCode(false);
+    if (result?.code) {
+      setCode(result.code);
+      setExpiresAt(new Date(result.expiresAt));
+    }
+  };
+
+  const handleCopyCode = () => {
+    if (!code) return;
+    Clipboard.setString(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleRemoveCaregiver = async (caregiverDeviceId: string) => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const deviceId = await getDeviceId();
+    await caregiverMutation('caregiver.removeCaregiver', {
+      monitoredDeviceId: deviceId,
+      caregiverDeviceId,
+    });
+    setCaregivers((prev) => prev.filter((c) => c.deviceId !== caregiverDeviceId));
+  };
+
+  const expiryLabel = expiresAt
+    ? (() => {
+        const diff = expiresAt.getTime() - Date.now();
+        if (diff <= 0) return 'Expirado';
+        const h = Math.floor(diff / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        return h > 0 ? `Expira em ${h}h ${m}min` : `Expira em ${m}min`;
+      })()
+    : null;
+
+  return (
+    <View style={[styles.sectionCard, { backgroundColor: colors.surface, borderColor: '#7C3AED44' }]}>
+      <Pressable
+        onPress={() => {
+          if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setOpen(!open);
+        }}
+        style={({ pressed }) => [styles.sectionHeader, pressed && { opacity: 0.7 }]}
+      >
+        <View style={styles.sectionHeaderLeft}>
+          <View style={[styles.sectionIconBadge, { backgroundColor: '#EDE9FE' }]}>
+            <MaterialIcons name="people" size={20} color="#7C3AED" />
+          </View>
+          <View>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Cuidadores</Text>
+            {caregivers.length > 0 && !open && (
+              <Text style={{ fontSize: 12, color: '#7C3AED', fontWeight: '600' }}>
+                {caregivers.length} cuidador(es) vinculado(s)
+              </Text>
+            )}
+          </View>
+        </View>
+        <MaterialIcons
+          name={open ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+          size={24}
+          color={colors.muted}
+        />
+      </Pressable>
+
+      {open && (
+        <View style={[styles.sectionContent, { borderTopColor: colors.border }]}>
+          <View style={{ padding: 16, gap: 14 }}>
+            {/* Invite Code Block */}
+            <Text style={{ fontSize: 13, color: colors.muted, lineHeight: 18 }}>
+              Gere um código para compartilhar com um cuidador. Ele terá acesso às suas informações e receberá alertas quando seus alarmes não forem respondidos.
+            </Text>
+
+            {code && expiresAt && expiresAt.getTime() > Date.now() ? (
+              <View style={{ gap: 8 }}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Código ativo:</Text>
+                <Pressable
+                  onPress={handleCopyCode}
+                  style={({ pressed }) => [{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 12,
+                    backgroundColor: '#EDE9FE',
+                    borderRadius: 14,
+                    paddingVertical: 16,
+                    paddingHorizontal: 20,
+                    borderWidth: 2,
+                    borderColor: '#7C3AED44',
+                    opacity: pressed ? 0.8 : 1,
+                  }]}
+                >
+                  <Text style={{ fontSize: 28, fontWeight: '900', color: '#7C3AED', letterSpacing: 6 }}>{code}</Text>
+                  <MaterialIcons name={copied ? 'check' : 'content-copy'} size={22} color="#7C3AED" />
+                </Pressable>
+                <Text style={{ fontSize: 12, color: colors.muted, textAlign: 'center' }}>{expiryLabel} · Toque para copiar</Text>
+              </View>
+            ) : null}
+
+            <Pressable
+              onPress={handleGenerateCode}
+              disabled={loadingCode}
+              style={({ pressed }) => [{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                backgroundColor: loadingCode ? colors.border : '#7C3AED',
+                borderRadius: 12,
+                paddingVertical: 13,
+                opacity: pressed || loadingCode ? 0.7 : 1,
+              }]}
+            >
+              <MaterialIcons name="refresh" size={18} color="#FFFFFF" />
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>
+                {loadingCode ? 'Gerando...' : code ? 'Gerar Novo Código' : 'Gerar Código de Convite'}
+              </Text>
+            </Pressable>
+
+            {/* Linked Caregivers */}
+            {caregivers.length > 0 && (
+              <View style={{ gap: 8 }}>
+                <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.border }} />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Cuidadores vinculados:</Text>
+                {caregivers.map((c) => (
+                  <View
+                    key={c.deviceId}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 10,
+                      backgroundColor: colors.background,
+                      borderRadius: 12,
+                      padding: 12,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                    }}
+                  >
+                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#EDE9FE', alignItems: 'center', justifyContent: 'center' }}>
+                      <MaterialIcons name="person" size={20} color="#7C3AED" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>{c.name ?? 'Cuidador'}</Text>
+                      <Text style={{ fontSize: 12, color: colors.muted }}>
+                        Vinculado em {new Date(c.linkedAt).toLocaleDateString('pt-BR')}
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={() => handleRemoveCaregiver(c.deviceId)}
+                      style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, padding: 6 }]}
+                    >
+                      <MaterialIcons name="link-off" size={20} color={colors.error} />
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {caregivers.length === 0 && (
+              <View style={{ alignItems: 'center', paddingVertical: 8, gap: 4 }}>
+                <MaterialIcons name="people-outline" size={28} color={colors.muted} />
+                <Text style={{ fontSize: 13, color: colors.muted, textAlign: 'center' }}>
+                  Nenhum cuidador vinculado ainda.
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+    </View>
+  );
 }
 
 // --- Main Screen ------------------------------------------------------------
@@ -737,6 +975,9 @@ export default function SettingsScreen() {
         >
           <MonitoringStatusPanel accessible={false} />
         </ProGate>
+
+        {/* ═══ CUIDADORES ═══ */}
+        <CaregiverSection colors={colors} fs={fs} />
 
         {/* ═══ SECTION 1: Notificações e Alarmes ═══ */}
         <CollapsibleSection

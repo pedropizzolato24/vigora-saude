@@ -5,6 +5,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { isWhatsAppApiConfigured, sendEmergencyAlerts } from "./whatsapp";
 import { monitoringRouter } from "./routers-monitoring";
+import { caregiverRouter } from "./routers-caregiver";
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -22,6 +23,9 @@ export const appRouter = router({
 
   // Alarm monitoring system
   monitoring: monitoringRouter,
+
+  // Caregiver system (invite codes, links, push notifications)
+  caregiver: caregiverRouter,
 
   // WhatsApp emergency escalation routes
   whatsapp: router({

@@ -3,36 +3,33 @@
  *
  * Estado global do app de cuidadores. Gerencia os dados do monitorado
  * vinculado, histórico de alertas e código de conexão.
- *
- * Futuramente os dados virão do backend via tRPC após autenticação.
- * Por enquanto usa estado local com AsyncStorage para persistência.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useReducer } from 'react';
+import { getApiBaseUrl } from '@/constants/oauth';
+import { getDeviceId } from '@/lib/device-id';
 
 // --- Tipos -------------------------------------------------------------------
 
 export interface MonitoredPerson {
-  /** ID do usuário monitorado no backend */
+  /** deviceId do monitorado no backend */
   id: string;
-  name: string;
-  phone: string;
+  name: string | null;
+  phone: string | null;
   /** Timestamp do último heartbeat recebido */
   lastSeenAt: number | null;
   /** Timestamp do último alarme disparado */
   lastAlarmAt: number | null;
   lastAlarmDescription: string | null;
-  /** true = usuário respondeu; false = alarme foi perdido; null = nenhum alarme ainda */
+  /** true = respondeu; false = perdeu; null = nenhum alarme ainda */
   lastAlarmResponded: boolean | null;
   lastLocation: { latitude: number; longitude: number } | null;
-  /** Últimas métricas de saúde registradas manualmente pelo monitorado */
   lastHealthMetrics: {
     heartRate?: number;
     bloodPressure?: number;
     glucose?: number;
   };
-  /** Status calculado com base nos dados mais recentes */
   status: 'ok' | 'warning' | 'missed_alarm' | 'unknown';
 }
 
@@ -40,9 +37,7 @@ export interface CaregiverAlert {
   id: string;
   alarmDescription: string;
   triggeredAt: number;
-  /** Localização do monitorado no momento do disparo */
   location?: { latitude: number; longitude: number };
-  /** Snapshot das métricas de saúde no momento do disparo */
   healthSnapshot?: {
     heartRate?: number;
     bloodPressure?: number;
@@ -52,12 +47,9 @@ export interface CaregiverAlert {
 }
 
 export interface CaregiverState {
-  /** Pessoa monitorada vinculada a este cuidador (null = não vinculado) */
   monitoredPerson: MonitoredPerson | null;
   alerts: CaregiverAlert[];
-  /** true enquanto carrega do AsyncStorage */
   isLoading: boolean;
-  /** Quantidade de alertas não lidos */
   unreadCount: number;
 }
 
@@ -122,6 +114,44 @@ function caregiverReducer(state: CaregiverState, action: CaregiverAction): Careg
   }
 }
 
+// --- tRPC helpers (raw fetch — same pattern as monitoring-service.ts) --------
+
+function parseSuperjsonResponse(data: any): any {
+  const resultData = data?.result?.data;
+  return resultData?.json ?? resultData ?? null;
+}
+
+async function caregiverMutation(procedure: string, input: unknown): Promise<any> {
+  const url = `${getApiBaseUrl()}/api/trpc/${procedure}`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ json: input }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return parseSuperjsonResponse(data);
+  } catch (err) {
+    console.warn('[CaregiverContext] mutation error:', procedure, err);
+    return null;
+  }
+}
+
+async function caregiverQuery(procedure: string, input: unknown): Promise<any> {
+  const params = encodeURIComponent(JSON.stringify({ json: input }));
+  const url = `${getApiBaseUrl()}/api/trpc/${procedure}?input=${params}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return parseSuperjsonResponse(data);
+  } catch (err) {
+    console.warn('[CaregiverContext] query error:', procedure, err);
+    return null;
+  }
+}
+
 // --- Context -----------------------------------------------------------------
 
 interface CaregiverContextValue {
@@ -163,45 +193,90 @@ export function CaregiverProvider({ children }: { children: React.ReactNode }) {
   }, [state]);
 
   /**
-   * Vincula o cuidador a um monitorado usando um código de convite.
-   * TODO: implementar chamada real ao backend quando auth estiver pronto.
+   * Vincula o cuidador a um monitorado usando o código de convite de 6 chars.
    */
   const linkMonitoredPerson = useCallback(async (code: string): Promise<{ success: boolean; error?: string }> => {
-    // Validação básica do formato do código (6 caracteres alfanuméricos)
     if (!/^[A-Z0-9]{6}$/i.test(code.trim())) {
       return { success: false, error: 'Código inválido. Use o código de 6 caracteres gerado pelo monitorado.' };
     }
 
-    // TODO: chamar backend para validar o código e retornar os dados do monitorado
-    // Por enquanto usa dados simulados para desenvolvimento
-    const mockPerson: MonitoredPerson = {
-      id: 'mock-monitored-001',
-      name: 'João Silva',
-      phone: '(11) 98765-4321',
-      lastSeenAt: Date.now() - 12 * 60 * 1000, // 12 minutos atrás
-      lastAlarmAt: Date.now() - 2 * 60 * 60 * 1000, // 2 horas atrás
-      lastAlarmDescription: 'Losartana 50mg',
-      lastAlarmResponded: true,
-      lastLocation: { latitude: -23.5505, longitude: -46.6333 },
-      lastHealthMetrics: {
-        heartRate: 72,
-        bloodPressure: 118,
-        glucose: 95,
-      },
-      status: 'ok',
+    const deviceId = await getDeviceId();
+    const result = await caregiverMutation('caregiver.linkWithCode', {
+      caregiverDeviceId: deviceId,
+      code: code.toUpperCase().trim(),
+    });
+
+    if (!result?.success) {
+      return { success: false, error: result?.error ?? 'Código inválido ou expirado.' };
+    }
+
+    const { monitored } = result;
+
+    // Parse lastLocation "lat,lng" string into coordinates
+    let lastLocation: { latitude: number; longitude: number } | null = null;
+    if (monitored.lastLocation) {
+      const [lat, lng] = (monitored.lastLocation as string).split(',').map(Number);
+      if (!isNaN(lat) && !isNaN(lng)) lastLocation = { latitude: lat, longitude: lng };
+    }
+
+    const person: MonitoredPerson = {
+      id: monitored.deviceId,
+      name: monitored.name,
+      phone: null,
+      lastSeenAt: monitored.lastSeenAt ? new Date(monitored.lastSeenAt).getTime() : null,
+      lastAlarmAt: null,
+      lastAlarmDescription: null,
+      lastAlarmResponded: null,
+      lastLocation,
+      lastHealthMetrics: {},
+      status: 'unknown',
     };
 
-    dispatch({ type: 'SET_MONITORED_PERSON', payload: mockPerson });
+    dispatch({ type: 'SET_MONITORED_PERSON', payload: person });
     return { success: true };
   }, []);
 
   /**
    * Atualiza o status do monitorado buscando dados do backend.
-   * TODO: implementar chamada real ao backend.
    */
   const refreshMonitoredStatus = useCallback(async () => {
     if (!state.monitoredPerson) return;
-    // TODO: buscar dados atualizados do backend
+
+    const deviceId = await getDeviceId();
+    const result = await caregiverQuery('caregiver.getMonitoredStatus', {
+      caregiverDeviceId: deviceId,
+    });
+
+    if (!result) return;
+
+    let lastLocation: { latitude: number; longitude: number } | null = null;
+    if (result.lastLocation) {
+      const [lat, lng] = (result.lastLocation as string).split(',').map(Number);
+      if (!isNaN(lat) && !isNaN(lng)) lastLocation = { latitude: lat, longitude: lng };
+    }
+
+    const lastAlarmAt = result.lastAlarm?.scheduledAt
+      ? new Date(result.lastAlarm.scheduledAt).getTime()
+      : null;
+    const lastAlarmResponded =
+      result.lastAlarm?.status === 'responded'
+        ? true
+        : result.lastAlarm?.status === 'missed'
+        ? false
+        : null;
+
+    const updated: MonitoredPerson = {
+      ...state.monitoredPerson,
+      name: result.name ?? state.monitoredPerson.name,
+      lastSeenAt: result.lastSeenAt ? new Date(result.lastSeenAt).getTime() : null,
+      lastAlarmAt,
+      lastAlarmDescription: result.lastAlarm?.description ?? null,
+      lastAlarmResponded,
+      lastLocation,
+      status: result.status ?? 'unknown',
+    };
+
+    dispatch({ type: 'SET_MONITORED_PERSON', payload: updated });
   }, [state.monitoredPerson]);
 
   return (
