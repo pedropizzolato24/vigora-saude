@@ -36,11 +36,18 @@ jobs:
       - name: Rodar testes
         run: pnpm test
         env:
-          # RevenueCat — chave de teste para CI (não usa a chave de produção)
+          # RevenueCat
           EXPO_PUBLIC_REVENUECAT_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_API_KEY }}
-          # Supabase — credenciais de staging/teste para CI
+          REVENUECAT_API_KEY: ${{ secrets.REVENUECAT_API_KEY }}
+          # Supabase
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          # Resend (email de alertas)
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          # Twilio (SMS de alertas)
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
 
       - name: Verificar TypeScript
         run: pnpm check
