@@ -559,3 +559,7 @@
 - [ ] Criar components/trial-banner.tsx com TrialBanner e ExpiredBanner
 - [ ] Integrar TrialBanner/ExpiredBanner no Dashboard (index.tsx)
 - [ ] Atualizar botão "Ver Planos" nas Configurações para mostrar dias restantes do trial
+
+## GitHub Actions & Supabase Setup
+- [x] Criar .github/workflows/test.yml com CI para rodar pnpm test a cada push
+- [ ] Executar supabase/schema.sql no painel Supabase (criar tabelas do dead man's switch)
