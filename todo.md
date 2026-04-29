@@ -566,3 +566,4 @@
 
 ## Build Fix
 - [x] Corrigir erro de build Android: NDK 28.0.12433566 não encontrado no servidor de build
+- [x] Habilitar enableMultiDex no expo-build-properties (resolver DexArchiveMergerException)

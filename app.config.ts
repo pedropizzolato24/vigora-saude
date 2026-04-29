@@ -188,6 +188,7 @@ const config: ExpoConfig = {
         android: {
           minSdkVersion: 24,
           ndkVersion: "26.1.10909125",
+          enableMultiDex: true,
         },
       },
     ],
