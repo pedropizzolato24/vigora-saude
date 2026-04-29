@@ -13,6 +13,7 @@ import { NotificationsProvider } from "@/lib/notifications-context";
 import { MenuProvider } from '@/lib/menu-context';
 import { FontSizeProvider } from '@/lib/font-size-context';
 import { AccessibilityProvider } from '@/lib/accessibility-context';
+import { UserModeProvider } from '@/lib/user-mode-context';
 import { syncAlarmsOnStartup } from "@/lib/alarm-sync";
 import { setupNotificationChannels, requestNotificationPermissions } from "@/lib/notifications-utils";
 import * as Notifications from 'expo-notifications';
@@ -201,6 +202,7 @@ export default function RootLayout() {
 
   const content = (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <UserModeProvider>
       <PurchasesProvider>
       <NotificationsProvider>
         <AppProvider>
@@ -218,6 +220,11 @@ export default function RootLayout() {
           {/* in order for ios apps tab switching to work properly, use presentation: "fullScreenModal" for login page, whenever you decide to use presentation: "modal*/}
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="(caregiver)" />
+            <Stack.Screen
+              name="mode-select"
+              options={{ gestureEnabled: false, animation: 'fade' }}
+            />
             <Stack.Screen
               name="alarm-ring"
               options={{
@@ -252,6 +259,7 @@ export default function RootLayout() {
         </AppProvider>
       </NotificationsProvider>
       </PurchasesProvider>
+      </UserModeProvider>
     </GestureHandlerRootView>
   );
 
