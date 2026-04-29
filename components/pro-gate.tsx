@@ -23,7 +23,7 @@ import { usePurchases } from "@/hooks/use-purchases";
 import { useColors } from "@/hooks/use-colors";
 import { useFontSize } from "@/lib/font-size-context";
 
-// ─── Limites do Plano Gratuito ────────────────────────────────────────────────
+// --- Limites do Plano Gratuito ------------------------------------------------
 
 export const FREE_LIMITS = {
   /** Máximo de contatos de emergência no plano gratuito */
@@ -36,7 +36,7 @@ export const FREE_LIMITS = {
   MONITORING: false,
 } as const;
 
-// ─── Hook useProFeature ───────────────────────────────────────────────────────
+// --- Hook useProFeature -------------------------------------------------------
 
 /**
  * Hook para verificar acesso a um recurso premium e abrir o paywall.
@@ -74,7 +74,7 @@ export function useProFeature() {
   return { isPro, requirePro, checkLimit };
 }
 
-// ─── ProGate ──────────────────────────────────────────────────────────────────
+// --- ProGate ------------------------------------------------------------------
 
 interface ProGateProps {
   /** Conteúdo a exibir se o usuário for Pro */
@@ -99,7 +99,7 @@ export function ProGate({ children, fallback, style }: ProGateProps) {
   return fallback ? <View style={style}>{fallback}</View> : null;
 }
 
-// ─── ProBanner ────────────────────────────────────────────────────────────────
+// --- ProBanner ----------------------------------------------------------------
 
 interface ProBannerProps {
   /** Título do recurso bloqueado */
@@ -150,7 +150,7 @@ export function ProBanner({
       >
         <MaterialIcons name={icon} size={14} color={colors.primary} />
         <Text style={[styles.compactText, { color: colors.primary, fontSize: fs.xs }]}>
-          {title} — <Text style={{ fontWeight: "700" }}>Vigora Pro</Text>
+          {title} - <Text style={{ fontWeight: "700" }}>Vigora Pro</Text>
         </Text>
         <MaterialIcons name="chevron-right" size={14} color={colors.primary} />
       </Pressable>
@@ -227,7 +227,7 @@ export function ProBanner({
   );
 }
 
-// ─── ProLimitBadge ────────────────────────────────────────────────────────────
+// --- ProLimitBadge ------------------------------------------------------------
 
 interface ProLimitBadgeProps {
   /** Quantidade atual */
@@ -268,13 +268,13 @@ export function ProLimitBadge({ current, limit, label }: ProLimitBadgeProps) {
       {isAtLimit && <MaterialIcons name="lock" size={11} color={color} />}
       <Text style={[styles.limitText, { color, fontSize: fs.xs }]}>
         {current}/{limit} {label}
-        {isAtLimit ? " — Upgrade Pro" : " (plano gratuito)"}
+        {isAtLimit ? " - Upgrade Pro" : " (plano gratuito)"}
       </Text>
     </Pressable>
   );
 }
 
-// ─── Estilos ──────────────────────────────────────────────────────────────────
+// --- Estilos ------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   // Compact

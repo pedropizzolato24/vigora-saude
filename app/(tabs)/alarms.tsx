@@ -201,7 +201,7 @@ export default function AlarmsScreen() {
       const repeatLabel = REPEAT_OPTIONS.find(r => r.value === form.repeat)?.label ?? form.repeat;
       const desc = form.description ? `\n"${form.description}"` : '';
       const action = editingAlarm ? 'atualizado' : 'criado';
-      showToast({ message: `Alarme ${action}: ${form.time} • ${repeatLabel}${desc}`, variant: 'success' });
+      showToast({ message: `Alarme ${action}: ${form.time} * ${repeatLabel}${desc}`, variant: 'success' });
     } catch (error) {
       console.error('Error scheduling alarm notification:', error);
       showDialog({ title: 'Erro', message: 'Não foi possível agendar a notificação do alarme.', variant: 'error', buttons: [{ text: 'OK' }] });
@@ -257,7 +257,7 @@ export default function AlarmsScreen() {
     }
   };
 
-  // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
+  // --- ACCESSIBILITY MODE --------------------------------------------------
   if (isAccessibilityMode) {
     return (
       <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
@@ -535,7 +535,7 @@ export default function AlarmsScreen() {
                   maxLength={80}
                 />
               </View>
-              {/* Repeat — simplified to just daily/weekdays */}
+              {/* Repeat - simplified to just daily/weekdays */}
               <View style={{ gap: 12 }}>
                 <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>Repetição</Text>
                 {[{ value: 'daily' as const, label: 'Todos os dias' }, { value: 'weekdays' as const, label: 'Dias úteis (Seg-Sex)' }].map((opt) => (
@@ -574,7 +574,7 @@ export default function AlarmsScreen() {
     );
   }
 
-  // ─── NORMAL MODE ──────────────────────────────────────────────────────────
+  // --- NORMAL MODE ----------------------------------------------------------
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}

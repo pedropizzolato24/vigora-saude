@@ -84,7 +84,7 @@ const mockPackage = {
   packageType: "ANNUAL",
   product: {
     identifier: "yearly",
-    description: "Vigora Saúde Pro — Anual",
+    description: "Vigora Saúde Pro - Anual",
     title: "Vigora Saúde Pro (Anual)",
     price: 59.99,
     priceString: "R$ 59,99",
@@ -278,7 +278,7 @@ describe("identifyUser / logoutUser", () => {
 describe("Fluxo completo de assinatura", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
-  it("deve simular: gratuito → compra → Pro → restauração", async () => {
+  it("deve simular: gratuito -> compra -> Pro -> restauração", async () => {
     // 1. Começa sem Pro
     vi.mocked(Purchases.getCustomerInfo).mockResolvedValueOnce(mockCustomerInfoFree as any);
     const initialInfo = await getCustomerInfo();

@@ -66,7 +66,7 @@ export default function ContactsScreen() {
         icon: 'people',
         title: 'Contatos Ilimitados',
         description: `Você atingiu o limite de ${FREE_LIMITS.CONTACTS} contatos no plano gratuito.`,
-        benefit: 'Com o Vigora Pro, adicione quantos contatos de emergência precisar — sem restrições.',
+        benefit: 'Com o Vigora Pro, adicione quantos contatos de emergência precisar - sem restrições.',
         features: [
           'Contatos de emergência ilimitados',
           'Importação ilimitada da agenda',
@@ -197,7 +197,7 @@ export default function ContactsScreen() {
     });
   };
 
-  // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
+  // --- ACCESSIBILITY MODE --------------------------------------------------
   if (isAccessibilityMode) {
     return (
       <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
@@ -325,7 +325,7 @@ export default function ContactsScreen() {
     );
   }
 
-  // ─── NORMAL MODE ──────────────────────────────────────────────────
+  // --- NORMAL MODE --------------------------------------------------
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}

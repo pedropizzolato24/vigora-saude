@@ -230,7 +230,7 @@ export default function HelpScreen() {
     setExpandedItems((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
+  // --- ACCESSIBILITY MODE --------------------------------------------------
   if (isAccessibilityMode) {
     // In accessibility mode, show a flat list of all FAQ items without nested collapsibles
     // Group by section but keep everything expanded for easier reading
@@ -282,7 +282,7 @@ export default function HelpScreen() {
     );
   }
 
-  // ─── NORMAL MODE ──────────────────────────────────────────────────
+  // --- NORMAL MODE --------------------------------------------------
   return (
     <ScreenContainer edges={['left', 'right']}>
       <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>

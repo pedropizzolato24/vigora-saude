@@ -30,7 +30,7 @@ describe("Resend Email Service", () => {
       body: JSON.stringify({
         from: "Vigora Saúde <onboarding@resend.dev>",
         to: ["delivered@resend.dev"],
-        subject: "Vigora Saúde — Teste de Integração",
+        subject: "Vigora Saúde - Teste de Integração",
         html: "<p>Validação de credenciais Resend</p>",
       }),
     });
@@ -62,7 +62,7 @@ describe("Twilio SMS Service", () => {
   });
 
   it("should authenticate successfully with Twilio API", async () => {
-    // Fetch account info — lightweight call that validates credentials
+    // Fetch account info - lightweight call that validates credentials
     const credentials = Buffer.from(
       `${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`
     ).toString("base64");

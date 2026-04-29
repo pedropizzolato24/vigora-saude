@@ -38,9 +38,9 @@ describe('Supabase credentials', () => {
     // 401 = credenciais inválidas
     expect(
       response.status,
-      `Supabase retornou status ${response.status} — verifique as credenciais ou execute o schema.sql`
+      `Supabase retornou status ${response.status} - verifique as credenciais ou execute o schema.sql`
     ).not.toBe(401);
 
-    console.log(`[Supabase] Status: ${response.status} — ${response.status === 200 ? 'tabela users existe' : 'tabela users ainda não criada (execute schema.sql)'}`);
+    console.log(`[Supabase] Status: ${response.status} - ${response.status === 200 ? 'tabela users existe' : 'tabela users ainda não criada (execute schema.sql)'}`);
   });
 });

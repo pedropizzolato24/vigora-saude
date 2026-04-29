@@ -3,7 +3,7 @@ import React, { createContext, useContext, useEffect, useReducer, useState } fro
 import { updateAllWidgets } from './update-widgets';
 import { syncUser, syncAlarms, syncEmergencyContacts, sendHeartbeat } from './supabase-sync';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// --- Types -------------------------------------------------------------------
 
 export interface Alarm {
   id: string;
@@ -95,7 +95,7 @@ export interface AppState {
   isLoading: boolean;
 }
 
-// ─── Actions ─────────────────────────────────────────────────────────────────
+// --- Actions -----------------------------------------------------------------
 
 type AppAction =
   | { type: 'LOAD_STATE'; payload: Partial<AppState> }
@@ -115,7 +115,7 @@ type AppAction =
   | { type: 'UPDATE_PROFILE'; payload: Partial<UserProfile> }
   | { type: 'CLEAR_ALL_DATA' };
 
-// ─── Initial State ────────────────────────────────────────────────────────────
+// --- Initial State ------------------------------------------------------------
 
 const initialState: AppState = {
   alarms: [],
@@ -150,7 +150,7 @@ const initialState: AppState = {
   isLoading: true,
 };
 
-// ─── Reducer ─────────────────────────────────────────────────────────────────
+// --- Reducer -----------------------------------------------------------------
 
 function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -249,7 +249,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
   }
 }
 
-// ─── Context ─────────────────────────────────────────────────────────────────
+// --- Context -----------------------------------------------------------------
 
 interface AppContextValue {
   state: AppState;
@@ -339,7 +339,7 @@ export function useAppContext(): AppContextValue {
   return ctx;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// --- Helpers -----------------------------------------------------------------
 
 export function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;

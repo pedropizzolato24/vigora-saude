@@ -4,8 +4,8 @@
  *
  * Apresenta o paywall configurado no painel RevenueCat.
  * Suporta dois modos:
- * 1. RevenueCatUI.presentPaywall() — paywall nativo em sheet (preferido)
- * 2. <RevenueCatUI.Paywall> — componente embutido (fallback)
+ * 1. RevenueCatUI.presentPaywall() - paywall nativo em sheet (preferido)
+ * 2. <RevenueCatUI.Paywall> - componente embutido (fallback)
  *
  * Rota: /paywall (acessada via router.push("/(modal)/paywall"))
  */
@@ -38,7 +38,7 @@ export default function PaywallScreen() {
 
   const [presenting, setPresenting] = useState(false);
 
-  // ── Se já é Pro, fechar automaticamente ──────────────────────────────────
+  // -- Se já é Pro, fechar automaticamente ----------------------------------
 
   useEffect(() => {
     if (isPro && !isLoading) {
@@ -46,7 +46,7 @@ export default function PaywallScreen() {
     }
   }, [isPro, isLoading, router]);
 
-  // ── Apresentar paywall nativo RevenueCat ──────────────────────────────────
+  // -- Apresentar paywall nativo RevenueCat ----------------------------------
 
   const handlePresentNativePaywall = useCallback(async () => {
     if (presenting) return;
@@ -68,10 +68,10 @@ export default function PaywallScreen() {
           );
           break;
         case PAYWALL_RESULT.CANCELLED:
-          // Usuário cancelou — não mostrar erro
+          // Usuário cancelou - não mostrar erro
           break;
         case PAYWALL_RESULT.NOT_PRESENTED:
-          // Já tem acesso — fechar
+          // Já tem acesso - fechar
           router.back();
           break;
         case PAYWALL_RESULT.ERROR:
@@ -89,7 +89,7 @@ export default function PaywallScreen() {
     }
   }, [presenting, router]);
 
-  // ── Restaurar compras ─────────────────────────────────────────────────────
+  // -- Restaurar compras -----------------------------------------------------
 
   const handleRestore = useCallback(async () => {
     const result = await restorePurchases();
@@ -118,7 +118,7 @@ export default function PaywallScreen() {
     }
   }, [restorePurchases, router]);
 
-  // ── Renderização ──────────────────────────────────────────────────────────
+  // -- Renderização ----------------------------------------------------------
 
   const baseTextSize = isAccessible ? 18 : 15;
   const titleSize = isAccessible ? 26 : 22;
@@ -293,7 +293,7 @@ export default function PaywallScreen() {
           </View>
         )}
 
-        {/* Botão principal — abre paywall nativo RevenueCat */}
+        {/* Botão principal - abre paywall nativo RevenueCat */}
         <Pressable
           onPress={handlePresentNativePaywall}
           disabled={presenting}
@@ -336,7 +336,7 @@ export default function PaywallScreen() {
   );
 }
 
-// ─── Dados ────────────────────────────────────────────────────────────────────
+// --- Dados --------------------------------------------------------------------
 
 const BENEFITS = [
   { icon: "🔔", text: "Alertas de emergência ilimitados via WhatsApp, Email e SMS" },
@@ -351,14 +351,14 @@ const BENEFITS = [
 
 const PACKAGE_LABELS: Record<string, { title: string; period: string }> = {
   LIFETIME: { title: "Vitalício", period: "Pagamento único, para sempre" },
-  ANNUAL: { title: "Anual", period: "por ano — economize 40%" },
+  ANNUAL: { title: "Anual", period: "por ano - economize 40%" },
   MONTHLY: { title: "Mensal", period: "por mês" },
   lifetime: { title: "Vitalício", period: "Pagamento único, para sempre" },
-  yearly: { title: "Anual", period: "por ano — economize 40%" },
+  yearly: { title: "Anual", period: "por ano - economize 40%" },
   monthly: { title: "Mensal", period: "por mês" },
 };
 
-// ─── Estilos ──────────────────────────────────────────────────────────────────
+// --- Estilos ------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {

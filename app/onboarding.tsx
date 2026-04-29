@@ -307,7 +307,7 @@ export default function OnboardingScreen() {
             </Pressable>
 
             <Text style={[styles.skipHint, { color: colors.muted }]}>
-              Você pode pular esta etapa e configurar depois em Configurações → Localização.
+              Você pode pular esta etapa e configurar depois em Configurações {'>'}{'>'} Localização.
             </Text>
           </>
         )}
@@ -368,7 +368,7 @@ export default function OnboardingScreen() {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         bounces={false}
-        scrollEnabled={false} // Prevent manual swiping — use buttons only
+        scrollEnabled={false} // Prevent manual swiping - use buttons only
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { x: scrollX } } }],
           { useNativeDriver: false }

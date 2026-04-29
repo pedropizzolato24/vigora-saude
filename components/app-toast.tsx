@@ -1,5 +1,5 @@
 /**
- * AppToast — Snackbar/Toast personalizado do Vigora Saúde
+ * AppToast - Snackbar/Toast personalizado do Vigora Saúde
  *
  * Para confirmações rápidas que não precisam interromper o fluxo do usuário.
  * Aparece na parte inferior da tela, some automaticamente após alguns segundos.
@@ -36,7 +36,7 @@ import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
+// --- Tipos --------------------------------------------------------------------
 
 export type ToastVariant = 'success' | 'info' | 'warning' | 'error';
 
@@ -51,7 +51,7 @@ export interface AppToastProps {
   onHide?: () => void;
 }
 
-// ─── Config de variantes ──────────────────────────────────────────────────────
+// --- Config de variantes ------------------------------------------------------
 
 type IconName = React.ComponentProps<typeof MaterialIcons>['name'];
 
@@ -62,7 +62,7 @@ const TOAST_CONFIG: Record<ToastVariant, { icon: IconName; color: string; darkCo
   error:   { icon: 'error',         color: '#EF4444', darkColor: '#F87171' },
 };
 
-// ─── Componente ───────────────────────────────────────────────────────────────
+// --- Componente ---------------------------------------------------------------
 
 export function AppToast({
   visible,
@@ -199,7 +199,7 @@ export function AppToast({
   );
 }
 
-// ─── Hook utilitário ──────────────────────────────────────────────────────────
+// --- Hook utilitário ----------------------------------------------------------
 
 export function useAppToast() {
   const [state, setState] = useState<AppToastProps>({
@@ -227,7 +227,7 @@ export function useAppToast() {
   return { toastProps, showToast, hideToast };
 }
 
-// ─── Estilos ──────────────────────────────────────────────────────────────────
+// --- Estilos ------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {

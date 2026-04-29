@@ -6,8 +6,8 @@
  * - Ícone e badge do recurso bloqueado
  * - Título e descrição específicos do benefício
  * - Lista de features desbloqueadas pelo Pro
- * - Botão "Assinar Vigora Pro" → abre paywall
- * - Botão "Agora não" → fecha o modal
+ * - Botão "Assinar Vigora Pro" -> abre paywall
+ * - Botão "Agora não" -> fecha o modal
  *
  * Uso:
  *   const { showUpsell, UpsellModal } = useProUpsell();
@@ -39,7 +39,7 @@ import { Platform } from "react-native";
 import { useColors } from "@/hooks/use-colors";
 import { useFontSize } from "@/lib/font-size-context";
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
+// --- Tipos --------------------------------------------------------------------
 
 export interface ProUpsellConfig {
   /** Ícone MaterialIcons representando o recurso bloqueado */
@@ -54,13 +54,13 @@ export interface ProUpsellConfig {
   features?: string[];
 }
 
-// ─── Hook useProUpsell ────────────────────────────────────────────────────────
+// --- Hook useProUpsell --------------------------------------------------------
 
 /**
  * Hook que fornece o modal de upsell contextual e a função para exibi-lo.
  *
- * @returns `showUpsell(config)` — exibe o modal com a configuração fornecida
- * @returns `UpsellModal` — componente do modal (deve ser renderizado no JSX)
+ * @returns `showUpsell(config)` - exibe o modal com a configuração fornecida
+ * @returns `UpsellModal` - componente do modal (deve ser renderizado no JSX)
  */
 export function useProUpsell() {
   const [visible, setVisible] = useState(false);
@@ -222,7 +222,7 @@ export function useProUpsell() {
   return { showUpsell, hideUpsell, UpsellModal };
 }
 
-// ─── Estilos ──────────────────────────────────────────────────────────────────
+// --- Estilos ------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   backdrop: {

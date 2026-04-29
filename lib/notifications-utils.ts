@@ -3,11 +3,11 @@ import { Platform } from 'react-native';
 import { Alarm } from './app-context';
 import { setupCountdownChannel } from './alarm-countdown-notifier';
 
-// ─── Notification Channel IDs ──────────────────────────────────────────────
+// --- Notification Channel IDs ----------------------------------------------
 export const ALARM_CHANNEL_ID = 'vigora-alarms';
 export const DEFAULT_CHANNEL_ID = 'default';
 
-// ─── Configure notification handler ────────────────────────────────────────
+// --- Configure notification handler ----------------------------------------
 // This controls how notifications are presented when the app is in the foreground.
 Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
@@ -29,7 +29,7 @@ Notifications.setNotificationHandler({
  * Must be called once at app startup (before scheduling any notifications).
  *
  * The "vigora-alarms" channel uses:
- * - AndroidImportance.MAX → bypasses Do Not Disturb / silent mode
+ * - AndroidImportance.MAX -> bypasses Do Not Disturb / silent mode
  * - Custom alarm sound (alarm-notification.wav bundled via expo-notifications plugin)
  * - Vibration pattern
  * - enableLights + lightColor for LED indicator
@@ -51,7 +51,7 @@ export async function setupNotificationChannels(): Promise<void> {
   // Set up countdown channel (no sound, DEFAULT importance)
   await setupCountdownChannel();
 
-  // Alarm channel — MAX importance, custom sound, bypasses silent mode
+  // Alarm channel - MAX importance, custom sound, bypasses silent mode
   await Notifications.setNotificationChannelAsync(ALARM_CHANNEL_ID, {
     name: 'Alarmes de Medicamento',
     description: 'Alarmes de alta prioridade para medicamentos e lembretes de saúde. Toca mesmo no modo silencioso.',
@@ -102,7 +102,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
  * Schedule a notification for an alarm.
  *
  * Key features:
- * - Uses the "vigora-alarms" channel (MAX importance) → overrides silent mode on Android
+ * - Uses the "vigora-alarms" channel (MAX importance) -> overrides silent mode on Android
  * - Uses custom alarm sound (alarm-notification.wav)
  * - Includes data.url for deep linking to alarm-ring screen
  * - Includes data.alarmId for alarm identification
@@ -112,11 +112,11 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
   try {
     const [hours, minutes] = alarm.time.split(':').map(Number);
 
-    // Notification content — same for all repeat types
+    // Notification content - same for all repeat types
     const content: Notifications.NotificationContentInput = {
       title: `⏰ ${alarm.description || 'Alarme'}`,
       body: alarm.description
-        ? `Hora do alarme: ${alarm.time} — ${alarm.description}`
+        ? `Hora do alarme: ${alarm.time} - ${alarm.description}`
         : `Hora do alarme: ${alarm.time}`,
       sound: alarm.sound ? 'alarm_notification.wav' : undefined,
       vibrate: alarm.vibration ? [0, 500, 200, 500, 200, 500] : undefined,
@@ -143,7 +143,7 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
       return notificationId;
 
     } else if (alarm.repeat === 'weekdays') {
-      // Schedule for Monday(2) through Friday(6) — expo uses 1=Sunday, 2=Monday...7=Saturday
+      // Schedule for Monday(2) through Friday(6) - expo uses 1=Sunday, 2=Monday...7=Saturday
       const notificationIds: string[] = [];
       for (let weekday = 2; weekday <= 6; weekday++) {
         const id = await Notifications.scheduleNotificationAsync({
@@ -179,7 +179,7 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
       return notificationIds[0];
 
     } else if (alarm.repeat === 'custom' && alarm.customDays && alarm.customDays.length > 0) {
-      // Custom days — map day index (0=Mon..6=Sun) to expo weekday (1=Sun,2=Mon..7=Sat)
+      // Custom days - map day index (0=Mon..6=Sun) to expo weekday (1=Sun,2=Mon..7=Sat)
       const dayMap: Record<number, number> = {
         0: 2, // Mon
         1: 3, // Tue

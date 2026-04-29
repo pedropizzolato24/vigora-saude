@@ -5,17 +5,17 @@
  * Funciona apenas no Android (no-op em iOS/web).
  *
  * Funções exportadas:
- * - updateAllWidgets(alarms, healthMetrics) — atualiza todos os widgets
- * - updateAlarmWidgetOnFire(alarmName) — marca o widget como "alarme tocando agora"
- * - updateAlarmWidgetOnDismiss(alarms) — restaura o widget para o próximo alarme
- * - updateHealthWidget(healthMetrics) — atualiza apenas o widget de saúde
+ * - updateAllWidgets(alarms, healthMetrics) - atualiza todos os widgets
+ * - updateAlarmWidgetOnFire(alarmName) - marca o widget como "alarme tocando agora"
+ * - updateAlarmWidgetOnDismiss(alarms) - restaura o widget para o próximo alarme
+ * - updateHealthWidget(healthMetrics) - atualiza apenas o widget de saúde
  */
 import { Platform } from 'react-native';
 import React from 'react';
 
 import type { Alarm, HealthMetric } from './app-context';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// --- Helpers -----------------------------------------------------------------
 
 function getNextAlarm(alarms: Alarm[]): Alarm | null {
   const enabled = alarms.filter((a) => a.enabled);
@@ -48,7 +48,7 @@ function getLatestMetrics(healthMetrics: HealthMetric[]): {
   };
 }
 
-// ─── Public API ──────────────────────────────────────────────────────────────
+// --- Public API --------------------------------------------------------------
 
 /**
  * Atualiza todos os widgets com os dados mais recentes.

@@ -14,7 +14,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-// ─── Mock do react-native-purchases ──────────────────────────────────────────
+// --- Mock do react-native-purchases ------------------------------------------
 
 const mockCustomerInfoPro = {
   entitlements: {
@@ -67,7 +67,7 @@ const mockPackage = {
   packageType: "ANNUAL",
   product: {
     identifier: "yearly",
-    description: "Vigora Saúde Pro — Anual",
+    description: "Vigora Saúde Pro - Anual",
     title: "Vigora Saúde Pro (Anual)",
     price: 59.99,
     priceString: "R$ 59,99",
@@ -120,7 +120,20 @@ vi.mock("react-native", () => ({
   Platform: { OS: "ios" },
 }));
 
-// ─── Imports após mocks ───────────────────────────────────────────────────────
+// Mock do pro-gate para evitar imports de componentes React com sintaxe TypeScript avancada
+vi.mock("@/components/pro-gate", () => ({
+  FREE_LIMITS: {
+    CONTACTS: 3,
+    ALARMS: 5,
+    PDF_EXPORT: false,
+    MONITORING: false,
+  },
+  ProGate: () => null,
+  ProBanner: () => null,
+  ProLimitBadge: () => null,
+}));
+
+// --- Imports após mocks -------------------------------------------------------
 
 import Purchases from "react-native-purchases";
 import {
@@ -137,7 +150,7 @@ import {
 } from "@/lib/purchases";
 import { FREE_LIMITS } from "@/components/pro-gate";
 
-// ─── Testes ───────────────────────────────────────────────────────────────────
+// --- Testes -------------------------------------------------------------------
 
 describe("ENTITLEMENT_PRO", () => {
   it("deve ter o identificador correto do entitlement", () => {
@@ -455,7 +468,7 @@ describe("Fluxo completo de assinatura", () => {
     vi.clearAllMocks();
   });
 
-  it("deve simular o fluxo completo: gratuito → compra → Pro → restauração", async () => {
+  it("deve simular o fluxo completo: gratuito -> compra -> Pro -> restauração", async () => {
     // 1. Usuário começa sem Pro
     vi.mocked(Purchases.getCustomerInfo).mockResolvedValueOnce(mockCustomerInfoFree as any);
     const initialInfo = await getCustomerInfo();
@@ -503,7 +516,7 @@ describe("Fluxo completo de assinatura", () => {
   });
 });
 
-describe("Limites do plano gratuito — lógica de checkLimit", () => {
+describe("Limites do plano gratuito - lógica de checkLimit", () => {
   it("deve permitir adicionar contato quando abaixo do limite (2 de 3)", () => {
     const current = 2;
     const limit = FREE_LIMITS.CONTACTS;

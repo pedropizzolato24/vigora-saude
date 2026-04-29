@@ -9,7 +9,7 @@ interface NextAlarmWidgetProps {
 }
 
 /**
- * Widget de Próximo Alarme — exibe o próximo alarme de medicamento
+ * Widget de Próximo Alarme - exibe o próximo alarme de medicamento
  * na tela inicial do Android.
  *
  * Estados:
@@ -18,12 +18,12 @@ interface NextAlarmWidgetProps {
  * - Sem alarme: mensagem "Nenhum alarme ativo"
  *
  * Layout:
- * ┌─────────────────────────────────┐
+ * ┌---------------------------------┐
  * │  💊  Vigora Saúde               │
  * │  Próximo alarme                 │
  * │  08:30                          │
  * │  Metformina                     │
- * └─────────────────────────────────┘
+ * └---------------------------------┘
  */
 export function NextAlarmWidget({ alarmTime, alarmName, hasAlarm, isRinging = false }: NextAlarmWidgetProps) {
   const bgColor = isRinging ? '#CC0000' : '#FFFFFF';

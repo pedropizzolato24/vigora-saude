@@ -1,5 +1,5 @@
 /**
- * AppDialog — Modal personalizado do Vigora Saúde
+ * AppDialog - Modal personalizado do Vigora Saúde
  *
  * Substitui Alert.alert() nativo com visual consistente com o tema do app.
  * Suporta modo claro/escuro automaticamente via useColors().
@@ -27,7 +27,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAccessibility } from '@/lib/accessibility-context';
 import { useColors } from '@/hooks/use-colors';
 
-// ─── Tipos ───────────────────────────────────────────────────────────────────
+// --- Tipos -------------------------------------------------------------------
 
 export type DialogVariant = 'info' | 'success' | 'warning' | 'error' | 'confirm' | 'select' | 'sos';
 
@@ -56,7 +56,7 @@ export interface AppDialogProps {
   onDismiss?: () => void;
 }
 
-// ─── Config de variantes ──────────────────────────────────────────────────────
+// --- Config de variantes ------------------------------------------------------
 
 type IconName = React.ComponentProps<typeof MaterialIcons>['name'];
 
@@ -70,7 +70,7 @@ const VARIANT_CONFIG: Record<DialogVariant, { icon: IconName; bgLight: string; b
   sos:     { icon: 'emergency',       bgLight: '#DC2626', bgDark: '#EF4444', iconBg: '#DC262618' },
 };
 
-// ─── Componente de Ícone Animado ──────────────────────────────────────────────
+// --- Componente de Ícone Animado ----------------------------------------------
 
 function AnimatedDialogIcon({
   variant,
@@ -92,7 +92,7 @@ function AnimatedDialogIcon({
 
   useEffect(() => {
     if (visible) {
-      // Entrada: scale de 0 → 1 com spring
+      // Entrada: scale de 0 -> 1 com spring
       Animated.parallel([
         Animated.spring(scaleAnim, {
           toValue: 1,
@@ -188,7 +188,7 @@ function AnimatedDialogIcon({
   );
 }
 
-// ─── Componente Principal ─────────────────────────────────────────────────────
+// --- Componente Principal -----------------------------------------------------
 
 export function AppDialog({
   visible,
@@ -234,7 +234,7 @@ export function AppDialog({
 
   const isSelect = variant === 'select' && options && options.length > 0;
 
-  // ── Modo Acessível ──────────────────────────────────────────────────────────
+  // -- Modo Acessível ----------------------------------------------------------
   if (isAccessibilityMode) {
     return (
       <Modal
@@ -363,7 +363,7 @@ export function AppDialog({
     );
   }
 
-  // ── Modo Normal ─────────────────────────────────────────────────────────────
+  // -- Modo Normal -------------------------------------------------------------
   return (
     <Modal
       visible={visible}
@@ -500,7 +500,7 @@ export function AppDialog({
   );
 }
 
-// ─── Hook utilitário ──────────────────────────────────────────────────────────
+// --- Hook utilitário ----------------------------------------------------------
 
 export function useAppDialog() {
   const [state, setState] = React.useState<AppDialogProps>({
@@ -524,7 +524,7 @@ export function useAppDialog() {
   return { dialogProps, showDialog, hideDialog };
 }
 
-// ─── Estilos ──────────────────────────────────────────────────────────────────
+// --- Estilos ------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   overlay: {
@@ -535,7 +535,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
 
-  // ── Modo Normal ──
+  // -- Modo Normal --
   dialog: {
     width: '100%',
     maxWidth: 360,
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // ── Modo Acessível ──
+  // -- Modo Acessível --
   dialogA11y: {
     width: '100%',
     maxWidth: 380,

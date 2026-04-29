@@ -3,10 +3,10 @@
  *
  * Bottom sheet / modal that shows the alarm event history from the server.
  * Displays each alarm event with its status:
- *   ✅ responded  — user dismissed the alarm
- *   ❌ missed     — alarm timed out without response (SOS sent)
- *   📵 not_sent   — device was offline when alarm was due
- *   ⏳ pending    — alarm is currently active
+ *   ✅ responded  - user dismissed the alarm
+ *   ❌ missed     - alarm timed out without response (SOS sent)
+ *   📵 not_sent   - device was offline when alarm was due
+ *   ⏳ pending    - alarm is currently active
  *
  * Also shows server warning log (messages sent to emergency contacts).
  */
@@ -57,7 +57,7 @@ const STATUS_CONFIG = {
     icon: 'cancel' as const,
     color: '#EF4444',
     label: 'Não respondido',
-    description: 'Alarme não foi atendido — SOS enviado',
+    description: 'Alarme não foi atendido - SOS enviado',
   },
   not_sent: {
     icon: 'phone-disabled' as const,

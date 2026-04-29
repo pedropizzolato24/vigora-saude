@@ -13,7 +13,7 @@
 
 import type { HealthMetric, Alarm, UserProfile } from './app-context';
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
+// --- Tipos --------------------------------------------------------------------
 
 export interface ReportData {
   profile: UserProfile;
@@ -22,7 +22,7 @@ export interface ReportData {
   generatedAt: number;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// --- Helpers -----------------------------------------------------------------
 
 function getStatusLabel(type: HealthMetric['type'], value: number): { label: string; color: string } {
   switch (type) {
@@ -39,7 +39,7 @@ function getStatusLabel(type: HealthMetric['type'], value: number): { label: str
       if (value >= 60 && value <= 140) return { label: 'Atenção', color: '#F59E0B' };
       return { label: 'Crítico', color: '#EF4444' };
     default:
-      return { label: '—', color: '#9BA1A6' };
+      return { label: '-', color: '#9BA1A6' };
   }
 }
 
@@ -88,7 +88,7 @@ function getNormalRange(type: HealthMetric['type']): { min: number; max: number 
   }
 }
 
-// ─── SVG Chart Generator ─────────────────────────────────────────────────────
+// --- SVG Chart Generator -----------------------------------------------------
 
 function buildSvgChart(
   metrics: HealthMetric[],
@@ -154,7 +154,7 @@ function buildSvgChart(
     })
     .join('');
 
-  // Eixo Y — 4 labels
+  // Eixo Y - 4 labels
   const yLabels = [0, 0.33, 0.67, 1].map((t) => {
     const val = Math.round(minVal + t * range);
     const y = padT + chartH - t * chartH;
@@ -162,7 +162,7 @@ function buildSvgChart(
              <line x1="${padL}" y1="${y}" x2="${padL + chartW}" y2="${y}" stroke="#E5E7EB" stroke-width="0.5" />`;
   }).join('');
 
-  // Eixo X — datas (máx 6 labels)
+  // Eixo X - datas (máx 6 labels)
   const xStep = Math.max(1, Math.floor(filtered.length / 6));
   const xLabels = filtered
     .filter((_, i) => i % xStep === 0 || i === filtered.length - 1)
@@ -187,7 +187,7 @@ function buildSvgChart(
   </svg>`;
 }
 
-// ─── Summary Cards ────────────────────────────────────────────────────────────
+// --- Summary Cards ------------------------------------------------------------
 
 function buildSummaryCard(metrics: HealthMetric[], type: HealthMetric['type']): string {
   const filtered = metrics.filter((m) => m.type === type).sort((a, b) => b.timestamp - a.timestamp);
@@ -201,7 +201,7 @@ function buildSummaryCard(metrics: HealthMetric[], type: HealthMetric['type']): 
       <div class="summary-icon" style="background:${color}20; color:${color}">${type === 'heart_rate' ? '♥' : type === 'blood_pressure' ? '🩸' : '🍬'}</div>
       <div class="summary-info">
         <div class="summary-label">${label}</div>
-        <div class="summary-value" style="color:#9BA1A6">—</div>
+        <div class="summary-value" style="color:#9BA1A6">-</div>
         <div class="summary-status" style="color:#9BA1A6">Sem dados</div>
       </div>
     </div>`;
@@ -223,7 +223,7 @@ function buildSummaryCard(metrics: HealthMetric[], type: HealthMetric['type']): 
   </div>`;
 }
 
-// ─── Alarm Table ──────────────────────────────────────────────────────────────
+// --- Alarm Table --------------------------------------------------------------
 
 function buildAlarmTable(alarms: Alarm[]): string {
   if (alarms.length === 0) {
@@ -243,7 +243,7 @@ function buildAlarmTable(alarms: Alarm[]): string {
       const statusLabel = alarm.enabled ? 'Ativo' : 'Inativo';
       return `<tr>
         <td>${alarm.time}</td>
-        <td>${alarm.description || '—'}</td>
+        <td>${alarm.description || '-'}</td>
         <td>${repeatLabel[alarm.repeat] || alarm.repeat}</td>
         <td><span style="background:${statusColor}20; color:${statusColor}; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:600;">${statusLabel}</span></td>
       </tr>`;
@@ -263,7 +263,7 @@ function buildAlarmTable(alarms: Alarm[]): string {
   </table>`;
 }
 
-// ─── Main HTML Builder ────────────────────────────────────────────────────────
+// --- Main HTML Builder --------------------------------------------------------
 
 export function buildReportHtml(data: ReportData): string {
   const { profile, healthMetrics, alarms, generatedAt } = data;
@@ -330,7 +330,7 @@ export function buildReportHtml(data: ReportData): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Relatório de Saúde — ${patientName}</title>
+  <title>Relatório de Saúde - ${patientName}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -341,7 +341,7 @@ export function buildReportHtml(data: ReportData): string {
       padding: 32px 40px;
       line-height: 1.5;
     }
-    /* ─── Header ─── */
+    /* --- Header --- */
     .report-header {
       display: flex;
       justify-content: space-between;
@@ -361,7 +361,7 @@ export function buildReportHtml(data: ReportData): string {
     .report-meta { text-align: right; }
     .report-title { font-size: 16px; font-weight: 700; color: #11181C; }
     .report-period { font-size: 12px; color: #687076; margin-top: 4px; }
-    /* ─── Patient Info ─── */
+    /* --- Patient Info --- */
     .patient-card {
       background: #F8FAFF;
       border: 1px solid #E0E7FF;
@@ -374,7 +374,7 @@ export function buildReportHtml(data: ReportData): string {
     .patient-field { flex: 1; }
     .patient-field-label { font-size: 11px; color: #687076; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
     .patient-field-value { font-size: 15px; font-weight: 700; color: #11181C; margin-top: 2px; }
-    /* ─── Summary ─── */
+    /* --- Summary --- */
     .summary-grid {
       display: flex;
       gap: 16px;
@@ -407,7 +407,7 @@ export function buildReportHtml(data: ReportData): string {
       margin-top: 4px;
     }
     .summary-avg { font-size: 11px; color: #687076; margin-top: 4px; }
-    /* ─── Sections ─── */
+    /* --- Sections --- */
     .section {
       margin-bottom: 36px;
       page-break-inside: avoid;
@@ -418,7 +418,7 @@ export function buildReportHtml(data: ReportData): string {
     }
     .section-header h2 { font-size: 17px; font-weight: 800; }
     .section-unit { font-size: 12px; color: #687076; }
-    /* ─── Chart ─── */
+    /* --- Chart --- */
     .chart-container {
       background: #FAFAFA;
       border: 1px solid #E5E7EB;
@@ -426,7 +426,7 @@ export function buildReportHtml(data: ReportData): string {
       padding: 12px;
       overflow: hidden;
     }
-    /* ─── Tables ─── */
+    /* --- Tables --- */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -448,10 +448,10 @@ export function buildReportHtml(data: ReportData): string {
     tr:last-child td { border-bottom: none; }
     tr:nth-child(even) td { background: #FAFAFA; }
     .more-records { font-size: 11px; color: #9BA1A6; text-align: right; margin-top: 6px; }
-    /* ─── Alarm Section ─── */
+    /* --- Alarm Section --- */
     .alarm-section { margin-bottom: 36px; }
     .alarm-section h2 { font-size: 17px; font-weight: 800; color: #11181C; margin-bottom: 14px; padding-left: 12px; border-left: 4px solid #687076; }
-    /* ─── Footer ─── */
+    /* --- Footer --- */
     .report-footer {
       border-top: 1px solid #E5E7EB;
       padding-top: 16px;

@@ -7,7 +7,7 @@
  * - Shows alarm name and description
  * - Reads alarm name and description aloud via expo-speech (pt-BR)
  * - "Ouvir novamente" button to replay speech
- * - Countdown timer (30s) — when it reaches 0, sends WhatsApp to all emergency contacts
+ * - Countdown timer (30s) - when it reaches 0, sends WhatsApp to all emergency contacts
  * - Large dismiss button
  * - Accessibility mode: larger elements, high contrast, simplified layout
  */
@@ -77,7 +77,7 @@ export default function AlarmRingScreen() {
   // Audio player
   const player = useAudioPlayer(ALARM_SOUND);
 
-  // Speak alarm info aloud — uses speechRate and speechVolume from settings
+  // Speak alarm info aloud - uses speechRate and speechVolume from settings
   // Ducks alarm volume during speech so the voice is clearly audible
   const speakAlarm = useCallback(() => {
     if (Platform.OS === 'web') return;
@@ -132,7 +132,7 @@ export default function AlarmRingScreen() {
           player.seekTo(0);
           player.play();
 
-          // Set volume AFTER play() — expo-audio requires the player to be
+          // Set volume AFTER play() - expo-audio requires the player to be
           // actively playing before volume changes take effect
           setTimeout(() => {
             try { player.volume = (state.settings.alarmVolume ?? 80) / 100; } catch {}
@@ -166,7 +166,7 @@ export default function AlarmRingScreen() {
   // Synchronized countdown timer
   // On mount, load the persisted timer entry to sync with the real elapsed time.
   // This ensures that if the user taps the notification with 12s left, the app
-  // shows exactly 12s — not a fresh 30s countdown.
+  // shows exactly 12s - not a fresh 30s countdown.
   useEffect(() => {
     let cancelled = false;
 
@@ -207,7 +207,7 @@ export default function AlarmRingScreen() {
         // Use the persisted expiresAt to compute real remaining time
         startCountdown(entry.expiresAt);
       } else {
-        // Last resort — read timerDuration from AsyncStorage to avoid stale state
+        // Last resort - read timerDuration from AsyncStorage to avoid stale state
         let duration = configuredDuration;
         try {
           const raw = await AsyncStorage.getItem('vigora_app_state');
@@ -290,7 +290,7 @@ export default function AlarmRingScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
 
-    // Reset missed alarm counter — user responded
+    // Reset missed alarm counter - user responded
     dispatch({ type: 'RESET_MISSED_ALARM' });
     // Confirm alarm as responded on server monitoring system
     if (alarm) {
@@ -326,7 +326,7 @@ export default function AlarmRingScreen() {
   const isUrgent = secondsLeft <= urgentThreshold && secondsLeft > 0;
   const isExpired = secondsLeft === 0;
 
-  // ─── Accessibility Mode ───────────────────────────────────────────────────
+  // --- Accessibility Mode ---------------------------------------------------
   if (isAccessibilityMode) {
     return (
       <SafeAreaView
@@ -365,7 +365,7 @@ export default function AlarmRingScreen() {
           </Text>
         </View>
 
-        {/* Speak again button — prominent in accessibility mode */}
+        {/* Speak again button - prominent in accessibility mode */}
         <Pressable
           style={({ pressed }) => [
             styles.speakButton,
@@ -436,7 +436,7 @@ export default function AlarmRingScreen() {
     );
   }
 
-  // ─── Normal Mode ──────────────────────────────────────────────────────────
+  // --- Normal Mode ----------------------------------------------------------
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
       {/* Top section: pulsing icon */}

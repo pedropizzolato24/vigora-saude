@@ -34,7 +34,7 @@ export function updateAlarmNotification(title: string, secondsLeft: number): voi
   try {
     ExpoAlarmCountdown.updateAlarmNotification(title, secondsLeft);
   } catch (e) {
-    // Silently fail — countdown in notification is a nice-to-have, not critical
+    // Silently fail - countdown in notification is a nice-to-have, not critical
     console.warn('[ExpoAlarmCountdown] updateAlarmNotification failed:', e);
   }
 }

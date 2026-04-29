@@ -10,7 +10,7 @@
  * - Contatar suporte
  *
  * Rota: /(modal)/customer-center
- * Acesso: Configurações → "Gerenciar assinatura"
+ * Acesso: Configurações -> "Gerenciar assinatura"
  */
 
 import React, { useCallback, useEffect } from "react";
@@ -23,7 +23,7 @@ export default function CustomerCenterScreen() {
   const router = useRouter();
   const { isPro } = usePurchases();
 
-  // ── Apresentar Customer Center nativo ────────────────────────────────────
+  // -- Apresentar Customer Center nativo ------------------------------------
 
   const presentCustomerCenter = useCallback(async () => {
     if (Platform.OS === "web") {
@@ -87,13 +87,13 @@ export default function CustomerCenterScreen() {
     }
   }, [router]);
 
-  // ── Abrir automaticamente ao montar ──────────────────────────────────────
+  // -- Abrir automaticamente ao montar --------------------------------------
 
   useEffect(() => {
     presentCustomerCenter();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Tela vazia — o Customer Center é apresentado como sheet nativo
+  // Tela vazia - o Customer Center é apresentado como sheet nativo
   return <View style={styles.container} />;
 }
 

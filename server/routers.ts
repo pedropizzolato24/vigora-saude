@@ -35,7 +35,7 @@ export const appRouter = router({
 
     /**
      * Send emergency alert messages to multiple contacts via WhatsApp Business API.
-     * This is the FALLBACK method — used when the user cannot send via deep link
+     * This is the FALLBACK method - used when the user cannot send via deep link
      * (e.g., unconscious, app in background, deep link failed).
      *
      * The message is sent from the registered WhatsApp Business number,
@@ -76,7 +76,7 @@ export const appRouter = router({
           message += `\n\n📍 Última localização conhecida:\n${input.locationUrl}`;
         }
 
-        message += `\n\n— Enviado automaticamente pelo Vigora Saúde`;
+        message += `\n\n- Enviado automaticamente pelo Vigora Saúde`;
 
         const result = await sendEmergencyAlerts(input.contacts, message);
 

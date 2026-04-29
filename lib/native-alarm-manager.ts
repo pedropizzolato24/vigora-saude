@@ -2,7 +2,7 @@
  * native-alarm-manager.ts
  *
  * Wrapper around expo-alarm-module for real Android alarm scheduling.
- * Uses AlarmManager native API — fires even when the app is completely closed.
+ * Uses AlarmManager native API - fires even when the app is completely closed.
  *
  * Strategy:
  * - Android: use expo-alarm-module (AlarmManager + BroadcastReceiver)
@@ -60,7 +60,7 @@ function getNextWeekdayDate(weekday: number, timeStr: string): Date {
   const today = now.getDay();
   let daysUntil = (jsDay - today + 7) % 7;
   if (daysUntil === 0) {
-    // Same day — check if time has passed
+    // Same day - check if time has passed
     const trigger = new Date();
     trigger.setHours(hours, minutes, 0, 0);
     if (trigger <= now) daysUntil = 7;
@@ -85,11 +85,11 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
 
   try {
     // Passo 1.2: usar texto estático descritivo na notificação nativa.
-    // NÃO usar countdown dinâmico aqui — é impossível sem Foreground Service.
+    // NÃO usar countdown dinâmico aqui - é impossível sem Foreground Service.
     // O countdown é exibido apenas quando o app está em foreground (alarm-ring screen).
-    const title = '⏰ Vigora Saúde — Alarme de Medicamento';
+    const title = '⏰ Vigora Saúde - Alarme de Medicamento';
     const body = alarm.description
-      ? `${alarm.description} — Toque para confirmar que tomou o medicamento`
+      ? `${alarm.description} - Toque para confirmar que tomou o medicamento`
       : 'Toque aqui para confirmar que tomou o medicamento';
     const baseUid = `vigora_${alarm.id}`;
 

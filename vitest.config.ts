@@ -10,10 +10,6 @@ export default defineConfig({
     // Necessário para módulos que usam __DEV__ (React Native / Expo)
     __DEV__: JSON.stringify(true),
   },
-  esbuild: {
-    jsx: "automatic",
-    jsxImportSource: "react",
-  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "."),

@@ -81,7 +81,7 @@ export default function DashboardScreen() {
     router.push(route as any);
   };
 
-  // ─── ACCESSIBILITY MODE ────────────────────────────────────────────────────
+  // --- ACCESSIBILITY MODE ----------------------------------------------------
   if (isAccessibilityMode) {
     const ac = a11yColors;
     const af = a11yFontSize;
@@ -113,7 +113,7 @@ export default function DashboardScreen() {
           <TrialBanner />
           <ExpiredBanner />
 
-          {/* SOS Button — very large */}
+          {/* SOS Button - very large */}
           <PulseView active={!sosPressing} minScale={0.98} maxScale={1.02} duration={1500}>
             <Pressable
               onPress={handleSOS}
@@ -271,7 +271,7 @@ export default function DashboardScreen() {
       </ScreenContainer>
     );
   }
-  // ─── NORMAL MODEE ───────────────────────────────────────────────────────────
+  // --- NORMAL MODEE -----------------------------------------------------------
 
   const statusCards = [
     {

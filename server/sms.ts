@@ -5,9 +5,9 @@
  * Used as LAST RESORT FALLBACK when both WhatsApp and Email fail or are not configured.
  *
  * Requires:
- *   TWILIO_ACCOUNT_SID  — Twilio Account SID (from twilio.com console)
- *   TWILIO_AUTH_TOKEN   — Twilio Auth Token
- *   TWILIO_FROM_NUMBER  — Twilio phone number in E.164 format (e.g., "+15705590772")
+ *   TWILIO_ACCOUNT_SID  - Twilio Account SID (from twilio.com console)
+ *   TWILIO_AUTH_TOKEN   - Twilio Auth Token
+ *   TWILIO_FROM_NUMBER  - Twilio phone number in E.164 format (e.g., "+15705590772")
  *
  * Note on Trial accounts:
  *   Twilio Trial accounts can only send SMS to verified phone numbers.

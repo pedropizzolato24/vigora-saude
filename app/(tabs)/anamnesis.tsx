@@ -109,7 +109,7 @@ export default function AnamnesisScreen() {
     setSaved(false);
   };
 
-  // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
+  // --- ACCESSIBILITY MODE --------------------------------------------------
   if (isAccessibilityMode) {
     const a11yFields: { label: string; key: keyof AnamnesesData; placeholder: string; multiline?: boolean; keyboard?: any }[] = [
       { label: 'Nome Completo *', key: 'fullName', placeholder: 'Seu nome completo' },
@@ -168,7 +168,7 @@ export default function AnamnesisScreen() {
     );
   }
 
-  // ─── NORMAL MODE ──────────────────────────────────────────────────
+  // --- NORMAL MODE --------------------------------------------------
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}

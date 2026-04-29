@@ -138,7 +138,7 @@ export default function ProfileScreen() {
     showDialog({ title: 'Perfil salvo', message: 'Suas informações foram atualizadas com sucesso.', variant: 'success', buttons: [{ text: 'OK' }] });
   };
 
-  // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
+  // --- ACCESSIBILITY MODE --------------------------------------------------
   if (isAccessibilityMode) {
     const a11yProfileFields: { label: string; value: string; onChange: (v: string) => void; placeholder: string; keyboard?: any; maxLength?: number }[] = [
       { label: 'Nome Completo', value: name, onChange: (v) => { setName(v); markChanged(); }, placeholder: 'Seu nome completo' },
@@ -223,7 +223,7 @@ export default function ProfileScreen() {
     );
   }
 
-  // ─── NORMAL MODE ──────────────────────────────────────────────────
+  // --- NORMAL MODE --------------------------------------------------
   return (
     <ScreenContainer edges={['left', 'right']}>
       <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>

@@ -20,7 +20,7 @@ import Purchases, {
   type PurchasesError,
 } from "react-native-purchases";
 
-// ─── Constantes ──────────────────────────────────────────────────────────────
+// --- Constantes --------------------------------------------------------------
 
 /**
  * Identificador do entitlement que desbloqueia o Vigora Saúde Pro.
@@ -41,13 +41,13 @@ export const PRODUCT_IDS = {
 /**
  * Chave de API do RevenueCat.
  * Lida da variável de ambiente EXPO_PUBLIC_REVENUECAT_API_KEY.
- * Configure via painel Manus → Settings → Secrets.
+ * Configure via painel Manus -> Settings -> Secrets.
  * Em produção: use chaves separadas por plataforma (appl_* para iOS, goog_* para Android).
  */
 const REVENUECAT_API_KEY =
   process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? "test_vRsfCVmxAKkKikyiJxZLkiqYliI";
 
-// ─── Inicialização ────────────────────────────────────────────────────────────
+// --- Inicialização ------------------------------------------------------------
 
 let _initialized = false;
 
@@ -67,8 +67,8 @@ export function initializePurchases(appUserId?: string): void {
       Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
     }
 
-    // Configurar SDK — chave lida de EXPO_PUBLIC_REVENUECAT_API_KEY
-    // Configure via painel Manus → Settings → Secrets
+    // Configurar SDK - chave lida de EXPO_PUBLIC_REVENUECAT_API_KEY
+    // Configure via painel Manus -> Settings -> Secrets
     if (Platform.OS === "ios" || Platform.OS === "android") {
       Purchases.configure({
         apiKey: REVENUECAT_API_KEY,
@@ -86,7 +86,7 @@ export function initializePurchases(appUserId?: string): void {
   }
 }
 
-// ─── Informações do Cliente ───────────────────────────────────────────────────
+// --- Informações do Cliente ---------------------------------------------------
 
 /**
  * Busca as informações mais recentes do cliente no RevenueCat.
@@ -102,7 +102,7 @@ export async function getCustomerInfo(): Promise<CustomerInfo | null> {
   }
 }
 
-// ─── Verificação de Entitlement ───────────────────────────────────────────────
+// --- Verificação de Entitlement -----------------------------------------------
 
 /**
  * Verifica se o usuário tem acesso ativo ao "Vigora Saúde Pro".
@@ -124,7 +124,7 @@ export async function checkProAccess(): Promise<boolean> {
   return hasProAccess(customerInfo);
 }
 
-// ─── Offerings (Planos Disponíveis) ──────────────────────────────────────────
+// --- Offerings (Planos Disponíveis) ------------------------------------------
 
 /**
  * Busca os offerings configurados no painel RevenueCat.
@@ -153,7 +153,7 @@ export async function getAllOfferings(): Promise<Record<string, PurchasesOfferin
   }
 }
 
-// ─── Compras ──────────────────────────────────────────────────────────────────
+// --- Compras ------------------------------------------------------------------
 
 export interface PurchaseResult {
   success: boolean;
@@ -175,7 +175,7 @@ export async function purchasePackage(pkg: PurchasesPackage): Promise<PurchaseRe
   } catch (error) {
     const rcError = error as PurchasesError;
 
-    // Usuário cancelou — não é um erro real
+    // Usuário cancelou - não é um erro real
     if (rcError.userCancelled) {
       return { success: false, userCancelled: true };
     }
@@ -188,7 +188,7 @@ export async function purchasePackage(pkg: PurchasesPackage): Promise<PurchaseRe
   }
 }
 
-// ─── Restauração de Compras ───────────────────────────────────────────────────
+// --- Restauração de Compras ---------------------------------------------------
 
 /**
  * Restaura compras anteriores do usuário.
@@ -208,7 +208,7 @@ export async function restorePurchases(): Promise<PurchaseResult> {
   }
 }
 
-// ─── Identificação do Usuário ─────────────────────────────────────────────────
+// --- Identificação do Usuário -------------------------------------------------
 
 /**
  * Identifica o usuário no RevenueCat com um ID específico.

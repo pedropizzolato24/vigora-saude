@@ -3,7 +3,7 @@
  *
  * Persists alarm timer start timestamps in AsyncStorage so that when the user
  * opens the app from a notification, the countdown timer is synchronized with
- * the actual elapsed time — not restarted from scratch.
+ * the actual elapsed time - not restarted from scratch.
  *
  * Key design:
  * - When an alarm fires, we store { alarmId, startedAt, expiresAt } in AsyncStorage.

@@ -7,11 +7,11 @@ import { Alarm, EmergencyContact } from './app-context';
  * Hybrid WhatsApp Escalation System
  *
  * Strategy:
- * 1. PRIMARY: Deep link (whatsapp://send) — sends from user's personal number
+ * 1. PRIMARY: Deep link (whatsapp://send) - sends from user's personal number
  *    - Requires user to tap "Send" in WhatsApp for each contact
  *    - Only works when app is in foreground and user is conscious
  *
- * 2. FALLBACK: WhatsApp Business API via server — sends from business number
+ * 2. FALLBACK: WhatsApp Business API via server - sends from business number
  *    - Fully automatic, no user interaction needed
  *    - Works even if user is unconscious or app is in background
  *    - Requires WHATSAPP_API_TOKEN and WHATSAPP_PHONE_NUMBER_ID configured on server
@@ -91,7 +91,7 @@ async function tryDeepLinkEscalation(
     return { sent: 0, failed: contacts.length };
   }
 
-  // Check if app is in foreground — deep links don't work reliably in background
+  // Check if app is in foreground - deep links don't work reliably in background
   const appState = RNAppState.currentState;
   if (appState !== 'active') {
     console.log('[Escalation] App not in foreground, skipping deep link');
@@ -128,7 +128,7 @@ async function tryDeepLinkEscalation(
 
 /**
  * Try to send messages via server WhatsApp Business API (fallback).
- * This is fully automatic — no user interaction required.
+ * This is fully automatic - no user interaction required.
  */
 async function tryServerApiEscalation(
   contacts: EmergencyContact[],

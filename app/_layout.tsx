@@ -81,7 +81,7 @@ export default function RootLayout() {
 
     const checkInitialAlarm = async () => {
       // Minimal delay to ensure router and providers are mounted
-      // 100ms is sufficient — the router is ready well before this point
+      // 100ms is sufficient - the router is ready well before this point
       await new Promise(resolve => setTimeout(resolve, 100));
 
       try {
@@ -91,12 +91,12 @@ export default function RootLayout() {
             const { getAlarmState } = require('expo-alarm-module');
             const activeUid = await getAlarmState();
             if (activeUid && typeof activeUid === 'string') {
-              // activeUid is like "vigora_<alarmId>" — extract the alarmId
+              // activeUid is like "vigora_<alarmId>" - extract the alarmId
               // Native UIDs: "vigora_<alarmId>" or "vigora_<alarmId>_wd<0-6>"
               const match = activeUid.match(/^vigora_(.+?)(?:_wd\d+)?$/);
               const alarmId = match ? match[1] : null;
               if (alarmId) {
-                console.log(`[RootLayout] Native alarm active: ${activeUid} → alarmId: ${alarmId}`);
+                console.log(`[RootLayout] Native alarm active: ${activeUid} -> alarmId: ${alarmId}`);
                 const { router } = require('expo-router');
                 const { loadAlarmTimer, saveAlarmTimer } = require('@/lib/alarm-timer-store');
                 const AsyncStorageMod = require('@react-native-async-storage/async-storage').default;
@@ -141,7 +141,7 @@ export default function RootLayout() {
           }
         }
 
-        // Strategy 2: iOS/Web — expo-notifications last response
+        // Strategy 2: iOS/Web - expo-notifications last response
         const response = await Notifications.getLastNotificationResponseAsync();
         if (response) {
           const alarmId = response.notification.request.content.data?.alarmId as string | undefined;

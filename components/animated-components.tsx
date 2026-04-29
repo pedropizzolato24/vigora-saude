@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, ViewProps, Easing } from 'react-native';
 
-// ─── Fade In View ───────────────────────────────────────────────────────────
+// --- Fade In View -----------------------------------------------------------
 // Fades in children on mount with optional delay
 
 interface FadeInViewProps extends ViewProps {
@@ -40,7 +40,7 @@ export function FadeInView({ delay = 0, duration = 300, children, style, ...prop
   );
 }
 
-// ─── Scale In View ──────────────────────────────────────────────────────────
+// --- Scale In View ----------------------------------------------------------
 // Scales in from 0.9 to 1.0 on mount
 
 interface ScaleInViewProps extends ViewProps {
@@ -79,7 +79,7 @@ export function ScaleInView({ delay = 0, duration = 250, children, style, ...pro
   );
 }
 
-// ─── Staggered List ─────────────────────────────────────────────────────────
+// --- Staggered List ---------------------------------------------------------
 // Renders children with staggered fade-in animation
 
 interface StaggeredItemProps extends ViewProps {
@@ -96,7 +96,7 @@ export function StaggeredItem({ index, staggerDelay = 60, children, style, ...pr
   );
 }
 
-// ─── Pulse Animation ────────────────────────────────────────────────────────
+// --- Pulse Animation --------------------------------------------------------
 // Continuous pulse effect for SOS button
 
 interface PulseViewProps extends ViewProps {
@@ -128,7 +128,7 @@ export function PulseView({
     // Set starting point to minScale before looping
     scale.setValue(minScale);
 
-    // 2-step sequence: min → max → min
+    // 2-step sequence: min -> max -> min
     // Easing.inOut(sin) gives smooth ease-in/out at both ends
     // Since the sequence starts and ends at minScale, the loop is perfectly seamless
     const pulse = Animated.loop(
@@ -160,7 +160,7 @@ export function PulseView({
   );
 }
 
-// ─── Press Scale ────────────────────────────────────────────────────────────
+// --- Press Scale ------------------------------------------------------------
 // Wrapper that scales down on press for tactile feedback
 
 interface PressScaleProps extends ViewProps {

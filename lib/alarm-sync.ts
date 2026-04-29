@@ -2,8 +2,8 @@
  * alarm-sync.ts
  *
  * Dual-layer alarm scheduling:
- * 1. expo-alarm-module (Android AlarmManager) — fires even with app closed
- * 2. expo-notifications (fallback + deep-link trigger) — handles navigation
+ * 1. expo-alarm-module (Android AlarmManager) - fires even with app closed
+ * 2. expo-notifications (fallback + deep-link trigger) - handles navigation
  *
  * Both are scheduled in parallel. The AlarmManager is the primary audio source;
  * the notification is the secondary trigger that opens the alarm-ring screen.
@@ -30,17 +30,17 @@ import {
  * Strategy:
  * - Android: use expo-alarm-module ONLY. It creates its own notification with
  *   static title/body (set in native-alarm-manager.ts). Adding expo-notifications
- *   on top creates a DUPLICATE notification — removed per Passo 1.1.
+ *   on top creates a DUPLICATE notification - removed per Passo 1.1.
  * - iOS/Web: use expo-notifications only (no native alarm module available).
  */
 export async function scheduleFullAlarm(alarm: Alarm): Promise<Alarm> {
   const updated = { ...alarm };
 
-  // 1. Schedule native alarm (Android AlarmManager) — NO expo-notifications on Android
+  // 1. Schedule native alarm (Android AlarmManager) - NO expo-notifications on Android
   if (isNativeAlarmAvailable) {
     const uids = await scheduleNativeAlarm(alarm);
     updated.nativeAlarmUids = uids;
-    // Do NOT schedule expo-notifications here — it creates a duplicate notification.
+    // Do NOT schedule expo-notifications here - it creates a duplicate notification.
     // The native alarm module creates its own notification with the static text
     // defined in native-alarm-manager.ts.
     return updated;
@@ -71,7 +71,7 @@ export async function cancelFullAlarm(alarm: Alarm): Promise<void> {
 }
 
 /**
- * Sync alarms on app startup — reschedule any missing alarms.
+ * Sync alarms on app startup - reschedule any missing alarms.
  * This ensures alarms survive app crash, device restart, etc.
  */
 export async function syncAlarmsOnStartup(alarms: Alarm[]): Promise<void> {

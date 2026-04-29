@@ -122,7 +122,7 @@ export default function LocationScreen() {
     return `${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
   };
 
-  // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
+  // --- ACCESSIBILITY MODE --------------------------------------------------
   if (isAccessibilityMode) {
     return (
       <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
@@ -186,7 +186,7 @@ export default function LocationScreen() {
     );
   }
 
-  // ─── NORMAL MODE ──────────────────────────────────────────────────
+  // --- NORMAL MODE --------------------------------------------------
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}

@@ -1,5 +1,5 @@
 /**
- * WheelPicker — drum-roll style time selector
+ * WheelPicker - drum-roll style time selector
  *
  * Renders only COPIES × count items (e.g. 3×24=72 for hours) so the component
  * stays lightweight and lag-free even inside a modal ScrollView.
@@ -26,12 +26,12 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useColors } from '@/hooks/use-colors';
 import { useAccessibility } from '@/lib/accessibility-context';
 
-// ─── Normal mode constants ────────────────────────────────────────────────────
+// --- Normal mode constants ----------------------------------------------------
 const ITEM_HEIGHT = 56;
 const VISIBLE_ITEMS = 5; // must be odd so the selected item is centred
 const WHEEL_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
 
-// ─── Accessibility mode constants ────────────────────────────────────────────
+// --- Accessibility mode constants --------------------------------------------
 const A11Y_ITEM_HEIGHT = 72;
 const A11Y_VISIBLE_ITEMS = 5;
 const A11Y_WHEEL_HEIGHT = A11Y_ITEM_HEIGHT * A11Y_VISIBLE_ITEMS;
@@ -115,7 +115,7 @@ export function WheelPicker({
 
   const totalItems = count * COPIES;
 
-  // ── Colours resolved per mode ──────────────────────────────────────────────
+  // -- Colours resolved per mode ----------------------------------------------
   const primaryColor   = isAccessibilityMode ? ac.primary    : colors.primary;
   const mutedColor     = isAccessibilityMode ? ac.muted      : colors.muted;
   const surfaceColor   = isAccessibilityMode ? ac.surface    : colors.surface;
@@ -123,7 +123,7 @@ export function WheelPicker({
 
   return (
     <View style={styles.container}>
-      {/* ▲ — decreases value (scroll up = number goes down) */}
+      {/* ▲ - decreases value (scroll up = number goes down) */}
       <Pressable
         onPress={() => increment(-1)}
         style={({ pressed }) => [
@@ -203,7 +203,7 @@ export function WheelPicker({
         </ScrollView>
       </View>
 
-      {/* ▼ — increases value (scroll down = number goes up) */}
+      {/* ▼ - increases value (scroll down = number goes up) */}
       <Pressable
         onPress={() => increment(1)}
         style={({ pressed }) => [

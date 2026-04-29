@@ -48,7 +48,7 @@ const SPEECH_RATES: { value: 0.5 | 0.75 | 1.0 | 1.25; label: string; sublabel: s
   { value: 1.25, label: 'Muito Rápida', sublabel: '1.25×' },
 ];
 
-// ─── Collapsible Section ────────────────────────────────────────────────────
+// --- Collapsible Section ----------------------------------------------------
 
 function CollapsibleSection({
   title,
@@ -99,7 +99,7 @@ function CollapsibleSection({
   );
 }
 
-// ─── Setting Row Components ─────────────────────────────────────────────────
+// --- Setting Row Components -------------------------------------------------
 
 function SettingToggle({
   label,
@@ -163,7 +163,7 @@ function Divider({ colors }: { colors: ReturnType<typeof useColors> }) {
   return <View style={[styles.divider, { backgroundColor: colors.border }]} />;
 }
 
-// ─── Main Screen ────────────────────────────────────────────────────────────
+// --- Main Screen ------------------------------------------------------------
 
 export default function SettingsScreen() {
   const colors = useColors();
@@ -294,7 +294,7 @@ export default function SettingsScreen() {
     }
   };
 
-  // ─── Location Permission Status ───────────────────────────────────────────
+  // --- Location Permission Status -------------------------------------------
   const [locationStatus, setLocationStatus] = useState<'granted' | 'background' | 'denied' | 'unknown'>('unknown');
 
   const checkLocationPermission = useCallback(async () => {
@@ -355,7 +355,7 @@ export default function SettingsScreen() {
       // Show confirmation before enabling
       showDialog({
         title: 'Ativar Modo de Acessibilidade?',
-        message: 'O Modo de Acessibilidade simplifica o layout do app para facilitar o uso:\n\n• Fontes maiores e mais legíveis\n• Cores de alto contraste\n• Botões maiores e mais fáceis de tocar\n• Interface simplificada, sem detalhes desnecessários\n• Ideal para pessoas idosas ou com dificuldades visuais\n\nVocê pode desativar a qualquer momento nesta mesma tela.',
+        message: 'O Modo de Acessibilidade simplifica o layout do app para facilitar o uso:\n\n* Fontes maiores e mais legíveis\n* Cores de alto contraste\n* Botões maiores e mais fáceis de tocar\n* Interface simplificada, sem detalhes desnecessários\n* Ideal para pessoas idosas ou com dificuldades visuais\n\nVocê pode desativar a qualquer momento nesta mesma tela.',
         variant: 'info',
         buttons: [
           { text: 'Cancelar', style: 'cancel' },
@@ -374,7 +374,7 @@ export default function SettingsScreen() {
     }
   };
 
-  // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
+  // --- ACCESSIBILITY MODE --------------------------------------------------
   if (isAccessibilityMode) {
     return (
       <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
@@ -382,7 +382,7 @@ export default function SettingsScreen() {
           <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Configurações</Text>
         </View>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-          {/* Accessibility toggle — always visible at top */}
+          {/* Accessibility toggle - always visible at top */}
           <Pressable
             onPress={handleToggleAccessibility}
             style={({ pressed }) => [{ borderRadius: 20, borderWidth: 3, borderColor: '#003388', backgroundColor: '#0055CC', padding: 20, flexDirection: 'row', alignItems: 'center', gap: 14, opacity: pressed ? 0.85 : 1 }]}
@@ -390,12 +390,12 @@ export default function SettingsScreen() {
             <MaterialIcons name="accessibility-new" size={36} color="#FFFFFF" />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: af.lg, fontWeight: '900', color: '#FFFFFF' }}>Modo de Acessibilidade</Text>
-              <Text style={{ fontSize: af.sm, color: '#FFFFFFCC', marginTop: 4 }}>Ativado — toque para desativar</Text>
+              <Text style={{ fontSize: af.sm, color: '#FFFFFFCC', marginTop: 4 }}>Ativado - toque para desativar</Text>
             </View>
             <Switch value={true} onValueChange={handleToggleAccessibility} trackColor={{ false: '#888', true: '#0033AA' }} thumbColor="#FFFFFF" />
           </Pressable>
 
-          {/* Status do Monitoramento — logo abaixo do toggle de acessibilidade */}
+          {/* Status do Monitoramento - logo abaixo do toggle de acessibilidade */}
           <MonitoringStatusPanel accessible={true} />
 
           {/* Notifications toggle */}
@@ -625,7 +625,7 @@ export default function SettingsScreen() {
 
           {/* Version info */}
           <View style={{ alignItems: 'center', gap: 4, paddingTop: 8 }}>
-            <Text style={{ fontSize: af.sm, color: ac.muted, fontWeight: '600' }}>Vigora Saúde — Versão 1.0.0</Text>
+            <Text style={{ fontSize: af.sm, color: ac.muted, fontWeight: '600' }}>Vigora Saúde - Versão 1.0.0</Text>
             <Text style={{ fontSize: af.sm, color: ac.muted }}>Dados armazenados localmente no dispositivo.</Text>
           </View>
         </ScrollView>
@@ -634,7 +634,7 @@ export default function SettingsScreen() {
     );
   }
 
-  // ─── NORMAL MODE ──────────────────────────────────────────────────
+  // --- NORMAL MODE --------------------------------------------------
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
@@ -668,7 +668,7 @@ export default function SettingsScreen() {
           }}>
             <MaterialIcons name="accessibility-new" size={22} color="#FFFFFF" />
             <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-              {settings.accessibilityMode ? 'Modo de Acessibilidade — Ativado' : 'Modo de Acessibilidade'}
+              {settings.accessibilityMode ? 'Modo de Acessibilidade - Ativado' : 'Modo de Acessibilidade'}
             </Text>
           </View>
           {/* Card body */}
@@ -696,7 +696,7 @@ export default function SettingsScreen() {
               <Text style={{ fontSize: 13, fontWeight: '500', color: settings.accessibilityMode ? '#FFFFFFBB' : '#555555', lineHeight: 18 }}>
                 {settings.accessibilityMode
                   ? 'Fontes maiores, alto contraste e interface simplificada'
-                  : 'Fontes maiores • Alto contraste • Botões maiores'}
+                  : 'Fontes maiores * Alto contraste * Botões maiores'}
               </Text>
             </View>
             <Switch
@@ -1212,7 +1212,7 @@ export default function SettingsScreen() {
                 Seu assistente pessoal de saúde e segurança.
               </Text>
               <Text style={{ fontSize: fs.sm, color: colors.muted, marginTop: 4 }}>
-                Próximo alarme: 08:00 — Remédio
+                Próximo alarme: 08:00 - Remédio
               </Text>
             </View>
           </View>
@@ -1307,7 +1307,7 @@ export default function SettingsScreen() {
                 {isPro ? 'Vigora Saúde Pro ✓' : 'Vigora Saúde Pro'}
               </Text>
               <Text style={[styles.proCardSubtitle, { color: colors.muted, fontSize: fs.sm }]}>
-                {isPro ? 'Assinatura ativa — todos os recursos desbloqueados' : 'Desbloqueie todos os recursos premium'}
+                {isPro ? 'Assinatura ativa - todos os recursos desbloqueados' : 'Desbloqueie todos os recursos premium'}
               </Text>
             </View>
           </View>
@@ -1384,7 +1384,7 @@ export default function SettingsScreen() {
   );
 }
 
-// ─── Styles ─────────────────────────────────────────────────────────────────
+// --- Styles -----------------------------------------------------------------
 
 const styles = StyleSheet.create({
   header: {

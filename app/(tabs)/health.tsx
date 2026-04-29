@@ -166,7 +166,7 @@ export default function HealthScreen() {
     );
   };
 
-  // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
+  // --- ACCESSIBILITY MODE --------------------------------------------------
   if (isAccessibilityMode) {
     const A11Y_METRIC_CONFIG = getMetricConfig({ emergency: '#CC0000', primary: ac.primary, warning: '#885500' });
     return (
@@ -288,7 +288,7 @@ export default function HealthScreen() {
     );
   }
 
-  // ─── NORMAL MODE ──────────────────────────────────────────────────
+  // --- NORMAL MODE --------------------------------------------------
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
@@ -338,7 +338,7 @@ export default function HealthScreen() {
                   <Text style={[styles.summaryUnit, { color: colors.muted }]}>{config.unit}</Text>
                 </>
               ) : (
-                <Text style={[styles.summaryNoData, { color: colors.muted }]}>—</Text>
+                <Text style={[styles.summaryNoData, { color: colors.muted }]}>-</Text>
               )}
             </View>
           );

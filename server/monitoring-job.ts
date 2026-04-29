@@ -3,16 +3,16 @@
  *
  * Server-side background job that runs every 5 minutes to:
  * 1. Detect alarm events that expired without device confirmation
- *    → If device was offline (no heartbeat): mark as "not_sent"
- *    → If device was online but user didn't respond: mark as "missed"
+ *    -> If device was offline (no heartbeat): mark as "not_sent"
+ *    -> If device was online but user didn't respond: mark as "missed"
  * 2. Check for devices that have been offline for 12h+ with unresolved alarms
- *    → Send progressive warning messages to emergency contacts via:
- *       WhatsApp (primary) → Email (fallback) → SMS (last resort)
+ *    -> Send progressive warning messages to emergency contacts via:
+ *       WhatsApp (primary) -> Email (fallback) -> SMS (last resort)
  *
  * Warning escalation levels:
- *   Level 1 (12h)  → Aviso leve: dispositivo sem atividade
- *   Level 2 (24h)  → Preocupação moderada: múltiplos alarmes perdidos
- *   Level 3 (48h+) → Alerta sério: possível emergência
+ *   Level 1 (12h)  -> Aviso leve: dispositivo sem atividade
+ *   Level 2 (24h)  -> Preocupação moderada: múltiplos alarmes perdidos
+ *   Level 3 (48h+) -> Alerta sério: possível emergência
  */
 import {
   getAppUser,
@@ -60,20 +60,20 @@ function buildWarningMessage(
   let body: string;
 
   if (level === 1) {
-    header = "⚠️ AVISO — Vigora Saúde";
+    header = "⚠️ AVISO - Vigora Saúde";
     body =
       `${name} está sem atividade no aplicativo há aproximadamente ${offlineHours} horas.\n\n` +
       `Os alarmes de medicamento/saúde não estão sendo confirmados. ` +
       `Isso pode indicar que o celular está desligado, sem bateria ou sem conexão.\n\n` +
       `Recomendamos entrar em contato para verificar se está tudo bem.`;
   } else if (level === 2) {
-    header = "⚠️⚠️ ATENÇÃO — Vigora Saúde";
+    header = "⚠️⚠️ ATENÇÃO - Vigora Saúde";
     body =
       `${name} está sem atividade há aproximadamente ${offlineHours} horas.\n\n` +
       `Múltiplos alarmes de saúde não foram confirmados. ` +
       `Por favor, tente entrar em contato com urgência.`;
   } else {
-    header = "🚨 ALERTA SÉRIO — Vigora Saúde";
+    header = "🚨 ALERTA SÉRIO - Vigora Saúde";
     body =
       `${name} está sem atividade há mais de ${offlineHours} horas.\n\n` +
       `Todos os alarmes de saúde do período ficaram sem resposta. ` +
@@ -87,7 +87,7 @@ function buildWarningMessage(
     message += `\n\n📍 Última localização registrada:\n${locationUrl}`;
   }
 
-  message += `\n\n— Enviado automaticamente pelo Vigora Saúde`;
+  message += `\n\n- Enviado automaticamente pelo Vigora Saúde`;
   return message;
 }
 
@@ -97,13 +97,13 @@ function buildWarningMessage(
 function buildEmailSubject(userName: string, level: number): string {
   const name = userName || "Usuário do Vigora Saúde";
   if (level === 1) return `⚠️ Aviso: ${name} sem atividade no Vigora Saúde`;
-  if (level === 2) return `⚠️⚠️ Atenção: ${name} sem atividade há 24h — Vigora Saúde`;
-  return `🚨 ALERTA SÉRIO: ${name} sem atividade há 48h+ — Vigora Saúde`;
+  if (level === 2) return `⚠️⚠️ Atenção: ${name} sem atividade há 24h - Vigora Saúde`;
+  return `🚨 ALERTA SÉRIO: ${name} sem atividade há 48h+ - Vigora Saúde`;
 }
 
 /**
  * Send a message to a single contact using fallback chain:
- * WhatsApp → Email → SMS
+ * WhatsApp -> Email -> SMS
  *
  * Returns the channel that succeeded, or null if all failed.
  */
@@ -113,7 +113,7 @@ async function sendWithFallback(
   emailSubject: string
 ): Promise<{ channel: "whatsapp" | "email" | "sms" | null; error?: string }> {
 
-  // ── 1. WhatsApp (primary) ─────────────────────────────────────────────────
+  // -- 1. WhatsApp (primary) -------------------------------------------------
   if (contact.whatsapp && contact.phone && isWhatsAppApiConfigured()) {
     const result = await sendWhatsAppMessage(contact.phone, message);
     if (result.success) {
@@ -125,7 +125,7 @@ async function sendWithFallback(
     console.log(`[Monitor] WhatsApp API not configured, trying next channel`);
   }
 
-  // ── 2. Email (fallback) ───────────────────────────────────────────────────
+  // -- 2. Email (fallback) ---------------------------------------------------
   if (contact.email && isEmailConfigured()) {
     const result = await sendEmail(contact.email, emailSubject, message);
     if (result.success) {
@@ -137,7 +137,7 @@ async function sendWithFallback(
     console.log(`[Monitor] Email API not configured, trying next channel`);
   }
 
-  // ── 3. SMS (last resort) ──────────────────────────────────────────────────
+  // -- 3. SMS (last resort) --------------------------------------------------
   if (contact.phone && isSmsConfigured()) {
     const result = await sendSms(contact.phone, message);
     if (result.success) {
@@ -169,14 +169,14 @@ function getWarningLevel(offlineHours: number): number | null {
 }
 
 /**
- * Main monitoring job — called every 5 minutes by the scheduler.
+ * Main monitoring job - called every 5 minutes by the scheduler.
  */
 export async function runMonitoringJob(): Promise<void> {
   const now = new Date();
   console.log(`[Monitor] Running monitoring job at ${now.toISOString()}`);
 
   try {
-    // ── Step 1: Resolve expired pending alarm events ──────────────────────────
+    // -- Step 1: Resolve expired pending alarm events --------------------------
     const expiredEvents = await getExpiredPendingEvents(GRACE_PERIOD_MINUTES);
     console.log(`[Monitor] Found ${expiredEvents.length} expired pending events`);
 
@@ -190,17 +190,17 @@ export async function runMonitoringJob(): Promise<void> {
       if (!deviceOnline) {
         await updateAlarmEventStatus(event.id, "not_sent");
         console.log(
-          `[Monitor] Event ${event.id} (alarm ${event.alarmId}) → not_sent (device offline)`
+          `[Monitor] Event ${event.id} (alarm ${event.alarmId}) -> not_sent (device offline)`
         );
       } else {
         await updateAlarmEventStatus(event.id, "missed");
         console.log(
-          `[Monitor] Event ${event.id} (alarm ${event.alarmId}) → missed (user didn't respond)`
+          `[Monitor] Event ${event.id} (alarm ${event.alarmId}) -> missed (user didn't respond)`
         );
       }
     }
 
-    // ── Step 2: Check for devices needing warning messages ───────────────────
+    // -- Step 2: Check for devices needing warning messages -------------------
     const inactiveDevices = await getInactiveDevices(OFFLINE_THRESHOLD_MINUTES);
     console.log(`[Monitor] Found ${inactiveDevices.length} inactive devices`);
 

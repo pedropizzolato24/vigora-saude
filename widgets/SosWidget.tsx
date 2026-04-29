@@ -2,15 +2,15 @@ import React from 'react';
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
 
 /**
- * Widget SOS — botão de emergência rápida na tela inicial do Android.
+ * Widget SOS - botão de emergência rápida na tela inicial do Android.
  * Ao tocar, abre o app diretamente na aba de emergência via deep link.
  *
  * Layout:
- * ┌──────────────────┐
+ * ┌------------------┐
  * │  🆘              │
  * │  SOS             │
  * │  Emergência      │
- * └──────────────────┘
+ * └------------------┘
  */
 export function SosWidget() {
   return (

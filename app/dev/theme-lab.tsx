@@ -184,7 +184,7 @@ export default function ThemeLabScreen() {
                 useColors()
               </Text>
               <Text className="mt-1 text-sm text-muted">
-                Background: {colors.background} • Text: {colors.text} • Tint: {colors.tint}
+                Background: {colors.background} * Text: {colors.text} * Tint: {colors.tint}
               </Text>
               <Text className="text-xs text-muted">
                 (Pressable uses style; Tailwind on Pressable is disabled via remap)

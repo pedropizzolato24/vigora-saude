@@ -121,18 +121,18 @@ function MetricRow({ icon, label, value, statusColor, timeAgo }: MetricRowProps)
 }
 
 /**
- * Widget de Métricas de Saúde — exibe as últimas leituras de
+ * Widget de Métricas de Saúde - exibe as últimas leituras de
  * frequência cardíaca, pressão arterial e glicemia com indicadores
  * visuais de status (verde/amarelo/vermelho).
  *
  * Layout:
- * ┌─────────────────────────────────┐
+ * ┌---------------------------------┐
  * │  ❤️  Vigora Saúde               │
  * │  Saúde                          │
  * │  ● ♥ Freq. Cardíaca  72 bpm 2h │
  * │  ● 🩸 Pressão        118 mmHg 1d│
  * │  ● 🍬 Glicemia       95 mg/dL 3h│
- * └─────────────────────────────────┘
+ * └---------------------------------┘
  */
 export function HealthWidget({ heartRate, bloodPressure, glucose }: HealthWidgetProps) {
   const hasAnyData = heartRate || bloodPressure || glucose;
@@ -205,7 +205,7 @@ export function HealthWidget({ heartRate, bloodPressure, glucose }: HealthWidget
             <MetricRow
               icon="♥"
               label="Freq. Cardíaca"
-              value="—"
+              value="-"
               statusColor="#9BA1A6"
               timeAgo=""
             />
@@ -223,7 +223,7 @@ export function HealthWidget({ heartRate, bloodPressure, glucose }: HealthWidget
             <MetricRow
               icon="🩸"
               label="Pressão"
-              value="—"
+              value="-"
               statusColor="#9BA1A6"
               timeAgo=""
             />
@@ -241,7 +241,7 @@ export function HealthWidget({ heartRate, bloodPressure, glucose }: HealthWidget
             <MetricRow
               icon="🍬"
               label="Glicemia"
-              value="—"
+              value="-"
               statusColor="#9BA1A6"
               timeAgo=""
             />

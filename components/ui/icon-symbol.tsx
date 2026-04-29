@@ -9,7 +9,7 @@ type IconMapping = Record<SymbolViewProps["name"], ComponentProps<typeof Materia
 type IconSymbolName = keyof typeof MAPPING;
 
 /**
- * SF Symbols → Material Icons mappings for Vigora Saúde
+ * SF Symbols -> Material Icons mappings for Vigora Saúde
  */
 const MAPPING = {
   // Navigation

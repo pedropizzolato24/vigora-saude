@@ -18,7 +18,7 @@ import { Alarm } from "./app-context";
 
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
-// ─── Low-level fetch helper with retry ──────────────────────────────────────
+// --- Low-level fetch helper with retry --------------------------------------
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 2000;
@@ -64,7 +64,7 @@ async function trpcMutation(
         );
         await delay(RETRY_DELAY_MS * attempt);
       } else {
-        console.log(`[Monitoring] POST ${procedure} → ${url}`);
+        console.log(`[Monitoring] POST ${procedure} -> ${url}`);
       }
       const res = await fetchWithTimeout(url, {
         method: "POST",
@@ -112,7 +112,7 @@ async function trpcQuery(
         await delay(RETRY_DELAY_MS * attempt);
       } else {
         console.log(
-          `[Monitoring] GET ${procedure} → ${url.substring(0, 120)}...`
+          `[Monitoring] GET ${procedure} -> ${url.substring(0, 120)}...`
         );
       }
       const res = await fetchWithTimeout(url);
@@ -139,7 +139,7 @@ async function trpcQuery(
   return null;
 }
 
-// ─── Device Registration ──────────────────────────────────────────────────────
+// --- Device Registration ------------------------------------------------------
 
 export async function registerDevice(options: {
   userName?: string;
@@ -164,7 +164,7 @@ export async function registerDevice(options: {
   console.log("[Monitoring] Device registered:", deviceId);
 }
 
-// ─── Heartbeat ────────────────────────────────────────────────────────────────
+// --- Heartbeat ----------------------------------------------------------------
 
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let appStateSubscription: { remove: () => void } | null = null;
@@ -222,7 +222,7 @@ export function stopHeartbeat(): void {
   console.log("[Monitoring] Heartbeat service stopped");
 }
 
-// ─── Alarm Sync ───────────────────────────────────────────────────────────────
+// --- Alarm Sync ---------------------------------------------------------------
 
 export async function syncAlarmsToServer(alarms: Alarm[]): Promise<void> {
   const deviceId = await getDeviceId();
@@ -244,7 +244,7 @@ export async function syncAlarmsToServer(alarms: Alarm[]): Promise<void> {
   console.log(`[Monitoring] Synced ${payload.length} alarms to server`);
 }
 
-// ─── Alarm Events ─────────────────────────────────────────────────────────────
+// --- Alarm Events -------------------------------------------------------------
 
 /**
  * Create a pending alarm event on the server.

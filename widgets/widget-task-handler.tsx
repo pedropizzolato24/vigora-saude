@@ -73,7 +73,7 @@ async function getLatestMetricsFromStorage(): Promise<{
 }
 
 /**
- * Widget Task Handler — chamado pelo sistema Android para renderizar/atualizar widgets.
+ * Widget Task Handler - chamado pelo sistema Android para renderizar/atualizar widgets.
  *
  * Widgets suportados:
  * - NextAlarm: próximo alarme de medicamento

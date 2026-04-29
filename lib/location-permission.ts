@@ -4,8 +4,8 @@
  * Manages location permission requests for the Vigora Saúde app.
  *
  * Two levels of permission:
- * 1. Foreground ("Enquanto usa o app") — required for SOS when app is open
- * 2. Background ("O tempo todo") — required for SOS when app is minimized/closed
+ * 1. Foreground ("Enquanto usa o app") - required for SOS when app is open
+ * 2. Background ("O tempo todo") - required for SOS when app is minimized/closed
  *
  * Android 10+ requires the user to manually enable "Allow all the time" in Settings.
  * We guide them with a step-by-step modal.

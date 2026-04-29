@@ -24,7 +24,7 @@ export const supabase = _supabaseConfigured
     })
   : (null as any);
 
-// ─── Tipos do banco ───────────────────────────────────────────────────────────
+// --- Tipos do banco -----------------------------------------------------------
 
 export type Database = {
   public: {

@@ -3,7 +3,7 @@ import React, { createContext, useContext } from 'react';
 import { Platform } from 'react-native';
 
 /**
- * Notifications context — provides helper methods for sending notifications.
+ * Notifications context - provides helper methods for sending notifications.
  *
  * IMPORTANT: The global setNotificationHandler and channel setup are handled
  * exclusively in notifications-utils.ts (called from _layout.tsx on startup).

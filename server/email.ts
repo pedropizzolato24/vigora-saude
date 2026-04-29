@@ -5,8 +5,8 @@
  * Used as FALLBACK when WhatsApp is not configured or fails.
  *
  * Requires:
- *   RESEND_API_KEY     — API key from resend.com (free tier: 3000 emails/month)
- *   RESEND_FROM_EMAIL  — Sender address (e.g., "alertas@vigora.app")
+ *   RESEND_API_KEY     - API key from resend.com (free tier: 3000 emails/month)
+ *   RESEND_FROM_EMAIL  - Sender address (e.g., "alertas@vigora.app")
  *                        Must be a verified domain on Resend.
  *                        If not set, defaults to "onboarding@resend.dev" (Resend sandbox).
  */

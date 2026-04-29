@@ -1,5 +1,5 @@
 /**
- * check-missed-alarms — Supabase Edge Function
+ * check-missed-alarms - Supabase Edge Function
  *
  * Verifica alarmes sem resposta após 5 minutos e envia alertas
  * via WhatsApp Business API para os contatos de emergência.
@@ -79,7 +79,7 @@ Deno.serve(async () => {
       `${userName} não respondeu ao alarme "${alarmDesc}".\n` +
       `Horário do alarme: ${alarmTime}\n\n` +
       `Por favor, entre em contato urgentemente.\n\n` +
-      `— Enviado automaticamente pelo Vigora Saúde`;
+      `- Enviado automaticamente pelo Vigora Saúde`;
 
     for (const contact of whatsappContacts) {
       if (WHATSAPP_API_TOKEN && WHATSAPP_PHONE_ID) {

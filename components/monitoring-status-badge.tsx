@@ -3,9 +3,9 @@
  *
  * Indicador compacto de status do monitoramento para o header do Dashboard.
  * Exibe um chip colorido com ícone e texto curto:
- *   - Verde  + "Monitorando" → conectado e recente (< 15 min)
- *   - Laranja + "Sem sinal"  → conectado mas desatualizado
- *   - Cinza  + "Offline"     → sem conexão ou erro
+ *   - Verde  + "Monitorando" -> conectado e recente (< 15 min)
+ *   - Laranja + "Sem sinal"  -> conectado mas desatualizado
+ *   - Cinza  + "Offline"     -> sem conexão ou erro
  *
  * Atualiza automaticamente a cada 5 minutos.
  */

@@ -16,7 +16,7 @@ import {
   warningLog,
 } from "../drizzle/schema";
 
-// ─── App Users ────────────────────────────────────────────────────────────────
+// --- App Users ----------------------------------------------------------------
 
 export async function upsertAppUser(data: {
   deviceId: string;
@@ -60,7 +60,7 @@ export async function getAppUser(deviceId: string) {
   return rows[0] ?? null;
 }
 
-// ─── Synced Alarms ────────────────────────────────────────────────────────────
+// --- Synced Alarms ------------------------------------------------------------
 
 export async function upsertSyncedAlarm(data: {
   deviceId: string;
@@ -137,7 +137,7 @@ export async function replaceAllSyncedAlarms(
   );
 }
 
-// ─── Device Heartbeat ─────────────────────────────────────────────────────────
+// --- Device Heartbeat ---------------------------------------------------------
 
 export async function recordHeartbeat(deviceId: string, appVersion?: string): Promise<void> {
   const db = await getDb();
@@ -173,7 +173,7 @@ export async function getInactiveDevices(thresholdMinutes: number) {
     .where(lte(deviceHeartbeat.lastSeenAt, cutoff));
 }
 
-// ─── Alarm Events ─────────────────────────────────────────────────────────────
+// --- Alarm Events -------------------------------------------------------------
 
 export async function createAlarmEvent(data: InsertAlarmEvent): Promise<number> {
   const db = await getDb();
@@ -263,7 +263,7 @@ export async function getAlarmEventHistory(deviceId: string, limit = 50) {
     .limit(limit);
 }
 
-// ─── Warning Log ──────────────────────────────────────────────────────────────
+// --- Warning Log --------------------------------------------------------------
 
 export async function recordWarning(data: {
   deviceId: string;

@@ -161,7 +161,7 @@ export function SOSActiveScreen({
       statusBarTranslucent
     >
       <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-        {/* ── Header ── */}
+        {/* -- Header -- */}
         <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <Animated.View style={[styles.sosIconWrap, { transform: [{ scale: pulseAnim }] }]}>
             <MaterialIcons name="warning" size={40} color="#fff" />
@@ -179,7 +179,7 @@ export function SOSActiveScreen({
           contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
           showsVerticalScrollIndicator={false}
         >
-          {/* ── Contacts notified ── */}
+          {/* -- Contacts notified -- */}
           {contacts.length > 0 && (
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={[styles.cardTitle, { color: colors.foreground, fontSize: fs.scaled(14) }]}>
@@ -226,7 +226,7 @@ export function SOSActiveScreen({
             </View>
           )}
 
-          {/* ── Instructions ── */}
+          {/* -- Instructions -- */}
           <Text style={[styles.sectionTitle, { color: '#FCA5A5', fontSize: fs.scaled(13) }]}>
             O QUE FAZER AGORA
           </Text>
@@ -247,7 +247,7 @@ export function SOSActiveScreen({
             </View>
           ))}
 
-          {/* ── Emergency numbers ── */}
+          {/* -- Emergency numbers -- */}
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.cardTitle, { color: colors.foreground, fontSize: fs.scaled(14) }]}>
               Números de emergência
@@ -270,7 +270,7 @@ export function SOSActiveScreen({
           </View>
         </ScrollView>
 
-        {/* ── Deactivate button ── */}
+        {/* -- Deactivate button -- */}
         <View style={[styles.footer, { paddingBottom: insets.bottom + 16, backgroundColor: '#1A0000' }]}>
           <Pressable
             onPress={handleDeactivate}

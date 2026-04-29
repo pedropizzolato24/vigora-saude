@@ -4,13 +4,13 @@
  * tRPC routes for the server-side alarm monitoring system.
  *
  * Routes:
- *   monitoring.register        — Register/update device (deviceId, userName, contacts, location)
- *   monitoring.heartbeat       — Send "I'm alive" ping
- *   monitoring.syncAlarms      — Replace all synced alarms for a device
- *   monitoring.createEvent     — Create a pending alarm event (alarm is about to fire)
- *   monitoring.confirmEvent    — Confirm alarm as responded/missed/not_sent
- *   monitoring.getHistory      — Get alarm event history for a device
- *   monitoring.getWarnings     — Get warning log for a device
+ *   monitoring.register        - Register/update device (deviceId, userName, contacts, location)
+ *   monitoring.heartbeat       - Send "I'm alive" ping
+ *   monitoring.syncAlarms      - Replace all synced alarms for a device
+ *   monitoring.createEvent     - Create a pending alarm event (alarm is about to fire)
+ *   monitoring.confirmEvent    - Confirm alarm as responded/missed/not_sent
+ *   monitoring.getHistory      - Get alarm event history for a device
+ *   monitoring.getWarnings     - Get warning log for a device
  */
 import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
@@ -33,7 +33,7 @@ const emergencyContactSchema = z.object({
   phone: z.string(),
   relation: z.string(),
   whatsapp: z.boolean(),
-  /** Optional email address for fallback notifications (Email → SMS) */
+  /** Optional email address for fallback notifications (Email -> SMS) */
   email: z.string().email().optional(),
 });
 

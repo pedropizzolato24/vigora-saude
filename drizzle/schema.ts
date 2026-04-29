@@ -34,9 +34,9 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// App Users — device registration (no Manus OAuth required)
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// App Users - device registration (no Manus OAuth required)
+// -----------------------------------------------------------------------------
 
 export interface EmergencyContactRecord {
   id: string;
@@ -44,7 +44,7 @@ export interface EmergencyContactRecord {
   phone: string;
   relation: string;
   whatsapp: boolean;
-  /** Optional email address for fallback notifications (Email → SMS) */
+  /** Optional email address for fallback notifications (Email -> SMS) */
   email?: string;
 }
 
@@ -62,9 +62,9 @@ export const appUsers = mysqlTable("app_users", {
 export type AppUser = typeof appUsers.$inferSelect;
 export type InsertAppUser = typeof appUsers.$inferInsert;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Synced Alarms — server-side copy of the user's alarm schedule
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// Synced Alarms - server-side copy of the user's alarm schedule
+// -----------------------------------------------------------------------------
 
 export const syncedAlarms = mysqlTable("synced_alarms", {
   id: int("id").autoincrement().primaryKey(),
@@ -82,9 +82,9 @@ export const syncedAlarms = mysqlTable("synced_alarms", {
 export type SyncedAlarm = typeof syncedAlarms.$inferSelect;
 export type InsertSyncedAlarm = typeof syncedAlarms.$inferInsert;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Device Heartbeat — periodic "I'm alive" pings from the app
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// Device Heartbeat - periodic "I'm alive" pings from the app
+// -----------------------------------------------------------------------------
 
 export const deviceHeartbeat = mysqlTable("device_heartbeat", {
   id: int("id").autoincrement().primaryKey(),
@@ -96,9 +96,9 @@ export const deviceHeartbeat = mysqlTable("device_heartbeat", {
 export type DeviceHeartbeat = typeof deviceHeartbeat.$inferSelect;
 export type InsertDeviceHeartbeat = typeof deviceHeartbeat.$inferInsert;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Alarm Events — audit log of every alarm occurrence
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// Alarm Events - audit log of every alarm occurrence
+// -----------------------------------------------------------------------------
 
 export const alarmEvents = mysqlTable("alarm_events", {
   id: int("id").autoincrement().primaryKey(),
@@ -117,9 +117,9 @@ export const alarmEvents = mysqlTable("alarm_events", {
 export type AlarmEvent = typeof alarmEvents.$inferSelect;
 export type InsertAlarmEvent = typeof alarmEvents.$inferInsert;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Warning Log — record of every warning message sent to contacts
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// Warning Log - record of every warning message sent to contacts
+// -----------------------------------------------------------------------------
 
 export const warningLog = mysqlTable("warning_log", {
   id: int("id").autoincrement().primaryKey(),

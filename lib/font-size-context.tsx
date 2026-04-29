@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { useAppContext } from '@/lib/app-context';
 
-// ─── Scale Factors ──────────────────────────────────────────────────────────
+// --- Scale Factors ----------------------------------------------------------
 
 const SCALE_FACTORS = {
   small: 0.85,
@@ -11,7 +11,7 @@ const SCALE_FACTORS = {
 
 export type FontSizeKey = 'small' | 'medium' | 'large';
 
-// ─── Scaled Font Sizes ──────────────────────────────────────────────────────
+// --- Scaled Font Sizes ------------------------------------------------------
 // Base sizes (at "medium") for common text roles
 
 const BASE_SIZES = {
@@ -41,7 +41,7 @@ export type ScaledFontSizes = {
   scaled: (size: number) => number;
 };
 
-// ─── Context ────────────────────────────────────────────────────────────────
+// --- Context ----------------------------------------------------------------
 
 const FontSizeContext = createContext<ScaledFontSizes | null>(null);
 

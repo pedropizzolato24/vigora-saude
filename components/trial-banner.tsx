@@ -15,7 +15,7 @@ import { router } from "expo-router";
 import { usePurchases } from "@/hooks/use-purchases";
 import { useColors } from "@/hooks/use-colors";
 
-// ─── TrialBanner ──────────────────────────────────────────────────────────────
+// --- TrialBanner --------------------------------------------------------------
 
 /**
  * Exibido durante o trial gratuito de 7 dias.
@@ -39,22 +39,22 @@ export function TrialBanner() {
       ]}
       onPress={() => router.push("/(modal)/paywall")}
       accessibilityRole="button"
-      accessibilityLabel={`Trial gratuito — ${dayText}. Toque para assinar.`}
+      accessibilityLabel={`Trial gratuito - ${dayText}. Toque para assinar.`}
     >
       <View style={styles.textContainer}>
         <Text style={styles.title}>
-          ⏳ Trial gratuito — {dayText}
+          ⏳ Trial gratuito - {dayText}
         </Text>
         <Text style={styles.subtitle}>
           Toque para assinar e manter o acesso completo
         </Text>
       </View>
-      <Text style={styles.arrow}>→</Text>
+      <Text style={styles.arrow}>{'->'}</Text>
     </Pressable>
   );
 }
 
-// ─── ExpiredBanner ────────────────────────────────────────────────────────────
+// --- ExpiredBanner ------------------------------------------------------------
 
 /**
  * Exibido após o trial de 7 dias expirar, sem assinatura ativa.
@@ -85,12 +85,12 @@ export function ExpiredBanner() {
           Assine o Vigora Pro para continuar usando todos os recursos
         </Text>
       </View>
-      <Text style={[styles.arrow, styles.expiredArrow]}>→</Text>
+      <Text style={[styles.arrow, styles.expiredArrow]}>{'->'}</Text>
     </Pressable>
   );
 }
 
-// ─── Estilos ──────────────────────────────────────────────────────────────────
+// --- Estilos ------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {

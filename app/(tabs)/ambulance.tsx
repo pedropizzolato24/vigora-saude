@@ -47,7 +47,7 @@ export default function AmbulanceScreen() {
     {
       type: 'sus',
       label: 'SAMU (SUS)',
-      description: 'Serviço de Atendimento Móvel de Urgência — gratuito',
+      description: 'Serviço de Atendimento Móvel de Urgência - gratuito',
       phone: '192',
       icon: 'local-hospital',
       color: colors.emergency,
@@ -56,7 +56,7 @@ export default function AmbulanceScreen() {
       type: 'plan',
       label: 'Plano de Saúde',
       description: anamnesis?.healthPlanProvider
-        ? `${anamnesis.healthPlanProvider} — ${anamnesis.healthPlanNumber || 'Número não informado'}`
+        ? `${anamnesis.healthPlanProvider} - ${anamnesis.healthPlanNumber || 'Número não informado'}`
         : 'Cadastre seu plano na ficha de anamnese',
       phone: anamnesis?.healthPlanNumber || '',
       icon: 'medical-services',
@@ -65,7 +65,7 @@ export default function AmbulanceScreen() {
     {
       type: 'private',
       label: 'Bombeiros',
-      description: 'Corpo de Bombeiros — emergências gerais',
+      description: 'Corpo de Bombeiros - emergências gerais',
       phone: '193',
       icon: 'warning',
       color: colors.warning,
@@ -116,7 +116,7 @@ export default function AmbulanceScreen() {
     });
   };
 
-  // ─── ACCESSIBILITY MODE ──────────────────────────────────────────────────
+  // --- ACCESSIBILITY MODE --------------------------------------------------
   if (isAccessibilityMode) {
     const a11yOptions = [
       { label: 'SAMU (SUS)', phone: '192', icon: 'local-hospital' as const, color: ac.emergency, borderColor: '#880000' },
@@ -193,7 +193,7 @@ export default function AmbulanceScreen() {
     );
   }
 
-  // ─── NORMAL MODE ──────────────────────────────────────────────────
+  // --- NORMAL MODE --------------------------------------------------
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
@@ -271,7 +271,7 @@ export default function AmbulanceScreen() {
               <View style={[styles.detailDivider, { backgroundColor: colors.border }]} />
               <View style={styles.detailRow}>
                 <Text style={[styles.detailLabel, { color: colors.muted }]}>Paciente</Text>
-                <Text style={[styles.detailValue, { color: colors.foreground }]}>{anamnesis.fullName || '—'}</Text>
+                <Text style={[styles.detailValue, { color: colors.foreground }]}>{anamnesis.fullName || '-'}</Text>
               </View>
             </>
           )}

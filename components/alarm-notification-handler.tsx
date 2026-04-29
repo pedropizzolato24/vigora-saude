@@ -97,7 +97,7 @@ function getNextAlarmFireMs(alarm: Alarm): number | null {
       candidates.push(nextDateForJsDay(jsDay));
     }
   } else {
-    // One-time or unknown repeat — treat as daily
+    // One-time or unknown repeat - treat as daily
     const d = new Date();
     d.setHours(hours, minutes, 0, 0);
     if (d <= now) d.setDate(d.getDate() + 1);
@@ -125,7 +125,7 @@ function showEscalationAlert(result: EscalationResult) {
       body = `Mensagens enviadas automaticamente para ${result.serverApiSent} contato(s) de emergência via WhatsApp Business.\n\nAs mensagens foram enviadas do número do Vigora Saúde.`;
       break;
     case 'both':
-      body = `Escalação híbrida:\n• ${result.deepLinkSent} contato(s) via seu WhatsApp pessoal\n• ${result.serverApiSent} contato(s) via WhatsApp Business (automático)`;
+      body = `Escalação híbrida:\n* ${result.deepLinkSent} contato(s) via seu WhatsApp pessoal\n* ${result.serverApiSent} contato(s) via WhatsApp Business (automático)`;
       break;
     default:
       body = 'Nenhum contato de emergência foi notificado. Verifique se há contatos com WhatsApp configurados.';
@@ -158,14 +158,14 @@ export function AlarmNotificationHandler() {
   const escalationTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   /**
-   * Shared alarm-fired handler — called when an alarm fires (foreground or background).
+   * Shared alarm-fired handler - called when an alarm fires (foreground or background).
    * Sets up the timer, navigates to alarm-ring, and schedules escalation.
    *
    * Key fix: reads timerDuration directly from AsyncStorage to avoid stale closure
    * issues when state.settings.timerDuration hasn't loaded yet from AsyncStorage.
    */
   const handleAlarmFired = async (alarmId: string) => {
-    // Read alarm from current state — if state is still loading, try to find it anyway
+    // Read alarm from current state - if state is still loading, try to find it anyway
     const alarm = state.alarms.find((a) => a.id === alarmId);
 
     // If alarm not found in state yet (state still loading), try reading from AsyncStorage
@@ -181,26 +181,26 @@ export function AlarmNotificationHandler() {
     }
 
     if (!alarmData || !alarmData.enabled) {
-      console.log(`[AlarmHandler] Alarm ${alarmId} not found or disabled — skipping`);
+      console.log(`[AlarmHandler] Alarm ${alarmId} not found or disabled - skipping`);
       return;
     }
 
     console.log(`[AlarmHandler] Alarm fired: ${alarmId}`);
 
-    // ── Read timerDuration from AsyncStorage (avoids stale closure) ──────────────
+    // -- Read timerDuration from AsyncStorage (avoids stale closure) --------------
     const timerDuration = await readTimerDurationFromStorage();
 
-    // ── Synchronized timer setup ─────────────────────────────────────────────────
+    // -- Synchronized timer setup -------------------------------------------------
     // Check if a timer is already running for this alarm (e.g., app foregrounded
     // after tapping notification). If so, reuse the existing expiresAt.
     let expiresAt: number;
     const existingEntry = await loadAlarmTimer(alarmId);
     if (existingEntry && existingEntry.expiresAt > Date.now()) {
-      // Timer already running — reuse it
+      // Timer already running - reuse it
       expiresAt = existingEntry.expiresAt;
       console.log(`[AlarmHandler] Reusing existing timer for ${alarmId}, expires in ${Math.ceil((expiresAt - Date.now()) / 1000)}s`);
     } else {
-      // Fresh alarm — create a new timer
+      // Fresh alarm - create a new timer
       const startedAt = Date.now();
       expiresAt = startedAt + timerDuration * 1000;
       await saveAlarmTimer({ alarmId, startedAt, expiresAt, timerDuration });
@@ -220,7 +220,7 @@ export function AlarmNotificationHandler() {
     );
 
     // Navigate to alarm-ring screen, passing expiresAt as URL param.
-    // alarm-ring uses expiresAt directly — no AsyncStorage race condition.
+    // alarm-ring uses expiresAt directly - no AsyncStorage race condition.
     if (!navigatedAlarms.current.has(alarmId)) {
       navigatedAlarms.current.add(alarmId);
       router.push(`/alarm-ring?alarmId=${alarmId}&expiresAt=${expiresAt}`);
@@ -230,7 +230,7 @@ export function AlarmNotificationHandler() {
     // Track this alarm as pending response
     pendingAlarms.current.add(alarmId);
 
-    // Escalation timeout — fires after timerDuration seconds
+    // Escalation timeout - fires after timerDuration seconds
     const existingTimer = escalationTimers.current.get(alarmId);
     if (existingTimer) clearTimeout(existingTimer);
 
@@ -282,7 +282,7 @@ export function AlarmNotificationHandler() {
         if (activeUid && typeof activeUid === 'string') {
           const alarmId = extractAlarmIdFromUid(activeUid);
           if (alarmId) {
-            console.log(`[AlarmHandler] App foregrounded with active alarm: ${activeUid} → ${alarmId}`);
+            console.log(`[AlarmHandler] App foregrounded with active alarm: ${activeUid} -> ${alarmId}`);
 
             // Load existing timer to pass expiresAt in URL (avoids AsyncStorage race)
             const existingForNav = await loadAlarmTimer(alarmId).catch(() => null);
@@ -308,15 +308,15 @@ export function AlarmNotificationHandler() {
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription.remove();
-    // Note: intentionally omitting state from deps — we read from AsyncStorage directly
+    // Note: intentionally omitting state from deps - we read from AsyncStorage directly
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle alarm notification received via expo-notifications (iOS/Web only)
-  // On Android, expo-alarm-module fires the alarm natively — no expo-notifications needed.
+  // On Android, expo-alarm-module fires the alarm natively - no expo-notifications needed.
   useEffect(() => {
     if (isNativeAlarmAvailable) {
-      // Android: skip expo-notifications listener — native alarm handles everything
+      // Android: skip expo-notifications listener - native alarm handles everything
       return;
     }
 
@@ -333,7 +333,7 @@ export function AlarmNotificationHandler() {
 
   // Android: smart conditional polling for foreground alarm detection.
   //
-  // Problem: expo-alarm-module does NOT emit a JS event when an alarm fires — it only
+  // Problem: expo-alarm-module does NOT emit a JS event when an alarm fires - it only
   // creates the native notification directly via AlarmService (Java). Without polling,
   // startCountdownNotification() is never called when the app is already open.
   //
@@ -373,7 +373,7 @@ export function AlarmNotificationHandler() {
         .reduce((min, t) => (t < min ? t : min), Infinity);
 
       if (!isFinite(nextFireMs)) {
-        console.log('[AlarmHandler] No upcoming alarms — foreground poll disabled');
+        console.log('[AlarmHandler] No upcoming alarms - foreground poll disabled');
         return;
       }
 
@@ -381,7 +381,7 @@ export function AlarmNotificationHandler() {
       const msUntilPollStart = Math.max(0, nextFireMs - now - PRE_ALARM_WINDOW_MS);
       const nextFireIn = Math.round((nextFireMs - now) / 1000);
 
-      console.log(`[AlarmHandler] Next alarm in ${nextFireIn}s — poll window opens in ${Math.round(msUntilPollStart / 1000)}s`);
+      console.log(`[AlarmHandler] Next alarm in ${nextFireIn}s - poll window opens in ${Math.round(msUntilPollStart / 1000)}s`);
 
       scheduleTimer = setTimeout(() => {
         scheduleTimer = null;
@@ -397,7 +397,7 @@ export function AlarmNotificationHandler() {
                 lastActedUid.current = activeUid;
                 const alarmId = extractAlarmIdFromUid(activeUid);
                 if (alarmId && !pendingAlarms.current.has(alarmId)) {
-                  console.log(`[AlarmHandler] Foreground poll detected active alarm: ${activeUid} → ${alarmId}`);
+                  console.log(`[AlarmHandler] Foreground poll detected active alarm: ${activeUid} -> ${alarmId}`);
                   stopPolling();
                   handleAlarmFired(alarmId);
                   // Re-schedule for the next alarm after a short delay
@@ -408,7 +408,7 @@ export function AlarmNotificationHandler() {
               lastActedUid.current = null;
             }
           } catch {
-            // Silent — module may not be linked in dev/Expo Go
+            // Silent - module may not be linked in dev/Expo Go
           }
         };
 

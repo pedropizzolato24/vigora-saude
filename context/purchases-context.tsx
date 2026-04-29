@@ -3,15 +3,15 @@
  * Contexto global de assinatura do RevenueCat para o Vigora Saúde.
  *
  * Fornece:
- * - isPro: boolean — se o usuário tem acesso ao "Vigora Saúde Pro"
- * - customerInfo: CustomerInfo | null — dados completos do cliente
- * - currentOffering: PurchasesOffering | null — planos disponíveis
- * - isLoading: boolean — carregando dados iniciais
- * - isRestoring: boolean — restaurando compras
- * - error: string | null — último erro
- * - refresh(): Promise<void> — recarregar dados do servidor
- * - purchasePackage(pkg): Promise<PurchaseResult> — comprar um plano
- * - restorePurchases(): Promise<PurchaseResult> — restaurar compras
+ * - isPro: boolean - se o usuário tem acesso ao "Vigora Saúde Pro"
+ * - customerInfo: CustomerInfo | null - dados completos do cliente
+ * - currentOffering: PurchasesOffering | null - planos disponíveis
+ * - isLoading: boolean - carregando dados iniciais
+ * - isRestoring: boolean - restaurando compras
+ * - error: string | null - último erro
+ * - refresh(): Promise<void> - recarregar dados do servidor
+ * - purchasePackage(pkg): Promise<PurchaseResult> - comprar um plano
+ * - restorePurchases(): Promise<PurchaseResult> - restaurar compras
  */
 
 import React, {
@@ -37,7 +37,7 @@ import {
   type PurchaseResult,
 } from "@/lib/purchases";
 
-// ─── Tipos do Contexto ────────────────────────────────────────────────────────
+// --- Tipos do Contexto --------------------------------------------------------
 
 export interface PurchasesContextValue {
   /** Usuário tem acesso ativo ao "Vigora Saúde Pro" */
@@ -64,11 +64,11 @@ export interface PurchasesContextValue {
   restorePurchases: () => Promise<PurchaseResult>;
 }
 
-// ─── Criação do Contexto ──────────────────────────────────────────────────────
+// --- Criação do Contexto ------------------------------------------------------
 
 export const PurchasesContext = createContext<PurchasesContextValue | null>(null);
 
-// ─── Provider ─────────────────────────────────────────────────────────────────
+// --- Provider -----------------------------------------------------------------
 
 interface PurchasesProviderProps {
   children: React.ReactNode;
@@ -83,7 +83,7 @@ export function PurchasesProvider({ children }: PurchasesProviderProps) {
 
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
-  // ── Carregar dados iniciais ────────────────────────────────────────────────
+  // -- Carregar dados iniciais ------------------------------------------------
 
   const loadData = useCallback(async () => {
     // SDK só funciona em iOS/Android (não em web)
@@ -111,19 +111,19 @@ export function PurchasesProvider({ children }: PurchasesProviderProps) {
     }
   }, []);
 
-  // ── Inicialização ──────────────────────────────────────────────────────────
+  // -- Inicialização ----------------------------------------------------------
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // ── Listener de CustomerInfo (atualizações em tempo real) ─────────────────
+  // -- Listener de CustomerInfo (atualizações em tempo real) -----------------
 
   useEffect(() => {
     if (Platform.OS === "web") return;
 
     // O SDK emite este evento quando o status de compra muda
-    // Nota: addCustomerInfoUpdateListener retorna void na v10 — usamos
+    // Nota: addCustomerInfoUpdateListener retorna void na v10 - usamos
     // removeCustomerInfoUpdateListener para limpar
     const customerInfoListener = (info: CustomerInfo) => {
       setCustomerInfo(info);
@@ -142,7 +142,7 @@ export function PurchasesProvider({ children }: PurchasesProviderProps) {
     };
   }, []);
 
-  // ── Recarregar ao voltar para o app (foreground) ──────────────────────────
+  // -- Recarregar ao voltar para o app (foreground) --------------------------
 
   useEffect(() => {
     if (Platform.OS === "web") return;
@@ -152,7 +152,7 @@ export function PurchasesProvider({ children }: PurchasesProviderProps) {
         appStateRef.current.match(/inactive|background/) &&
         nextState === "active"
       ) {
-        // App voltou ao foreground — verificar status atualizado
+        // App voltou ao foreground - verificar status atualizado
         getCustomerInfo().then((info) => {
           if (info) setCustomerInfo(info);
         });
@@ -163,7 +163,7 @@ export function PurchasesProvider({ children }: PurchasesProviderProps) {
     return () => subscription.remove();
   }, []);
 
-  // ── Refresh manual ────────────────────────────────────────────────────────
+  // -- Refresh manual --------------------------------------------------------
 
   const refresh = useCallback(async () => {
     if (Platform.OS === "web") return;
@@ -171,7 +171,7 @@ export function PurchasesProvider({ children }: PurchasesProviderProps) {
     await loadData();
   }, [loadData]);
 
-  // ── Compra ────────────────────────────────────────────────────────────────
+  // -- Compra ----------------------------------------------------------------
 
   const purchasePackage = useCallback(async (pkg: PurchasesPackage): Promise<PurchaseResult> => {
     const result = await doPurchasePackage(pkg);
@@ -181,7 +181,7 @@ export function PurchasesProvider({ children }: PurchasesProviderProps) {
     return result;
   }, []);
 
-  // ── Restauração ───────────────────────────────────────────────────────────
+  // -- Restauração -----------------------------------------------------------
 
   const restorePurchases = useCallback(async (): Promise<PurchaseResult> => {
     setIsRestoring(true);
@@ -196,7 +196,7 @@ export function PurchasesProvider({ children }: PurchasesProviderProps) {
     }
   }, []);
 
-  // ── Trial de 7 dias ─────────────────────────────────────────────────────
+  // -- Trial de 7 dias -----------------------------------------------------
 
   const isPro = hasProAccess(customerInfo);
 
@@ -210,7 +210,7 @@ export function PurchasesProvider({ children }: PurchasesProviderProps) {
   const isTrialActive = !isPro && daysSinceInstall < 7;
   const trialDaysLeft = isTrialActive ? 7 - daysSinceInstall : 0;
 
-  // ── Valor do Contexto ─────────────────────────────────────────────────────
+  // -- Valor do Contexto -----------------------------------------------------
 
   const value: PurchasesContextValue = {
     isPro,

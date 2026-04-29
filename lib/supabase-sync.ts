@@ -4,14 +4,14 @@
  * Serviço de sincronização com o Supabase para o dead man's switch.
  * Sincroniza usuário, alarmes, contatos de emergência e eventos de alarme.
  *
- * Todas as funções são tolerantes a falhas — erros de rede não quebram o app.
+ * Todas as funções são tolerantes a falhas - erros de rede não quebram o app.
  */
 
 import { supabase, isSupabaseConfigured } from './supabase';
 import { getOrCreateDeviceId } from './device-id';
 import type { Alarm, EmergencyContact } from './app-context';
 
-// ─── Usuário ──────────────────────────────────────────────────────────────────
+// --- Usuário ------------------------------------------------------------------
 
 /**
  * Registra ou atualiza o usuário no Supabase.
@@ -42,7 +42,7 @@ export async function syncUser(name?: string): Promise<string | null> {
   }
 }
 
-// ─── Alarmes ──────────────────────────────────────────────────────────────────
+// --- Alarmes ------------------------------------------------------------------
 
 /**
  * Sincroniza lista completa de alarmes do usuário com o Supabase.
@@ -87,7 +87,7 @@ export async function syncAlarms(
   }
 }
 
-// ─── Eventos de alarme ────────────────────────────────────────────────────────
+// --- Eventos de alarme --------------------------------------------------------
 
 /**
  * Cria um evento de alarme quando ele dispara.
@@ -150,7 +150,7 @@ export async function respondToAlarmEvent(
   }
 }
 
-// ─── Contatos de emergência ───────────────────────────────────────────────────
+// --- Contatos de emergência ---------------------------------------------------
 
 /**
  * Sincroniza contatos de emergência com o Supabase.
@@ -179,7 +179,7 @@ export async function syncEmergencyContacts(
   }
 }
 
-// ─── Heartbeat ────────────────────────────────────────────────────────────────
+// --- Heartbeat ----------------------------------------------------------------
 
 /**
  * Envia heartbeat para o servidor saber que o app está ativo.
@@ -193,6 +193,6 @@ export async function sendHeartbeat(userId: string): Promise<void> {
       .update({ last_seen_at: new Date().toISOString() })
       .eq('id', userId);
   } catch {
-    // Falha silenciosa — não é crítico para o funcionamento do app
+    // Falha silenciosa - não é crítico para o funcionamento do app
   }
 }

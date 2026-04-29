@@ -540,26 +540,26 @@
 - [x] 35 testes automatizados passando
 
 ## Parte 1 — Bugfix: Notificações Duplicadas e em Branco
-- [ ] Remover agendamento de expo-notifications do alarm-sync.ts (manter apenas AlarmManager nativo)
-- [ ] Adicionar texto estático descritivo no native-alarm-manager.ts
-- [ ] Corrigir alarm-countdown-notifier.ts para não exibir countdown em foreground (AppState.active)
+- [x] Remover agendamento de expo-notifications do alarm-sync.ts (manter apenas AlarmManager nativo)
+- [x] Adicionar texto estático descritivo no native-alarm-manager.ts
+- [x] Corrigir alarm-countdown-notifier.ts para não exibir countdown em foreground (AppState.active)
 
 ## Parte 2 — Migração para Supabase (Dead Man's Switch)
-- [ ] Instalar @supabase/supabase-js
-- [ ] Criar lib/supabase.ts com client e tipos
-- [ ] Criar lib/supabase-sync.ts com syncUser, syncAlarms, syncContacts, sendHeartbeat, createAlarmEvent, respondToAlarmEvent
-- [ ] Criar supabase/schema.sql com tabelas, RLS, índices e pg_cron
-- [ ] Criar supabase/functions/check-missed-alarms/index.ts (Edge Function)
-- [ ] Integrar supabase-sync no lib/app-context.tsx
-- [ ] Criar .env.example
-- [ ] Solicitar EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY via secrets
+- [x] Instalar @supabase/supabase-js
+- [x] Criar lib/supabase.ts com client e tipos
+- [x] Criar lib/supabase-sync.ts com syncUser, syncAlarms, syncContacts, sendHeartbeat, createAlarmEvent, respondToAlarmEvent
+- [x] Criar supabase/schema.sql com tabelas, RLS, índices e pg_cron
+- [x] Criar supabase/functions/check-missed-alarms/index.ts (Edge Function)
+- [x] Integrar supabase-sync no lib/app-context.tsx
+- [x] Criar .env.example
+- [x] Solicitar EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY via secrets
 
 ## Parte 3 — RevenueCat com Trial de 7 Dias
-- [ ] Atualizar lib/purchases.ts com lógica de trial de 7 dias (firstLaunchDate)
-- [ ] Criar components/trial-banner.tsx com TrialBanner e ExpiredBanner
-- [ ] Integrar TrialBanner/ExpiredBanner no Dashboard (index.tsx)
-- [ ] Atualizar botão "Ver Planos" nas Configurações para mostrar dias restantes do trial
+- [x] Atualizar lib/purchases.ts com lógica de trial de 7 dias (firstLaunchDate)
+- [x] Criar components/trial-banner.tsx com TrialBanner e ExpiredBanner
+- [x] Integrar TrialBanner/ExpiredBanner no Dashboard (index.tsx)
+- [x] Atualizar botão "Ver Planos" nas Configurações para mostrar dias restantes do trial
 
 ## GitHub Actions & Supabase Setup
 - [x] Criar .github/workflows/test.yml com CI para rodar pnpm test a cada push
-- [ ] Executar supabase/schema.sql no painel Supabase (criar tabelas do dead man's switch)
+- [ ] Executar supabase/schema.sql no painel Supabase (criar tabelas do dead man's switch) — PENDENTE: executar manualmente no SQL Editor do Supabase

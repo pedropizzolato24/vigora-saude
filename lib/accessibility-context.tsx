@@ -5,18 +5,18 @@
  * the entire app into a high-contrast, large-font, simplified-layout experience
  * designed for elderly users and those with visual impairments.
  *
- * The flag is persisted via AppContext → AsyncStorage so it survives app restarts.
+ * The flag is persisted via AppContext -> AsyncStorage so it survives app restarts.
  */
 import React, { createContext, useContext, useMemo } from 'react';
 import { useAppContext } from '@/lib/app-context';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// --- Types -------------------------------------------------------------------
 
 export interface AccessibilityValues {
   /** Whether accessibility mode is currently active */
   isAccessibilityMode: boolean;
 
-  // ── Typography ──────────────────────────────────────────────────────────
+  // -- Typography ----------------------------------------------------------
   /** Extra-large font sizes for accessibility mode */
   a11yFontSize: {
     xs: number;
@@ -32,7 +32,7 @@ export interface AccessibilityValues {
     scaled: (size: number) => number;
   };
 
-  // ── Colors (high-contrast palette) ──────────────────────────────────────
+  // -- Colors (high-contrast palette) --------------------------------------
   a11yColors: {
     background: string;
     surface: string;
@@ -50,7 +50,7 @@ export interface AccessibilityValues {
     cardBorder: string;
   };
 
-  // ── Spacing ──────────────────────────────────────────────────────────────
+  // -- Spacing --------------------------------------------------------------
   a11ySpacing: {
     /** Minimum touch target height */
     touchTarget: number;
@@ -63,8 +63,8 @@ export interface AccessibilityValues {
   };
 }
 
-// ─── High-Contrast Palette ───────────────────────────────────────────────────
-// Pure black/white with strong accent colors — maximum readability
+// --- High-Contrast Palette ---------------------------------------------------
+// Pure black/white with strong accent colors - maximum readability
 
 const A11Y_COLORS: AccessibilityValues['a11yColors'] = {
   background: '#FFFFFF',
@@ -83,7 +83,7 @@ const A11Y_COLORS: AccessibilityValues['a11yColors'] = {
   cardBorder: '#000000',
 };
 
-// ─── Accessibility Font Sizes ────────────────────────────────────────────────
+// --- Accessibility Font Sizes ------------------------------------------------
 // All sizes are 1.5× the "large" preset (1.2 × 1.5 = 1.8× base)
 
 const A11Y_FONT_SIZES: AccessibilityValues['a11yFontSize'] = {
@@ -100,7 +100,7 @@ const A11Y_FONT_SIZES: AccessibilityValues['a11yFontSize'] = {
   scaled: (size: number) => Math.round(size * 1.8),
 };
 
-// ─── Accessibility Spacing ───────────────────────────────────────────────────
+// --- Accessibility Spacing ---------------------------------------------------
 
 const A11Y_SPACING: AccessibilityValues['a11ySpacing'] = {
   touchTarget: 72,
@@ -109,7 +109,7 @@ const A11Y_SPACING: AccessibilityValues['a11ySpacing'] = {
   cardRadius: 20,
 };
 
-// ─── Context ─────────────────────────────────────────────────────────────────
+// --- Context -----------------------------------------------------------------
 
 const AccessibilityContext = createContext<AccessibilityValues | null>(null);
 

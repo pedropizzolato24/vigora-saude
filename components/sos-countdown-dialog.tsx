@@ -1,7 +1,7 @@
 /**
- * SOSCountdownDialog — Diálogo de contagem regressiva para ativação do SOS
+ * SOSCountdownDialog - Diálogo de contagem regressiva para ativação do SOS
  *
- * Exibe um contador visual de 3→2→1→0 com animação circular (arco SVG).
+ * Exibe um contador visual de 3->2->1->0 com animação circular (arco SVG).
  * O usuário pode cancelar a qualquer momento. Se o contador chegar a 0,
  * a ação de SOS é executada automaticamente.
  *
@@ -35,7 +35,7 @@ import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/use-colors';
 import { useAccessibility } from '@/lib/accessibility-context';
 
-// ─── Constantes ───────────────────────────────────────────────────────────────
+// --- Constantes ---------------------------------------------------------------
 
 const COUNTDOWN_SECONDS = 3;
 const CIRCLE_SIZE = 120;
@@ -43,7 +43,7 @@ const STROKE_WIDTH = 8;
 const RADIUS = (CIRCLE_SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-// ─── Componente de Arco SVG Animado ──────────────────────────────────────────
+// --- Componente de Arco SVG Animado ------------------------------------------
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -86,7 +86,7 @@ function CountdownArc({
   );
 }
 
-// ─── Props ────────────────────────────────────────────────────────────────────
+// --- Props --------------------------------------------------------------------
 
 export interface SOSCountdownDialogProps {
   visible: boolean;
@@ -94,7 +94,7 @@ export interface SOSCountdownDialogProps {
   onCancel: () => void;
 }
 
-// ─── Componente Principal ─────────────────────────────────────────────────────
+// --- Componente Principal -----------------------------------------------------
 
 export function SOSCountdownDialog({
   visible,
@@ -159,7 +159,7 @@ export function SOSCountdownDialog({
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       }
 
-      // Animação do arco: de 1 → 0 em COUNTDOWN_SECONDS segundos
+      // Animação do arco: de 1 -> 0 em COUNTDOWN_SECONDS segundos
       progressAnimRef.current = Animated.timing(progressAnim, {
         toValue: 0,
         duration: COUNTDOWN_SECONDS * 1000,
@@ -226,7 +226,7 @@ export function SOSCountdownDialog({
 
   const SOS_RED = '#DC2626';
 
-  // ── Modo Acessível ──────────────────────────────────────────────────────────
+  // -- Modo Acessível ----------------------------------------------------------
   if (isAccessibilityMode) {
     return (
       <Modal
@@ -284,7 +284,7 @@ export function SOSCountdownDialog({
     );
   }
 
-  // ── Modo Normal ─────────────────────────────────────────────────────────────
+  // -- Modo Normal -------------------------------------------------------------
   return (
     <Modal
       visible={visible}
@@ -359,7 +359,7 @@ export function SOSCountdownDialog({
   );
 }
 
-// ─── Estilos ──────────────────────────────────────────────────────────────────
+// --- Estilos ------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   overlay: {
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
 
-  // ── Modo Normal ──
+  // -- Modo Normal --
   dialog: {
     width: '100%',
     maxWidth: 340,
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  // ── Modo Acessível ──
+  // -- Modo Acessível --
   dialogA11y: {
     width: '100%',
     maxWidth: 380,
