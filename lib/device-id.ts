@@ -26,6 +26,13 @@ let cachedDeviceId: string | null = null;
  * Get or create a stable device ID.
  * Uses SecureStore on native, AsyncStorage on web.
  */
+/**
+ * Alias for getDeviceId() — used by supabase-sync.ts per Passo 2.3.
+ */
+export async function getOrCreateDeviceId(): Promise<string> {
+  return getDeviceId();
+}
+
 export async function getDeviceId(): Promise<string> {
   if (cachedDeviceId) return cachedDeviceId;
 

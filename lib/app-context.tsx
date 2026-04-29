@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useContext, useEffect, useReducer } from 'react';
+import React, { createContext, useContext, useEffect, useReducer, useState } from 'react';
 import { updateAllWidgets } from './update-widgets';
+import { syncUser, syncAlarms, syncEmergencyContacts, sendHeartbeat } from './supabase-sync';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -261,6 +262,7 @@ const STORAGE_KEY = 'vigora_app_state';
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
+  const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null);
 
   // Load persisted state on mount
   useEffect(() => {
@@ -278,6 +280,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     })();
   }, []);
+
+  // Registrar usuário no Supabase após carregamento inicial
+  useEffect(() => {
+    if (state.isLoading) return;
+    syncUser(state.profile?.name).then((id) => {
+      if (id) setSupabaseUserId(id);
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.isLoading]);
+
+  // Sincronizar alarmes com Supabase quando mudarem
+  useEffect(() => {
+    if (state.isLoading || !supabaseUserId) return;
+    syncAlarms(supabaseUserId, state.alarms).catch(() => {});
+  }, [state.alarms, supabaseUserId, state.isLoading]);
+
+  // Sincronizar contatos de emergência com Supabase quando mudarem
+  useEffect(() => {
+    if (state.isLoading || !supabaseUserId) return;
+    syncEmergencyContacts(supabaseUserId, state.emergencyContacts).catch(() => {});
+  }, [state.emergencyContacts, supabaseUserId, state.isLoading]);
+
+  // Heartbeat a cada 5 minutos para o dead man's switch
+  useEffect(() => {
+    if (!supabaseUserId) return;
+    const interval = setInterval(() => {
+      sendHeartbeat(supabaseUserId).catch(() => {});
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [supabaseUserId]);
 
   // Persist state on every change (except isLoading)
   useEffect(() => {

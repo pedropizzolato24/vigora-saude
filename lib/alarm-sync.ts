@@ -29,30 +29,20 @@ import {
  *
  * Strategy:
  * - Android: use expo-alarm-module ONLY. It creates its own notification with
- *   Dismiss/Snooze buttons and opens the app on tap. Adding expo-notifications
- *   on top creates a duplicate notification.
+ *   static title/body (set in native-alarm-manager.ts). Adding expo-notifications
+ *   on top creates a DUPLICATE notification — removed per Passo 1.1.
  * - iOS/Web: use expo-notifications only (no native alarm module available).
  */
 export async function scheduleFullAlarm(alarm: Alarm): Promise<Alarm> {
   const updated = { ...alarm };
 
-  // 1. Schedule native alarm (Android AlarmManager)
+  // 1. Schedule native alarm (Android AlarmManager) — NO expo-notifications on Android
   if (isNativeAlarmAvailable) {
     const uids = await scheduleNativeAlarm(alarm);
     updated.nativeAlarmUids = uids;
-    // Also schedule expo-notifications as a backup on Android.
-    // The native alarm creates its own notification via AlarmService, but if
-    // Storage.getAlarm() fails (serialization issue), the native notification
-    // appears blank. The expo-notification serves as a safety net with proper
-    // title/body. The countdown module will overwrite it once the app opens.
-    try {
-      const notificationId = await scheduleAlarmNotification(alarm);
-      if (notificationId) {
-        updated.notificationId = notificationId;
-      }
-    } catch (e) {
-      console.warn('[AlarmSync] Backup notification scheduling failed:', e);
-    }
+    // Do NOT schedule expo-notifications here — it creates a duplicate notification.
+    // The native alarm module creates its own notification with the static text
+    // defined in native-alarm-manager.ts.
     return updated;
   }
 
@@ -103,14 +93,10 @@ export async function syncAlarmsOnStartup(alarms: Alarm[]): Promise<void> {
         continue;
       }
 
-      // On Android with native alarm available, also schedule backup expo-notification
+      // On Android with native alarm available, skip expo-notifications (would duplicate).
+      // The native AlarmManager handles its own notification with static text.
       if (isNativeAlarmAvailable) {
-        try {
-          const notificationId = await scheduleAlarmNotification(alarm);
-          console.log(`[Alarm Sync] Android: backup notification scheduled for: ${alarm.id} (${notificationId})`);
-        } catch (e) {
-          console.warn(`[Alarm Sync] Backup notification failed for ${alarm.id}:`, e);
-        }
+        console.log(`[Alarm Sync] Android: native alarm present for ${alarm.id}, skipping expo-notification`);
         continue;
       }
 

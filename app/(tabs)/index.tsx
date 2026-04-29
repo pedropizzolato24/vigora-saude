@@ -27,6 +27,7 @@ import { AdBanner } from '@/components/ad-banner';
 import { FadeInView, ScaleInView, PulseView, StaggeredItem } from '@/components/animated-components';
 import { MonitoringStatusBadge } from '@/components/monitoring-status-badge';
 import { usePurchases } from '@/hooks/use-purchases';
+import { TrialBanner, ExpiredBanner } from '@/components/trial-banner';
 
 export default function DashboardScreen() {
   const colors = useColors();
@@ -107,6 +108,10 @@ export default function DashboardScreen() {
             </View>
             <MonitoringStatusBadge accessible={true} />
           </View>
+
+          {/* Trial / Expired Banners */}
+          <TrialBanner />
+          <ExpiredBanner />
 
           {/* SOS Button — very large */}
           <PulseView active={!sosPressing} minScale={0.98} maxScale={1.02} duration={1500}>
@@ -342,6 +347,10 @@ export default function DashboardScreen() {
           </View>
         </View>
         </FadeInView>
+
+        {/* Trial / Expired Banners */}
+        <TrialBanner />
+        <ExpiredBanner />
 
         {/* SOS Button */}
         <ScaleInView delay={100}>

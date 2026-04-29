@@ -52,6 +52,10 @@ export interface PurchasesContextValue {
   isRestoring: boolean;
   /** Último erro ocorrido */
   error: string | null;
+  /** Trial gratuito de 7 dias ativo */
+  isTrialActive: boolean;
+  /** Dias restantes do trial (0 se expirado ou já assinante) */
+  trialDaysLeft: number;
   /** Recarregar dados do servidor RevenueCat */
   refresh: () => Promise<void>;
   /** Comprar um pacote */
@@ -192,15 +196,31 @@ export function PurchasesProvider({ children }: PurchasesProviderProps) {
     }
   }, []);
 
+  // ── Trial de 7 dias ─────────────────────────────────────────────────────
+
+  const isPro = hasProAccess(customerInfo);
+
+  // Calcula trial: considera os 7 primeiros dias após o primeiro acesso
+  const firstSeenDate = customerInfo?.firstSeen
+    ? new Date(customerInfo.firstSeen)
+    : null;
+  const daysSinceInstall = firstSeenDate
+    ? Math.floor((Date.now() - firstSeenDate.getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
+  const isTrialActive = !isPro && daysSinceInstall < 7;
+  const trialDaysLeft = isTrialActive ? 7 - daysSinceInstall : 0;
+
   // ── Valor do Contexto ─────────────────────────────────────────────────────
 
   const value: PurchasesContextValue = {
-    isPro: hasProAccess(customerInfo),
+    isPro,
     customerInfo,
     currentOffering,
     isLoading,
     isRestoring,
     error,
+    isTrialActive,
+    trialDaysLeft,
     refresh,
     purchasePackage,
     restorePurchases,

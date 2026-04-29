@@ -84,7 +84,13 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
   const uids: string[] = [];
 
   try {
-    const title = alarm.description || 'Alarme';
+    // Passo 1.2: usar texto estático descritivo na notificação nativa.
+    // NÃO usar countdown dinâmico aqui — é impossível sem Foreground Service.
+    // O countdown é exibido apenas quando o app está em foreground (alarm-ring screen).
+    const title = '⏰ Vigora Saúde — Alarme de Medicamento';
+    const body = alarm.description
+      ? `${alarm.description} — Toque para confirmar que tomou o medicamento`
+      : 'Toque aqui para confirmar que tomou o medicamento';
     const baseUid = `vigora_${alarm.id}`;
 
     if (alarm.repeat === 'daily') {
@@ -93,7 +99,7 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         uid: baseUid,
         day,
         title,
-        description: alarm.description || '',
+        description: body,
         active: true,
         repeating: true,
         showDismiss: true,
@@ -109,19 +115,19 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
       for (let wd = 0; wd <= 4; wd++) {
         const uid = `${baseUid}_wd${wd}`;
         const day = getNextWeekdayDate(wd, alarm.time);
-        await scheduleAlarmNative({
-          uid,
-          day,
-          title,
-          description: alarm.description || '',
-          active: true,
-          repeating: true,
-          showDismiss: true,
-          showSnooze: false,
-          snoozeInterval: 0,
-          dismissText: 'Dispensar',
-          snoozeText: '',
-        });
+      await scheduleAlarmNative({
+        uid,
+        day,
+        title,
+        description: body,
+        active: true,
+        repeating: true,
+        showDismiss: true,
+        showSnooze: false,
+        snoozeInterval: 0,
+        dismissText: 'Dispensar',
+        snoozeText: '',
+      });
         uids.push(uid);
       }
 
@@ -134,7 +140,7 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
           uid,
           day,
           title,
-          description: alarm.description || '',
+          description: body,
           active: true,
           repeating: true,
           showDismiss: true,
@@ -154,7 +160,7 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
           uid,
           day,
           title,
-          description: alarm.description || '',
+          description: body,
           active: true,
           repeating: true,
           showDismiss: true,
@@ -173,7 +179,7 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         uid: baseUid,
         day,
         title,
-        description: alarm.description || '',
+        description: body,
         active: true,
         repeating: false,
         showDismiss: true,
