@@ -10,12 +10,16 @@ O Vigora Saúde foi desenvolvido com **Expo SDK 54** (React Native 0.81) e ofere
 
 ### Números-Chave
 
-- **Plataformas:** iOS 14+ e Android 7.0+ (via Expo managed workflow)
-- **Stack:** React Native + Expo Router + NativeWind (Tailwind CSS) + TypeScript
-- **Backend:** Node.js + Express + tRPC + PostgreSQL + Drizzle ORM
-- **Monetização:** RevenueCat SDK com modelo de assinatura (Lifetime, Anual, Mensal)
-- **Testes:** 35+ testes automatizados com Vitest
-- **Cobertura de Recursos:** 8 telas principais + 5 modais especializadas
+| Atributo | Valor |
+|---|---|
+| Plataformas | iOS 14+ e Android 7.0+ (Expo managed workflow) |
+| Stack Frontend | React Native 0.81 + Expo Router 6 + NativeWind 4 + TypeScript 5.9 |
+| Backend Principal | Node.js + Express + tRPC + PostgreSQL + Drizzle ORM |
+| Backend Dead Man's Switch | Supabase (PostgreSQL + Edge Functions + pg_cron) |
+| Monetização | RevenueCat SDK v10 — Lifetime, Anual, Mensal + trial de 7 dias |
+| Testes Automatizados | 38 testes com Vitest |
+| Telas | 8 principais + 5 modais especializadas |
+| Repositório | [github.com/pedropizzolato24/vigora-saude](https://github.com/pedropizzolato24/vigora-saude) |
 
 ---
 
@@ -25,372 +29,255 @@ O Vigora Saúde foi desenvolvido com **Expo SDK 54** (React Native 0.81) e ofere
 
 A tela inicial apresenta um resumo visual da saúde do usuário com:
 
-- **Botão SOS:** Acionamento rápido com animação de pulso contínuo; abre modal de confirmação para evitar acionamentos acidentais
-- **Botão de Ambulância:** Pré-configurado com número SUS e dados do plano de saúde; integrado com WhatsApp para notificação de contatos de emergência
-- **Cards de Status:** Exibem próximos alarmes, últimas métricas de saúde, contatos de emergência configurados e status do monitoramento
-- **Ações Rápidas:** Botões para acessar Alarmes, Métricas, Contatos e Configurações com ícones e indicadores visuais
+- **Botão SOS:** Acionamento rápido com animação de pulso contínuo; abre modal de confirmação para evitar acionamentos acidentais.
+- **Botão de Ambulância:** Pré-configurado com número SUS e dados do plano de saúde; integrado com WhatsApp para notificação de contatos de emergência.
+- **Cards de Status:** Exibem próximos alarmes, últimas métricas de saúde, contatos de emergência configurados e status do monitoramento.
+- **Ações Rápidas:** Botões para acessar Alarmes, Métricas, Contatos e Configurações com ícones e indicadores visuais.
+- **TrialBanner:** Exibido durante o período de trial de 7 dias (azul, com contagem regressiva de dias restantes).
+- **ExpiredBanner:** Exibido após expiração do trial (vermelho, com chamada de urgência para assinar).
 
 ### 2. Alarmes (Medicações)
 
 Sistema completo de agendamento de medicações com notificações em tempo real:
 
-- **CRUD de Alarmes:** Criar, editar, visualizar e deletar alarmes com confirmação de exclusão
-- **Agendamento Flexível:** Suporte para repetição diária, dias úteis, fins de semana, dias personalizados (seg-dom) e uma única vez
-- **Notificações Nativas:** Integração com `expo-notifications` para disparar alarmes mesmo com app em background; som customizado (alarm-notification.wav) que sobrescreve modo silencioso (Android MAX importance)
-- **Full-Screen Alarm:** Quando disparado, o alarme exibe tela cheia com ícone pulsante, nome/descrição da medicação, contador regressivo (2 minutos) e botão de confirmação
-- **Escalação Automática:** Se não confirmado em 2-3 minutos, envia WhatsApp automático para todos os contatos de emergência com localização GPS
-- **Sincronização:** Auto-sincroniza alarmes ao iniciar o app para recuperar notificações perdidas
-- **Limite Gratuito:** 5 alarmes no plano gratuito; ilimitados no Vigora Pro
+- **CRUD de Alarmes:** Criar, editar, visualizar e deletar alarmes com confirmação de exclusão.
+- **Agendamento Flexível:** Suporte para repetição diária, dias úteis, fins de semana, dias personalizados (seg-dom) e uma única vez.
+- **Notificações Nativas (Bugfix):** No Android, os alarmes são disparados exclusivamente pelo AlarmManager nativo (sem duplicação via expo-notifications). No iOS e Web, o agendamento usa expo-notifications normalmente. Textos das notificações exibem o nome real do alarme.
+- **Full-Screen Alarm:** Quando disparado, o alarme exibe tela cheia com ícone pulsante, nome/descrição da medicação, contador regressivo (2 minutos) e botão de confirmação.
+- **Escalação Automática:** Se não confirmado em 2-3 minutos, envia WhatsApp automático para todos os contatos de emergência com localização GPS.
+- **Sincronização Supabase:** Alarmes são sincronizados com o backend Supabase para o dead man's switch.
+- **Limite Gratuito:** 5 alarmes no plano gratuito; ilimitados no Vigora Pro.
 
 ### 3. Saúde (Métricas)
 
 Rastreamento de métricas de saúde com histórico e visualização:
 
-- **Tipos de Métricas:** Pressão arterial (sistólica/diastólica), frequência cardíaca, glicemia, peso, temperatura, oxigenação (SpO2)
-- **Entrada de Dados:** Formulário simples com campos numéricos, unidades automáticas e data/hora
-- **Histórico:** Visualização em lista com últimas 30 entradas no plano gratuito; histórico completo no Pro
-- **Confirmação Visual:** Animação de check verde ao salvar nova métrica
-- **Armazenamento Local:** Todos os dados persistem no AsyncStorage do dispositivo (sem sincronização com servidor no plano gratuito)
+- **Tipos de Métricas:** Pressão arterial (sistólica/diastólica), frequência cardíaca, glicemia, peso, temperatura, oxigenação (SpO2).
+- **Entrada de Dados:** Formulário simples com campos numéricos, unidades automáticas e data/hora.
+- **Histórico:** Visualização em lista com últimas 30 entradas no plano gratuito; histórico completo no Pro.
+- **Armazenamento Local:** Todos os dados persistem no AsyncStorage do dispositivo.
 
 ### 4. Contatos de Emergência
 
 Gerenciador de contatos com importação da agenda do dispositivo:
 
-- **CRUD de Contatos:** Nome, telefone, relação (mãe, pai, filho, amigo, médico, etc.), email e toggle WhatsApp
-- **Importação da Agenda:** Integração com `expo-contacts` para importar contatos do dispositivo com validação de duplicatas
-- **Formatação Automática:** Números de telefone formatados automaticamente (XX) XXXXX-XXXX
-- **Limite Gratuito:** 3 contatos no plano gratuito; ilimitados no Vigora Pro
-- **Escalação:** Contatos marcados com WhatsApp recebem mensagens automáticas quando alarme não é confirmado
-- **Badge:** Contador visual no tab bar mostrando quantos contatos estão configurados
+- **CRUD de Contatos:** Nome, telefone, relação (mãe, pai, filho, amigo, médico, etc.), email e toggle WhatsApp.
+- **Importação da Agenda:** Integração com `expo-contacts` para importar contatos do dispositivo com validação de duplicatas.
+- **Sincronização Supabase:** Contatos são sincronizados com o backend para uso pelo dead man's switch.
+- **Limite Gratuito:** 3 contatos no plano gratuito; ilimitados no Vigora Pro.
 
 ### 5. Anamnese (Ficha Médica)
 
 Formulário completo de histórico médico para compartilhamento com profissionais:
 
-- **Campos:** Nome completo, data de nascimento, gênero, alergias, medicações em uso, doenças crônicas, número SUS, número do plano de saúde e operadora
-- **Persistência:** Dados salvos no AsyncStorage com confirmação visual
-- **Exportação PDF:** Gera PDF profissional com logo do app, dados formatados e QR code (exclusivo Vigora Pro)
-- **Compartilhamento:** Integração com `expo-sharing` para enviar PDF via WhatsApp, email ou outros apps
-- **Ícone de Lock:** Botão de exportação exibe ícone de estrela para indicar recurso Pro
+- **Campos:** Nome completo, data de nascimento, gênero, alergias, medicações em uso, doenças crônicas, número SUS, número do plano de saúde e operadora.
+- **Exportação PDF:** Gera PDF profissional com logo do app, dados formatados e QR code (exclusivo Vigora Pro).
+- **Compartilhamento:** Integração com `expo-sharing` para enviar PDF via WhatsApp, email ou outros apps.
 
-### 6. Ambulância
-
-Acesso rápido a serviços de emergência com dados pré-configurados:
-
-- **Botão de Chamada:** Abre modal de confirmação antes de chamar ambulância
-- **Dados Pré-Preenchidos:** Número SUS, plano de saúde e operadora (configuráveis nas Configurações)
-- **Integração WhatsApp:** Envia mensagem automática para contatos de emergência com localização GPS
-- **Deep Link:** Suporte para deep linking de terceiros (ex: integração com sistemas de dispatch)
-
-### 7. Localização (GPS)
-
-Compartilhamento de localização em tempo real com contatos:
-
-- **Permissões:** Solicita permissão de localização com explicação clara
-- **Mapa Interativo:** Exibe localização atual em mapa usando `expo-location` e `react-native-maps`
-- **Compartilhamento:** Gera link do Google Maps com coordenadas e permite compartilhar via WhatsApp/SMS
-- **Histórico:** Rastreia últimas 10 localizações compartilhadas (com timestamp)
-
-### 8. Configurações
+### 6. Configurações
 
 Painel completo de preferências e personalizações:
 
-- **Tema:** Toggle entre modo claro/escuro (padrão: claro)
-- **Tamanho de Fonte:** Pequeno, médio (padrão), grande — aplicado globalmente a todas as telas
-- **Modo de Acessibilidade:** Ativa modo com fontes maiores, espaçamento aumentado, cores de alto contraste e navegação simplificada
-- **Dados Médicos:** Número SUS, plano de saúde, operadora, contato de emergência principal
-- **Notificações:** Toggle para notificações de alarmes, alertas de saúde e mensagens de emergência
-- **Vibração:** Toggle para feedback háptico em botões e ações
-- **Confirmação de SOS:** Requer confirmação dupla antes de acionamento (segurança)
-- **Auto-Localização:** Inclui GPS automaticamente em mensagens de escalação
-- **Monitoramento Contínuo:** Recebe alertas quando alarmes não são respondidos (exclusivo Pro)
-- **Vigora Pro:** Card com botão "Assinar" (gratuito) ou "Gerenciar Assinatura" (Pro)
-- **Perfil do Usuário:** Foto, nome, tipo sanguíneo, data de nascimento
-- **FAQ/Ajuda:** 8 seções com perguntas frequentes e guias de uso
-- **Sobre e Legal:** Versão do app, política de privacidade, termos de uso, copyright
-
----
-
-## Recursos Avançados
-
-### Escalação Automática de Alarmes
-
-Quando um alarme não é confirmado dentro de 2-3 minutos:
-
-1. Exibe notificação visual no app (se aberto)
-2. Envia WhatsApp automático para todos os contatos com toggle ativado
-3. Inclui mensagem: "Olá! [Nome do usuário] não respondeu ao alarme de [medicação]. Localização: [Google Maps link]"
-4. Registra tentativa de escalação no histórico do app
-
-### Integração WhatsApp Híbrida
-
-O app suporta dois métodos de envio:
-
-- **Deep Link Pessoal:** Abre WhatsApp com mensagem pré-preenchida (instantâneo, sem API key)
-- **WhatsApp Business API:** Envio automático via Meta Cloud API (requer configuração no servidor)
-
-### Sincronização de Alarmes
-
-Ao iniciar o app, o sistema:
-
-1. Verifica todos os alarmes salvos
-2. Compara com notificações agendadas no sistema operacional
-3. Reaplica alarmes perdidos (ex: após reinicialização do dispositivo)
-4. Exibe toast confirmando sincronização
-
-### Animações e Feedback
-
-- **Pulse Animation:** Botão SOS pulsa continuamente (escala 1 → 1.08 → 1)
-- **Press Feedback:** Botões escalam para 0.97 ao pressionar com haptic feedback
-- **Fade-In:** Cards e conteúdo aparecem com fade suave ao montar tela
-- **Bottom Sheet:** Modais de upsell deslizam de baixo com animação de entrada
-
-### Modo de Acessibilidade
-
-Ativado nas Configurações, aplica:
-
-- Tamanho de fonte aumentado em 25% em todas as telas
-- Espaçamento vertical aumentado em cards e seções
-- Cores de alto contraste (preto/branco em vez de tons suaves)
-- Navegação simplificada (menos opções por tela)
-- Descrições mais longas e claras em botões
+- **Tema:** Toggle entre modo claro/escuro (padrão: claro).
+- **Tamanho de Fonte:** Pequeno, médio (padrão), grande — aplicado globalmente.
+- **Modo de Acessibilidade:** Ativa modo com fontes maiores, espaçamento aumentado, cores de alto contraste e navegação simplificada.
+- **Monitoramento Contínuo:** Recebe alertas quando alarmes não são respondidos (exclusivo Pro).
+- **Vigora Pro:** Card com botão "Assinar" (gratuito) ou "Gerenciar Assinatura" (Pro).
 
 ---
 
 ## Modelo de Monetização (RevenueCat)
 
-O Vigora Saúde oferece um modelo freemium com assinatura:
+O Vigora Saúde oferece um modelo freemium com assinatura gerenciada pelo RevenueCat SDK v10.
 
-### Plano Gratuito
+### Plano Gratuito vs. Vigora Pro
 
-- 3 contatos de emergência
-- 5 alarmes de medicação
-- 30 dias de histórico de métricas
-- Sem exportação PDF
-- Sem monitoramento contínuo
-
-### Vigora Pro
-
-- Contatos de emergência ilimitados
-- Alarmes ilimitados
-- Histórico de métricas completo
-- Exportação PDF da Anamnese
-- Monitoramento contínuo com alertas automáticos
-- Suporte prioritário
+| Recurso | Gratuito | Vigora Pro |
+|---|---|---|
+| Contatos de emergência | 3 | Ilimitados |
+| Alarmes de medicação | 5 | Ilimitados |
+| Histórico de métricas | 30 dias | Completo |
+| Exportação PDF da Anamnese | Bloqueado | Liberado |
+| Monitoramento contínuo | Bloqueado | Liberado |
+| Suporte | Padrão | Prioritário |
 
 ### Opções de Assinatura
 
 | Plano | Duração | Preço Sugerido |
-|-------|---------|---|
+|---|---|---|
 | Lifetime | Permanente | R$ 99,90 |
 | Yearly | 1 ano | R$ 29,90/ano |
 | Monthly | 1 mês | R$ 4,90/mês |
 
+### Trial de 7 Dias
+
+Novos usuários recebem automaticamente um trial de 7 dias do Vigora Pro. Durante o trial:
+
+- `isTrialActive = true` e `trialDaysLeft` (1-7) são expostos pelo `PurchasesContext`.
+- O **TrialBanner** (azul) é exibido no Dashboard com contagem regressiva.
+- Após expiração, o **ExpiredBanner** (vermelho) é exibido com chamada de urgência.
+
 ### Upsell Contextual
 
-Quando o usuário tenta usar um recurso bloqueado (ex: adicionar 4º contato), um modal de upsell aparece com:
-
-- Ícone do recurso bloqueado
-- Título e descrição do benefício
-- Lista de 4 features desbloqueadas pelo Pro
-- Botão "Assinar Vigora Pro" → abre paywall nativo
-- Botão "Agora não" → fecha modal
+Quando o usuário tenta usar um recurso bloqueado (ex: adicionar 4º contato), o `ProUpsellModal` aparece com animação bottom sheet, ícone do recurso, lista de benefícios Pro e botão direto para o paywall nativo.
 
 ---
 
-## Arquitetura Técnica
+## Arquitetura de Backend
 
-### Frontend (React Native + Expo)
+### Servidor Principal (Node.js + tRPC)
 
-**Stack:**
-- React Native 0.81 com Expo SDK 54
-- Expo Router para navegação file-based
-- NativeWind v4 (Tailwind CSS para React Native)
-- TypeScript 5.9 para type safety
-- React Native Reanimated 4.x para animações
-
-**Estrutura de Pastas:**
-```
-app/
-  _layout.tsx              ← Root layout com providers
-  (tabs)/
-    _layout.tsx            ← Tab bar configuration
-    index.tsx              ← Dashboard
-    alarms.tsx             ← Alarmes
-    health.tsx             ← Saúde
-    contacts.tsx           ← Contatos
-    anamnesis.tsx          ← Anamnese
-    ambulance.tsx          ← Ambulância
-    location.tsx           ← Localização
-    settings.tsx           ← Configurações
-  (modal)/
-    paywall.tsx            ← RevenueCat Paywall
-    customer-center.tsx    ← RevenueCat Customer Center
-components/
-  pro-upsell-modal.tsx     ← Modal de upsell contextual
-  pro-gate.tsx             ← Componentes de gate (Pro, ProBanner, ProLimitBadge)
-  screen-container.tsx     ← SafeArea wrapper
-  alarm-card.tsx           ← Card de alarme reutilizável
-  contact-card.tsx         ← Card de contato reutilizável
-  monitoring-status-panel.tsx ← Painel de status de monitoramento
-lib/
-  app-context.tsx          ← Global state (AsyncStorage + useReducer)
-  purchases.ts             ← RevenueCat SDK initialization
-  alarm-sync.ts            ← Sincronização de alarmes
-  pdf-utils-v2.ts          ← Geração de PDF
-  font-size-context.tsx    ← Context de tamanho de fonte
-  accessibility-context.tsx ← Context de modo acessibilidade
-hooks/
-  use-purchases.ts         ← Hook para acessar estado de assinatura
-  use-colors.ts            ← Hook para cores do tema
-  use-color-scheme.ts      ← Hook para detectar light/dark mode
-```
-
-### Backend (Node.js + tRPC)
-
-**Stack:**
-- Express.js para HTTP server
-- tRPC para type-safe API
-- PostgreSQL com Drizzle ORM
-- Zod para validação de schemas
+Responsável por monitoramento contínuo, envio de alertas WhatsApp/Email/SMS e webhooks do RevenueCat.
 
 **Rotas tRPC:**
-- `monitoring.getStatus` — Status do monitoramento contínuo
-- `whatsapp.sendEmergencyAlert` — Envio de mensagens via WhatsApp Business API
-- `webhooks.revenuecat` — Webhook para eventos de compra/cancelamento
+- `monitoring.getStatus` — Status do monitoramento contínuo por device.
+- `monitoring.registerDevice` — Registra dispositivo e contatos para monitoramento.
+- `whatsapp.sendEmergencyAlert` — Envio de mensagens via WhatsApp Business API.
+- `webhooks.revenuecat` — Webhook para eventos de compra/cancelamento.
 
-### Persistência de Dados
+**Fallback de Alertas (cascata):** WhatsApp Business API → Email (Resend API) → SMS (Twilio).
 
-- **Local (AsyncStorage):** Alarmes, contatos, métricas, preferências, perfil do usuário
-- **Servidor (PostgreSQL):** Histórico de compras, logs de escalação, dados de monitoramento (opcional)
+### Dead Man's Switch (Supabase)
 
----
+Sistema de segurança que detecta quando o usuário não responde a um alarme e aciona contatos de emergência automaticamente.
 
-## Processo de Desenvolvimento
+**Tabelas:**
 
-### Fase 1: Setup Inicial (Sprint 1)
+| Tabela | Descrição |
+|---|---|
+| `users` | Dispositivos registrados com `device_id` e `last_seen_at` |
+| `alarms` | Alarmes sincronizados do app (espelho do AsyncStorage) |
+| `alarm_events` | Eventos de disparo de alarme com `response_type` (dismissed/snoozed/missed) |
+| `emergency_contacts` | Contatos de emergência por usuário |
 
-1. Criação do projeto Expo com template React Native
-2. Configuração de tema (light/dark mode, cores, tipografia)
-3. Instalação de dependências: Expo Router, NativeWind, React Native Reanimated
-4. Criação de providers globais (ThemeProvider, AppContext, NotificationsContext)
+**Edge Function `check-missed-alarms`:** Executada a cada 2 minutos via `pg_cron`. Verifica eventos de alarme sem resposta após 5 minutos e envia alertas WhatsApp para os contatos de emergência via Meta Graph API.
 
-### Fase 2: Telas Principais (Sprint 2-3)
-
-1. Implementação das 8 telas principais com layouts responsivos
-2. Integração de ícones MaterialIcons com mapeamento SF Symbols
-3. Criação de componentes reutilizáveis (ScreenContainer, Cards, Buttons)
-4. Testes manuais em iOS e Android via Expo Go
-
-### Fase 3: Funcionalidades de Saúde (Sprint 4-5)
-
-1. Sistema de alarmes com `expo-notifications`
-2. Sincronização de alarmes ao iniciar app
-3. Full-screen alarm experience com som customizado
-4. Integração com contatos de emergência e WhatsApp
-
-### Fase 4: Monetização (Sprint 6)
-
-1. Instalação e configuração do RevenueCat SDK
-2. Criação de Entitlement, Produtos e Offering no painel RC
-3. Implementação de ProGate, ProBanner, ProLimitBadge
-4. Criação de modal de upsell contextual
-5. Integração de paywall nativo e Customer Center
-
-### Fase 5: Testes e Polimento (Sprint 7)
-
-1. Testes automatizados com Vitest (35+ testes)
-2. Testes manuais em dispositivos reais
-3. Otimização de performance (FlatList, memoization)
-4. Ajustes de UX/UI baseados em feedback
-
-### Fase 6: Build e Publicação (Sprint 8)
-
-1. Configuração de EAS Build para iOS e Android
-2. Geração de APK e IPA
-3. Submissão às lojas (App Store e Google Play)
-4. Configuração de webhooks RevenueCat
+**Configuração necessária:**
+1. Executar `supabase/schema.sql` no painel Supabase (SQL Editor).
+2. Deploy da Edge Function: `supabase functions deploy check-missed-alarms`.
+3. Configurar secrets: `SUPABASE_SERVICE_ROLE_KEY`, `WHATSAPP_API_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`.
 
 ---
 
-## Decisões Arquiteturais
+## Estrutura de Pastas
 
-### Por que Expo Managed Workflow?
+```
+vigora-saude/
+├── app/
+│   ├── _layout.tsx              ← Root layout com PurchasesProvider
+│   ├── (tabs)/
+│   │   ├── index.tsx            ← Dashboard (TrialBanner, ExpiredBanner)
+│   │   ├── alarms.tsx           ← Alarmes (limite 5 gratuito)
+│   │   ├── contacts.tsx         ← Contatos (limite 3 gratuito)
+│   │   ├── anamnesis.tsx        ← Anamnese (PDF bloqueado no gratuito)
+│   │   └── settings.tsx         ← Configurações (MonitoringPanel, card Pro)
+│   └── (modal)/
+│       ├── paywall.tsx          ← RevenueCat Paywall nativo
+│       └── customer-center.tsx  ← RevenueCat Customer Center
+├── components/
+│   ├── pro-gate.tsx             ← ProGate, ProBanner, ProLimitBadge
+│   ├── pro-upsell-modal.tsx     ← Modal de upsell contextual (bottom sheet)
+│   └── trial-banner.tsx         ← TrialBanner (azul) e ExpiredBanner (vermelho)
+├── context/
+│   └── purchases-context.tsx    ← PurchasesProvider (isPro, isTrialActive, trialDaysLeft)
+├── hooks/
+│   └── use-purchases.ts         ← Hook usePurchases()
+├── lib/
+│   ├── app-context.tsx          ← Global state + Supabase sync
+│   ├── purchases.ts             ← RevenueCat SDK (inicialização, entitlement)
+│   ├── supabase.ts              ← Cliente Supabase (lazy init)
+│   ├── device-id.ts             ← Device ID persistente via AsyncStorage
+│   ├── supabase-sync.ts         ← syncUser, syncAlarms, syncContacts, sendHeartbeat
+│   ├── alarm-sync.ts            ← Sincronização de alarmes (Android: nativo; iOS: expo-notifications)
+│   └── native-alarm-manager.ts  ← AlarmManager nativo Android
+├── supabase/
+│   ├── schema.sql               ← Schema SQL (tabelas, RLS, índices, cron)
+│   └── functions/
+│       └── check-missed-alarms/ ← Edge Function dead man's switch
+├── tests/
+│   ├── purchases_isolated.test.ts ← 35 testes RevenueCat
+│   └── supabase-credentials.test.ts ← 3 testes de credenciais Supabase
+├── docs/
+│   ├── ARCHITECTURE.md
+│   ├── BUILD_GUIDE.md
+│   ├── REVENUECAT_SETUP.md
+│   └── DEVELOPMENT_PROCESS.md
+├── eas.json                     ← Profiles EAS: development/simulator/preview/production
+├── vitest.config.ts             ← Vitest com alias @, JSX, __DEV__
+└── README.md                    ← Este arquivo
+```
 
-- **Vantagem:** Zero configuração nativa, updates over-the-air, desenvolvimento rápido
-- **Desvantagem:** Limitado a módulos Expo (sem código nativo customizado)
-- **Decisão:** Escolhido para prototipagem rápida; pode migrar para bare workflow se necessário
+---
 
-### Por que AsyncStorage em vez de Realm/SQLite?
+## Variáveis de Ambiente
 
-- **Vantagem:** Simples, integrado ao Expo, suficiente para dados estruturados
-- **Desvantagem:** Sem queries complexas, performance limitada com grandes datasets
-- **Decisão:** Adequado para app de saúde pessoal; servidor pode sincronizar dados se necessário
+| Variável | Descrição | Obrigatória |
+|---|---|---|
+| `EXPO_PUBLIC_REVENUECAT_API_KEY` | API key de produção do RevenueCat | Sim |
+| `EXPO_PUBLIC_SUPABASE_URL` | URL do projeto Supabase | Sim (dead man's switch) |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Chave anônima do Supabase | Sim (dead man's switch) |
+| `RESEND_API_KEY` | API key do Resend para emails de alerta | Recomendado |
+| `TWILIO_ACCOUNT_SID` | SID da conta Twilio para SMS | Recomendado |
+| `TWILIO_AUTH_TOKEN` | Token de autenticação Twilio | Recomendado |
+| `TWILIO_FROM_NUMBER` | Número Twilio para envio de SMS | Recomendado |
 
-### Por que RevenueCat em vez de implementar pagamentos?
+---
 
-- **Vantagem:** Gerenciamento completo de assinatura, webhooks, analytics, suporte a múltiplas lojas
-- **Desvantagem:** Taxa de 5-10% do revenue
-- **Decisão:** Reduz complexidade e risco de conformidade com App Store/Google Play
+## Testes
 
-### Por que NativeWind em vez de StyleSheet?
+```bash
+# Executar todos os testes
+pnpm test
 
-- **Vantagem:** Reutilização de classes Tailwind, tema centralizado, DRY
-- **Desvantagem:** Compilação adicional, menos familiar para devs React Native
-- **Decisão:** Melhora produtividade e manutenibilidade a longo prazo
+# Executar testes específicos
+pnpm vitest run tests/purchases_isolated.test.ts
+pnpm vitest run tests/supabase-credentials.test.ts
+```
+
+**Cobertura atual:** 38 testes passando — 35 de RevenueCat + 3 de credenciais Supabase.
+
+---
+
+## Build e Publicação
+
+```bash
+# Build de desenvolvimento (com Expo Dev Client)
+pnpm eas:build:dev
+
+# Build de preview (APK para testes)
+pnpm eas:build:preview
+
+# Build de produção
+pnpm eas:build:prod
+```
+
+Consulte `docs/BUILD_GUIDE.md` para o guia completo de publicação nas lojas.
 
 ---
 
 ## Conformidade e Segurança
 
-### Privacidade
+O Vigora Saúde foi desenvolvido com atenção à privacidade dos dados de saúde. Todos os dados pessoais e de saúde são armazenados localmente no dispositivo do usuário (AsyncStorage), sem sincronização automática com servidores externos. A sincronização com o Supabase é limitada a dados operacionais do dead man's switch (alarmes, heartbeat, contatos de emergência) e não inclui métricas de saúde ou dados médicos da anamnese.
 
-- **LGPD (Brasil):** Política de privacidade clara, consentimento explícito para dados de saúde
-- **Dados Locais:** Todos os dados de saúde armazenados localmente no dispositivo (sem sincronização automática)
-- **Permissões:** Solicita permissões de localização, contatos e notificações com explicação clara
-
-### Acessibilidade
-
-- **WCAG 2.1 AA:** Suporte a leitores de tela, contraste de cores, tamanho mínimo de fonte
-- **Modo de Acessibilidade:** Ativável nas Configurações com fonte aumentada e espaçamento
-
-### Conformidade de App Store
-
-- **Privacidade:** Política de privacidade vinculada
-- **Saúde:** Aviso de que o app não substitui consulta médica
-- **Segurança:** Sem armazenamento de senhas, sem tracking de terceiros
-
----
-
-## Métricas de Sucesso
-
-| Métrica | Meta | Status |
-|---------|------|--------|
-| Telas Implementadas | 8 principais + 5 modais | ✅ Completo |
-| Testes Automatizados | 30+ testes | ✅ 35 testes |
-| Cobertura de Funcionalidades | 100% das features planejadas | ✅ Completo |
-| TypeScript Errors | 0 (exceto pré-existentes) | ✅ 0 novos |
-| Performance (LCP) | < 2s | ✅ ~1.5s |
-| Acessibilidade | WCAG 2.1 AA | ✅ Implementado |
+A conformidade com a **LGPD (Lei Geral de Proteção de Dados)** é garantida através de política de privacidade clara, consentimento explícito para uso de localização e contatos, e minimização de dados coletados pelo servidor.
 
 ---
 
 ## Próximos Passos
 
-1. **Publicação nas Lojas:** Submissão do APK/IPA às lojas (App Store e Google Play)
-2. **Testes de Usuário:** Beta testing com grupo de idosos para validar UX
-3. **Integração com Servidor:** Sincronização de dados para backup e histórico completo
-4. **Notificações Push:** Alertas de saúde personalizados baseados em métricas
-5. **Integração com Wearables:** Sincronização com smartwatches e fitness trackers
-6. **Suporte Multilíngue:** Localização para português, inglês, espanhol
+1. **Executar schema SQL no Supabase** — Colar `supabase/schema.sql` no SQL Editor do painel Supabase.
+2. **Deploy da Edge Function** — `supabase functions deploy check-missed-alarms --project-ref SEU_REF`.
+3. **Publicação nas Lojas** — Seguir `docs/BUILD_GUIDE.md` para submissão ao App Store e Google Play.
+4. **Testes Beta** — Distribuir APK de preview para grupo de usuários idosos para validar UX.
+5. **Integração com Wearables** — Sincronização com Apple Watch e Wear OS (roadmap v2.0).
 
 ---
 
 ## Contato e Suporte
 
-- **Desenvolvido por:** Manus AI
+- **Repositório:** [github.com/pedropizzolato24/vigora-saude](https://github.com/pedropizzolato24/vigora-saude)
 - **Versão:** 1.0.0
 - **Última Atualização:** Abril de 2026
 - **Licença:** Proprietária (Vigora Saúde)
 
-Para suporte técnico ou feedback, acesse [vigoraapp.com/suporte](https://vigoraapp.com/suporte).
+> **Aviso:** Este aplicativo não substitui consulta médica profissional. Em caso de emergência, ligue para o SAMU (192) ou Bombeiros (193).

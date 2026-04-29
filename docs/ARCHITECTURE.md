@@ -1,28 +1,31 @@
 # Arquitetura Técnica — Vigora Saúde
 
-Este documento descreve a arquitetura técnica, stack de tecnologias, padrões de design e decisões arquiteturais do Vigora Saúde.
+Este documento descreve a arquitetura técnica, stack de tecnologias, padrões de design e decisões arquiteturais do Vigora Saúde. **Este arquivo deve ser atualizado sempre que houver mudanças significativas na arquitetura, dependências ou padrões do projeto.**
 
 ---
 
 ## Visão Geral da Arquitetura
 
-O Vigora Saúde segue uma arquitetura **mobile-first com backend opcional**, permitindo funcionamento completo offline com sincronização opcional para servidor. A aplicação é dividida em três camadas: **Apresentação (UI)**, **Lógica de Negócio** e **Persistência de Dados**.
+O Vigora Saúde segue uma arquitetura **mobile-first com dois backends complementares**: o servidor principal (Node.js + tRPC) para monitoramento em tempo real e alertas de emergência, e o Supabase para o dead man's switch. A aplicação funciona completamente offline, com sincronização opcional para os backends.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Camada de Apresentação                   │
-│  (React Native Components + Expo Router + NativeWind CSS)   │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────────┐
-│                 Camada de Lógica de Negócio                 │
-│  (Context API + Custom Hooks + Utilities + RevenueCat SDK)  │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────────┐
-│              Camada de Persistência de Dados                 │
-│  (AsyncStorage Local + PostgreSQL Remoto + tRPC API)        │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                      Camada de Apresentação                     │
+│   (React Native + Expo Router + NativeWind + Reanimated)        │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────────────┐
+│                   Camada de Lógica de Negócio                   │
+│   (Context API + Custom Hooks + RevenueCat SDK + Supabase SDK)  │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+          ┌────────────────┴────────────────┐
+          │                                 │
+┌─────────▼──────────┐           ┌──────────▼──────────┐
+│  AsyncStorage Local │           │  Backends Remotos   │
+│  (dados de saúde,  │           │  - Node.js + tRPC   │
+│   alarmes, perfil) │           │  - Supabase (DMS)   │
+└────────────────────┘           └─────────────────────┘
 ```
 
 ---
@@ -43,43 +46,55 @@ O Vigora Saúde segue uma arquitetura **mobile-first com backend opcional**, per
 | React Native Gesture Handler | 2.28.0 | Gestos customizados |
 | React Native Safe Area Context | 5.6.2 | SafeArea handling |
 | TanStack Query | 5.90.12 | Server state management |
-| React Query | 5.90.12 | Data fetching |
 
-### Backend (Node.js + Express)
+### Backend Principal (Node.js + Express)
 
 | Tecnologia | Versão | Propósito |
 |---|---|---|
 | Node.js | 22.13.0 | Runtime |
 | Express | 4.22.1 | HTTP server |
 | tRPC | 11.7.2 | Type-safe API |
-| TypeScript | 5.9.3 | Type safety |
 | Drizzle ORM | 0.44.7 | Database ORM |
 | PostgreSQL | 15+ | Database |
 | Zod | 4.2.1 | Schema validation |
+
+### Dead Man's Switch (Supabase)
+
+| Tecnologia | Propósito |
+|---|---|
+| Supabase (PostgreSQL) | Banco de dados para alarmes, usuários e eventos |
+| Supabase Edge Functions (Deno) | `check-missed-alarms` — verifica alarmes não respondidos |
+| pg_cron | Agendamento da Edge Function a cada 2 minutos |
+| Meta Graph API (WhatsApp) | Envio de alertas para contatos de emergência |
+
+### Monetização
+
+| Pacote | Versão | Propósito |
+|---|---|---|
+| react-native-purchases | 10.0.1 | RevenueCat SDK — compras e assinaturas |
+| react-native-purchases-ui | 10.0.1 | RevenueCat UI — paywall e Customer Center nativos |
 
 ### Dependências Críticas
 
 | Pacote | Versão | Propósito |
 |---|---|---|
-| react-native-purchases | 10.0.1 | RevenueCat SDK |
-| expo-notifications | 0.32.15 | Notificações nativas |
+| expo-notifications | 0.32.15 | Notificações nativas (iOS e Web) |
 | expo-location | 16.x | Geolocalização |
-| expo-contacts | 14.x | Acesso a contatos |
+| expo-contacts | 14.x | Acesso a contatos do dispositivo |
 | expo-file-system | 16.x | Acesso a arquivos |
-| expo-sharing | 13.x | Compartilhamento |
+| expo-sharing | 13.x | Compartilhamento de arquivos |
 | expo-haptics | 15.0.8 | Feedback háptico |
 | @react-native-async-storage/async-storage | 2.2.0 | Persistência local |
-| react-native-svg | 15.12.1 | SVG rendering |
+| @supabase/supabase-js | latest | Cliente Supabase |
 
 ### Ferramentas de Desenvolvimento
 
 | Ferramenta | Versão | Propósito |
 |---|---|---|
 | Vitest | 2.1.9 | Testing framework |
-| EAS CLI | latest | Build e deployment |
+| EAS CLI | 18.8.1 | Build e deployment |
 | Prettier | 3.7.4 | Code formatting |
 | ESLint | 9.39.2 | Linting |
-| Drizzle Kit | 0.31.8 | Database migrations |
 
 ---
 
@@ -87,90 +102,67 @@ O Vigora Saúde segue uma arquitetura **mobile-first com backend opcional**, per
 
 ```
 vigora-saude/
-├── app/                          # Expo Router (file-based routing)
-│   ├── _layout.tsx               # Root layout com providers
-│   ├── (tabs)/                   # Tab-based navigation
-│   │   ├── _layout.tsx           # Tab bar configuration
-│   │   ├── index.tsx             # Dashboard
-│   │   ├── alarms.tsx            # Alarmes
-│   │   ├── health.tsx            # Saúde
-│   │   ├── contacts.tsx          # Contatos
-│   │   ├── anamnesis.tsx         # Anamnese
-│   │   ├── ambulance.tsx         # Ambulância
-│   │   ├── location.tsx          # Localização
-│   │   └── settings.tsx          # Configurações
-│   └── (modal)/                  # Modal routes
-│       ├── paywall.tsx           # RevenueCat Paywall
-│       └── customer-center.tsx   # RevenueCat Customer Center
-├── components/                   # Reutilizáveis
-│   ├── screen-container.tsx      # SafeArea wrapper
-│   ├── pro-gate.tsx              # Pro gate components
-│   ├── pro-upsell-modal.tsx      # Upsell modal
-│   ├── alarm-card.tsx            # Alarm list item
-│   ├── contact-card.tsx          # Contact list item
-│   ├── monitoring-status-panel.tsx
+├── app/                              # Expo Router (file-based routing)
+│   ├── _layout.tsx                   # Root layout com PurchasesProvider
+│   ├── (tabs)/
+│   │   ├── index.tsx                 # Dashboard (TrialBanner, ExpiredBanner)
+│   │   ├── alarms.tsx                # Alarmes (limite 5 gratuito)
+│   │   ├── health.tsx                # Saúde (métricas)
+│   │   ├── contacts.tsx              # Contatos (limite 3 gratuito)
+│   │   ├── anamnesis.tsx             # Anamnese (PDF bloqueado no gratuito)
+│   │   ├── ambulance.tsx             # Ambulância
+│   │   ├── location.tsx              # Localização GPS
+│   │   └── settings.tsx              # Configurações (MonitoringPanel, card Pro)
+│   └── (modal)/
+│       ├── paywall.tsx               # RevenueCat Paywall nativo
+│       └── customer-center.tsx       # RevenueCat Customer Center
+├── components/
+│   ├── screen-container.tsx          # SafeArea wrapper
+│   ├── pro-gate.tsx                  # ProGate, ProBanner, ProLimitBadge, FREE_LIMITS
+│   ├── pro-upsell-modal.tsx          # Modal de upsell contextual (bottom sheet)
+│   ├── trial-banner.tsx              # TrialBanner (azul) e ExpiredBanner (vermelho)
+│   ├── alarm-card.tsx                # Card de alarme reutilizável
+│   ├── contact-card.tsx              # Card de contato reutilizável
+│   ├── monitoring-status-panel.tsx   # Painel de status de monitoramento
 │   └── ui/
-│       ├── icon-symbol.tsx       # Icon mapping
-│       └── ...
-├── hooks/                        # Custom hooks
-│   ├── use-purchases.ts          # RevenueCat state
-│   ├── use-colors.ts             # Theme colors
-│   ├── use-color-scheme.ts       # Light/dark mode
-│   ├── use-pro-feature.ts        # Pro feature gating
-│   ├── use-pro-upsell.ts         # Upsell modal state
-│   └── ...
-├── lib/                          # Utilities & services
-│   ├── app-context.tsx           # Global state
-│   ├── purchases.ts              # RevenueCat SDK
-│   ├── alarm-sync.ts             # Alarm synchronization
-│   ├── pdf-utils-v2.ts           # PDF generation
-│   ├── font-size-context.tsx     # Font size state
-│   ├── accessibility-context.tsx # Accessibility mode
-│   ├── notifications-context.tsx # Notifications state
-│   ├── menu-context.tsx          # Sidebar menu state
-│   ├── theme-provider.tsx        # Theme context
-│   ├── trpc.ts                   # tRPC client
-│   └── utils.ts                  # Helper functions
-├── context/                      # React Context
-│   ├── purchases-context.tsx     # RevenueCat provider
-│   └── ...
-├── constants/                    # Constants
-│   ├── theme.ts                  # Color palette
-│   └── ...
-├── tests/                        # Test files
-│   ├── purchases_isolated.test.ts # 35+ tests
-│   ├── revenuecat-key.test.ts    # API key validation
-│   └── ...
-├── assets/                       # Static assets
-│   ├── images/
-│   │   ├── icon.png              # App icon
-│   │   ├── splash-icon.png       # Splash screen
-│   │   ├── favicon.png           # Web favicon
-│   │   └── android-icon-*.png    # Android adaptive icons
-│   └── sounds/
-│       └── alarm-notification.wav # Alarm sound
-├── docs/                         # Documentation
-│   ├── ARCHITECTURE.md           # This file
-│   ├── BUILD_GUIDE.md            # Build & deployment
-│   ├── REVENUECAT_SETUP.md       # RevenueCat setup
-│   └── ...
-├── server/                       # Backend (optional)
-│   ├── _core/
-│   │   ├── index.ts              # Express server
-│   │   ├── router.ts             # tRPC router
-│   │   └── ...
-│   ├── db/
-│   │   ├── schema.ts             # Drizzle schema
-│   │   └── migrations/
-│   └── README.md
-├── app.config.ts                 # Expo configuration
-├── eas.json                      # EAS Build config
-├── package.json                  # Dependencies
-├── tsconfig.json                 # TypeScript config
-├── tailwind.config.js            # Tailwind config
-├── theme.config.js               # Theme tokens
-├── vitest.config.ts              # Vitest config
-└── README.md                     # Project README
+│       └── icon-symbol.tsx           # Mapeamento SF Symbols → Material Icons
+├── context/
+│   └── purchases-context.tsx         # PurchasesProvider (isPro, isTrialActive, trialDaysLeft)
+├── hooks/
+│   ├── use-purchases.ts              # Hook usePurchases()
+│   ├── use-colors.ts                 # Hook para cores do tema
+│   └── use-color-scheme.ts           # Detecção light/dark mode
+├── lib/
+│   ├── app-context.tsx               # Global state + Supabase sync integrado
+│   ├── purchases.ts                  # RevenueCat SDK (inicialização, entitlement)
+│   ├── supabase.ts                   # Cliente Supabase (lazy init, isSupabaseConfigured)
+│   ├── device-id.ts                  # Device ID persistente via AsyncStorage
+│   ├── supabase-sync.ts              # syncUser, syncAlarms, syncContacts, sendHeartbeat
+│   ├── alarm-sync.ts                 # Sincronização de alarmes (Android: nativo; iOS: expo-notifications)
+│   ├── native-alarm-manager.ts       # AlarmManager nativo Android
+│   ├── pdf-utils-v2.ts               # Geração de PDF da Anamnese
+│   ├── font-size-context.tsx         # Context de tamanho de fonte
+│   ├── accessibility-context.tsx     # Context de modo acessibilidade
+│   └── monitoring-service.ts         # Serviço de monitoramento contínuo (tRPC)
+├── supabase/
+│   ├── schema.sql                    # Schema SQL (tabelas, RLS, índices, cron)
+│   └── functions/
+│       └── check-missed-alarms/
+│           └── index.ts              # Edge Function dead man's switch
+├── tests/
+│   ├── purchases_isolated.test.ts    # 35 testes RevenueCat
+│   └── supabase-credentials.test.ts  # 3 testes de credenciais Supabase
+├── docs/
+│   ├── ARCHITECTURE.md               # Este arquivo
+│   ├── BUILD_GUIDE.md                # Build e publicação nas lojas
+│   ├── REVENUECAT_SETUP.md           # Configuração do painel RevenueCat
+│   └── DEVELOPMENT_PROCESS.md        # Cronograma e decisões de desenvolvimento
+├── app.config.ts                     # Expo configuration
+├── eas.json                          # EAS Build profiles
+├── vitest.config.ts                  # Vitest com alias @, JSX, __DEV__
+├── package.json
+├── tailwind.config.js
+└── theme.config.js
 ```
 
 ---
@@ -179,354 +171,226 @@ vigora-saude/
 
 ### 1. Context API + useReducer (Global State)
 
-O estado global é gerenciado através do **AppContext** com `useReducer`:
+O estado global é gerenciado através do **AppContext** com `useReducer`. Ao iniciar, o contexto carrega o estado do AsyncStorage e dispara a sincronização com o Supabase:
 
 ```typescript
 // lib/app-context.tsx
-interface AppState {
-  alarms: Alarm[];
-  contacts: Contact[];
-  metrics: HealthMetric[];
-  userProfile: UserProfile;
-  // ...
-}
-
-type AppAction = 
-  | { type: 'ADD_ALARM'; payload: Alarm }
-  | { type: 'DELETE_ALARM'; payload: string }
-  | { type: 'UPDATE_CONTACT'; payload: Contact }
-  // ...
-
-function appReducer(state: AppState, action: AppAction): AppState {
-  switch (action.type) {
-    case 'ADD_ALARM':
-      return { ...state, alarms: [...state.alarms, action.payload] };
-    // ...
+useEffect(() => {
+  if (isSupabaseConfigured()) {
+    syncUser(deviceId, userProfile.name);
+    syncAlarms(deviceId, state.alarms);
+    syncEmergencyContacts(deviceId, state.contacts);
   }
-}
+}, [state.alarms, state.contacts]);
 ```
 
-**Vantagem:** Type-safe, sem dependência externa, integrado ao React.
+### 2. RevenueCat SDK — Inicialização e Contexto
 
-### 2. Custom Hooks para Lógica Reutilizável
-
-Hooks customizados encapsulam lógica específica:
+O RevenueCat SDK é inicializado no root layout e exposto via `PurchasesContext`. O contexto expõe `isPro`, `isTrialActive` e `trialDaysLeft`:
 
 ```typescript
-// hooks/use-pro-feature.ts
-export function useProFeature() {
-  const { isPro } = usePurchases();
-  
-  return {
-    checkLimit: (current: number, limit: number) => current >= limit && !isPro,
-    requirePro: (callback: () => void) => {
-      if (!isPro) {
-        showUpsell();
-      } else {
-        callback();
-      }
-    },
-  };
-}
-```
-
-### 3. RevenueCat SDK Integration
-
-O RevenueCat SDK é inicializado no root layout e exposto via context:
-
-```typescript
-// lib/purchases.ts
-export async function initializePurchases() {
-  await Purchases.configure({
-    apiKey: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY,
-    appUserID: userId,
-  });
-  
-  // Listener para mudanças de customerInfo
-  Purchases.addCustomerInfoUpdateListener((info) => {
-    updatePurchasesContext(info);
-  });
-}
-
 // context/purchases-context.tsx
 export function PurchasesProvider({ children }) {
-  const [customerInfo, setCustomerInfo] = useState(null);
   const [isPro, setIsPro] = useState(false);
-  
+  const [isTrialActive, setIsTrialActive] = useState(false);
+  const [trialDaysLeft, setTrialDaysLeft] = useState(0);
+
   useEffect(() => {
     initializePurchases();
-    // Listener para quando app volta do background
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-    return () => subscription.remove();
+    Purchases.addCustomerInfoUpdateListener((info) => {
+      const proEntitlement = info.entitlements.active['Vigora Saúde Pro'];
+      setIsPro(!!proEntitlement?.isActive);
+      setIsTrialActive(proEntitlement?.periodType === 'TRIAL');
+      // Calcula dias restantes do trial
+    });
   }, []);
-  
-  return (
-    <PurchasesContext.Provider value={{ customerInfo, isPro }}>
-      {children}
-    </PurchasesContext.Provider>
-  );
 }
 ```
 
-### 4. Componentes de Gate (ProGate, ProBanner, ProLimitBadge)
+### 3. Componentes de Gate (ProGate, ProBanner, ProLimitBadge)
 
-Componentes reutilizáveis para bloquear recursos:
+Componentes reutilizáveis para bloquear recursos no plano gratuito:
 
 ```typescript
 // components/pro-gate.tsx
-export function ProGate({ 
-  children, 
-  feature, 
-  fallback 
-}: ProGateProps) {
-  const { isPro } = usePurchases();
-  
-  if (!isPro) {
-    return fallback || <ProBanner feature={feature} />;
-  }
-  
-  return children;
-}
+export const FREE_LIMITS = {
+  contacts: 3,
+  alarms: 5,
+};
 
-// Uso
-<ProGate 
-  feature="monitoring" 
-  fallback={<MonitoringLockedBanner />}
->
-  <MonitoringStatusPanel />
-</ProGate>
+export function ProLimitBadge({ current, limit, feature }) {
+  const { isPro } = usePurchases();
+  if (isPro || current < limit) return null;
+  return <Badge text={`${current}/${limit} — Vigora Pro`} />;
+}
 ```
 
-### 5. Sincronização de Alarmes
+### 4. Trial Banner
 
-Sistema de sincronização que recupera alarmes perdidos ao iniciar:
+O `TrialBanner` e o `ExpiredBanner` são exibidos no Dashboard com base no estado do `PurchasesContext`:
+
+```typescript
+// components/trial-banner.tsx
+export function TrialBanner({ daysLeft }) {
+  return (
+    <View className="bg-blue-500 rounded-xl p-3">
+      <Text>Trial ativo — {daysLeft} dias restantes</Text>
+    </View>
+  );
+}
+
+export function ExpiredBanner({ onPress }) {
+  return (
+    <Pressable className="bg-red-500 rounded-xl p-3" onPress={onPress}>
+      <Text>Seu trial expirou — Assine o Vigora Pro</Text>
+    </Pressable>
+  );
+}
+```
+
+### 5. Sincronização de Alarmes (Bugfix Android)
+
+O sistema de alarmes usa estratégia diferente por plataforma para evitar notificações duplicadas:
 
 ```typescript
 // lib/alarm-sync.ts
-export async function syncAlarms() {
-  const savedAlarms = await getAlarms();
-  const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
-  
-  const missingAlarms = savedAlarms.filter(
-    alarm => !scheduledNotifications.find(n => n.identifier === alarm.id)
-  );
-  
-  for (const alarm of missingAlarms) {
+export async function scheduleFullAlarm(alarm: Alarm) {
+  if (Platform.OS === 'android' && isNativeAlarmAvailable()) {
+    // Android: usa AlarmManager nativo EXCLUSIVAMENTE
+    await NativeAlarmManager.scheduleAlarm(alarm);
+  } else {
+    // iOS e Web: usa expo-notifications
     await scheduleAlarmNotification(alarm);
   }
 }
 ```
 
-### 6. Persistência com AsyncStorage
+**Problema resolvido:** Antes do bugfix, o Android agendava o alarme tanto via AlarmManager nativo quanto via expo-notifications, causando notificações duplicadas. Após o fix, apenas o AlarmManager nativo é usado no Android.
 
-Todos os dados são persistidos localmente:
+### 6. Dead Man's Switch (Supabase)
 
-```typescript
-// lib/app-context.tsx
-useEffect(() => {
-  // Salvar estado quando muda
-  AsyncStorage.setItem('appState', JSON.stringify(state));
-}, [state]);
+O fluxo completo do dead man's switch:
 
-useEffect(() => {
-  // Carregar estado ao iniciar
-  const loadState = async () => {
-    const saved = await AsyncStorage.getItem('appState');
-    if (saved) dispatch({ type: 'RESTORE_STATE', payload: JSON.parse(saved) });
-  };
-  loadState();
-}, []);
+```
+1. App sincroniza alarmes com Supabase ao iniciar
+   ↓
+2. Quando alarme dispara, cria alarm_event no Supabase
+   ↓
+3. Usuário confirma → alarm_event.response_type = 'dismissed'
+   ↓
+4. Se não confirmado em 5 min → pg_cron chama check-missed-alarms
+   ↓
+5. Edge Function detecta evento sem resposta
+   ↓
+6. Envia WhatsApp para contatos de emergência via Meta Graph API
+   ↓
+7. alarm_event.response_type = 'missed'
 ```
 
 ---
 
 ## Fluxo de Dados
 
-### Fluxo de Alarme
-
-```
-1. Usuário cria alarme na tela Alarmes
-   ↓
-2. Alarme é adicionado ao AppState (Redux-like)
-   ↓
-3. Alarme é persistido no AsyncStorage
-   ↓
-4. Notificação é agendada com expo-notifications
-   ↓
-5. Ao disparar, full-screen alarm é exibido
-   ↓
-6. Se não confirmado em 2-3 min, escalação automática
-   ↓
-7. WhatsApp é enviado para contatos com GPS
-```
-
 ### Fluxo de Compra (RevenueCat)
 
 ```
 1. Usuário tenta usar recurso bloqueado
    ↓
-2. ProUpsellModal é exibido com contexto
+2. ProUpsellModal é exibido (bottom sheet animado)
    ↓
-3. Usuário clica "Assinar Pro"
+3. Usuário clica "Assinar Pro" → Paywall nativo abre
    ↓
-4. Paywall nativo do RevenueCat abre
+4. Usuário seleciona plano e confirma compra
    ↓
-5. Usuário seleciona plano e confirma compra
+5. RevenueCat SDK processa transação
    ↓
-6. RevenueCat SDK processa transação
+6. CustomerInfoUpdateListener é disparado
    ↓
-7. CustomerInfo é atualizado no listener
+7. isPro = true, isTrialActive = false, UI atualiza
+```
+
+### Fluxo de Sincronização Supabase
+
+```
+1. App inicia → getOrCreateDeviceId()
    ↓
-8. isPro muda para true, UI atualiza
+2. syncUser(deviceId, name) → upsert na tabela users
+   ↓
+3. syncAlarms(deviceId, alarms) → upsert + delete na tabela alarms
+   ↓
+4. syncEmergencyContacts(deviceId, contacts) → replace na tabela emergency_contacts
+   ↓
+5. sendHeartbeat(deviceId) → atualiza users.last_seen_at
+   ↓
+6. A cada alarme disparado → createAlarmEvent(alarmId)
+   ↓
+7. A cada confirmação → respondToAlarmEvent(eventId, 'dismissed')
 ```
 
 ---
 
 ## Estratégia de Testes
 
-### Testes Unitários (Vitest)
+### Testes Automatizados (Vitest)
 
-Cobrem lógica pura e hooks:
+**38 testes no total:**
 
-```typescript
-// tests/purchases_isolated.test.ts
-describe('RevenueCat Integration', () => {
-  it('should identify user correctly', async () => {
-    const result = await identifyUser('user123');
-    expect(result).toBe('user123');
-  });
-  
-  it('should check pro access from customerInfo', () => {
-    const mockInfo = {
-      entitlements: { active: { 'Vigora Saúde Pro': { isActive: true } } },
-    };
-    expect(hasProAccess(mockInfo)).toBe(true);
-  });
-});
-```
+| Arquivo | Testes | Cobertura |
+|---|---|---|
+| `tests/purchases_isolated.test.ts` | 35 | RevenueCat SDK completo |
+| `tests/supabase-credentials.test.ts` | 3 | Credenciais e conectividade Supabase |
 
-**Cobertura:** 35+ testes, 100% de funções críticas.
+**Configuração (`vitest.config.ts`):**
+- Alias `@` → raiz do projeto
+- Suporte a JSX com `@vitejs/plugin-react`
+- Define `__DEV__ = true` para compatibilidade com React Native
 
 ### Testes Manuais
 
-Validação em dispositivos reais:
-
-- iOS 14+ em iPhone/iPad
-- Android 7.0+ em Samsung/Xiaomi
-- Teste de notificações em background
-- Teste de escalação WhatsApp
-- Teste de fluxo de compra com Sandbox account
-
----
-
-## Performance
-
-### Otimizações Implementadas
-
-1. **FlatList em vez de ScrollView + map():** Renderização lazy para listas grandes
-2. **Memoization:** `useMemo` e `useCallback` para evitar re-renders desnecessários
-3. **Code Splitting:** Expo Router carrega telas sob demanda
-4. **Image Optimization:** Imagens comprimidas e cached
-5. **Font Loading:** Fontes carregadas uma única vez
-
-### Métricas
-
-| Métrica | Valor |
-|---------|-------|
-| LCP (Largest Contentful Paint) | ~1.5s |
-| FID (First Input Delay) | <100ms |
-| CLS (Cumulative Layout Shift) | <0.1 |
-| Bundle Size | ~2.5MB (gzipped) |
-| App Size (iOS) | ~45MB |
-| App Size (Android) | ~38MB |
+Validação em dispositivos reais para:
+- Notificações de alarme em background (Android e iOS)
+- Escalação WhatsApp com localização GPS
+- Fluxo de compra com conta Sandbox
+- Dead man's switch (Supabase Edge Function)
 
 ---
 
 ## Segurança
 
-### Armazenamento de Dados
+### Variáveis de Ambiente
 
-- **Dados Sensíveis:** Nunca armazenados em texto plano
-- **AsyncStorage:** Usa encriptação do SO (iOS Keychain, Android Keystore)
-- **Tokens:** Armazenados em Secure Store (expo-secure-store)
+Todos os secrets são armazenados como variáveis de ambiente, nunca hardcoded:
 
-### Comunicação
+| Variável | Escopo | Propósito |
+|---|---|---|
+| `EXPO_PUBLIC_REVENUECAT_API_KEY` | Cliente (público) | API key RevenueCat |
+| `EXPO_PUBLIC_SUPABASE_URL` | Cliente (público) | URL do projeto Supabase |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Cliente (público) | Chave anônima Supabase |
+| `RESEND_API_KEY` | Servidor (privado) | Email de alertas |
+| `TWILIO_ACCOUNT_SID` | Servidor (privado) | SMS de alertas |
+| `TWILIO_AUTH_TOKEN` | Servidor (privado) | Autenticação Twilio |
 
-- **HTTPS Only:** Todas as requisições ao servidor usam HTTPS
-- **tRPC:** Validação de schemas com Zod em ambos os lados
-- **API Keys:** Armazenadas como env vars, nunca hardcoded
+### Dados de Saúde
 
-### Permissões
-
-- **Localização:** Solicitada com explicação clara, pode ser negada
-- **Contatos:** Solicitada apenas quando necessário
-- **Notificações:** Solicitada ao iniciar app
-- **Câmera/Galeria:** Solicitada apenas para foto de perfil
-
----
-
-## Escalabilidade
-
-### Horizontal Scaling
-
-O backend pode ser escalado horizontalmente:
-
-```
-Load Balancer
-    ↓
-┌───────────────────────────────────┐
-│ Node.js Instance 1 (Express)      │
-│ tRPC Router                       │
-└───────────────────────────────────┘
-┌───────────────────────────────────┐
-│ Node.js Instance 2 (Express)      │
-│ tRPC Router                       │
-└───────────────────────────────────┘
-    ↓
-PostgreSQL (Primary)
-    ↓
-PostgreSQL (Replica) - Read-only
-```
-
-### Vertical Scaling
-
-- Aumentar CPU/RAM do servidor
-- Otimizar queries com índices
-- Implementar caching com Redis
-
----
-
-## Monitoramento e Logging
-
-### Frontend
-
-- **Sentry:** Crash reporting e error tracking
-- **Amplitude:** Analytics de eventos (upsell, compras, etc.)
-- **Console Logs:** Debug em development
-
-### Backend
-
-- **Winston:** Logging estruturado
-- **Datadog:** APM e monitoring
-- **PostgreSQL Logs:** Query performance
+Dados de saúde (métricas, anamnese) são armazenados **exclusivamente no AsyncStorage local** do dispositivo. Nenhum dado médico é enviado para servidores externos. A sincronização com o Supabase é limitada a dados operacionais (alarmes, heartbeat, contatos de emergência).
 
 ---
 
 ## Roadmap Técnico
 
-| Fase | Funcionalidade | Timeline |
-|------|---|---|
+| Versão | Funcionalidade | Status |
+|---|---|---|
 | v1.0 | MVP com alarmes, contatos, saúde | ✅ Concluído |
-| v1.1 | RevenueCat monetização | ✅ Concluído |
-| v1.2 | Upsell contextual | ✅ Concluído |
-| v2.0 | Sincronização com servidor | Q3 2026 |
-| v2.1 | Integração com wearables | Q4 2026 |
-| v3.0 | IA para recomendações | Q1 2027 |
+| v1.1 | RevenueCat monetização + paywall nativo | ✅ Concluído |
+| v1.2 | Upsell contextual + ProGate | ✅ Concluído |
+| v1.3 | Supabase dead man's switch + trial de 7 dias | ✅ Concluído |
+| v1.4 | Bugfix notificações duplicadas Android | ✅ Concluído |
+| v2.0 | Integração com wearables (Apple Watch, Wear OS) | Q3 2026 |
+| v2.1 | Notificações push personalizadas (saúde) | Q4 2026 |
+| v3.0 | IA para recomendações de saúde | Q1 2027 |
 
 ---
 
 ## Conclusão
 
-A arquitetura do Vigora Saúde foi projetada para ser **simples, escalável e segura**. O uso de Expo, Context API e AsyncStorage permite prototipagem rápida sem sacrificar a qualidade. A integração com RevenueCat fornece monetização robusta, e a estrutura de componentes reutilizáveis facilita manutenção e expansão futura.
-
-A aplicação está pronta para publicação nas lojas e pode ser escalada conforme necessário através da adição de sincronização com servidor e integração com serviços externos.
+A arquitetura do Vigora Saúde foi projetada para ser **simples, resiliente e segura**. O uso de Expo, Context API e AsyncStorage permite funcionamento completo offline. O Supabase fornece o dead man's switch sem necessidade de infraestrutura própria. O RevenueCat gerencia toda a complexidade de monetização cross-platform. A estrutura de componentes reutilizáveis (ProGate, TrialBanner, ProUpsellModal) facilita a manutenção e expansão futura.
