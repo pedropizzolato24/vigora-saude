@@ -563,3 +563,6 @@
 ## GitHub Actions & Supabase Setup
 - [x] Criar .github/workflows/test.yml com CI para rodar pnpm test a cada push
 - [ ] Executar supabase/schema.sql no painel Supabase (criar tabelas do dead man's switch) — PENDENTE: executar manualmente no SQL Editor do Supabase
+
+## Build Fix
+- [x] Corrigir erro de build Android: NDK 28.0.12433566 não encontrado no servidor de build
