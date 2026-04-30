@@ -28,6 +28,8 @@ import {
 import { sendWhatsAppMessage, isWhatsAppApiConfigured } from "./whatsapp";
 import { sendEmail, isEmailConfigured } from "./email";
 import { sendSms, isSmsConfigured } from "./sms";
+import { getCaregiverPushTokens } from "./db-caregiver";
+import { notifyCaregiversMissedAlarm } from "./push-notifications";
 
 // Grace period: how long after scheduledAt we wait before resolving a pending event
 const GRACE_PERIOD_MINUTES = 15;
@@ -197,6 +199,25 @@ export async function runMonitoringJob(): Promise<void> {
         console.log(
           `[Monitor] Event ${event.id} (alarm ${event.alarmId}) -> missed (user didn't respond)`
         );
+
+        // Notify linked caregivers via Expo push notification
+        try {
+          const tokens = await getCaregiverPushTokens(event.deviceId);
+          if (tokens.length > 0) {
+            const appUser = await getAppUser(event.deviceId);
+            await notifyCaregiversMissedAlarm(
+              tokens,
+              appUser?.userName ?? null,
+              event.alarmDescription,
+              event.scheduledAt
+            );
+            console.log(
+              `[Monitor] Sent missed-alarm push to ${tokens.length} caregiver(s) for device ${event.deviceId}`
+            );
+          }
+        } catch (pushErr) {
+          console.warn(`[Monitor] Failed to send caregiver push notifications:`, pushErr);
+        }
       }
     }
 
