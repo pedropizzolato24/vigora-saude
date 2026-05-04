@@ -199,7 +199,7 @@ const config: ExpoConfig = {
   },
   extra: {
     eas: {
-      projectId: "f29946ab-38e7-4380b-aa02-ba69881f489c",
+      projectId: "f29046eb-38e7-430b-aad2-9ab981f44b5c",
     },
   },
 };
