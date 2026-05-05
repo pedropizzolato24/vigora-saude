@@ -45,7 +45,7 @@ const config: ExpoConfig = {
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
   userInterfaceStyle: "automatic",
-  newArchEnabled: false,
+  newArchEnabled: true,
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
@@ -98,7 +98,7 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     "expo-dev-client",
-    // react-native-android-widget temporariamente desabilitado para diagnóstico de crash
+    "react-native-android-widget",
     "expo-alarm-module",
     "./modules/expo-alarm-countdown/app.plugin.js",
     [
