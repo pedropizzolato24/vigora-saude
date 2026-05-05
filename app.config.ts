@@ -134,7 +134,6 @@ const config: ExpoConfig = {
         ],
       },
     ],
-    "expo-alarm-module",
     "./modules/expo-alarm-countdown/app.plugin.js",
     [
       "expo-notifications",
