@@ -98,42 +98,8 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     "expo-dev-client",
-    [
-      "react-native-android-widget",
-      {
-        widgets: [
-          {
-            name: "NextAlarm",
-            label: "Próximo Alarme",
-            minWidth: "180dp",
-            minHeight: "110dp",
-            targetCellWidth: 2,
-            targetCellHeight: 2,
-            description: "Mostra o próximo alarme de medicamento",
-            updatePeriodMillis: 1800000,
-          },
-          {
-            name: "Sos",
-            label: "SOS Emergência",
-            minWidth: "110dp",
-            minHeight: "110dp",
-            targetCellWidth: 2,
-            targetCellHeight: 2,
-            description: "Botão rápido de emergência",
-          },
-          {
-            name: "Health",
-            label: "Métricas de Saúde",
-            minWidth: "180dp",
-            minHeight: "110dp",
-            targetCellWidth: 2,
-            targetCellHeight: 2,
-            description: "Frequência cardíaca, pressão e glicemia",
-            updatePeriodMillis: 1800000,
-          },
-        ],
-      },
-    ],
+    "./plugins/crash-reporter.js",
+    // react-native-android-widget: desabilitado para diagnóstico de crash nativo
     "./modules/expo-alarm-countdown/app.plugin.js",
     [
       "expo-notifications",

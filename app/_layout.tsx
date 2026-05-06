@@ -53,6 +53,7 @@ import { syncAlarmsOnStartup } from "@/lib/alarm-sync";
 import { setupNotificationChannels, requestNotificationPermissions } from "@/lib/notifications-utils";
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
+import { CrashReportViewer } from "@/components/crash-report-viewer";
 import { AlarmSyncInitializer } from "@/components/alarm-sync-initializer";
 import { AlarmNotificationHandler } from '@/components/alarm-notification-handler';
 import { MonitoringInitializer } from '@/components/monitoring-initializer';
@@ -237,6 +238,7 @@ export default function RootLayout() {
 
   const content = (
     <ErrorBoundary>
+    <CrashReportViewer />
     <GestureHandlerRootView style={{ flex: 1 }}>
       <UserModeProvider>
       <PurchasesProvider>
