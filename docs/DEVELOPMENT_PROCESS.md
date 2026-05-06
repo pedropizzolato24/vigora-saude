@@ -254,6 +254,114 @@ setTrialDaysLeft(Math.max(0, daysLeft));
 
 ---
 
+### Sprint 11: Sistema de Cuidadores (Semana 11)
+
+**Objetivo:** Implementar sistema completo de monitoramento remoto por familiares/cuidadores com push notifications em tempo real.
+
+**Funcionalidades Implementadas:**
+
+| Arquivo | Descrição |
+|---|---|
+| `server/push-notifications.ts` | Expo Push API wrapper com suporte a lotes (≤100/req) |
+| `server/routers-caregiver.ts` | 8 rotas tRPC: generateCode, getActiveCode, linkWithCode, getMonitoredStatus, unlinkMonitored, getLinkedCaregivers, removeCaregiver, registerPushToken |
+| `server/routers.ts` | caregiverRouter adicionado ao appRouter |
+| `server/monitoring-job.ts` | Após detectar alarme perdido, busca tokens e envia push para cuidadores |
+| `lib/push-token.ts` | getExpoPushToken() via Constants.expoConfig.extra.eas.projectId |
+| `lib/caregiver-context.tsx` | Context com linkMonitoredPerson (real), refreshMonitoredStatus (real) |
+| `app/(caregiver)/_layout.tsx` | Registra push token ao montar o layout do modo cuidador |
+| `app/(tabs)/settings.tsx` | Seção Cuidadores: geração de código, cópia, lista de vínculos com remoção |
+
+**Decisões:**
+
+- **Raw fetch para tRPC** (sem client React): Serviços externos usam fetch direto ao invés do cliente tRPC que requer hooks React. Mesmo padrão de `monitoring-service.ts`.
+- **Expo Push API**: Escolhida por integração nativa com `expo-notifications`. Gratuita e sem servidor de push próprio.
+- **Código de 6 dígitos com expiração 24h**: Simples para o usuário idoso. Expiração evita códigos esquecidos ativos.
+- **Localização como string `"lat,lng"`**: Armazenada no banco como texto para simplicidade; parseada no cliente.
+
+**Resultado:** Sistema de cuidadores funcional — vinculação, status em tempo real e push notifications ao perder alarme.
+
+---
+
+### Sprint 12: EAS Build via GitHub Actions + Diagnóstico de Crash Nativo (Semana 12)
+
+**Objetivo:** Configurar build de APK para teste sem precisar de computador local (usuário sem acesso a PC). Diagnosticar e resolver crash nativo que impedia o app de abrir.
+
+#### Parte 1 — EAS Build via GitHub Actions
+
+**Problema:** O usuário não tem acesso a um computador/PC para rodar `eas build` localmente. A sandbox do Claude Code não tem acesso à internet para executar comandos EAS.
+
+**Solução:** Workflow GitHub Actions que aciona o EAS Build em nuvem:
+
+```yaml
+# .github/workflows/eas-build.yml
+name: EAS Build (Android APK)
+on:
+  workflow_dispatch:
+    inputs:
+      profile: { type: choice, options: [preview, development] }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4 (node 22)
+      - run: npm install -g pnpm@9.12.0   # ← Não usar pnpm/action-setup (conflito de versão)
+      - run: pnpm install --frozen-lockfile
+      - run: npm install -g eas-cli
+      - env: { EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }} }
+        run: eas build --profile preview --platform android --non-interactive
+```
+
+**Desafios e Soluções:**
+
+| Problema | Causa | Solução |
+|---|---|---|
+| `pnpm: version mismatch` | `pnpm/action-setup@v4` usa pnpm 10 mas `package.json` exige 9.12.0 | Instalar pnpm via `npm install -g pnpm@9.12.0` |
+| `eas.json` validation failed | Strings vazias em `submit.production.ios` (appleId, ascAppId) não são permitidas | Remover seção iOS do submit |
+| `eas init` falha | `app.config.ts` é TypeScript; EAS não consegue escrever automaticamente | Adicionar `extra.eas.projectId` manualmente |
+| UUID inválido | ID lido incorretamente de screenshot | Corrigido para `f29046eb-38e7-430b-aad2-9ab981f44b5c` |
+
+#### Parte 2 — Crash Nativo no Android (Em Diagnóstico)
+
+**Problema:** Após build bem-sucedido, o APK abre e fecha imediatamente. O `ErrorBoundary` React não exibe nada, confirmando crash NATIVO (Java/JNI) antes do JavaScript carregar.
+
+**Investigação:**
+
+O React Native 0.81 usa New Architecture (Fabric + TurboModules). Módulos nativos desenvolvidos para arquitetura antiga (bridge/legacy) podem crashar ao inicializar:
+
+| Módulo | Arch | Diagnóstico |
+|---|---|---|
+| `expo-alarm-module` 1.2.0 | Old (RN 0.73) | **Alta probabilidade** — Excluído do auto-linking |
+| `react-native-android-widget` 0.20.1 | Parcial | **Média probabilidade** — Temporariamente desabilitado |
+| `expo-alarm-countdown` (local) | Old | **Baixa probabilidade** — Não auto-linked, não registrado |
+
+**Tentativas de Diagnóstico:**
+
+1. `newArchEnabled: false` → Build falha (react-native-worklets requer New Arch) ❌
+2. Remover react-native-android-widget do plugins → App ainda crasha ❌
+3. Excluir expo-alarm-module do auto-linking → App ainda crasha ❌ (em teste)
+4. Excluir react-native-android-widget do auto-linking → Em teste 🔄
+
+**Solução de Diagnóstico — Crash Reporter Nativo:**
+
+Criado `plugins/crash-reporter.js` que injeta:
+1. `MainApplication.kt`: `Thread.setDefaultUncaughtExceptionHandler` → grava stack trace em `crash_report.txt`
+2. `MainActivity.kt`: lê o arquivo na próxima abertura e mostra `AlertDialog` nativo **antes do React carregar**
+
+Complementado por `components/crash-report-viewer.tsx` (fallback React para crashes JS).
+
+**Desafios:**
+
+| Problema | Causa | Solução |
+|---|---|---|
+| `Cannot read properties of undefined (reading 'widgets')` | Plugin react-native-android-widget configurado como string, não array | Converter para `["react-native-android-widget", { widgets: [...] }]` |
+| Sem Logcat sem PC | rootless-logcat requer configuração via PC | Crash reporter nativo (plugin) escreve stack trace em arquivo, lido na próxima abertura |
+| ErrorBoundary não captura crash nativo | ErrorBoundary só captura erros React/JS | Plugin native injeta handler Java antes do processo morrer |
+
+**Estado Atual:** Crash persiste. Aguardando resultado do build com crash reporter para identificar o stack trace exato.
+
+---
+
 ## Decisões Arquiteturais Principais
 
 ### 1. Expo Managed Workflow vs Bare Workflow
@@ -306,9 +414,27 @@ setTrialDaysLeft(Math.max(0, daysLeft));
 
 ### 6. AlarmManager Nativo vs expo-notifications no Android
 
-**Decisão:** AlarmManager nativo exclusivamente no Android.
+**Decisão inicial:** AlarmManager nativo exclusivamente no Android (via `expo-alarm-module`).
 
-**Justificativa:** O expo-notifications no Android usa o mesmo AlarmManager internamente, causando duplicatas quando ambos são usados. O AlarmManager nativo oferece mais controle sobre prioridade e comportamento em background.
+**Revisão Sprint 12:** `expo-alarm-module` foi excluído do build por incompatibilidade com New Architecture (RN 0.81). Android agora usa `expo-notifications` como caminho principal — o mesmo que iOS. O wrapper `native-alarm-manager.ts` mantém o `try/catch` para uso futuro quando uma versão compatível do módulo estiver disponível.
+
+---
+
+### 7. Expo Push API para Notificações de Cuidadores
+
+**Decisão:** Expo Push Notifications API (`https://exp.host/--/api/v2/push/send`).
+
+**Justificativa:** Integração nativa com `expo-notifications` (já usado no app). Gratuita, sem infraestrutura própria de push. Suporte a lotes de até 100 tokens por requisição. Tokens registrados via `caregiver.registerPushToken` no servidor.
+
+**Alternativa Descartada:** Firebase Cloud Messaging diretamente — requer setup adicional e adiciona dependência do Firebase ao app.
+
+---
+
+### 8. Crash Reporter Nativo via Config Plugin
+
+**Decisão:** Plugin Expo que injeta `Thread.setDefaultUncaughtExceptionHandler` em `MainApplication.kt` e um `AlertDialog` em `MainActivity.kt`.
+
+**Justificativa:** Crashes nativos (antes do JS carregar) não são capturados por `ErrorBoundary`. Sem ADB/Logcat disponível (usuário sem PC), a única forma de ver o stack trace é capturá-lo nativamente e exibi-lo na próxima sessão. O `AlertDialog` nativo aparece **antes** do React Native inicializar, permitindo diagnóstico mesmo quando o crash acontece toda vez.
 
 ---
 
@@ -372,19 +498,61 @@ export default defineConfig({
 
 ---
 
+### Desafio 6: Crash Nativo Android com New Architecture
+
+**Problema:** APK gerado pelo EAS Build abre e fecha imediatamente. `ErrorBoundary` não exibe nada (crash antes do JavaScript).
+
+**Causa Raiz Identificada:** `expo-alarm-module` 1.2.0 usa `ReactContextBaseJavaModule` (bridge legado, desenvolvido para RN 0.73). Com `newArchEnabled: true` no RN 0.81, o bridge não está disponível, causando crash na inicialização dos módulos nativos.
+
+**Tentativas de Diagnóstico:**
+1. `newArchEnabled: false` → Build falha (react-native-worklets obriga New Arch) ❌
+2. `ErrorBoundary` adicionado → Não captura crash nativo ❌ (esperado)
+3. Plugin de widget com string simples → `Cannot read properties of undefined (reading 'widgets')` ❌
+4. Excluir expo-alarm-module do auto-linking → Crash persiste (segundo suspeito: react-native-android-widget) 🔄
+5. Crash reporter nativo adicionado → Aguardando resultado 🔄
+
+**Solução Temporária:** Excluir módulos suspeitos via `expo.autolinking.exclude` em `package.json`. O código JS tem `try/catch` com fallback graceful.
+
+**Lição:** Sempre verificar compatibilidade com New Architecture antes de adicionar módulos nativos ao projeto com `newArchEnabled: true`.
+
+---
+
+### Desafio 7: EAS Build sem Acesso a PC
+
+**Problema:** Usuário sem acesso a computador para rodar `eas build` localmente.
+
+**Solução:** GitHub Actions workflow que aciona EAS Build em nuvem. Fluxo: commit → Actions → `eas build` nos servidores Expo → link de download.
+
+**Desafio Adicional:** `pnpm/action-setup@v4` usava pnpm 10 por padrão, conflitando com `packageManager: "pnpm@9.12.0"` do projeto. Solução: usar `npm install -g pnpm@9.12.0` diretamente.
+
+---
+
+### Desafio 8: Plugin react-native-android-widget Requer Configuração Explícita
+
+**Problema:** Build falhou com `Cannot read properties of undefined (reading 'widgets')` ao usar o plugin como string simples.
+
+**Causa Raiz:** O plugin `react-native-android-widget` lê a lista de widgets das opções do plugin. Configurado como string simples `"react-native-android-widget"`, as opções são `undefined`.
+
+**Solução:** Configurar como array com objeto de opções:
+```typescript
+["react-native-android-widget", { widgets: [{ name: "NextAlarm", ... }, ...] }]
+```
+
+---
+
 ## Métricas de Desenvolvimento
 
 | Métrica | Valor |
 |---|---|
-| Tempo Total de Desenvolvimento | 10 semanas |
-| Linhas de Código (Frontend) | ~9.500 |
-| Linhas de Código (Backend) | ~2.500 |
+| Tempo Total de Desenvolvimento | 12 semanas |
+| Linhas de Código (Frontend) | ~12.000 |
+| Linhas de Código (Backend) | ~3.500 |
 | Linhas de Código (Supabase) | ~300 |
-| Telas Implementadas | 8 principais + 5 modais |
-| Componentes Reutilizáveis | 18+ |
+| Telas Implementadas | 8 principais + 5 modais + modo cuidador |
+| Componentes Reutilizáveis | 22+ |
 | Testes Automatizados | 38 |
 | TypeScript Errors (novos) | 0 |
-| Checkpoints Salvos | 15 |
+| Builds EAS Realizados | 6+ (via GitHub Actions) |
 
 ---
 
@@ -392,13 +560,19 @@ export default defineConfig({
 
 **1. Documentar decisões arquiteturais imediatamente.** Decisões não documentadas são esquecidas. Este arquivo e o ARCHITECTURE.md devem ser atualizados a cada sprint.
 
-**2. Testar em dispositivos reais cedo.** Emuladores não capturam problemas de notificações, SafeArea e WhatsApp deep links.
+**2. Testar em dispositivos reais cedo.** Emuladores não capturam problemas de notificações, SafeArea, WhatsApp deep links e compatibilidade de módulos nativos.
 
 **3. Usar env vars para todos os secrets.** Nunca hardcode API keys, mesmo que sejam de teste. A migração posterior é custosa.
 
-**4. Implementar fallbacks graceful para serviços externos.** O Supabase e o servidor principal devem falhar silenciosamente para não quebrar o app offline.
+**4. Implementar fallbacks graceful para serviços externos.** O Supabase, servidor principal e módulos nativos devem falhar silenciosamente para não quebrar o app offline ou em dispositivos sem suporte.
 
 **5. Separar responsabilidades por plataforma.** O bugfix de notificações duplicadas mostrou a importância de tratar Android e iOS separadamente quando o comportamento nativo difere.
+
+**6. Verificar compatibilidade com New Architecture antes de adicionar módulos nativos.** Com `newArchEnabled: true` (RN 0.81), módulos desenvolvidos para RN ≤0.73 podem causar crashes nativos antes do JavaScript carregar. Conferir `codegenConfig` e histórico de compatibilidade do pacote antes de instalar.
+
+**7. Crashes nativos Android exigem Logcat ou um reporter nativo.** `ErrorBoundary` do React só captura erros JavaScript. Crashes Java/JNI matam o processo antes do React renderizar. Para diagnosticar sem ADB, implementar `Thread.setDefaultUncaughtExceptionHandler` via config plugin.
+
+**8. CI/CD via GitHub Actions desbloqueia builds sem PC.** Para usuários sem acesso a computador, um workflow GitHub Actions com `eas build --non-interactive` e `EXPO_TOKEN` como secret resolve o problema completamente.
 
 ---
 
