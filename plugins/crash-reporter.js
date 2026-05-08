@@ -39,9 +39,11 @@ const withCrashHandlerInMainApp = (config) => {
   return withMainApplication(config, (mod) => {
     let src = mod.modResults.contents;
     if (src.includes('[CrashReporter]')) return mod;
+    // Inject BEFORE super.onCreate() so crashes inside super.onCreate() are caught.
+    // filesDir path is OS-assigned at process start and is safe before super.onCreate().
     src = src.replace(
       /super\.onCreate\(\)/,
-      `super.onCreate()${MAIN_APP_CRASH_HANDLER}`
+      `${MAIN_APP_CRASH_HANDLER}\n        super.onCreate()`
     );
     mod.modResults.contents = src;
     return mod;

@@ -162,7 +162,8 @@ const config: ExpoConfig = {
   ],
   experiments: {
     typedRoutes: true,
-    reactCompiler: true,
+    // reactCompiler disabled — experimental, suspected crash contributor
+    reactCompiler: false,
   },
   extra: {
     eas: {
