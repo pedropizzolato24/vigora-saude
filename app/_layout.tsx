@@ -3,10 +3,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import React from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
-import { Platform, ScrollView, Text, View } from "react-native";
+import { Platform } from "react-native";
 import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { AppProvider, useAppContext } from "@/lib/app-context";
@@ -14,46 +13,11 @@ import { NotificationsProvider } from "@/lib/notifications-context";
 import { MenuProvider } from '@/lib/menu-context';
 import { FontSizeProvider } from '@/lib/font-size-context';
 import { AccessibilityProvider } from '@/lib/accessibility-context';
-
-// --- Global Error Boundary ---------------------------------------------------
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { error: Error | null }
-> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { error: null };
-  }
-  static getDerivedStateFromError(error: Error) {
-    return { error };
-  }
-  render() {
-    if (this.state.error) {
-      return (
-        <View style={{ flex: 1, backgroundColor: '#1a1a2e', padding: 24, paddingTop: 60 }}>
-          <ScrollView>
-            <Text style={{ color: '#ff6b6b', fontSize: 20, fontWeight: '800', marginBottom: 12 }}>
-              Erro na inicialização
-            </Text>
-            <Text style={{ color: '#ff6b6b', fontSize: 13, fontWeight: '700', marginBottom: 8 }}>
-              {this.state.error.name}: {this.state.error.message}
-            </Text>
-            <Text style={{ color: '#aaaaaa', fontSize: 11, fontFamily: 'monospace', lineHeight: 16 }}>
-              {this.state.error.stack}
-            </Text>
-          </ScrollView>
-        </View>
-      );
-    }
-    return this.props.children;
-  }
-}
 import { UserModeProvider } from '@/lib/user-mode-context';
 import { syncAlarmsOnStartup } from "@/lib/alarm-sync";
 import { setupNotificationChannels, requestNotificationPermissions } from "@/lib/notifications-utils";
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
-import { CrashReportViewer } from "@/components/crash-report-viewer";
 import { AlarmSyncInitializer } from "@/components/alarm-sync-initializer";
 import { AlarmNotificationHandler } from '@/components/alarm-notification-handler';
 import { MonitoringInitializer } from '@/components/monitoring-initializer';
@@ -237,8 +201,6 @@ export default function RootLayout() {
   }, [initialInsets, initialFrame]);
 
   const content = (
-    <ErrorBoundary>
-    <CrashReportViewer />
     <GestureHandlerRootView style={{ flex: 1 }}>
       <UserModeProvider>
       <PurchasesProvider>
@@ -299,7 +261,6 @@ export default function RootLayout() {
       </PurchasesProvider>
       </UserModeProvider>
     </GestureHandlerRootView>
-    </ErrorBoundary>
   );
 
   const shouldOverrideSafeArea = Platform.OS === "web";
