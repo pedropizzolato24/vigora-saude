@@ -138,7 +138,7 @@ export default function OnboardingScreen() {
     if (Platform.OS !== 'web') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
-    router.replace('/mode-select');
+    router.replace('/(tabs)');
   };
 
   const handleRequestForegroundLocation = async () => {

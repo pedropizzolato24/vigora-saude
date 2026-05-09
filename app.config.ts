@@ -186,9 +186,8 @@ const config: ExpoConfig = {
       "expo-build-properties",
       {
         android: {
+          buildArchs: ["armeabi-v7a", "arm64-v8a"],
           minSdkVersion: 24,
-          ndkVersion: "26.1.10909125",
-          enableMultiDex: true,
         },
       },
     ],
@@ -196,11 +195,6 @@ const config: ExpoConfig = {
   experiments: {
     typedRoutes: true,
     reactCompiler: true,
-  },
-  extra: {
-    eas: {
-      projectId: "f29046eb-38e7-430b-aad2-9ab981f44b5c",
-    },
   },
 };
 
