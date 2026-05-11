@@ -43,9 +43,6 @@ jobs:
         env:
           EXPO_PUBLIC_REVENUECAT_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_API_KEY }}
 
-      - name: Pin Gradle 8.8 (expo-dev-menu incompatível com Gradle 9.0)
-        run: sed -i 's|distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.8-all.zip|' android/gradle/wrapper/gradle-wrapper.properties
-
       - name: Build Debug APK
         if: ${{ github.event.inputs.build_type == 'debug' }}
         run: cd android && ./gradlew assembleDebug --no-daemon
