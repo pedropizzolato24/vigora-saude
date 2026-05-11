@@ -36,7 +36,7 @@ jobs:
 
       - name: Build Android APK via EAS
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN_2 }}
         run: |
           eas build \
             --profile ${{ github.event.inputs.profile }} \
