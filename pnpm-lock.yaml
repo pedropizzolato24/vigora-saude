@@ -279,6 +279,9 @@ importers:
       vitest:
         specifier: ^2.1.9
         version: 2.1.9(@types/node@22.19.3)(lightningcss@1.30.2)(terser@5.44.1)
+      @react-native-community/cli:
+        specifier: latest
+        version: latest
 
 packages:
 
