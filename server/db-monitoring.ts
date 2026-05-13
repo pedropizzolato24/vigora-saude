@@ -20,6 +20,7 @@ import {
 
 export async function upsertAppUser(data: {
   deviceId: string;
+  openId: string;
   userName?: string;
   emergencyContacts?: EmergencyContactRecord[];
   lastLocation?: string;
@@ -29,6 +30,7 @@ export async function upsertAppUser(data: {
 
   const values = {
     deviceId: data.deviceId,
+    openId: data.openId,
     userName: data.userName ?? null,
     emergencyContacts: data.emergencyContacts ?? [],
     lastLocation: data.lastLocation ?? null,
@@ -40,6 +42,7 @@ export async function upsertAppUser(data: {
     .values(values)
     .onDuplicateKeyUpdate({
       set: {
+        openId: values.openId,
         userName: values.userName,
         emergencyContacts: values.emergencyContacts,
         ...(data.lastLocation
@@ -58,6 +61,49 @@ export async function getAppUser(deviceId: string) {
     .where(eq(appUsers.deviceId, deviceId))
     .limit(1);
   return rows[0] ?? null;
+}
+
+/**
+ * Returns the appUsers row only if (deviceId, openId) match.
+ * Used by protected procedures to enforce per-user ownership of devices.
+ */
+export async function getAppUserForOwner(
+  deviceId: string,
+  openId: string
+) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(appUsers)
+    .where(and(eq(appUsers.deviceId, deviceId), eq(appUsers.openId, openId)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * Throws if the deviceId is registered to a different owner.
+ * Returns true if registered to this owner OR not yet registered (free to claim via register()).
+ * Used as an authorization check before mutating device-scoped data.
+ */
+export async function assertDeviceOwnership(
+  deviceId: string,
+  openId: string
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return; // No DB = dev mode, allow
+  const rows = await db
+    .select({ openId: appUsers.openId })
+    .from(appUsers)
+    .where(eq(appUsers.deviceId, deviceId))
+    .limit(1);
+  if (rows.length === 0) {
+    throw new Error("DEVICE_NOT_REGISTERED");
+  }
+  const owner = rows[0].openId;
+  if (owner !== null && owner !== openId) {
+    throw new Error("DEVICE_OWNED_BY_ANOTHER_USER");
+  }
 }
 
 // --- Synced Alarms ------------------------------------------------------------

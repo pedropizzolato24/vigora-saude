@@ -23,7 +23,20 @@ import * as Location from "expo-location";
 import { Platform } from "react-native";
 import { AppDialog, useAppDialog } from "@/components/app-dialog";
 
-async function getCurrentLocationString(): Promise<string | undefined> {
+/**
+ * Returns the user's current location string ("lat,lng") only when:
+ *  - native platform
+ *  - foreground permission already granted (no prompts)
+ *  - the user explicitly opted-in to location sharing
+ *
+ * The user-facing privacy copy claims location is shared "in emergencies
+ * / when you tap Share", so we honor the `autoShareLocation` setting
+ * before sending periodic heartbeat coordinates to the server.
+ */
+async function getCurrentLocationStringIfOptedIn(
+  optedIn: boolean
+): Promise<string | undefined> {
+  if (!optedIn) return undefined;
   try {
     if (Platform.OS === "web") return undefined;
     const { status } = await Location.getForegroundPermissionsAsync();
@@ -75,8 +88,10 @@ export function MonitoringInitializer() {
 
     const init = async () => {
       try {
-        // Get current location for registration
-        const location = await getCurrentLocationString();
+        // Get current location ONLY if the user opted in to location sharing.
+        // Respecting the autoShareLocation setting (Privacy) — see Fix #13.
+        const optedIn = state.settings?.autoShareLocation ?? false;
+        const location = await getCurrentLocationStringIfOptedIn(optedIn);
 
         // Build emergency contacts payload
         const contacts = state.emergencyContacts.map((c) => ({
@@ -95,8 +110,14 @@ export function MonitoringInitializer() {
           lastLocation: location,
         });
 
-        // Start heartbeat service
-        startHeartbeat(getCurrentLocationString);
+        // Start heartbeat service. We re-read the opt-in flag on each
+        // tick (via closure over `state`) so toggling it in Settings
+        // takes effect without a restart.
+        startHeartbeat(() =>
+          getCurrentLocationStringIfOptedIn(
+            state.settings?.autoShareLocation ?? false
+          )
+        );
 
         // Sync current alarms
         await syncAlarmsToServer(state.alarms);

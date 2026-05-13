@@ -135,7 +135,7 @@ export default function LocationScreen() {
           <View style={{ backgroundColor: '#E0F0FF', borderRadius: 16, padding: 16, borderWidth: 2, borderColor: '#0066CC', flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
             <MaterialIcons name="lock" size={28} color="#0066CC" />
             <Text style={{ flex: 1, fontSize: af.sm, color: '#003388', fontWeight: '600', lineHeight: af.sm * 1.5 }}>
-              Sua localização é obtida apenas quando você pede. Nunca é guardada em servidores.
+              Se você ativar "Compartilhar localização automaticamente" em Configurações, sua posição é enviada ao servidor para o monitoramento de emergência. Caso contrário, só é compartilhada quando você toca em Compartilhar. Nunca repassada a terceiros.
             </Text>
           </View>
           {/* Big get location button */}
@@ -207,7 +207,7 @@ export default function LocationScreen() {
         <View style={[styles.privacyNote, { backgroundColor: colors.primaryLight, borderColor: '#0066CC30' }]}>
           <MaterialIcons name="lock" size={16} color="#0066CC" />
           <Text style={[styles.privacyText, { color: colors.foreground }]}>
-            Sua localização é obtida apenas quando você solicita e nunca é armazenada em servidores externos.
+            Se "Compartilhar localização automaticamente" estiver ativo nas Configurações, sua localização é enviada periodicamente ao servidor para o monitoramento de emergência (dead-man's switch). Caso contrário, só é enviada quando você toca em Compartilhar. Nunca é repassada a terceiros.
           </Text>
         </View>
 

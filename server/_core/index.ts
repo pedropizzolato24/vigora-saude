@@ -4,8 +4,11 @@ import { startMonitoringScheduler } from "../monitoring-job";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
+import { corsMiddleware } from "./cors";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
+import { createRateLimit } from "./rate-limit";
+import { securityHeadersMiddleware } from "./security-headers";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 
@@ -32,39 +35,33 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
 
-  // Enable CORS for all routes - reflect the request origin to support credentials
-  app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    if (origin) {
-      res.header("Access-Control-Allow-Origin", origin);
-    }
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    res.header(
-      "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization",
-    );
-    res.header("Access-Control-Allow-Credentials", "true");
+  // Security headers (HSTS, X-Frame-Options, CSP, ...) on every response.
+  app.use(securityHeadersMiddleware);
 
-    // Handle preflight requests
-    if (req.method === "OPTIONS") {
-      res.sendStatus(200);
-      return;
-    }
-    next();
-  });
+  // CORS: allowlist-based; rejects unknown origins. See ./cors.ts.
+  app.use(corsMiddleware);
 
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // Body limits: a 50MB JSON limit + no rate-limit is a trivial DoS.
+  // 1MB is plenty for normal tRPC payloads (alarm lists, contacts).
+  app.use(express.json({ limit: "1mb" }));
+  app.use(express.urlencoded({ limit: "1mb", extended: true }));
 
   registerStorageProxy(app);
+
+  // Stricter limit on the OAuth flow (state issuance, callback) — these
+  // shouldn't be hit more than a handful of times per IP per minute.
+  app.use("/api/oauth", createRateLimit({ max: 20, windowMs: 60_000 }));
   registerOAuthRoutes(app);
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });
   });
 
+  // tRPC endpoints: 120 requests/minute/IP. Authenticated calls also
+  // pass through per-procedure logic; this is the outer envelope.
   app.use(
     "/api/trpc",
+    createRateLimit({ max: 120, windowMs: 60_000 }),
     createExpressMiddleware({
       router: appRouter,
       createContext,

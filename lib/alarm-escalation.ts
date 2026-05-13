@@ -129,6 +129,11 @@ async function tryDeepLinkEscalation(
 /**
  * Try to send messages via server WhatsApp Business API (fallback).
  * This is fully automatic - no user interaction required.
+ *
+ * Requires the user to be authenticated; sends auth header on native and
+ * relies on credentials:include for web cookies. If unauthenticated,
+ * returns failure for all contacts so the caller can fall back to other
+ * channels (deep link, manual).
  */
 async function tryServerApiEscalation(
   contacts: EmergencyContact[],
@@ -137,9 +142,22 @@ async function tryServerApiEscalation(
   locationUrl?: string
 ): Promise<{ sent: number; failed: number; configured: boolean }> {
   try {
-    // Dynamic import to avoid circular dependencies and only load when needed
+    // Dynamic imports to avoid circular dependencies
     const { getApiBaseUrl } = await import('@/constants/oauth');
+    const { getDeviceId } = await import('./device-id');
+    const Auth = await import('./_core/auth');
     const baseUrl = getApiBaseUrl();
+
+    // Build auth headers (Bearer on native, cookie on web)
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (Platform.OS !== 'web') {
+      const token = await Auth.getSessionToken();
+      if (!token) {
+        console.log('[Escalation] No auth session, skipping server API');
+        return { sent: 0, failed: contacts.length, configured: false };
+      }
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
     // First check if the API is configured
     const checkResponse = await fetch(`${baseUrl}/api/trpc/whatsapp.isConfigured`, {
@@ -161,6 +179,8 @@ async function tryServerApiEscalation(
       return { sent: 0, failed: contacts.length, configured: false };
     }
 
+    const deviceId = await getDeviceId();
+
     // Send emergency alerts via server
     const contactsPayload = contacts.map((c) => ({
       phone: c.phone,
@@ -169,10 +189,11 @@ async function tryServerApiEscalation(
 
     const sendResponse = await fetch(`${baseUrl}/api/trpc/whatsapp.sendEmergencyAlert`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       credentials: 'include',
       body: JSON.stringify({
         json: {
+          deviceId,
           contacts: contactsPayload,
           userName,
           missedAlarmCount: missedCount,

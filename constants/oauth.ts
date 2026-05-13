@@ -67,17 +67,6 @@ export function getApiBaseUrl(): string {
 export const SESSION_TOKEN_KEY = "app_session_token";
 export const USER_INFO_KEY = "manus-runtime-user-info";
 
-const encodeState = (value: string) => {
-  if (typeof globalThis.btoa === "function") {
-    return globalThis.btoa(value);
-  }
-  const BufferImpl = (globalThis as Record<string, any>).Buffer;
-  if (BufferImpl) {
-    return BufferImpl.from(value, "utf-8").toString("base64");
-  }
-  return value;
-};
-
 /**
  * Get the redirect URI for OAuth callback.
  * - Web: uses API server callback endpoint
@@ -93,9 +82,43 @@ export const getRedirectUri = () => {
   }
 };
 
-export const getLoginUrl = () => {
+/**
+ * Ask the API server to issue a signed `state` JWT for our redirectUri.
+ * The server validates the redirectUri against its allowlist, signs the
+ * state with HMAC, and returns it. This replaces the previous (insecure)
+ * base64(redirectUri) state, which had no CSRF protection and allowed
+ * any caller to set arbitrary redirectUris.
+ */
+async function fetchSignedState(redirectUri: string): Promise<string> {
+  const baseUrl = getApiBaseUrl();
+  const params = new URLSearchParams({ redirectUri });
+  const url = `${baseUrl}/api/oauth/state?${params.toString()}`;
+  const res = await fetch(url, { credentials: "include" });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Failed to obtain OAuth state (${res.status}) ${detail}`);
+  }
+  const data = (await res.json()) as { state?: string };
+  if (!data.state) {
+    throw new Error("OAuth state endpoint returned empty state");
+  }
+  return data.state;
+}
+
+/**
+ * Build the OAuth provider login URL after acquiring a signed state from
+ * the API server. Returns null if state issuance fails (e.g. server
+ * unreachable, allowlist mismatch).
+ */
+export const getLoginUrl = async (): Promise<string | null> => {
   const redirectUri = getRedirectUri();
-  const state = encodeState(redirectUri);
+  let state: string;
+  try {
+    state = await fetchSignedState(redirectUri);
+  } catch (err) {
+    console.error("[OAuth] Could not obtain signed state:", err);
+    return null;
+  }
 
   const url = new URL(`${OAUTH_PORTAL_URL}/app-auth`);
   url.searchParams.set("appId", APP_ID);
@@ -117,7 +140,11 @@ export const getLoginUrl = () => {
  * @returns Always null, the callback is handled via deep link.
  */
 export async function startOAuthLogin(): Promise<string | null> {
-  const loginUrl = getLoginUrl();
+  const loginUrl = await getLoginUrl();
+  if (!loginUrl) {
+    console.warn("[OAuth] Login URL not available (state issuance failed)");
+    return null;
+  }
 
   if (ReactNative.Platform.OS === "web") {
     // On web, just redirect
@@ -130,7 +157,6 @@ export async function startOAuthLogin(): Promise<string | null> {
   const supported = await Linking.canOpenURL(loginUrl);
   if (!supported) {
     console.warn("[OAuth] Cannot open login URL: URL scheme not supported");
-    // 可考虑抛出错误或返回错误状态，让调用方处理
     return null;
   }
 
@@ -138,7 +164,6 @@ export async function startOAuthLogin(): Promise<string | null> {
     await Linking.openURL(loginUrl);
   } catch (error) {
     console.error("[OAuth] Failed to open login URL:", error);
-    // 可考虑抛出错误让调用方处理
   }
 
   // The OAuth callback will reopen the app via deep link.

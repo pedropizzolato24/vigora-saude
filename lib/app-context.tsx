@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Crypto from 'expo-crypto';
 import React, { createContext, useContext, useEffect, useReducer, useState } from 'react';
 import { updateAllWidgets } from './update-widgets';
 import { syncUser, syncAlarms, syncEmergencyContacts, sendHeartbeat } from './supabase-sync';
@@ -342,7 +343,9 @@ export function useAppContext(): AppContextValue {
 // --- Helpers -----------------------------------------------------------------
 
 export function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  // CSPRNG-backed via expo-crypto. RFC 4122 v4 — no collision worries,
+  // no guessability across the API surface.
+  return Crypto.randomUUID();
 }
 
 export function getNextAlarm(alarms: Alarm[]): Alarm | null {

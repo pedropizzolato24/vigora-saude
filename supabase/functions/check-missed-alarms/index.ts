@@ -6,9 +6,28 @@
  *
  * Deploy: supabase functions deploy check-missed-alarms
  * Cron: a cada 2 minutos (configurado em schema.sql)
+ *
+ * SECURITY: Requer o header `X-Vigora-Cron-Secret` com valor igual à
+ * env var CHECK_MISSED_ALARMS_SECRET. Sem isso, qualquer pessoa poderia
+ * acionar a função (consumindo quota WhatsApp e marcando eventos como
+ * escalated para inibir alertas reais).
+ *
+ * CORRECTNESS: Fetches emergency_contacts in a separate query keyed by
+ * user_id, then stitches them with alarm_events in JS. The original
+ * `.select("..., emergency_contacts(...)")` embed had no FK from
+ * alarm_events to emergency_contacts and could match the wrong user's
+ * contacts depending on PostgREST's auto-resolution.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { authorizeRequest } from './auth.ts';
+import {
+  loadMissedEventsWithContacts,
+  filterWhatsAppContacts,
+  type Contact,
+  type MissedEvent,
+  type MissedEventStore,
+} from './query.ts';
 
 const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -19,29 +38,51 @@ const WHATSAPP_API_TOKEN = Deno.env.get('WHATSAPP_API_TOKEN');
 const WHATSAPP_PHONE_ID = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
 const ESCALATION_DELAY_MINUTES = 5; // Espera 5 minutos após o alarme
 
-Deno.serve(async () => {
+/** Wrap supabase-js in the minimal MissedEventStore interface. */
+const store: MissedEventStore = {
+  async findMissedEvents(beforeIso: string): Promise<MissedEvent[]> {
+    const { data, error } = await supabaseAdmin
+      .from('alarm_events')
+      .select(`
+        id,
+        user_id,
+        scheduled_at,
+        alarm_id,
+        alarms(description),
+        users(name)
+      `)
+      .is('responded_at', null)
+      .eq('escalated', false)
+      .lt('scheduled_at', beforeIso);
+    if (error) throw error;
+    return (data ?? []) as unknown as MissedEvent[];
+  },
+  async findContactsByUserIds(userIds: string[]): Promise<Contact[]> {
+    if (userIds.length === 0) return [];
+    const { data, error } = await supabaseAdmin
+      .from('emergency_contacts')
+      .select('user_id, name, phone, whatsapp')
+      .in('user_id', userIds);
+    if (error) throw error;
+    return (data ?? []) as unknown as Contact[];
+  },
+};
+
+Deno.serve(async (req: Request) => {
+  // Reject unauthorized callers before doing any work
+  const denied = authorizeRequest(req);
+  if (denied) return denied;
+
   const cutoffTime = new Date(
     Date.now() - ESCALATION_DELAY_MINUTES * 60 * 1000
   ).toISOString();
 
-  // Busca eventos de alarme sem resposta e não escalados ainda
-  const { data: missedEvents, error } = await supabaseAdmin
-    .from('alarm_events')
-    .select(`
-      id,
-      user_id,
-      scheduled_at,
-      alarm_id,
-      alarms(description),
-      users(name),
-      emergency_contacts(name, phone, whatsapp)
-    `)
-    .is('responded_at', null)
-    .eq('escalated', false)
-    .lt('scheduled_at', cutoffTime);
-
-  if (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+  let events;
+  try {
+    events = await loadMissedEventsWithContacts(store, cutoffTime);
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -49,11 +90,10 @@ Deno.serve(async () => {
 
   let escalated = 0;
 
-  for (const event of (missedEvents ?? [])) {
-    const userName = (event.users as any)?.name ?? 'O usuário';
-    const alarmDesc = (event.alarms as any)?.description ?? 'alarme de medicamento';
-    const contacts = (event.emergency_contacts as any[]) ?? [];
-    const whatsappContacts = contacts.filter((c) => c.whatsapp);
+  for (const event of events) {
+    const userName = event.users?.name ?? 'O usuário';
+    const alarmDesc = event.alarms?.description ?? 'alarme de medicamento';
+    const whatsappContacts = filterWhatsAppContacts(event.contacts);
 
     if (whatsappContacts.length === 0) {
       // Marcar como escalado mesmo sem contatos para não processar novamente
@@ -124,7 +164,7 @@ Deno.serve(async () => {
 
   return new Response(
     JSON.stringify({
-      checked: missedEvents?.length ?? 0,
+      checked: events.length,
       escalated,
       timestamp: new Date().toISOString(),
     }),
