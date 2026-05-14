@@ -54,7 +54,8 @@
       "PowerShell(gh api repos/pedropizzolato24/vigora-saude/dependabot/alerts --paginate --jq '.[] | {pkg: .security_vulnerability.package.name, patched: .security_vulnerability.first_patched_version.identifier, severity: .security_vulnerability.severity}')",
       "Bash(/c/Users/55519/AppData/Roaming/npm/pnpm install *)",
       "PowerShell(Get-Command pnpm -ErrorAction SilentlyContinue)",
-      "PowerShell(Get-Command node -ErrorAction SilentlyContinue)"
+      "PowerShell(Get-Command node -ErrorAction SilentlyContinue)",
+      "mcp__plugin_discord_discord__reply"
     ]
   }
 }

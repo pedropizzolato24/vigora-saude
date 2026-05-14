@@ -142,7 +142,11 @@
   },
   "expo": {
     "autolinking": {
-      "exclude": ["expo-dev-client", "expo-dev-menu", "expo-dev-launcher"]
+      "exclude": [
+        "expo-dev-client",
+        "expo-dev-menu",
+        "expo-dev-launcher"
+      ]
     }
   }
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -8,10 +9,11 @@ import {
   View,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import AntDesign from '@expo/vector-icons/AntDesign';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/use-colors';
-import { startOAuthLogin } from '@/constants/oauth';
+import { getApiBaseUrl } from '@/constants/oauth';
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -26,10 +28,14 @@ export default function LoginScreen() {
     setLoading(true);
     setError(null);
     try {
-      await startOAuthLogin();
-      // startOAuthLogin opens the system browser and returns immediately.
-      // The OAuth callback (app/oauth/callback.tsx) handles navigation after auth.
-    } catch {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/auth/google/start`);
+      if (!res.ok) throw new Error('Servidor indisponível');
+      const data = await res.json() as { url?: string; error?: string };
+      if (!data.url) throw new Error(data.error ?? 'URL de login não recebida');
+      await Linking.openURL(data.url);
+      // Deep link manus20260417141411://oauth/callback handles the return
+    } catch (err) {
       setError('Não foi possível iniciar o login. Verifique sua conexão e tente novamente.');
     } finally {
       setLoading(false);
@@ -81,16 +87,22 @@ export default function LoginScreen() {
           onPress={handleLogin}
           disabled={loading}
           style={({ pressed }) => [
-            styles.loginButton,
-            { backgroundColor: colors.primary, opacity: pressed || loading ? 0.75 : 1 },
+            styles.googleButton,
+            {
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+              opacity: pressed || loading ? 0.7 : 1,
+            },
           ]}
         >
           {loading ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator size="small" color="#4285F4" />
           ) : (
             <>
-              <MaterialIcons name="login" size={22} color="#FFFFFF" />
-              <Text style={styles.loginButtonText}>Entrar com sua conta</Text>
+              <AntDesign name="google" size={22} color="#4285F4" />
+              <Text style={[styles.googleButtonText, { color: colors.foreground }]}>
+                Entrar com o Google
+              </Text>
             </>
           )}
         </Pressable>
@@ -168,19 +180,19 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: '#DC2626',
   },
-  loginButton: {
+  googleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 12,
     width: '100%',
     paddingVertical: 16,
     borderRadius: 16,
+    borderWidth: 1.5,
   },
-  loginButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
+  googleButtonText: {
+    fontSize: 17,
+    fontWeight: '600',
   },
   privacyNote: {
     fontSize: 12,

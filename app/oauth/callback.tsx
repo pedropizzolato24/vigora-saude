@@ -1,11 +1,14 @@
 import { ThemedView } from "@/components/themed-view";
 import * as Api from "@/lib/_core/api";
 import * as Auth from "@/lib/_core/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+const LOGIN_COMPLETED_KEY = 'vigora_login_completed';
 
 export default function OAuthCallback() {
   const router = useRouter();
@@ -34,6 +37,7 @@ export default function OAuthCallback() {
         if (params.sessionToken) {
           console.log("[OAuth] Session token found in params (web callback)");
           await Auth.setSessionToken(params.sessionToken);
+          await AsyncStorage.setItem(LOGIN_COMPLETED_KEY, 'true');
 
           // Decode and store user info if available
           if (params.user) {
@@ -153,6 +157,7 @@ export default function OAuthCallback() {
         if (sessionToken) {
           console.log("[OAuth] Session token found in URL, storing...");
           await Auth.setSessionToken(sessionToken);
+          await AsyncStorage.setItem(LOGIN_COMPLETED_KEY, 'true');
           console.log("[OAuth] Session token stored successfully");
           // User info is already in the OAuth callback response
           // No need to fetch from API
@@ -188,8 +193,8 @@ export default function OAuthCallback() {
 
         if (result.sessionToken) {
           console.log("[OAuth] Session token received, storing...");
-          // Store session token
           await Auth.setSessionToken(result.sessionToken);
+          await AsyncStorage.setItem(LOGIN_COMPLETED_KEY, 'true');
           console.log("[OAuth] Session token stored successfully");
 
           // Store user info if available

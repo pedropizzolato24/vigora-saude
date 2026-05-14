@@ -142,12 +142,12 @@ export const getLoginUrl = async (): Promise<string | null> => {
 export async function startOAuthLogin(): Promise<string | null> {
   const loginUrl = await getLoginUrl();
   if (!loginUrl) {
-    console.warn("[OAuth] Login URL not available (state issuance failed)");
-    return null;
+    throw new Error(
+      'Não foi possível obter a URL de login. Verifique sua conexão com a internet.',
+    );
   }
 
   if (ReactNative.Platform.OS === "web") {
-    // On web, just redirect
     if (typeof window !== "undefined") {
       window.location.href = loginUrl;
     }
@@ -156,14 +156,14 @@ export async function startOAuthLogin(): Promise<string | null> {
 
   const supported = await Linking.canOpenURL(loginUrl);
   if (!supported) {
-    console.warn("[OAuth] Cannot open login URL: URL scheme not supported");
-    return null;
+    throw new Error('Não foi possível abrir o navegador para login.');
   }
 
   try {
     await Linking.openURL(loginUrl);
   } catch (error) {
     console.error("[OAuth] Failed to open login URL:", error);
+    throw new Error('Falha ao abrir o navegador. Tente novamente.');
   }
 
   // The OAuth callback will reopen the app via deep link.
