@@ -1,7 +1,7 @@
 /**
  * Parses a comma-separated allowlist of redirect URI patterns from env.
  * Each entry is either an exact match, or a prefix ending in `*`.
- * Example: "https://app.example.com/api/oauth/callback,manus20260417141411://*"
+ * Example: "https://app.example.com/api/oauth/callback,vigora://*"
  */
 function parseAllowlist(raw: string | undefined): string[] {
   if (!raw) return [];

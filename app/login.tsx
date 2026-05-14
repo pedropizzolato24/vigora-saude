@@ -13,7 +13,7 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/use-colors';
-import { getApiBaseUrl } from '@/constants/oauth';
+import { supabase } from '@/lib/supabase';
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -28,13 +28,20 @@ export default function LoginScreen() {
     setLoading(true);
     setError(null);
     try {
-      const baseUrl = getApiBaseUrl();
-      const res = await fetch(`${baseUrl}/api/auth/google/start`);
-      if (!res.ok) throw new Error('Servidor indisponível');
-      const data = await res.json() as { url?: string; error?: string };
-      if (!data.url) throw new Error(data.error ?? 'URL de login não recebida');
+      const { data, error: authError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: 'vigora://oauth/callback',
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (authError || !data.url) {
+        throw new Error(authError?.message ?? 'URL de autenticação não disponível');
+      }
+
       await Linking.openURL(data.url);
-      // Deep link manus20260417141411://oauth/callback handles the return
+      // Deep link vigora://oauth/callback?code=... retorna ao app após autenticação
     } catch (err) {
       setError('Não foi possível iniciar o login. Verifique sua conexão e tente novamente.');
     } finally {

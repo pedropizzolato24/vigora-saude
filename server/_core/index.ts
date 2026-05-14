@@ -6,7 +6,7 @@ import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { corsMiddleware } from "./cors";
 import { registerOAuthRoutes } from "./oauth";
-import { registerGoogleAuthRoute } from "../google-auth";
+import { registerSupabaseAuthRoute } from "../supabase-auth";
 import { registerStorageProxy } from "./storageProxy";
 import { createRateLimit } from "./rate-limit";
 import { securityHeadersMiddleware } from "./security-headers";
@@ -53,8 +53,8 @@ async function startServer() {
   // shouldn't be hit more than a handful of times per IP per minute.
   app.use("/api/oauth", createRateLimit({ max: 20, windowMs: 60_000 }));
   registerOAuthRoutes(app);
-  app.use("/api/auth/google", createRateLimit({ max: 10, windowMs: 60_000 }));
-  registerGoogleAuthRoute(app);
+  app.use("/api/auth/supabase", createRateLimit({ max: 10, windowMs: 60_000 }));
+  registerSupabaseAuthRoute(app);
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });

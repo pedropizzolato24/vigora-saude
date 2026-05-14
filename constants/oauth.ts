@@ -1,12 +1,6 @@
 import * as Linking from "expo-linking";
 import * as ReactNative from "react-native";
 
-// Extract scheme from bundle ID (last segment timestamp, prefixed with "manus")
-// e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
-const bundleId = "space.manus.vigora.saude.t20260417141411";
-const timestamp = bundleId.split(".").pop()?.replace(/^t/, "") ?? "";
-const schemeFromBundleId = `manus${timestamp}`;
-
 const env = {
   portal: process.env.EXPO_PUBLIC_OAUTH_PORTAL_URL ?? "",
   server: process.env.EXPO_PUBLIC_OAUTH_SERVER_URL ?? "",
@@ -14,7 +8,7 @@ const env = {
   ownerId: process.env.EXPO_PUBLIC_OWNER_OPEN_ID ?? "",
   ownerName: process.env.EXPO_PUBLIC_OWNER_NAME ?? "",
   apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? "",
-  deepLinkScheme: schemeFromBundleId,
+  deepLinkScheme: "vigora",
 };
 
 export const OAUTH_PORTAL_URL = env.portal;
@@ -24,12 +18,7 @@ export const OWNER_OPEN_ID = env.ownerId;
 export const OWNER_NAME = env.ownerName;
 export const API_BASE_URL = env.apiBaseUrl;
 
-/**
- * Permanent production domain for the API server.
- * Used as fallback when EXPO_PUBLIC_API_BASE_URL is not set (e.g., Expo Go on native).
- * This domain is stable and does not change between sandbox restarts.
- */
-const PRODUCTION_API_URL = "https://vigoraapp-2ncfsgrj.manus.space";
+const PRODUCTION_API_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "";
 
 /**
  * Get the API base URL, deriving from current hostname if not set.
@@ -65,7 +54,7 @@ export function getApiBaseUrl(): string {
 }
 
 export const SESSION_TOKEN_KEY = "app_session_token";
-export const USER_INFO_KEY = "manus-runtime-user-info";
+export const USER_INFO_KEY = "vigora-user-info";
 
 /**
  * Get the redirect URI for OAuth callback.
