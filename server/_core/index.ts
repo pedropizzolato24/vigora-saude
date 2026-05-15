@@ -5,9 +5,8 @@ import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { corsMiddleware } from "./cors";
-import { registerOAuthRoutes } from "./oauth";
+import { registerAuthRoutes } from "./oauth";
 import { registerSupabaseAuthRoute } from "../supabase-auth";
-import { registerStorageProxy } from "./storageProxy";
 import { createRateLimit } from "./rate-limit";
 import { securityHeadersMiddleware } from "./security-headers";
 import { appRouter } from "../routers";
@@ -42,18 +41,14 @@ async function startServer() {
   // CORS: allowlist-based; rejects unknown origins. See ./cors.ts.
   app.use(corsMiddleware);
 
-  // Body limits: a 50MB JSON limit + no rate-limit is a trivial DoS.
   // 1MB is plenty for normal tRPC payloads (alarm lists, contacts).
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ limit: "1mb", extended: true }));
 
-  registerStorageProxy(app);
-
-  // Stricter limit on the OAuth flow (state issuance, callback) — these
-  // shouldn't be hit more than a handful of times per IP per minute.
-  app.use("/api/oauth", createRateLimit({ max: 20, windowMs: 60_000 }));
-  registerOAuthRoutes(app);
-  app.use("/api/auth/supabase", createRateLimit({ max: 10, windowMs: 60_000 }));
+  // Auth endpoints — /api/auth/supabase exchanges a Supabase token for a
+  // session JWT; the rest are session lifecycle (me / logout / cookie sync).
+  app.use("/api/auth", createRateLimit({ max: 30, windowMs: 60_000 }));
+  registerAuthRoutes(app);
   registerSupabaseAuthRoute(app);
 
   app.get("/api/health", (_req, res) => {
@@ -80,7 +75,6 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`[api] server listening on port ${port}`);
-    // Start the alarm monitoring background job
     startMonitoringScheduler();
   });
 }
