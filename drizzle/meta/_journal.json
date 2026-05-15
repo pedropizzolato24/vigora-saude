@@ -22,6 +22,13 @@
       "when": 1776878765055,
       "tag": "0002_bizarre_golden_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1778815280515,
+      "tag": "0003_flowery_namora",
+      "breakpoints": true
     }
   ]
 }
