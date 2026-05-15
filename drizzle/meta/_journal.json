@@ -29,6 +29,13 @@
       "when": 1778815280515,
       "tag": "0003_flowery_namora",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1778877315757,
+      "tag": "0004_solid_venom",
+      "breakpoints": true
     }
   ]
 }

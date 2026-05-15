@@ -66,6 +66,8 @@ export default function OAuthCallback() {
             openId: string;
             name: string | null;
             email: string | null;
+            phone: string | null;
+            userType: "caregiver" | "monitored" | null;
             loginMethod: string | null;
             lastSignedIn: string;
           };
@@ -77,13 +79,16 @@ export default function OAuthCallback() {
           openId: result.user.openId,
           name: result.user.name,
           email: result.user.email,
+          phone: result.user.phone,
+          userType: result.user.userType,
           loginMethod: result.user.loginMethod,
           lastSignedIn: new Date(result.user.lastSignedIn),
         });
         await AsyncStorage.setItem(LOGIN_COMPLETED_KEY, 'true');
 
         setStatus("success");
-        setTimeout(() => router.replace("/(tabs)"), 800);
+        const nextRoute = result.user.userType ? "/(tabs)" : "/register";
+        setTimeout(() => router.replace(nextRoute), 800);
       } catch (err) {
         console.error("[OAuth] Callback failed:", err);
         setStatus("error");
