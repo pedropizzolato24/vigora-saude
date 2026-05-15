@@ -45,10 +45,13 @@ export default function OAuthCallback() {
         if (!baseUrl) {
           throw new Error("URL do servidor não configurada. Rebuilde o app com EXPO_PUBLIC_API_BASE_URL.");
         }
-        const res = await fetch(`${baseUrl}/api/auth/supabase`, {
+        const endpoint = `${baseUrl}/api/auth/supabase`;
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ access_token: data.session.access_token }),
+        }).catch((err: unknown) => {
+          throw new Error(`Falha ao conectar em ${endpoint}: ${String(err)}`);
         });
 
         if (!res.ok) {
