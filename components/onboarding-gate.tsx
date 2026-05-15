@@ -7,13 +7,14 @@ const ONBOARDING_KEY = 'vigora_onboarding_completed';
 const LOGIN_COMPLETED_KEY = 'vigora_login_completed';
 
 /**
- * Runs once at app startup to enforce the onboarding → login funnel.
+ * Runs once at app startup to enforce the onboarding → login → register funnel.
  *
  * Decision table (checked in parallel for performance):
- *   onboarding not done                        → /onboarding (first time)
- *   onboarding done, never logged in before    → /onboarding (so user sees slides → login)
- *   onboarding done, logged in before, no user → /login (returning user, session gone)
- *   authenticated                              → stay on tabs
+ *   onboarding not done                          → /onboarding (first time)
+ *   onboarding done, never logged in before      → /onboarding (so user sees slides → login)
+ *   onboarding done, logged in before, no user   → /login (returning user, session gone)
+ *   authenticated but userType is null           → /register (registration incomplete)
+ *   authenticated and userType set               → stay on tabs
  */
 export function OnboardingGate() {
   const router = useRouter();
@@ -39,6 +40,12 @@ export function OnboardingGate() {
         if (!user) {
           // Has logged in before but session is gone → skip slides, go straight to login
           router.replace('/login');
+          return;
+        }
+
+        if (!user.userType) {
+          // Logged in but never finished the registration form
+          router.replace('/register');
         }
       } catch {
         // On error, don't block app startup

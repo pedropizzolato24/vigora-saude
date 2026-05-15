@@ -211,6 +211,7 @@ export default function RootLayout() {
             />
             <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
             <Stack.Screen name="login" options={{ gestureEnabled: false }} />
+            <Stack.Screen name="register" options={{ gestureEnabled: false }} />
             <Stack.Screen name="oauth/callback" />
             <Stack.Screen
               name="(modal)/paywall"
