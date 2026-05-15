@@ -20,10 +20,18 @@ export const users = mysqlTable("users", {
    * Use this for relations between tables.
    */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
+  /** OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
+  /** User-provided phone number, collected during registration. */
+  phone: varchar("phone", { length: 32 }),
+  /**
+   * Account type chosen during registration. `null` means the user logged in
+   * via OAuth but hasn't completed the registration form yet — the app routes
+   * them to /register instead of /(tabs).
+   */
+  userType: mysqlEnum("userType", ["caregiver", "monitored"]),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

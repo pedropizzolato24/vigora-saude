@@ -2,11 +2,15 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { SESSION_TOKEN_KEY, USER_INFO_KEY } from "@/constants/oauth";
 
+export type UserType = "caregiver" | "monitored";
+
 export type User = {
   id: number;
   openId: string;
   name: string | null;
   email: string | null;
+  phone: string | null;
+  userType: UserType | null;
   loginMethod: string | null;
   lastSignedIn: Date;
 };

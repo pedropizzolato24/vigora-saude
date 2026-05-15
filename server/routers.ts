@@ -9,6 +9,7 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { isWhatsAppApiConfigured, sendEmergencyAlerts } from "./whatsapp";
 import { assertDeviceOwnership, getAppUserForOwner } from "./db-monitoring";
 import { monitoringRouter } from "./routers-monitoring";
+import { getUserByOpenId, upsertUser } from "./db";
 import type { EmergencyContactRecord } from "../drizzle/schema";
 
 /**
@@ -65,6 +66,37 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
+    /**
+     * Completes the post-login registration: stores name (possibly edited),
+     * phone, and the account type chosen by the user.
+     *
+     * Until userType is set, the client routes the user to /register instead
+     * of the main app. Once set, the user is considered fully registered.
+     */
+    completeRegistration: protectedProcedure
+      .input(
+        z.object({
+          name: z.string().trim().min(1).max(255),
+          phone: z.string().trim().min(8).max(32),
+          userType: z.enum(["caregiver", "monitored"]),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        await upsertUser({
+          openId: ctx.user.openId,
+          name: input.name,
+          phone: input.phone,
+          userType: input.userType,
+        });
+        const updated = await getUserByOpenId(ctx.user.openId);
+        if (!updated) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Usuário não encontrado após atualização.",
+          });
+        }
+        return updated;
+      }),
     logout: publicProcedure.mutation(async ({ ctx }) => {
       // Best-effort: also revoke the JWT so a leaked copy of the
       // pre-logout token can't be reused.
