@@ -9,9 +9,31 @@
  * - Tabela de alarmes do mês (horário, medicamento, status)
  *
  * Usa HTML + SVG inline para compatibilidade máxima com expo-print.
+ *
+ * SECURITY: All user-supplied strings (profile.name, alarm.description,
+ * anamnesis.fullName, etc.) are routed through `esc()` before being
+ * interpolated. The previous version concatenated raw user input into
+ * the HTML, allowing trivial HTML/script injection when the PDF was
+ * later viewed in a WebView or shared as HTML.
  */
 
 import type { HealthMetric, Alarm, UserProfile } from './app-context';
+
+/**
+ * Escape a string for safe interpolation into HTML.
+ * Maps the 5 HTML metacharacters to entities. We do NOT pre-encode the
+ * '/' character because that would break URLs and date strings, but
+ * '/' alone is not enough to escape an attribute.
+ */
+export function esc(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 // --- Tipos --------------------------------------------------------------------
 
@@ -200,7 +222,7 @@ function buildSummaryCard(metrics: HealthMetric[], type: HealthMetric['type']): 
     return `<div class="summary-card">
       <div class="summary-icon" style="background:${color}20; color:${color}">${type === 'heart_rate' ? '♥' : type === 'blood_pressure' ? '🩸' : '🍬'}</div>
       <div class="summary-info">
-        <div class="summary-label">${label}</div>
+        <div class="summary-label">${esc(label)}</div>
         <div class="summary-value" style="color:#9BA1A6">-</div>
         <div class="summary-status" style="color:#9BA1A6">Sem dados</div>
       </div>
@@ -215,10 +237,10 @@ function buildSummaryCard(metrics: HealthMetric[], type: HealthMetric['type']): 
   return `<div class="summary-card">
     <div class="summary-icon" style="background:${color}20; color:${color}">${type === 'heart_rate' ? '♥' : type === 'blood_pressure' ? '🩸' : '🍬'}</div>
     <div class="summary-info">
-      <div class="summary-label">${label}</div>
-      <div class="summary-value" style="color:${color}">${latest.value} <span class="summary-unit">${unit}</span></div>
-      <div class="summary-status" style="background:${status.color}20; color:${status.color}">${status.label}</div>
-      ${avg !== null ? `<div class="summary-avg">Média: ${avg} ${unit} (${filtered.length} leituras)</div>` : ''}
+      <div class="summary-label">${esc(label)}</div>
+      <div class="summary-value" style="color:${color}">${esc(latest.value)} <span class="summary-unit">${esc(unit)}</span></div>
+      <div class="summary-status" style="background:${status.color}20; color:${status.color}">${esc(status.label)}</div>
+      ${avg !== null ? `<div class="summary-avg">Média: ${avg} ${esc(unit)} (${filtered.length} leituras)</div>` : ''}
     </div>
   </div>`;
 }
@@ -242,9 +264,9 @@ function buildAlarmTable(alarms: Alarm[]): string {
       const statusColor = alarm.enabled ? '#22C55E' : '#9BA1A6';
       const statusLabel = alarm.enabled ? 'Ativo' : 'Inativo';
       return `<tr>
-        <td>${alarm.time}</td>
-        <td>${alarm.description || '-'}</td>
-        <td>${repeatLabel[alarm.repeat] || alarm.repeat}</td>
+        <td>${esc(alarm.time)}</td>
+        <td>${esc(alarm.description || '-')}</td>
+        <td>${esc(repeatLabel[alarm.repeat] || alarm.repeat)}</td>
         <td><span style="background:${statusColor}20; color:${statusColor}; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:600;">${statusLabel}</span></td>
       </tr>`;
     })
@@ -289,9 +311,9 @@ export function buildReportHtml(data: ReportData): string {
     const tableRows = recentForType.slice(0, 15).map((m) => {
       const status = getStatusLabel(type, m.value);
       return `<tr>
-        <td>${formatDateTime(m.timestamp)}</td>
-        <td style="font-weight:700; color:${color}">${m.value} ${unit}</td>
-        <td><span style="background:${status.color}20; color:${status.color}; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:600;">${status.label}</span></td>
+        <td>${esc(formatDateTime(m.timestamp))}</td>
+        <td style="font-weight:700; color:${color}">${esc(m.value)} ${esc(unit)}</td>
+        <td><span style="background:${status.color}20; color:${status.color}; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:600;">${esc(status.label)}</span></td>
       </tr>`;
     }).join('');
 
@@ -299,8 +321,8 @@ export function buildReportHtml(data: ReportData): string {
 
     return `<div class="section">
       <div class="section-header" style="border-left:4px solid ${color}">
-        <h2 style="color:${color}">${label}</h2>
-        <span class="section-unit">${unit} · Faixa normal: ${normal.min}–${normal.max}</span>
+        <h2 style="color:${color}">${esc(label)}</h2>
+        <span class="section-unit">${esc(unit)} · Faixa normal: ${normal.min}–${normal.max}</span>
       </div>
       <div class="chart-container">
         ${svg}
@@ -321,9 +343,11 @@ export function buildReportHtml(data: ReportData): string {
     </div>`;
   }).join('');
 
-  const patientName = profile?.name || 'Paciente';
-  const reportDate = formatDate(generatedAt);
-  const periodStart = formatDate(oneMonthAgo);
+  const patientName = esc(profile?.name || 'Paciente');
+  const reportDate = esc(formatDate(generatedAt));
+  const periodStart = esc(formatDate(oneMonthAgo));
+  const patientBirthDate = esc(profile?.birthDate ?? '');
+  const patientBloodType = esc(profile?.bloodType ?? '');
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -492,13 +516,13 @@ export function buildReportHtml(data: ReportData): string {
       <div class="patient-field-label">Paciente</div>
       <div class="patient-field-value">${patientName}</div>
     </div>
-    ${profile?.birthDate ? `<div class="patient-field">
+    ${patientBirthDate ? `<div class="patient-field">
       <div class="patient-field-label">Data de Nascimento</div>
-      <div class="patient-field-value">${profile.birthDate}</div>
+      <div class="patient-field-value">${patientBirthDate}</div>
     </div>` : ''}
-    ${profile?.bloodType ? `<div class="patient-field">
+    ${patientBloodType ? `<div class="patient-field">
       <div class="patient-field-label">Tipo Sanguíneo</div>
-      <div class="patient-field-value">${profile.bloodType}</div>
+      <div class="patient-field-value">${patientBloodType}</div>
     </div>` : ''}
     <div class="patient-field">
       <div class="patient-field-label">Total de Registros</div>

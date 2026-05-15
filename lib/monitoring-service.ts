@@ -15,6 +15,7 @@ import { AppState, AppStateStatus, Platform } from "react-native";
 import { getDeviceId } from "./device-id";
 import { getApiBaseUrl } from "@/constants/oauth";
 import { Alarm } from "./app-context";
+import * as Auth from "./_core/auth";
 
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -49,12 +50,33 @@ function parseSuperjsonResponse(data: any): any {
   return resultData?.json ?? resultData ?? null;
 }
 
+/**
+ * Build request headers with optional Bearer token for native auth.
+ * Web platform uses cookie-based auth (credentials: include).
+ * Returns null when on native + no session token: caller must abort.
+ */
+async function buildAuthHeaders(): Promise<Record<string, string> | null> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (Platform.OS !== "web") {
+    const token = await Auth.getSessionToken();
+    if (!token) return null; // not authenticated yet — skip
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 async function trpcMutation(
   procedure: string,
   input: unknown
 ): Promise<any> {
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}/api/trpc/${procedure}`;
+
+  const headers = await buildAuthHeaders();
+  if (!headers) {
+    console.log(`[Monitoring] POST ${procedure} skipped: no auth session`);
+    return null;
+  }
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -68,7 +90,8 @@ async function trpcMutation(
       }
       const res = await fetchWithTimeout(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
+        credentials: "include",
         body: JSON.stringify({ json: input }),
       });
       console.log(`[Monitoring] POST ${procedure} status: ${res.status}`);
@@ -103,6 +126,12 @@ async function trpcQuery(
   const params = encodeURIComponent(JSON.stringify({ json: input }));
   const url = `${baseUrl}/api/trpc/${procedure}?input=${params}`;
 
+  const headers = await buildAuthHeaders();
+  if (!headers) {
+    console.log(`[Monitoring] GET ${procedure} skipped: no auth session`);
+    return null;
+  }
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       if (attempt > 0) {
@@ -115,7 +144,7 @@ async function trpcQuery(
           `[Monitoring] GET ${procedure} -> ${url.substring(0, 120)}...`
         );
       }
-      const res = await fetchWithTimeout(url);
+      const res = await fetchWithTimeout(url, { headers, credentials: "include" });
       console.log(`[Monitoring] GET ${procedure} status: ${res.status}`);
       if (!res.ok) {
         const errText = await res.text().catch(() => "(no body)");

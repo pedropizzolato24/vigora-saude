@@ -43,6 +43,19 @@ jobs:
         env:
           EXPO_PUBLIC_REVENUECAT_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_API_KEY }}
 
+      - name: Bundle JavaScript (debug standalone)
+        if: ${{ github.event.inputs.build_type == 'debug' }}
+        run: |
+          mkdir -p android/app/src/main/assets
+          npx expo export:embed \
+            --platform android \
+            --dev false \
+            --entry-file index.ts \
+            --bundle-output android/app/src/main/assets/index.android.bundle \
+            --assets-dest android/app/src/main/res
+        env:
+          EXPO_PUBLIC_REVENUECAT_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_API_KEY }}
+
       - name: Build Debug APK
         if: ${{ github.event.inputs.build_type == 'debug' }}
         run: cd android && ./gradlew assembleDebug --no-daemon

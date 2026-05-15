@@ -51,6 +51,12 @@ export interface EmergencyContactRecord {
 export const appUsers = mysqlTable("app_users", {
   id: int("id").autoincrement().primaryKey(),
   deviceId: varchar("deviceId", { length: 64 }).notNull().unique(),
+  /**
+   * OAuth openId of the user that owns this device row.
+   * Required for new registrations (set via authenticated tRPC).
+   * Legacy rows may be null until the user re-registers.
+   */
+  openId: varchar("openId", { length: 64 }),
   userName: varchar("userName", { length: 255 }),
   emergencyContacts: json("emergencyContacts").$type<EmergencyContactRecord[]>(),
   lastLocation: varchar("lastLocation", { length: 64 }),

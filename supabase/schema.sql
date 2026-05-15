@@ -2,6 +2,23 @@
 -- Vigora Saúde — Schema Supabase
 -- Execute este arquivo no SQL Editor do Supabase
 -- ============================================================
+--
+-- SECURITY NOTE
+-- -----------------------------------------------------------
+-- O acesso direto ao Supabase a partir do CLIENTE foi removido
+-- (a anon key fica embutida no APK/web bundle — qualquer pessoa
+-- pode usá-la). Toda a sincronização agora vai pela API tRPC
+-- autenticada (server/routers-monitoring.ts), que usa MySQL via
+-- Drizzle.
+--
+-- O Supabase é mantido APENAS para a Edge Function
+-- check-missed-alarms, que roda com SUPABASE_SERVICE_ROLE_KEY
+-- (bypass RLS). As políticas abaixo bloqueiam totalmente o anon
+-- role, mas mantêm as tabelas para histórico/migração.
+--
+-- Se você não usa mais a Edge Function, pode dropar o schema
+-- com `drop schema public cascade` em um banco vazio.
+-- ============================================================
 
 -- Extensão para jobs agendados (pg_cron)
 create extension if not exists pg_cron;
@@ -55,18 +72,29 @@ create table if not exists public.emergency_contacts (
 );
 
 -- ─── Row Level Security ───────────────────────────────────────────────────────
+-- Bloqueio TOTAL para anon e authenticated roles. O acesso é feito
+-- exclusivamente via service_role (Edge Function + servidor tRPC),
+-- que faz bypass natural de RLS no Supabase.
 
 alter table public.users enable row level security;
 alter table public.alarms enable row level security;
 alter table public.alarm_events enable row level security;
 alter table public.emergency_contacts enable row level security;
 
--- Políticas permissivas para anon key (sem auth próprio por ora)
--- Em produção, restringir por device_id verificado via JWT customizado
-create policy "allow_all_users" on public.users for all using (true);
-create policy "allow_all_alarms" on public.alarms for all using (true);
-create policy "allow_all_events" on public.alarm_events for all using (true);
-create policy "allow_all_contacts" on public.emergency_contacts for all using (true);
+-- Drop policies abertas existentes (se executado por cima do schema antigo)
+drop policy if exists "allow_all_users"    on public.users;
+drop policy if exists "allow_all_alarms"   on public.alarms;
+drop policy if exists "allow_all_events"   on public.alarm_events;
+drop policy if exists "allow_all_contacts" on public.emergency_contacts;
+
+-- Nenhuma policy = nenhum acesso (com RLS habilitado).
+-- Revoga acesso de anon/authenticated por segurança extra (defense in depth):
+revoke all on public.users              from anon, authenticated;
+revoke all on public.alarms             from anon, authenticated;
+revoke all on public.alarm_events       from anon, authenticated;
+revoke all on public.emergency_contacts from anon, authenticated;
+
+-- service_role retains full access (Supabase grants it implicitly).
 
 -- ─── Índices para performance ─────────────────────────────────────────────────
 
@@ -84,7 +112,8 @@ create index if not exists idx_emergency_contacts_user_id
 
 -- ─── Cron Job para escalação ──────────────────────────────────────────────────
 -- ATENÇÃO: Execute este bloco SOMENTE APÓS fazer o deploy da Edge Function
--- Substitua SEU_PROJETO e SUA_ANON_KEY pelos valores reais do seu projeto
+-- A Edge Function exige o cabeçalho X-Vigora-Cron-Secret cujo valor deve
+-- bater com CHECK_MISSED_ALARMS_SECRET (configurado nas env vars do projeto).
 
 -- select cron.schedule(
 --   'check-missed-alarms',
@@ -92,7 +121,10 @@ create index if not exists idx_emergency_contacts_user_id
 --   $$
 --   select net.http_post(
 --     url := 'https://SEU_PROJETO.supabase.co/functions/v1/check-missed-alarms',
---     headers := '{"Authorization": "Bearer SUA_ANON_KEY"}'::jsonb
+--     headers := jsonb_build_object(
+--       'Authorization', 'Bearer SUA_SERVICE_ROLE_KEY',
+--       'X-Vigora-Cron-Secret', 'SEU_SECRET_AQUI'
+--     )
 --   )
 --   $$
 -- );

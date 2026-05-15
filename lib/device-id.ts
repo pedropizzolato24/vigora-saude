@@ -4,20 +4,23 @@
  * Generates and persists a stable UUID for this device.
  * Used to identify the device in the server-side monitoring system.
  * Stored in SecureStore so it survives app updates but not device wipes.
+ *
+ * SECURITY: We use expo-crypto.randomUUID (CSPRNG-backed) instead of
+ * Math.random. The old generator could be brute-forced; combined with
+ * the previous public monitoring router (Fix #1), that would let an
+ * attacker enumerate deviceIds and read other users' contacts.
  */
+import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const DEVICE_ID_KEY = "vigora_device_id";
 
-function generateUUID(): string {
-  // Simple UUID v4 generator
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+export function generateUUID(): string {
+  // expo-crypto.randomUUID is backed by SecRandomCopyBytes (iOS) /
+  // SecureRandom (Android) / crypto.getRandomValues (web). RFC 4122 v4.
+  return Crypto.randomUUID();
 }
 
 let cachedDeviceId: string | null = null;
