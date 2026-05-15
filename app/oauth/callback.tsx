@@ -42,6 +42,9 @@ export default function OAuthCallback() {
 
         // Exchange Supabase access token for our custom session JWT
         const baseUrl = getApiBaseUrl();
+        if (!baseUrl) {
+          throw new Error("URL do servidor não configurada. Rebuilde o app com EXPO_PUBLIC_API_BASE_URL.");
+        }
         const res = await fetch(`${baseUrl}/api/auth/supabase`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
