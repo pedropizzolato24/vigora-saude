@@ -79,6 +79,8 @@ export const appRouter = router({
           name: z.string().trim().min(1).max(255),
           phone: z.string().trim().min(8).max(32),
           userType: z.enum(["caregiver", "monitored"]),
+          birthDate: z.string().trim().max(16).optional(),
+          bloodType: z.string().trim().max(8).optional(),
         }),
       )
       .mutation(async ({ ctx, input }) => {
@@ -87,6 +89,39 @@ export const appRouter = router({
           name: input.name,
           phone: input.phone,
           userType: input.userType,
+          birthDate: input.birthDate ?? null,
+          bloodType: input.bloodType ?? null,
+        });
+        const updated = await getUserByOpenId(ctx.user.openId);
+        if (!updated) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Usuário não encontrado após atualização.",
+          });
+        }
+        return updated;
+      }),
+    /**
+     * Updates any subset of the editable profile fields. Used by the in-app
+     * profile screen. Unlike completeRegistration, every field is optional —
+     * the client only sends what changed.
+     */
+    updateProfile: protectedProcedure
+      .input(
+        z.object({
+          name: z.string().trim().min(1).max(255).optional(),
+          phone: z.string().trim().max(32).optional(),
+          birthDate: z.string().trim().max(16).optional(),
+          bloodType: z.string().trim().max(8).optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        await upsertUser({
+          openId: ctx.user.openId,
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.phone !== undefined ? { phone: input.phone } : {}),
+          ...(input.birthDate !== undefined ? { birthDate: input.birthDate } : {}),
+          ...(input.bloodType !== undefined ? { bloodType: input.bloodType } : {}),
         });
         const updated = await getUserByOpenId(ctx.user.openId);
         if (!updated) {

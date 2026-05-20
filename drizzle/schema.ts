@@ -32,6 +32,10 @@ export const users = mysqlTable("users", {
    * them to /register instead of /(tabs).
    */
   userType: mysqlEnum("userType", ["caregiver", "monitored"]),
+  /** Date of birth as the user typed it ("DD/MM/YYYY"). Free text — we don't parse server-side. */
+  birthDate: varchar("birthDate", { length: 16 }),
+  /** Blood type tag e.g. "A+", "O-". Free text so future formats don't require a migration. */
+  bloodType: varchar("bloodType", { length: 8 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

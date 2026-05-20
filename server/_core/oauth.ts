@@ -12,6 +12,10 @@ function buildUserResponse(
     openId: user?.openId ?? null,
     name: user?.name ?? null,
     email: user?.email ?? null,
+    phone: user?.phone ?? null,
+    userType: user?.userType ?? null,
+    birthDate: user?.birthDate ?? null,
+    bloodType: user?.bloodType ?? null,
     loginMethod: user?.loginMethod ?? null,
     lastSignedIn: (user?.lastSignedIn ?? new Date()).toISOString(),
   };

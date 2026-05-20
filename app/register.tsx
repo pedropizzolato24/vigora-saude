@@ -20,6 +20,8 @@ import { trpc } from '@/lib/trpc';
 
 type UserType = 'caregiver' | 'monitored';
 
+const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
 function formatPhone(input: string): string {
   const digits = input.replace(/\D/g, '').slice(0, 11);
   if (digits.length <= 2) return digits.length ? `(${digits}` : digits;
@@ -30,12 +32,21 @@ function formatPhone(input: string): string {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 }
 
+function formatBirthDate(input: string): string {
+  const digits = input.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
 export default function RegisterScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [bloodType, setBloodType] = useState<string | null>(null);
   const [userType, setUserType] = useState<UserType | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,6 +56,8 @@ export default function RegisterScreen() {
     Auth.getUserInfo().then((u) => {
       if (u?.name) setName(u.name);
       if (u?.phone) setPhone(formatPhone(u.phone));
+      if (u?.birthDate) setBirthDate(u.birthDate);
+      if (u?.bloodType) setBloodType(u.bloodType);
     });
   }, []);
 
@@ -73,6 +86,8 @@ export default function RegisterScreen() {
         name: name.trim(),
         phone: phoneDigits,
         userType,
+        birthDate: birthDate.trim() || undefined,
+        bloodType: bloodType ?? undefined,
       });
 
       const existing = await Auth.getUserInfo();
@@ -82,6 +97,8 @@ export default function RegisterScreen() {
           name: updated.name,
           phone: updated.phone,
           userType: updated.userType,
+          birthDate: updated.birthDate,
+          bloodType: updated.bloodType,
         });
       }
 
@@ -147,6 +164,49 @@ export default function RegisterScreen() {
               { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border },
             ]}
           />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: colors.foreground }]}>Data de nascimento (opcional)</Text>
+          <TextInput
+            value={birthDate}
+            onChangeText={(t) => setBirthDate(formatBirthDate(t))}
+            placeholder="DD/MM/AAAA"
+            placeholderTextColor={colors.muted}
+            keyboardType="numeric"
+            maxLength={10}
+            style={[
+              styles.input,
+              { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: colors.foreground }]}>Tipo sanguíneo (opcional)</Text>
+          <View style={styles.bloodGrid}>
+            {BLOOD_TYPES.map((bt) => {
+              const selected = bloodType === bt;
+              return (
+                <Pressable
+                  key={bt}
+                  onPress={() => setBloodType(selected ? null : bt)}
+                  style={({ pressed }) => [
+                    styles.bloodOption,
+                    {
+                      backgroundColor: selected ? '#0066CC' : colors.surface,
+                      borderColor: selected ? '#0066CC' : colors.border,
+                      opacity: pressed ? 0.85 : 1,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.bloodOptionText, { color: selected ? '#FFFFFF' : colors.foreground }]}>
+                    {bt}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
         <View style={styles.field}>
@@ -299,6 +359,23 @@ const styles = StyleSheet.create({
   typeDescription: {
     fontSize: 12,
     lineHeight: 16,
+  },
+  bloodGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  bloodOption: {
+    minWidth: 64,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    alignItems: 'center',
+  },
+  bloodOptionText: {
+    fontSize: 15,
+    fontWeight: '700',
   },
   errorBox: {
     flexDirection: 'row',

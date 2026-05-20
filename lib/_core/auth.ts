@@ -11,6 +11,8 @@ export type User = {
   email: string | null;
   phone: string | null;
   userType: UserType | null;
+  birthDate: string | null;
+  bloodType: string | null;
   loginMethod: string | null;
   lastSignedIn: Date;
 };

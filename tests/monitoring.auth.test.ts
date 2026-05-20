@@ -57,6 +57,8 @@ function makeUser(openId: string): User {
     email: "test@example.com",
     phone: null,
     userType: null,
+    birthDate: null,
+    bloodType: null,
     loginMethod: "google",
     role: "user",
     createdAt: new Date(),

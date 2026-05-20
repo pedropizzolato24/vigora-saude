@@ -36,6 +36,13 @@
       "when": 1778877315757,
       "tag": "0004_solid_venom",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1779215638408,
+      "tag": "0005_white_black_panther",
+      "breakpoints": true
     }
   ]
 }
