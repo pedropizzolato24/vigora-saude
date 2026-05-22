@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
-import React, { createContext, useContext, useEffect, useReducer, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useReducer } from 'react';
 import { updateAllWidgets } from './update-widgets';
-import { syncUser, syncAlarms, syncEmergencyContacts, sendHeartbeat } from './supabase-sync';
+import { pullCloudData, pushCloudData, type CloudSnapshot } from './cloud-sync';
 
 // --- Types -------------------------------------------------------------------
 
@@ -94,6 +94,8 @@ export interface AppState {
   missedAlarmCount: number;
   profile: UserProfile;
   isLoading: boolean;
+  /** Epoch ms of the last local data change. Drives cloud last-write-wins. */
+  dataUpdatedAt: number;
 }
 
 // --- Actions -----------------------------------------------------------------
@@ -149,11 +151,38 @@ const initialState: AppState = {
     phone: '',
   },
   isLoading: true,
+  dataUpdatedAt: 0,
 };
 
 // --- Reducer -----------------------------------------------------------------
 
+/** Actions that mutate user data we want backed up to the cloud. */
+const DATA_ACTIONS = new Set<AppAction['type']>([
+  'ADD_ALARM',
+  'UPDATE_ALARM',
+  'DELETE_ALARM',
+  'ADD_CONTACT',
+  'UPDATE_CONTACT',
+  'DELETE_CONTACT',
+  'SET_ANAMNESIS',
+  'ADD_HEALTH_METRIC',
+  'DELETE_HEALTH_METRIC',
+  'UPDATE_SETTINGS',
+  'UPDATE_PROFILE',
+  'CLEAR_ALL_DATA',
+]);
+
 function appReducer(state: AppState, action: AppAction): AppState {
+  const next = baseReducer(state, action);
+  // Stamp the change time so the cloud sync can resolve conflicts. We skip when
+  // the reducer returned the same reference (no-op, e.g. alarm cap reached).
+  if (next !== state && DATA_ACTIONS.has(action.type)) {
+    return { ...next, dataUpdatedAt: Date.now() };
+  }
+  return next;
+}
+
+function baseReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'LOAD_STATE':
       return { ...state, ...action.payload, isLoading: false };
@@ -261,9 +290,28 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 const STORAGE_KEY = 'vigora_app_state';
 
+function buildSnapshot(state: AppState): CloudSnapshot {
+  return {
+    anamnesis: state.anamnesis,
+    emergencyContacts: state.emergencyContacts,
+    alarms: state.alarms,
+    settings: state.settings,
+    healthMetrics: state.healthMetrics,
+    profile: state.profile,
+    dataUpdatedAt: state.dataUpdatedAt,
+  };
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
-  const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null);
+
+  // Latest state, readable inside async callbacks without re-subscribing them.
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  // Guards so the login reconcile runs once, and pushes don't echo a just-pulled snapshot.
+  const reconciledRef = useRef(false);
+  const lastSyncedTsRef = useRef(0);
+  const pushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load persisted state on mount
   useEffect(() => {
@@ -282,35 +330,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  // Registrar usuário no Supabase após carregamento inicial
+  // Reconcile with the cloud once, after the local state has loaded. If the
+  // cloud copy is newer (e.g. after a reinstall), apply it; otherwise push the
+  // local copy up. No-ops when unauthenticated (cloud-sync returns null).
   useEffect(() => {
-    if (state.isLoading) return;
-    syncUser(state.profile?.name).then((id) => {
-      if (id) setSupabaseUserId(id);
-    }).catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (state.isLoading || reconciledRef.current) return;
+    reconciledRef.current = true;
+
+    (async () => {
+      const local = stateRef.current;
+      lastSyncedTsRef.current = local.dataUpdatedAt;
+
+      const cloud = await pullCloudData();
+      if (cloud && cloud.dataUpdatedAt > local.dataUpdatedAt) {
+        // Cloud wins: hydrate local state from the backup.
+        const payload: Partial<AppState> = {
+          anamnesis: cloud.anamnesis,
+          emergencyContacts: cloud.emergencyContacts ?? [],
+          alarms: cloud.alarms ?? [],
+          healthMetrics: cloud.healthMetrics ?? [],
+          dataUpdatedAt: cloud.dataUpdatedAt,
+        };
+        if (cloud.settings) payload.settings = { ...local.settings, ...cloud.settings };
+        if (cloud.profile) payload.profile = { ...local.profile, ...cloud.profile };
+        lastSyncedTsRef.current = cloud.dataUpdatedAt;
+        dispatch({ type: 'LOAD_STATE', payload });
+      } else if (local.dataUpdatedAt > 0) {
+        // Local is newer (or no cloud row yet): back it up.
+        const ok = await pushCloudData(buildSnapshot(local));
+        if (ok) lastSyncedTsRef.current = local.dataUpdatedAt;
+      }
+    })();
   }, [state.isLoading]);
 
-  // Sincronizar alarmes com Supabase quando mudarem
+  // Debounced push: whenever local data changes after the initial reconcile,
+  // back the new snapshot up to the cloud (3s after the last change).
   useEffect(() => {
-    if (state.isLoading || !supabaseUserId) return;
-    syncAlarms(supabaseUserId, state.alarms).catch(() => {});
-  }, [state.alarms, supabaseUserId, state.isLoading]);
+    if (state.isLoading || !reconciledRef.current) return;
+    if (state.dataUpdatedAt <= lastSyncedTsRef.current) return;
 
-  // Sincronizar contatos de emergência com Supabase quando mudarem
-  useEffect(() => {
-    if (state.isLoading || !supabaseUserId) return;
-    syncEmergencyContacts(supabaseUserId, state.emergencyContacts).catch(() => {});
-  }, [state.emergencyContacts, supabaseUserId, state.isLoading]);
+    if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
+    pushTimerRef.current = setTimeout(() => {
+      const snapshot = buildSnapshot(stateRef.current);
+      pushCloudData(snapshot).then((ok) => {
+        if (ok) lastSyncedTsRef.current = snapshot.dataUpdatedAt;
+      });
+    }, 3000);
 
-  // Heartbeat a cada 5 minutos para o dead man's switch
-  useEffect(() => {
-    if (!supabaseUserId) return;
-    const interval = setInterval(() => {
-      sendHeartbeat(supabaseUserId).catch(() => {});
-    }, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [supabaseUserId]);
+    return () => {
+      if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
+    };
+  }, [state.dataUpdatedAt, state.isLoading]);
 
   // Persist state on every change (except isLoading)
   useEffect(() => {

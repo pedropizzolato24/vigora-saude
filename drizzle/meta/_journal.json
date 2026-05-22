@@ -43,6 +43,13 @@
       "when": 1779215638408,
       "tag": "0005_white_black_panther",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1779480586218,
+      "tag": "0006_cloudy_nighthawk",
+      "breakpoints": true
     }
   ]
 }

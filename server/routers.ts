@@ -9,7 +9,7 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { isWhatsAppApiConfigured, sendEmergencyAlerts } from "./whatsapp";
 import { assertDeviceOwnership, getAppUserForOwner } from "./db-monitoring";
 import { monitoringRouter } from "./routers-monitoring";
-import { getUserByOpenId, upsertUser } from "./db";
+import { getUserByOpenId, getUserData, upsertUser, upsertUserData } from "./db";
 import type { EmergencyContactRecord } from "../drizzle/schema";
 
 /**
@@ -162,6 +162,50 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+  }),
+
+  // Per-account cloud backup of the app state (survives reinstall)
+  userData: router({
+    /** Returns the stored snapshot for the current user, or null if none yet. */
+    get: protectedProcedure.query(async ({ ctx }) => {
+      const row = await getUserData(ctx.user.openId);
+      if (!row) return null;
+      return {
+        anamnesis: row.anamnesis ?? null,
+        emergencyContacts: row.emergencyContacts ?? [],
+        alarms: row.alarms ?? [],
+        settings: row.settings ?? null,
+        healthMetrics: row.healthMetrics ?? [],
+        profile: row.profile ?? null,
+        dataUpdatedAt: row.dataUpdatedAt ?? 0,
+      };
+    }),
+    /** Upserts the snapshot. Last-write-wins is enforced client-side via dataUpdatedAt. */
+    put: protectedProcedure
+      .input(
+        z.object({
+          anamnesis: z.record(z.string(), z.unknown()).nullable().optional(),
+          emergencyContacts: z.array(z.unknown()).max(500).optional(),
+          alarms: z.array(z.unknown()).max(500).optional(),
+          settings: z.record(z.string(), z.unknown()).nullable().optional(),
+          healthMetrics: z.array(z.unknown()).max(2000).optional(),
+          profile: z.record(z.string(), z.unknown()).nullable().optional(),
+          dataUpdatedAt: z.number().int().nonnegative(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        await upsertUserData({
+          openId: ctx.user.openId,
+          anamnesis: (input.anamnesis ?? null) as Record<string, unknown> | null,
+          emergencyContacts: input.emergencyContacts ?? [],
+          alarms: input.alarms ?? [],
+          settings: (input.settings ?? null) as Record<string, unknown> | null,
+          healthMetrics: input.healthMetrics ?? [],
+          profile: (input.profile ?? null) as Record<string, unknown> | null,
+          dataUpdatedAt: input.dataUpdatedAt,
+        });
+        return { success: true } as const;
+      }),
   }),
 
   // Alarm monitoring system
