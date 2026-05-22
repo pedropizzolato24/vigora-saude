@@ -20,8 +20,17 @@ import { useFontSize } from '@/lib/font-size-context';
 import { useAppContext } from '@/lib/app-context';
 import { useAccessibility } from '@/lib/accessibility-context';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
+import { trpc } from '@/lib/trpc';
+import * as Auth from '@/lib/_core/auth';
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
+function formatPhoneForDisplay(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
 
 export default function ProfileScreen() {
   const colors = useColors();
@@ -30,21 +39,31 @@ export default function ProfileScreen() {
   const { state, dispatch } = useAppContext();
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
 
-  const [name, setName] = useState(state.profile.name);
-  const [birthDate, setBirthDate] = useState(state.profile.birthDate);
-  const [bloodType, setBloodType] = useState(state.profile.bloodType);
-  const [phone, setPhone] = useState(state.profile.phone);
+  const [name, setName] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [bloodType, setBloodType] = useState('');
+  const [phone, setPhone] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(state.profile.photoUri);
   const [hasChanges, setHasChanges] = useState(false);
   const { dialogProps, showDialog } = useAppDialog();
+  const updateProfile = trpc.auth.updateProfile.useMutation();
+
+  // Initial load: prefer server-synced values from registration; fall back to
+  // the legacy local-only AppContext profile for older installs that pre-date
+  // the registration flow.
+  useEffect(() => {
+    Auth.getUserInfo().then((u) => {
+      setName(u?.name ?? state.profile.name ?? '');
+      setPhone(formatPhoneForDisplay(u?.phone ?? state.profile.phone ?? ''));
+      setBirthDate(u?.birthDate ?? state.profile.birthDate ?? '');
+      setBloodType(u?.bloodType ?? state.profile.bloodType ?? '');
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
-    setName(state.profile.name);
-    setBirthDate(state.profile.birthDate);
-    setBloodType(state.profile.bloodType);
-    setPhone(state.profile.phone);
     setPhotoUri(state.profile.photoUri);
-  }, [state.profile]);
+  }, [state.profile.photoUri]);
 
   const markChanged = () => setHasChanges(true);
 
@@ -126,16 +145,45 @@ export default function ProfileScreen() {
     markChanged();
   };
 
-  const handleSave = () => {
-    if (Platform.OS !== 'web') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  const handleSave = async () => {
+    const phoneDigits = phone.replace(/\D/g, '');
+    try {
+      const updated = await updateProfile.mutateAsync({
+        name: name.trim() || undefined,
+        phone: phoneDigits || undefined,
+        birthDate: birthDate.trim() || undefined,
+        bloodType: bloodType.trim() || undefined,
+      });
+
+      // Mirror to local user info so getUserInfo() stays in sync after
+      // reopens of the app while offline.
+      const existing = await Auth.getUserInfo();
+      if (existing) {
+        await Auth.setUserInfo({
+          ...existing,
+          name: updated.name,
+          phone: updated.phone,
+          birthDate: updated.birthDate,
+          bloodType: updated.bloodType,
+        });
+      }
+
+      // Keep the in-memory AppContext profile aligned. photoUri continues
+      // to live only locally for now (no cloud sync yet).
+      dispatch({
+        type: 'UPDATE_PROFILE',
+        payload: { name, birthDate, bloodType, phone, photoUri },
+      });
+
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      setHasChanges(false);
+      showDialog({ title: 'Perfil salvo', message: 'Suas informações foram atualizadas com sucesso.', variant: 'success', buttons: [{ text: 'OK' }] });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro ao salvar perfil.';
+      showDialog({ title: 'Erro ao salvar', message, variant: 'warning', buttons: [{ text: 'OK' }] });
     }
-    dispatch({
-      type: 'UPDATE_PROFILE',
-      payload: { name, birthDate, bloodType, phone, photoUri },
-    });
-    setHasChanges(false);
-    showDialog({ title: 'Perfil salvo', message: 'Suas informações foram atualizadas com sucesso.', variant: 'success', buttons: [{ text: 'OK' }] });
   };
 
   // --- ACCESSIBILITY MODE --------------------------------------------------

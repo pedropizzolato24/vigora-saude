@@ -33,6 +33,8 @@ export function useAuth(options?: UseAuthOptions) {
             email: apiUser.email,
             phone: apiUser.phone,
             userType: apiUser.userType,
+            birthDate: apiUser.birthDate,
+            bloodType: apiUser.bloodType,
             loginMethod: apiUser.loginMethod,
             lastSignedIn: new Date(apiUser.lastSignedIn),
           };

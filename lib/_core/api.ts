@@ -131,6 +131,8 @@ export async function getMe(): Promise<{
   email: string | null;
   phone: string | null;
   userType: "caregiver" | "monitored" | null;
+  birthDate: string | null;
+  bloodType: string | null;
   loginMethod: string | null;
   lastSignedIn: string;
 } | null> {

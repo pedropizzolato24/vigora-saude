@@ -76,6 +76,8 @@ export function registerSupabaseAuthRoute(app: Express) {
           email,
           phone: dbUser?.phone ?? null,
           userType: dbUser?.userType ?? null,
+          birthDate: dbUser?.birthDate ?? null,
+          bloodType: dbUser?.bloodType ?? null,
           loginMethod: 'google',
           lastSignedIn: new Date().toISOString(),
         },

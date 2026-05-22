@@ -68,6 +68,8 @@ export default function OAuthCallback() {
             email: string | null;
             phone: string | null;
             userType: "caregiver" | "monitored" | null;
+            birthDate: string | null;
+            bloodType: string | null;
             loginMethod: string | null;
             lastSignedIn: string;
           };
@@ -81,6 +83,8 @@ export default function OAuthCallback() {
           email: result.user.email,
           phone: result.user.phone,
           userType: result.user.userType,
+          birthDate: result.user.birthDate,
+          bloodType: result.user.bloodType,
           loginMethod: result.user.loginMethod,
           lastSignedIn: new Date(result.user.lastSignedIn),
         });
