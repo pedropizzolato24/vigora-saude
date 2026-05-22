@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   int,
   json,
@@ -45,6 +46,38 @@ export const users = mysqlTable("users", {
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+
+// -----------------------------------------------------------------------------
+// User Data - per-account cloud backup of the whole app state
+// -----------------------------------------------------------------------------
+
+/**
+ * Mirror of the client's AppState slices that should survive a reinstall.
+ * Keyed by `openId` (the Google account), independent of device. The app
+ * pushes a snapshot whenever local data changes and pulls it on login,
+ * resolving conflicts by `dataUpdatedAt` (last write wins).
+ *
+ * Blobs are stored opaquely as JSON — the client owns their shape. Validation
+ * happens at the tRPC boundary, and access is always scoped to the
+ * authenticated user, so we don't re-model each field server-side.
+ */
+export const userData = mysqlTable("user_data", {
+  id: int("id").autoincrement().primaryKey(),
+  openId: varchar("openId", { length: 64 }).notNull().unique(),
+  anamnesis: json("anamnesis").$type<Record<string, unknown> | null>(),
+  emergencyContacts: json("emergencyContacts").$type<unknown[]>(),
+  alarms: json("alarms").$type<unknown[]>(),
+  settings: json("settings").$type<Record<string, unknown> | null>(),
+  healthMetrics: json("healthMetrics").$type<unknown[]>(),
+  profile: json("profile").$type<Record<string, unknown> | null>(),
+  /** Client-supplied epoch-ms of the last local data change. Drives last-write-wins. */
+  dataUpdatedAt: bigint("dataUpdatedAt", { mode: "number" }).notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserData = typeof userData.$inferSelect;
+export type InsertUserData = typeof userData.$inferInsert;
 
 // -----------------------------------------------------------------------------
 // App Users - device registration (no Manus OAuth required)

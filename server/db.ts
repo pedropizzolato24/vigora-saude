@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, InsertUserData, userData, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -114,4 +114,44 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// --- User Data (cloud backup) -------------------------------------------------
+
+export async function getUserData(openId: string) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get user data: database not available");
+    return undefined;
+  }
+  const result = await db
+    .select()
+    .from(userData)
+    .where(eq(userData.openId, openId))
+    .limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function upsertUserData(data: InsertUserData): Promise<void> {
+  if (!data.openId) {
+    throw new Error("openId is required to upsert user data");
+  }
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot upsert user data: database not available");
+    return;
+  }
+
+  const set = {
+    anamnesis: data.anamnesis ?? null,
+    emergencyContacts: data.emergencyContacts ?? null,
+    alarms: data.alarms ?? null,
+    settings: data.settings ?? null,
+    healthMetrics: data.healthMetrics ?? null,
+    profile: data.profile ?? null,
+    dataUpdatedAt: data.dataUpdatedAt ?? 0,
+  };
+
+  await db
+    .insert(userData)
+    .values({ openId: data.openId, ...set })
+    .onDuplicateKeyUpdate({ set });
+}
