@@ -35,7 +35,7 @@ export function CaregiverEmptyState({ icon, title, description, ctaLabel, onCtaP
             { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
           ]}
         >
-          <Text style={styles.ctaText}>{ctaLabel}</Text>
+          <Text style={[styles.ctaText, { color: colors.onPrimary }]}>{ctaLabel}</Text>
         </Pressable>
       ) : null}
     </View>
@@ -55,5 +55,5 @@ const styles = StyleSheet.create({
     marginTop: 12, paddingVertical: 14, paddingHorizontal: 28,
     borderRadius: 14, minWidth: 200, alignItems: 'center',
   },
-  ctaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  ctaText: { fontSize: 16, fontWeight: '700' },
 });

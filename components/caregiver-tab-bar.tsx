@@ -38,9 +38,7 @@ export function CaregiverTabBar() {
   const tabBarHeight = isAccessibilityMode ? 80 + bottomPadding : 60 + bottomPadding;
 
   const isActive = (route: string) => {
-    if (route === '/(caregiver-tabs)/') {
-      return pathname === '/' || pathname === '/index' || pathname.endsWith('(caregiver-tabs)');
-    }
+    if (route === '/(caregiver-tabs)/') return pathname === '/' || pathname === '/index';
     return pathname.includes(route.replace('/(caregiver-tabs)', ''));
   };
 
@@ -79,16 +77,21 @@ export function CaregiverTabBar() {
             accessibilityRole="button"
             style={({ pressed }) => [styles.tab, pressed && { opacity: 0.7 }]}
           >
-            <View
-              style={[
-                styles.iconBackground,
-                isAccessibilityMode
-                  ? { width: 56, height: 40, borderRadius: 14, borderWidth: active ? 2 : 0, borderColor: ac.primary }
-                  : { width: 48, height: 34, borderRadius: 12 },
-                { backgroundColor: active ? tint + '20' : 'transparent' },
-              ]}
-            >
-              <MaterialIcons name={tab.icon} size={iconSize} color={tint} />
+            {/* Two-layer split: outer wrapper has overflow visible so a
+                future badge (e.g. unread alerts count) can render outside
+                the inner background's clipping radius. Mirrors custom-tab-bar. */}
+            <View style={[styles.iconWrapper, isAccessibilityMode && { width: 56, height: 40 }]}>
+              <View
+                style={[
+                  styles.iconBackground,
+                  isAccessibilityMode
+                    ? { width: 56, height: 40, borderRadius: 14, borderWidth: active ? 2 : 0, borderColor: ac.primary }
+                    : { width: 48, height: 34, borderRadius: 12 },
+                  { backgroundColor: active ? tint + '20' : 'transparent' },
+                ]}
+              >
+                <MaterialIcons name={tab.icon} size={iconSize} color={tint} />
+              </View>
             </View>
             <Text style={[styles.label, { color: tint, fontSize: labelSize }, active && styles.labelActive]}>
               {tab.label}
@@ -103,6 +106,11 @@ export function CaregiverTabBar() {
 const styles = StyleSheet.create({
   container: { flexDirection: 'row', paddingTop: 6, alignItems: 'flex-start' },
   tab: { flex: 1, alignItems: 'center', gap: 3 },
+  iconWrapper: {
+    width: 48, height: 34,
+    alignItems: 'center', justifyContent: 'center',
+    overflow: 'visible',
+  },
   iconBackground: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   label: { fontSize: 11, fontWeight: '500', textAlign: 'center' },
   labelActive: { fontWeight: '700' },
