@@ -9,7 +9,7 @@ import { Platform } from "react-native";
 import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { AppProvider, useAppContext } from "@/lib/app-context";
-import { CaregiverProvider } from '@/lib/caregiver-context';
+import { CaregiverProvider } from "@/lib/caregiver-context";
 import { NotificationsProvider } from "@/lib/notifications-context";
 import { MenuProvider } from '@/lib/menu-context';
 import { FontSizeProvider } from '@/lib/font-size-context';
