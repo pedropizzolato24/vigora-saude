@@ -53,4 +53,11 @@ describe('caregiverReducer', () => {
       deadManSwitch: true,
     });
   });
+
+  it('unknown actions return the same state reference', () => {
+    // toBe = reference equality. Important so React's useReducer doesn't
+    // trigger spurious re-renders when an unrecognized action slips through.
+    const next = caregiverReducer(DEFAULT_CAREGIVER_STATE, { type: 'UNKNOWN' } as never);
+    expect(next).toBe(DEFAULT_CAREGIVER_STATE);
+  });
 });
