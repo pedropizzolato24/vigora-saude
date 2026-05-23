@@ -9,6 +9,7 @@ import { Platform } from "react-native";
 import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { AppProvider, useAppContext } from "@/lib/app-context";
+import { CaregiverProvider } from '@/lib/caregiver-context';
 import { NotificationsProvider } from "@/lib/notifications-context";
 import { MenuProvider } from '@/lib/menu-context';
 import { FontSizeProvider } from '@/lib/font-size-context';
@@ -186,6 +187,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <PurchasesProvider>
       <NotificationsProvider>
+        <CaregiverProvider>
         <AppProvider>
           <AlarmSyncInitializer />
           <AlarmNotificationHandler />
@@ -212,6 +214,8 @@ export default function RootLayout() {
             <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
             <Stack.Screen name="login" options={{ gestureEnabled: false }} />
             <Stack.Screen name="register" options={{ gestureEnabled: false }} />
+            <Stack.Screen name="(caregiver-tabs)" />
+            <Stack.Screen name="caregiver-onboarding" options={{ gestureEnabled: false }} />
             <Stack.Screen name="oauth/callback" />
             <Stack.Screen
               name="(modal)/paywall"
@@ -235,6 +239,7 @@ export default function RootLayout() {
           </AccessibilityProvider>
           </FontSizeProvider>
         </AppProvider>
+        </CaregiverProvider>
       </NotificationsProvider>
       </PurchasesProvider>
     </GestureHandlerRootView>
