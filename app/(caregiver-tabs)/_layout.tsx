@@ -1,0 +1,55 @@
+import { Tabs, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Platform, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CaregiverTabBar } from '@/components/caregiver-tab-bar';
+import { useColors } from '@/hooks/use-colors';
+import * as Auth from '@/lib/_core/auth';
+
+export default function CaregiverTabLayout() {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const [checked, setChecked] = useState(false);
+
+  // Defense in depth: a monitored user that somehow lands on a caregiver-tabs
+  // deep link is redirected. The primary guarantee is OnboardingGate / OAuth
+  // callback, but this avoids surprising state if something else routes here.
+  useEffect(() => {
+    (async () => {
+      const user = await Auth.getUserInfo();
+      if (user?.userType && user.userType !== 'caregiver') {
+        router.replace('/(tabs)');
+        return;
+      }
+      setChecked(true);
+    })();
+  }, [router]);
+
+  if (!checked) return null;
+
+  const bottomPadding = Platform.OS === 'web' ? 12 : Math.max(insets.bottom, 8);
+  const tabBarHeight = 56 + bottomPadding;
+
+  return (
+    <View style={{ flex: 1 }}>
+      <Tabs
+        tabBar={() => <CaregiverTabBar />}
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            height: tabBarHeight,
+            backgroundColor: colors.background,
+            borderTopColor: colors.border,
+            borderTopWidth: 0.5,
+          },
+        }}
+      >
+        <Tabs.Screen name="index" options={{ title: 'Início' }} />
+        <Tabs.Screen name="alerts" options={{ title: 'Alertas' }} />
+        <Tabs.Screen name="person" options={{ title: 'Pessoa' }} />
+        <Tabs.Screen name="settings" options={{ title: 'Configurações' }} />
+      </Tabs>
+    </View>
+  );
+}
