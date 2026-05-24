@@ -7,7 +7,7 @@
  */
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
@@ -34,6 +34,9 @@ export default function LinkScreen() {
   const [relationship, setRelationship] = useState<string | null>(null);
   const [step, setStep] = useState<'method' | 'details'>('method');
   const [permission, requestPermission] = useCameraPermissions();
+  // Latch so the QR camera doesn't fire submitMethod repeatedly between the
+  // first scan and the re-render that unmounts CameraView.
+  const scannedRef = useRef(false);
 
   const submitMethod = (method: LinkMethod, value: string) => {
     if (!value.trim()) return;
@@ -137,6 +140,10 @@ export default function LinkScreen() {
       />
 
       <MethodCard
+        // Remount when the toggle changes so the input value resets — prevents
+        // a user from typing a phone, switching to Email, and submitting the
+        // stale phone string.
+        key={emailPhone}
         icon="alternate-email"
         title="Email ou telefone"
         description="Envie um pedido de vínculo para o email ou telefone cadastrado."
@@ -168,7 +175,11 @@ export default function LinkScreen() {
               style={{ flex: 1 }}
               facing="back"
               barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-              onBarcodeScanned={({ data }) => submitMethod('qr', data)}
+              onBarcodeScanned={({ data }) => {
+                if (scannedRef.current) return;
+                scannedRef.current = true;
+                submitMethod('qr', data);
+              }}
             />
           </View>
         ) : (
