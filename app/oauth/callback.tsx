@@ -10,6 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { getApiBaseUrl } from "@/constants/oauth";
 
 const LOGIN_COMPLETED_KEY = 'vigora_login_completed';
+const CAREGIVER_ONBOARDING_KEY = 'vigora_caregiver_onboarding_completed';
 
 export default function OAuthCallback() {
   const router = useRouter();
@@ -98,7 +99,15 @@ export default function OAuthCallback() {
         reconcileFromCloud().catch(() => {});
 
         setStatus("success");
-        const nextRoute = result.user.userType ? "/(tabs)" : "/register";
+        let nextRoute: string;
+        if (!result.user.userType) {
+          nextRoute = '/register';
+        } else if (result.user.userType === 'caregiver') {
+          const flag = await AsyncStorage.getItem(CAREGIVER_ONBOARDING_KEY);
+          nextRoute = flag ? '/(caregiver-tabs)' : '/caregiver-onboarding';
+        } else {
+          nextRoute = '/(tabs)';
+        }
         setTimeout(() => router.replace(nextRoute), 800);
       } catch (err) {
         console.error("[OAuth] Callback failed:", err);
