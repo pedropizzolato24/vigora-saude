@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
-import React, { createContext, useContext, useEffect, useRef, useReducer } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useReducer } from 'react';
 import { updateAllWidgets } from './update-widgets';
 import { pullCloudData, pushCloudData, type CloudSnapshot } from './cloud-sync';
 
@@ -284,6 +284,12 @@ function baseReducer(state: AppState, action: AppAction): AppState {
 interface AppContextValue {
   state: AppState;
   dispatch: React.Dispatch<AppAction>;
+  /**
+   * Pull the cloud backup and reconcile it with local state. Called once after
+   * startup and again right after login completes (when the session token only
+   * becomes available after the provider has already mounted).
+   */
+  reconcileFromCloud: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -308,8 +314,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Latest state, readable inside async callbacks without re-subscribing them.
   const stateRef = useRef(state);
   stateRef.current = state;
-  // Guards so the login reconcile runs once, and pushes don't echo a just-pulled snapshot.
-  const reconciledRef = useRef(false);
+  // syncReady gates the debounced push (don't push before the first reconcile).
+  // inFlight prevents overlapping reconciles. lastSyncedTs avoids echoing a
+  // just-pulled snapshot back to the server.
+  const syncReadyRef = useRef(false);
+  const inFlightRef = useRef(false);
   const lastSyncedTsRef = useRef(0);
   const pushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -330,17 +339,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  // Reconcile with the cloud once, after the local state has loaded. If the
-  // cloud copy is newer (e.g. after a reinstall), apply it; otherwise push the
-  // local copy up. No-ops when unauthenticated (cloud-sync returns null).
-  useEffect(() => {
-    if (state.isLoading || reconciledRef.current) return;
-    reconciledRef.current = true;
-
-    (async () => {
+  // Pull the cloud backup and reconcile. If the cloud copy is newer (e.g. after
+  // a reinstall), apply it; otherwise back the local copy up. No-ops when
+  // unauthenticated (cloud-sync returns null). Safe to call repeatedly — it's
+  // re-invoked after login because the session token only exists by then.
+  const reconcileFromCloud = useCallback(async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    try {
       const local = stateRef.current;
-      lastSyncedTsRef.current = local.dataUpdatedAt;
-
       const cloud = await pullCloudData();
       if (cloud && cloud.dataUpdatedAt > local.dataUpdatedAt) {
         // Cloud wins: hydrate local state from the backup.
@@ -360,13 +367,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const ok = await pushCloudData(buildSnapshot(local));
         if (ok) lastSyncedTsRef.current = local.dataUpdatedAt;
       }
-    })();
-  }, [state.isLoading]);
+    } finally {
+      inFlightRef.current = false;
+    }
+  }, []);
 
-  // Debounced push: whenever local data changes after the initial reconcile,
+  // First reconcile, after the local state has loaded. For a returning user the
+  // session token already exists here; for a fresh install it doesn't yet, so
+  // the OAuth callback re-invokes reconcileFromCloud once login completes.
+  useEffect(() => {
+    if (state.isLoading || syncReadyRef.current) return;
+    syncReadyRef.current = true;
+    lastSyncedTsRef.current = stateRef.current.dataUpdatedAt;
+    reconcileFromCloud();
+  }, [state.isLoading, reconcileFromCloud]);
+
+  // Debounced push: whenever local data changes after the first reconcile,
   // back the new snapshot up to the cloud (3s after the last change).
   useEffect(() => {
-    if (state.isLoading || !reconciledRef.current) return;
+    if (state.isLoading || !syncReadyRef.current) return;
     if (state.dataUpdatedAt <= lastSyncedTsRef.current) return;
 
     if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
@@ -398,7 +417,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [state.alarms, state.healthMetrics, state.isLoading]);
 
   return (
-    <AppContext.Provider value={{ state, dispatch }}>
+    <AppContext.Provider value={{ state, dispatch, reconcileFromCloud }}>
       {children}
     </AppContext.Provider>
   );

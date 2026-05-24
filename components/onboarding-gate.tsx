@@ -5,6 +5,7 @@ import * as Auth from '@/lib/_core/auth';
 
 const ONBOARDING_KEY = 'vigora_onboarding_completed';
 const LOGIN_COMPLETED_KEY = 'vigora_login_completed';
+const CAREGIVER_ONBOARDING_KEY = 'vigora_caregiver_onboarding_completed';
 
 /**
  * Runs once at app startup to enforce the onboarding → login → register funnel.
@@ -14,7 +15,9 @@ const LOGIN_COMPLETED_KEY = 'vigora_login_completed';
  *   onboarding done, never logged in before      → /onboarding (so user sees slides → login)
  *   onboarding done, logged in before, no user   → /login (returning user, session gone)
  *   authenticated but userType is null           → /register (registration incomplete)
- *   authenticated and userType set               → stay on tabs
+ *   authenticated, userType 'caregiver', onboarding flag absent → /caregiver-onboarding
+ *   authenticated, userType 'caregiver', onboarding flag present → /(caregiver-tabs)
+ *   authenticated, userType 'monitored'         → stay on /(tabs)
  */
 export function OnboardingGate() {
   const router = useRouter();
@@ -46,7 +49,17 @@ export function OnboardingGate() {
         if (!user.userType) {
           // Logged in but never finished the registration form
           router.replace('/register');
+          return;
         }
+
+        if (user.userType === 'caregiver') {
+          const caregiverOnboardingDone = await AsyncStorage.getItem(CAREGIVER_ONBOARDING_KEY);
+          router.replace(caregiverOnboardingDone ? '/(caregiver-tabs)' : '/caregiver-onboarding');
+          return;
+        }
+
+        // userType === 'monitored' falls through: stays on /(tabs) (the gate
+        // is mounted there, so no replace needed).
       } catch {
         // On error, don't block app startup
       } finally {

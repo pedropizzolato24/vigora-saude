@@ -1,0 +1,1102 @@
+{
+  "C:\\Users\\55519\\vigora-saude\\app.config.ts": {
+    "mtime": 1778798139.585548,
+    "ast_hash": "f75f7841a5771ead6255a608cd14536a",
+    "semantic_hash": "f75f7841a5771ead6255a608cd14536a"
+  },
+  "C:\\Users\\55519\\vigora-saude\\babel.config.js": {
+    "mtime": 1778532816.4134655,
+    "ast_hash": "5b31b145ba12250297e4bc6e855b3bc2",
+    "semantic_hash": "5b31b145ba12250297e4bc6e855b3bc2"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle.config.ts": {
+    "mtime": 1778532816.4518106,
+    "ast_hash": "84a5bdbe5ca0d4ab3eae9b6563b718e7",
+    "semantic_hash": "84a5bdbe5ca0d4ab3eae9b6563b718e7"
+  },
+  "C:\\Users\\55519\\vigora-saude\\eas.json": {
+    "mtime": 1778532816.4637804,
+    "ast_hash": "d96d1b33954f8e946052a6ea67644294",
+    "semantic_hash": "d96d1b33954f8e946052a6ea67644294"
+  },
+  "C:\\Users\\55519\\vigora-saude\\eslint.config.js": {
+    "mtime": 1778532816.4637804,
+    "ast_hash": "2edb16c38360d6949e1fdb91a32bffd4",
+    "semantic_hash": "2edb16c38360d6949e1fdb91a32bffd4"
+  },
+  "C:\\Users\\55519\\vigora-saude\\fix_colors.py": {
+    "mtime": 1778532816.4647775,
+    "ast_hash": "08bf244ebb3f3e98229cc8f8bba0d0f8",
+    "semantic_hash": "08bf244ebb3f3e98229cc8f8bba0d0f8"
+  },
+  "C:\\Users\\55519\\vigora-saude\\index.ts": {
+    "mtime": 1778532816.469764,
+    "ast_hash": "af439d3cd8df4a0daa11eca1c55947ba",
+    "semantic_hash": "af439d3cd8df4a0daa11eca1c55947ba"
+  },
+  "C:\\Users\\55519\\vigora-saude\\metro.config.js": {
+    "mtime": 1778532816.4999785,
+    "ast_hash": "3b4f75f94d14679cdae8b22103b2c9d1",
+    "semantic_hash": "3b4f75f94d14679cdae8b22103b2c9d1"
+  },
+  "C:\\Users\\55519\\vigora-saude\\nativewind-env.d.ts": {
+    "mtime": 1778532816.5159361,
+    "ast_hash": "c73fa5ab0d5495070ace374bd3f994a1",
+    "semantic_hash": "c73fa5ab0d5495070ace374bd3f994a1"
+  },
+  "C:\\Users\\55519\\vigora-saude\\package.json": {
+    "mtime": 1778811458.0259266,
+    "ast_hash": "455601dfde4ec8c270f94859d732e3b8",
+    "semantic_hash": "455601dfde4ec8c270f94859d732e3b8"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tailwind.config.js": {
+    "mtime": 1778532816.5668006,
+    "ast_hash": "42241214c567d6062b5ea66c4617f205",
+    "semantic_hash": "42241214c567d6062b5ea66c4617f205"
+  },
+  "C:\\Users\\55519\\vigora-saude\\theme.config.d.ts": {
+    "mtime": 1778532816.5797668,
+    "ast_hash": "bb369a6777e1e62b5f5e70a1f08e1a94",
+    "semantic_hash": "bb369a6777e1e62b5f5e70a1f08e1a94"
+  },
+  "C:\\Users\\55519\\vigora-saude\\theme.config.js": {
+    "mtime": 1778532816.5807636,
+    "ast_hash": "05611d696e69f4a589198462289bf063",
+    "semantic_hash": "05611d696e69f4a589198462289bf063"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tsconfig.json": {
+    "mtime": 1778532816.582758,
+    "ast_hash": "6beb4a0ece624857ea7676f816c40928",
+    "semantic_hash": "6beb4a0ece624857ea7676f816c40928"
+  },
+  "C:\\Users\\55519\\vigora-saude\\vitest.config.ts": {
+    "mtime": 1778532816.582758,
+    "ast_hash": "025053c9f92292438b59a3708a0f04ff",
+    "semantic_hash": "025053c9f92292438b59a3708a0f04ff"
+  },
+  "C:\\Users\\55519\\vigora-saude\\.claude\\settings.json": {
+    "mtime": 1779568297.1636465,
+    "ast_hash": "5d6ecd96cf065b16e8bb9fbf5d7d8f0d",
+    "semantic_hash": "5d6ecd96cf065b16e8bb9fbf5d7d8f0d"
+  },
+  "C:\\Users\\55519\\vigora-saude\\.claude\\settings.local.json": {
+    "mtime": 1779569295.0904458,
+    "ast_hash": "d92b3b7b5052c8d5e7cea42e6b978b1f",
+    "semantic_hash": "d92b3b7b5052c8d5e7cea42e6b978b1f"
+  },
+  "C:\\Users\\55519\\vigora-saude\\.remember\\tmp\\last-ndc.ts": {
+    "mtime": 1779568773.5102684,
+    "ast_hash": "db08286ada974d2b9be948564b2d72f4",
+    "semantic_hash": "db08286ada974d2b9be948564b2d72f4"
+  },
+  "C:\\Users\\55519\\vigora-saude\\.remember\\tmp\\last-save.json": {
+    "mtime": 1779569059.8008597,
+    "ast_hash": "13a45e115d250fb09d3b4bb7e19f8e8e",
+    "semantic_hash": "13a45e115d250fb09d3b4bb7e19f8e8e"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\alarm-ring.tsx": {
+    "mtime": 1778532816.3815472,
+    "ast_hash": "c21eec54d0bf54d9d14e5fcdb753b81c",
+    "semantic_hash": "c21eec54d0bf54d9d14e5fcdb753b81c"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\login.tsx": {
+    "mtime": 1778798205.273751,
+    "ast_hash": "85725d6ee94f8975023bd168f4c18250",
+    "semantic_hash": "85725d6ee94f8975023bd168f4c18250"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\onboarding.tsx": {
+    "mtime": 1778691718.1487408,
+    "ast_hash": "8af90782e19338f58eb50fde3d83ab23",
+    "semantic_hash": "8af90782e19338f58eb50fde3d83ab23"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\register.tsx": {
+    "mtime": 1779216268.7915678,
+    "ast_hash": "6c3cb5928778aac0d5129f0031fa0561",
+    "semantic_hash": "6c3cb5928778aac0d5129f0031fa0561"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\_layout.tsx": {
+    "mtime": 1779568866.4415834,
+    "ast_hash": "43e8ef4505490acf439ce93dc190dc1e",
+    "semantic_hash": "43e8ef4505490acf439ce93dc190dc1e"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\(modal)\\customer-center.tsx": {
+    "mtime": 1778532816.3655708,
+    "ast_hash": "286541f99a1d276d4678f48ab9347355",
+    "semantic_hash": "286541f99a1d276d4678f48ab9347355"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\(modal)\\paywall.tsx": {
+    "mtime": 1778532816.3655708,
+    "ast_hash": "59f110f6bdf2d81616a8c49e20f38a6f",
+    "semantic_hash": "59f110f6bdf2d81616a8c49e20f38a6f"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\(tabs)\\alarms.tsx": {
+    "mtime": 1778532816.3685627,
+    "ast_hash": "91370d7ae79b2dc2a410e27aae15c919",
+    "semantic_hash": "91370d7ae79b2dc2a410e27aae15c919"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\(tabs)\\ambulance.tsx": {
+    "mtime": 1778532816.3685627,
+    "ast_hash": "d70e9a75448f4545b1bc221e4ed36157",
+    "semantic_hash": "d70e9a75448f4545b1bc221e4ed36157"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\(tabs)\\anamnesis.tsx": {
+    "mtime": 1778532816.36956,
+    "ast_hash": "c166b8c40a3d9dfbb620174b42dd4801",
+    "semantic_hash": "c166b8c40a3d9dfbb620174b42dd4801"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\(tabs)\\contacts.tsx": {
+    "mtime": 1778532816.3704464,
+    "ast_hash": "a8fad4694b3d9e6d79bede7fc27de1de",
+    "semantic_hash": "a8fad4694b3d9e6d79bede7fc27de1de"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\(tabs)\\health.tsx": {
+    "mtime": 1778532816.3704464,
+    "ast_hash": "052bd351bb9260845b9b9463295393aa",
+    "semantic_hash": "052bd351bb9260845b9b9463295393aa"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\(tabs)\\help.tsx": {
+    "mtime": 1778532816.3744397,
+    "ast_hash": "0936ac3e35850d0c3d37b60fa5991f6f",
+    "semantic_hash": "0936ac3e35850d0c3d37b60fa5991f6f"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\(tabs)\\index.tsx": {
+    "mtime": 1778532816.3754354,
+    "ast_hash": "adb3350a76940db213c90e52cd5bd3a2",
+    "semantic_hash": "adb3350a76940db213c90e52cd5bd3a2"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\(tabs)\\location.tsx": {
+    "mtime": 1778636318.7281518,
+    "ast_hash": "5e23004867fa60c23e020fdc2b6f6462",
+    "semantic_hash": "5e23004867fa60c23e020fdc2b6f6462"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\(tabs)\\profile.tsx": {
+    "mtime": 1779221913.1227188,
+    "ast_hash": "a3eeb3fb0a9a0c1fed32ebaa68b4a22a",
+    "semantic_hash": "a3eeb3fb0a9a0c1fed32ebaa68b4a22a"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\(tabs)\\settings.tsx": {
+    "mtime": 1778532816.3794248,
+    "ast_hash": "10b34bcca43679c4fc7f1f2e7772f43c",
+    "semantic_hash": "10b34bcca43679c4fc7f1f2e7772f43c"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\(tabs)\\_layout.tsx": {
+    "mtime": 1778532816.367566,
+    "ast_hash": "cc330e100624f97d227f5f69e84d44c6",
+    "semantic_hash": "cc330e100624f97d227f5f69e84d44c6"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\dev\\theme-lab.tsx": {
+    "mtime": 1778532816.3825488,
+    "ast_hash": "d746973c15d0eb613bb6b92fa8dbc8db",
+    "semantic_hash": "d746973c15d0eb613bb6b92fa8dbc8db"
+  },
+  "C:\\Users\\55519\\vigora-saude\\app\\oauth\\callback.tsx": {
+    "mtime": 1779484489.4946258,
+    "ast_hash": "0ecb4532fff6e52936c5fd2daf5975e1",
+    "semantic_hash": "0ecb4532fff6e52936c5fd2daf5975e1"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\ad-banner.tsx": {
+    "mtime": 1778532816.414463,
+    "ast_hash": "72fe884731a90bc9e00846a458e0309e",
+    "semantic_hash": "72fe884731a90bc9e00846a458e0309e"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\alarm-card.tsx": {
+    "mtime": 1778532816.4154606,
+    "ast_hash": "e94b8bf4728bb0e0f7c0c7c58a8b261b",
+    "semantic_hash": "e94b8bf4728bb0e0f7c0c7c58a8b261b"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\alarm-history-sheet.tsx": {
+    "mtime": 1778532816.4164567,
+    "ast_hash": "0f5c2a9c2a77f6e68d8fdbe591a4e41f",
+    "semantic_hash": "0f5c2a9c2a77f6e68d8fdbe591a4e41f"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\alarm-notification-handler.tsx": {
+    "mtime": 1778532816.417359,
+    "ast_hash": "d153fec5cd91e705b0246932462fca4c",
+    "semantic_hash": "d153fec5cd91e705b0246932462fca4c"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\alarm-sync-initializer.tsx": {
+    "mtime": 1778532816.417359,
+    "ast_hash": "890bd8a9b3e83482af3a0081dbe49574",
+    "semantic_hash": "890bd8a9b3e83482af3a0081dbe49574"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\animated-components.tsx": {
+    "mtime": 1778532816.4183602,
+    "ast_hash": "51a827a48d5f8a7924d4929a1889fc37",
+    "semantic_hash": "51a827a48d5f8a7924d4929a1889fc37"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\app-dialog.tsx": {
+    "mtime": 1778532816.4183602,
+    "ast_hash": "d571c2e9d0d61fa8ff56dacd5a6e650a",
+    "semantic_hash": "d571c2e9d0d61fa8ff56dacd5a6e650a"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\app-toast.tsx": {
+    "mtime": 1778532816.4193573,
+    "ast_hash": "a447e84c78215fb7e136872b52266be2",
+    "semantic_hash": "a447e84c78215fb7e136872b52266be2"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\contact-card.tsx": {
+    "mtime": 1778532816.4193573,
+    "ast_hash": "ce2072374ea665463be0760cdb7b2ebc",
+    "semantic_hash": "ce2072374ea665463be0760cdb7b2ebc"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\custom-tab-bar.tsx": {
+    "mtime": 1778532816.4203544,
+    "ast_hash": "082882d40d6a376ece08639d06543f02",
+    "semantic_hash": "082882d40d6a376ece08639d06543f02"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\external-link.tsx": {
+    "mtime": 1778532816.4211183,
+    "ast_hash": "ec85cc754f4a212bfac10301dc97189c",
+    "semantic_hash": "ec85cc754f4a212bfac10301dc97189c"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\haptic-tab.tsx": {
+    "mtime": 1778532816.4251108,
+    "ast_hash": "2ee6e4d67f446f38504b808f46842bbf",
+    "semantic_hash": "2ee6e4d67f446f38504b808f46842bbf"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\health-report-button.tsx": {
+    "mtime": 1778532816.4261076,
+    "ast_hash": "223266ad6047b7ddf6b76a5dcfe4c22e",
+    "semantic_hash": "223266ad6047b7ddf6b76a5dcfe4c22e"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\hello-wave.tsx": {
+    "mtime": 1778532816.4271069,
+    "ast_hash": "793b8b9ec7dd41a8873a5d34d4d4a613",
+    "semantic_hash": "793b8b9ec7dd41a8873a5d34d4d4a613"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\monitoring-initializer.tsx": {
+    "mtime": 1778636299.1437924,
+    "ast_hash": "b794ab642a9277876f82ac8ef9693ec6",
+    "semantic_hash": "b794ab642a9277876f82ac8ef9693ec6"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\monitoring-status-badge.tsx": {
+    "mtime": 1778532816.4300988,
+    "ast_hash": "ecd03f209e439eb8f424817402c8e44c",
+    "semantic_hash": "ecd03f209e439eb8f424817402c8e44c"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\monitoring-status-panel.tsx": {
+    "mtime": 1778532816.431095,
+    "ast_hash": "406a21555711f0c316fb3b6329d0d638",
+    "semantic_hash": "406a21555711f0c316fb3b6329d0d638"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\onboarding-gate.tsx": {
+    "mtime": 1778878389.2265534,
+    "ast_hash": "b01c0952ef6eb8f10d69b65cdc7bf767",
+    "semantic_hash": "b01c0952ef6eb8f10d69b65cdc7bf767"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\parallax-scroll-view.tsx": {
+    "mtime": 1778532816.4320917,
+    "ast_hash": "f7aae83ce3c390227e3a7737231bf2fc",
+    "semantic_hash": "f7aae83ce3c390227e3a7737231bf2fc"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\pro-gate.tsx": {
+    "mtime": 1778532816.4330883,
+    "ast_hash": "621f2cfb32dc0c7fcc3494d0289d868d",
+    "semantic_hash": "621f2cfb32dc0c7fcc3494d0289d868d"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\pro-upsell-modal.tsx": {
+    "mtime": 1778532816.4340856,
+    "ast_hash": "3e7ef4a0c1844baed7337d07bbcb3a64",
+    "semantic_hash": "3e7ef4a0c1844baed7337d07bbcb3a64"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\screen-container.tsx": {
+    "mtime": 1778532816.4340856,
+    "ast_hash": "b7caaf36d05efa5b727a5de123dfaba5",
+    "semantic_hash": "b7caaf36d05efa5b727a5de123dfaba5"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\sidebar-menu.tsx": {
+    "mtime": 1778532816.435103,
+    "ast_hash": "1a45c7571c22be537093bb7d7472d0ae",
+    "semantic_hash": "1a45c7571c22be537093bb7d7472d0ae"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\sos-active-screen.tsx": {
+    "mtime": 1778532816.435103,
+    "ast_hash": "9d56272319e128f68a3a41bcc30eea7c",
+    "semantic_hash": "9d56272319e128f68a3a41bcc30eea7c"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\sos-countdown-dialog.tsx": {
+    "mtime": 1778532816.436104,
+    "ast_hash": "cbf3a24c573a74d0a73b8bb156d359fd",
+    "semantic_hash": "cbf3a24c573a74d0a73b8bb156d359fd"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\success-confirmation.tsx": {
+    "mtime": 1778532816.4371018,
+    "ast_hash": "70045df42ad94a1ce0cd1ea4840eda7e",
+    "semantic_hash": "70045df42ad94a1ce0cd1ea4840eda7e"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\themed-view.tsx": {
+    "mtime": 1778532816.4371018,
+    "ast_hash": "aaef390e9665dab037ef1bb92391abd6",
+    "semantic_hash": "aaef390e9665dab037ef1bb92391abd6"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\trial-banner.tsx": {
+    "mtime": 1778532816.4410906,
+    "ast_hash": "90ee2fcfde93186ee862be9b2c978f4e",
+    "semantic_hash": "90ee2fcfde93186ee862be9b2c978f4e"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\wheel-picker.tsx": {
+    "mtime": 1778532816.4440823,
+    "ast_hash": "2e03f268d51221923ea687dc21e6e352",
+    "semantic_hash": "2e03f268d51221923ea687dc21e6e352"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\ui\\collapsible.tsx": {
+    "mtime": 1778532816.442088,
+    "ast_hash": "64eff11ae24bc1edad81392969030caf",
+    "semantic_hash": "64eff11ae24bc1edad81392969030caf"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\ui\\icon-symbol.ios.tsx": {
+    "mtime": 1778532816.4430854,
+    "ast_hash": "c41635b427b137e857429cc705f3c4d8",
+    "semantic_hash": "c41635b427b137e857429cc705f3c4d8"
+  },
+  "C:\\Users\\55519\\vigora-saude\\components\\ui\\icon-symbol.tsx": {
+    "mtime": 1778532816.4430854,
+    "ast_hash": "e73417fd6996aefb04d31aa3dea6db4f",
+    "semantic_hash": "e73417fd6996aefb04d31aa3dea6db4f"
+  },
+  "C:\\Users\\55519\\vigora-saude\\constants\\const.ts": {
+    "mtime": 1778532816.445294,
+    "ast_hash": "1a715a08bcfae0811efa03c6bd97b597",
+    "semantic_hash": "1a715a08bcfae0811efa03c6bd97b597"
+  },
+  "C:\\Users\\55519\\vigora-saude\\constants\\oauth.ts": {
+    "mtime": 1778811220.2529757,
+    "ast_hash": "d61b34210a83ab220d390fadd34a3595",
+    "semantic_hash": "d61b34210a83ab220d390fadd34a3595"
+  },
+  "C:\\Users\\55519\\vigora-saude\\constants\\theme.ts": {
+    "mtime": 1778532816.4462943,
+    "ast_hash": "a3fae91b7450f2664f7768b26c4aa9c1",
+    "semantic_hash": "a3fae91b7450f2664f7768b26c4aa9c1"
+  },
+  "C:\\Users\\55519\\vigora-saude\\context\\purchases-context.tsx": {
+    "mtime": 1778532816.44829,
+    "ast_hash": "c6f57a931de476a787cd73671e8d8c85",
+    "semantic_hash": "c6f57a931de476a787cd73671e8d8c85"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle\\0000_elite_eternals.sql": {
+    "mtime": 1778532816.4528096,
+    "ast_hash": "c41a3a215adc225c5626aaa054bb0bc1",
+    "semantic_hash": "c41a3a215adc225c5626aaa054bb0bc1"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle\\0001_lively_sir_ram.sql": {
+    "mtime": 1778532816.4528096,
+    "ast_hash": "ea82f9a8789b33aab26e332ee5a24cf7",
+    "semantic_hash": "ea82f9a8789b33aab26e332ee5a24cf7"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle\\0002_bizarre_golden_guardian.sql": {
+    "mtime": 1778532816.4538069,
+    "ast_hash": "78816203e24fc45079ea02d4223b1c1a",
+    "semantic_hash": "78816203e24fc45079ea02d4223b1c1a"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle\\0003_appusers_openid.sql": {
+    "mtime": 1778634289.4304993,
+    "ast_hash": "4a2db132088e22d1c22ca77c2f097e56",
+    "semantic_hash": "4a2db132088e22d1c22ca77c2f097e56"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle\\0003_flowery_namora.sql": {
+    "mtime": 1778815280.5177598,
+    "ast_hash": "4d92c6eb41d5385a4313af4f461987c4",
+    "semantic_hash": "4d92c6eb41d5385a4313af4f461987c4"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle\\0004_solid_venom.sql": {
+    "mtime": 1778877315.759479,
+    "ast_hash": "110396b67d4c99409417a186291b4998",
+    "semantic_hash": "110396b67d4c99409417a186291b4998"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle\\0005_white_black_panther.sql": {
+    "mtime": 1779215638.4141924,
+    "ast_hash": "bee94e1d453f6a6aa75a0a673ee0a5c3",
+    "semantic_hash": "bee94e1d453f6a6aa75a0a673ee0a5c3"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle\\0006_cloudy_nighthawk.sql": {
+    "mtime": 1779480586.22673,
+    "ast_hash": "e6b04b87d49694bb1619f4ef15cb709d",
+    "semantic_hash": "e6b04b87d49694bb1619f4ef15cb709d"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle\\relations.ts": {
+    "mtime": 1778532816.4627829,
+    "ast_hash": "ce871bc580e2deecf93ac800d7742331",
+    "semantic_hash": "ce871bc580e2deecf93ac800d7742331"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle\\schema.ts": {
+    "mtime": 1779480400.0331721,
+    "ast_hash": "e50c6b0634805d717b32e19ba4762239",
+    "semantic_hash": "e50c6b0634805d717b32e19ba4762239"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle\\meta\\0000_snapshot.json": {
+    "mtime": 1778532816.454806,
+    "ast_hash": "2ca55e47cfa37d9bc740709d80ae88dc",
+    "semantic_hash": "2ca55e47cfa37d9bc740709d80ae88dc"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle\\meta\\0001_snapshot.json": {
+    "mtime": 1778532816.4578001,
+    "ast_hash": "4bf76882f27b84589d835d49d3acc23a",
+    "semantic_hash": "4bf76882f27b84589d835d49d3acc23a"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle\\meta\\0002_snapshot.json": {
+    "mtime": 1778532816.4607894,
+    "ast_hash": "98d101dd7a55ec8cc09599148a0b9643",
+    "semantic_hash": "98d101dd7a55ec8cc09599148a0b9643"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle\\meta\\0003_snapshot.json": {
+    "mtime": 1778815280.514758,
+    "ast_hash": "6dfe138b4a8759ae353a8104a62a13b9",
+    "semantic_hash": "6dfe138b4a8759ae353a8104a62a13b9"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle\\meta\\0004_snapshot.json": {
+    "mtime": 1778877315.7574873,
+    "ast_hash": "f0c1f7145405aa922f829f962fc60f25",
+    "semantic_hash": "f0c1f7145405aa922f829f962fc60f25"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle\\meta\\0005_snapshot.json": {
+    "mtime": 1779215638.407192,
+    "ast_hash": "5762d2000e8d821699c12724687317ee",
+    "semantic_hash": "5762d2000e8d821699c12724687317ee"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle\\meta\\0006_snapshot.json": {
+    "mtime": 1779480586.2175968,
+    "ast_hash": "faa8cb5356a6c8d16a13a43ca6ecb977",
+    "semantic_hash": "faa8cb5356a6c8d16a13a43ca6ecb977"
+  },
+  "C:\\Users\\55519\\vigora-saude\\drizzle\\meta\\_journal.json": {
+    "mtime": 1779480586.2257369,
+    "ast_hash": "38ddf15502917e866c9f854391ca5a4c",
+    "semantic_hash": "38ddf15502917e866c9f854391ca5a4c"
+  },
+  "C:\\Users\\55519\\vigora-saude\\hooks\\use-auth.ts": {
+    "mtime": 1779215947.4937146,
+    "ast_hash": "c805ff613fec4256bc4a19d7ca55d54c",
+    "semantic_hash": "c805ff613fec4256bc4a19d7ca55d54c"
+  },
+  "C:\\Users\\55519\\vigora-saude\\hooks\\use-color-scheme.ts": {
+    "mtime": 1778532816.4667737,
+    "ast_hash": "4a978879de9609f877f015e6e4f61fa1",
+    "semantic_hash": "4a978879de9609f877f015e6e4f61fa1"
+  },
+  "C:\\Users\\55519\\vigora-saude\\hooks\\use-color-scheme.web.ts": {
+    "mtime": 1778532816.46777,
+    "ast_hash": "1386f12e026c47a01df8a503107a7f9e",
+    "semantic_hash": "1386f12e026c47a01df8a503107a7f9e"
+  },
+  "C:\\Users\\55519\\vigora-saude\\hooks\\use-colors.ts": {
+    "mtime": 1778532816.468767,
+    "ast_hash": "2e3b2f8e102914171e8b92ada2b938d4",
+    "semantic_hash": "2e3b2f8e102914171e8b92ada2b938d4"
+  },
+  "C:\\Users\\55519\\vigora-saude\\hooks\\use-monitoring-status.ts": {
+    "mtime": 1778532816.468767,
+    "ast_hash": "9365e04338f12dfaacb8c1e5b7eabf27",
+    "semantic_hash": "9365e04338f12dfaacb8c1e5b7eabf27"
+  },
+  "C:\\Users\\55519\\vigora-saude\\hooks\\use-purchases.ts": {
+    "mtime": 1778532816.469764,
+    "ast_hash": "13c92a80fb7322be6d0b672c5adab0eb",
+    "semantic_hash": "13c92a80fb7322be6d0b672c5adab0eb"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\accessibility-context.tsx": {
+    "mtime": 1778532816.4789994,
+    "ast_hash": "16019eb11a3dfdf4d367e69a44621acc",
+    "semantic_hash": "16019eb11a3dfdf4d367e69a44621acc"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\alarm-countdown-notifier.ts": {
+    "mtime": 1778532816.4796035,
+    "ast_hash": "ef8295fbe84e8ddd30cc269b88bd5f37",
+    "semantic_hash": "ef8295fbe84e8ddd30cc269b88bd5f37"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\alarm-escalation.ts": {
+    "mtime": 1778634570.1613338,
+    "ast_hash": "66305198da4cde429490ef9813c906d4",
+    "semantic_hash": "66305198da4cde429490ef9813c906d4"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\alarm-sync.ts": {
+    "mtime": 1778532816.4806032,
+    "ast_hash": "a1f88d6f541a5d5acee0e4c70cd079d7",
+    "semantic_hash": "a1f88d6f541a5d5acee0e4c70cd079d7"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\alarm-timeout-manager.ts": {
+    "mtime": 1778532816.4806032,
+    "ast_hash": "017b07f32cd30cd6b57b2f95bff0239c",
+    "semantic_hash": "017b07f32cd30cd6b57b2f95bff0239c"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\alarm-timer-store.ts": {
+    "mtime": 1778532816.481877,
+    "ast_hash": "a79d4ee7ef5bef596e571265d09317bd",
+    "semantic_hash": "a79d4ee7ef5bef596e571265d09317bd"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\app-context.tsx": {
+    "mtime": 1779484422.6110673,
+    "ast_hash": "ba20182d54444c93b5540576c627edd8",
+    "semantic_hash": "ba20182d54444c93b5540576c627edd8"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\caregiver-context.tsx": {
+    "mtime": 1779568238.224942,
+    "ast_hash": "45c46d96ab26042eb01d302a72907000",
+    "semantic_hash": "45c46d96ab26042eb01d302a72907000"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\caregiver-state.ts": {
+    "mtime": 1779566820.606358,
+    "ast_hash": "5b99b4ad45c2b12fd29a73861494b303",
+    "semantic_hash": "5b99b4ad45c2b12fd29a73861494b303"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\cloud-sync.ts": {
+    "mtime": 1779480739.6439245,
+    "ast_hash": "f54facb6d85af91beec22df115826d3b",
+    "semantic_hash": "f54facb6d85af91beec22df115826d3b"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\device-id.ts": {
+    "mtime": 1778635458.2028408,
+    "ast_hash": "becd9ea5358b6e6ab7a83fbe148b4dac",
+    "semantic_hash": "becd9ea5358b6e6ab7a83fbe148b4dac"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\font-size-context.tsx": {
+    "mtime": 1778532816.4828763,
+    "ast_hash": "adf8da701c8dda9d7a2397955843c48c",
+    "semantic_hash": "adf8da701c8dda9d7a2397955843c48c"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\health-report-generator.ts": {
+    "mtime": 1778636201.32597,
+    "ast_hash": "6bd73f7660f4485c57511919a8b7fe4c",
+    "semantic_hash": "6bd73f7660f4485c57511919a8b7fe4c"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\location-permission.ts": {
+    "mtime": 1778532816.4838748,
+    "ast_hash": "d64b9c958e0d8a3762e759226500907b",
+    "semantic_hash": "d64b9c958e0d8a3762e759226500907b"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\menu-context.tsx": {
+    "mtime": 1778532816.4848711,
+    "ast_hash": "30acaf43b4e778e65f1be00ef9c2760b",
+    "semantic_hash": "30acaf43b4e778e65f1be00ef9c2760b"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\monitoring-service.ts": {
+    "mtime": 1778634411.76153,
+    "ast_hash": "cb382f442c7548233863b6d4dcac91e3",
+    "semantic_hash": "cb382f442c7548233863b6d4dcac91e3"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\native-alarm-manager.ts": {
+    "mtime": 1778532816.4858696,
+    "ast_hash": "a6ae7d0a4dba90058e3129efff4b0288",
+    "semantic_hash": "a6ae7d0a4dba90058e3129efff4b0288"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\notifications-context.tsx": {
+    "mtime": 1778532816.4868686,
+    "ast_hash": "132241094986ba42e569c7529a9529d1",
+    "semantic_hash": "132241094986ba42e569c7529a9529d1"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\notifications-utils.ts": {
+    "mtime": 1778532816.4928534,
+    "ast_hash": "e1800f6840ef4ce4ffec75d93e97ab70",
+    "semantic_hash": "e1800f6840ef4ce4ffec75d93e97ab70"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\pdf-utils-v2.ts": {
+    "mtime": 1778532816.4938495,
+    "ast_hash": "eca0bfcc581d02e671c94df9d5cf8371",
+    "semantic_hash": "eca0bfcc581d02e671c94df9d5cf8371"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\pdf-utils.ts": {
+    "mtime": 1778532816.494845,
+    "ast_hash": "95fc0f0a6760767ab409485d8bfc43c0",
+    "semantic_hash": "95fc0f0a6760767ab409485d8bfc43c0"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\purchases.ts": {
+    "mtime": 1778532816.494845,
+    "ast_hash": "b5e1d3d902c0ea5d48ea462ea3cbaec5",
+    "semantic_hash": "b5e1d3d902c0ea5d48ea462ea3cbaec5"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\supabase-sync.ts": {
+    "mtime": 1778634666.1224296,
+    "ast_hash": "ba1c68d34fb899d3c940fcccb64df2fc",
+    "semantic_hash": "ba1c68d34fb899d3c940fcccb64df2fc"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\supabase.ts": {
+    "mtime": 1778868675.387844,
+    "ast_hash": "1fbd97ed17997ca5d5c6acada4bfc5c1",
+    "semantic_hash": "1fbd97ed17997ca5d5c6acada4bfc5c1"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\theme-provider.tsx": {
+    "mtime": 1778532816.4978366,
+    "ast_hash": "230750096fd8549c9c1405bcd9d8cf33",
+    "semantic_hash": "230750096fd8549c9c1405bcd9d8cf33"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\trpc.ts": {
+    "mtime": 1778532816.4984188,
+    "ast_hash": "556c8bdaf3a4eb8dd6895e79c9d93a54",
+    "semantic_hash": "556c8bdaf3a4eb8dd6895e79c9d93a54"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\update-widgets.ts": {
+    "mtime": 1778532816.4989789,
+    "ast_hash": "7855adf9ce5a182a9e8600ba4de75c62",
+    "semantic_hash": "7855adf9ce5a182a9e8600ba4de75c62"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\utils.ts": {
+    "mtime": 1778532816.4989789,
+    "ast_hash": "891918e9c300bbc1980f12a861864d00",
+    "semantic_hash": "891918e9c300bbc1980f12a861864d00"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\_core\\api.ts": {
+    "mtime": 1779215931.2970662,
+    "ast_hash": "1a45e225649720c2a9145c651fd2df9a",
+    "semantic_hash": "1a45e225649720c2a9145c651fd2df9a"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\_core\\auth.ts": {
+    "mtime": 1779215912.2593596,
+    "ast_hash": "002fe770921bb4477d886bc4f85e6bee",
+    "semantic_hash": "002fe770921bb4477d886bc4f85e6bee"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\_core\\nativewind-pressable.ts": {
+    "mtime": 1778532816.4767838,
+    "ast_hash": "0d170e1e8b059404fa5aad0092b1cf83",
+    "semantic_hash": "0d170e1e8b059404fa5aad0092b1cf83"
+  },
+  "C:\\Users\\55519\\vigora-saude\\lib\\_core\\theme.ts": {
+    "mtime": 1778532816.4777799,
+    "ast_hash": "4c93a56237ef8a3cfbf53cc7a0a11cf5",
+    "semantic_hash": "4c93a56237ef8a3cfbf53cc7a0a11cf5"
+  },
+  "C:\\Users\\55519\\vigora-saude\\modules\\expo-alarm-countdown\\app.plugin.js": {
+    "mtime": 1778532816.5099533,
+    "ast_hash": "d6595ae171ac6e2bd32c53580a34b822",
+    "semantic_hash": "d6595ae171ac6e2bd32c53580a34b822"
+  },
+  "C:\\Users\\55519\\vigora-saude\\modules\\expo-alarm-countdown\\package.json": {
+    "mtime": 1778532816.5139413,
+    "ast_hash": "95fc67fdae2701f66b4bb6d25aa1e0fb",
+    "semantic_hash": "95fc67fdae2701f66b4bb6d25aa1e0fb"
+  },
+  "C:\\Users\\55519\\vigora-saude\\modules\\expo-alarm-countdown\\src\\index.ts": {
+    "mtime": 1778532816.5149386,
+    "ast_hash": "f53f2dd84ef33df42b6f141c9f72ac45",
+    "semantic_hash": "f53f2dd84ef33df42b6f141c9f72ac45"
+  },
+  "C:\\Users\\55519\\vigora-saude\\scripts\\generate_qr.mjs": {
+    "mtime": 1778532816.52591,
+    "ast_hash": "6db607e4cf1f1f3e03ca40f8734f05dc",
+    "semantic_hash": "6db607e4cf1f1f3e03ca40f8734f05dc"
+  },
+  "C:\\Users\\55519\\vigora-saude\\scripts\\load-env.js": {
+    "mtime": 1778532816.5279055,
+    "ast_hash": "d83fcce3271b577727657a247ebf60ad",
+    "semantic_hash": "d83fcce3271b577727657a247ebf60ad"
+  },
+  "C:\\Users\\55519\\vigora-saude\\scripts\\reset-project.js": {
+    "mtime": 1778532816.5289018,
+    "ast_hash": "a77952230d43e5ee604c94ef30cf3d71",
+    "semantic_hash": "a77952230d43e5ee604c94ef30cf3d71"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\db-monitoring.ts": {
+    "mtime": 1778634304.0581832,
+    "ast_hash": "f2728716782c8e3fb1d306fb66dd3187",
+    "semantic_hash": "f2728716782c8e3fb1d306fb66dd3187"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\db.ts": {
+    "mtime": 1779480654.9239023,
+    "ast_hash": "d38aff48a08b7f38970985dcc14c2494",
+    "semantic_hash": "d38aff48a08b7f38970985dcc14c2494"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\email.ts": {
+    "mtime": 1778532816.5508442,
+    "ast_hash": "90a8aec6e517a3ee0d8e364f4cf9d5a0",
+    "semantic_hash": "90a8aec6e517a3ee0d8e364f4cf9d5a0"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\monitoring-job.ts": {
+    "mtime": 1778532816.5518403,
+    "ast_hash": "bdf13e1c5cfd3032b167177e81961700",
+    "semantic_hash": "bdf13e1c5cfd3032b167177e81961700"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\routers-monitoring.ts": {
+    "mtime": 1778634335.8089154,
+    "ast_hash": "c09cb66a441233628724309f04d28497",
+    "semantic_hash": "c09cb66a441233628724309f04d28497"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\routers.ts": {
+    "mtime": 1779481126.4660413,
+    "ast_hash": "38e5d9457dfc61275088a5dde8fd13a9",
+    "semantic_hash": "38e5d9457dfc61275088a5dde8fd13a9"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\sms.ts": {
+    "mtime": 1778532816.5538356,
+    "ast_hash": "42a528ea5eec81f1224a73b6cede5d2f",
+    "semantic_hash": "42a528ea5eec81f1224a73b6cede5d2f"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\supabase-auth.ts": {
+    "mtime": 1779215703.3213851,
+    "ast_hash": "ae40b59d8fb2c1e97bd64ab0faba500f",
+    "semantic_hash": "ae40b59d8fb2c1e97bd64ab0faba500f"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\whatsapp.ts": {
+    "mtime": 1778532816.5608163,
+    "ast_hash": "d0194bb6ec43c55190d6ea0e204a8016",
+    "semantic_hash": "d0194bb6ec43c55190d6ea0e204a8016"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\_core\\context.ts": {
+    "mtime": 1778532816.530896,
+    "ast_hash": "49655679e5142956788e07f321384e25",
+    "semantic_hash": "49655679e5142956788e07f321384e25"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\_core\\cookies.ts": {
+    "mtime": 1778811070.62113,
+    "ast_hash": "62cf98085b6724e70d1f4ad19fac4594",
+    "semantic_hash": "62cf98085b6724e70d1f4ad19fac4594"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\_core\\cors.ts": {
+    "mtime": 1778635065.207331,
+    "ast_hash": "e5d95c944111a0e730abb1bc74de7757",
+    "semantic_hash": "e5d95c944111a0e730abb1bc74de7757"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\_core\\env.ts": {
+    "mtime": 1778811110.7713103,
+    "ast_hash": "1c9d1652ef44718d2032aa9547d6c095",
+    "semantic_hash": "1c9d1652ef44718d2032aa9547d6c095"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\_core\\index.ts": {
+    "mtime": 1778811198.6899183,
+    "ast_hash": "12b7c65cf001a18840b91129a3bd3602",
+    "semantic_hash": "12b7c65cf001a18840b91129a3bd3602"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\_core\\oauth.ts": {
+    "mtime": 1779215804.5010407,
+    "ast_hash": "df5aa2fad6129f8a057e8b373130dc38",
+    "semantic_hash": "df5aa2fad6129f8a057e8b373130dc38"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\_core\\rate-limit.ts": {
+    "mtime": 1778635650.0262737,
+    "ast_hash": "38c381321975c6ae22d0445361edd214",
+    "semantic_hash": "38c381321975c6ae22d0445361edd214"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\_core\\sdk.ts": {
+    "mtime": 1778811372.4575212,
+    "ast_hash": "83b4476281c395b5c51121bc6d17cfe9",
+    "semantic_hash": "83b4476281c395b5c51121bc6d17cfe9"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\_core\\security-headers.ts": {
+    "mtime": 1778636085.5509393,
+    "ast_hash": "5540e66a37425dab9283f85dc370dd91",
+    "semantic_hash": "5540e66a37425dab9283f85dc370dd91"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\_core\\systemRouter.ts": {
+    "mtime": 1778811207.5348432,
+    "ast_hash": "2199e5bb41e92854c378e2af34e3fd4f",
+    "semantic_hash": "2199e5bb41e92854c378e2af34e3fd4f"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\_core\\trpc.ts": {
+    "mtime": 1778532816.5448587,
+    "ast_hash": "459159724e0573f54952b741d055d48e",
+    "semantic_hash": "459159724e0573f54952b741d055d48e"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\_core\\types\\cookie.d.ts": {
+    "mtime": 1778532816.5468552,
+    "ast_hash": "5d28be73176521341c5dbfd6ba93377e",
+    "semantic_hash": "5d28be73176521341c5dbfd6ba93377e"
+  },
+  "C:\\Users\\55519\\vigora-saude\\shared\\const.ts": {
+    "mtime": 1778635730.128275,
+    "ast_hash": "f3e99d55f469431b99ae424ae2e30293",
+    "semantic_hash": "f3e99d55f469431b99ae424ae2e30293"
+  },
+  "C:\\Users\\55519\\vigora-saude\\shared\\types.ts": {
+    "mtime": 1778532816.563808,
+    "ast_hash": "cceaff5b89f7a4cef82b4425ba565631",
+    "semantic_hash": "cceaff5b89f7a4cef82b4425ba565631"
+  },
+  "C:\\Users\\55519\\vigora-saude\\shared\\_core\\errors.ts": {
+    "mtime": 1778532816.5628107,
+    "ast_hash": "e9749d0442b9719e0f09fcc4a9329438",
+    "semantic_hash": "e9749d0442b9719e0f09fcc4a9329438"
+  },
+  "C:\\Users\\55519\\vigora-saude\\supabase\\schema.sql": {
+    "mtime": 1778634697.8707645,
+    "ast_hash": "b470c7091cf624d78ecacd33a2b00ffb",
+    "semantic_hash": "b470c7091cf624d78ecacd33a2b00ffb"
+  },
+  "C:\\Users\\55519\\vigora-saude\\supabase\\functions\\tsconfig.json": {
+    "mtime": 1778532816.5658028,
+    "ast_hash": "0527cb59abe4fbf440cf2d8788918ff8",
+    "semantic_hash": "0527cb59abe4fbf440cf2d8788918ff8"
+  },
+  "C:\\Users\\55519\\vigora-saude\\supabase\\functions\\check-missed-alarms\\auth.ts": {
+    "mtime": 1778635268.7775178,
+    "ast_hash": "5ee4cad6f518c2f640e15b22dc3b4fba",
+    "semantic_hash": "5ee4cad6f518c2f640e15b22dc3b4fba"
+  },
+  "C:\\Users\\55519\\vigora-saude\\supabase\\functions\\check-missed-alarms\\index.ts": {
+    "mtime": 1778636405.9389114,
+    "ast_hash": "cd7bdfde81b625d1ff8cd42c82fbf7e3",
+    "semantic_hash": "cd7bdfde81b625d1ff8cd42c82fbf7e3"
+  },
+  "C:\\Users\\55519\\vigora-saude\\supabase\\functions\\check-missed-alarms\\query.ts": {
+    "mtime": 1778636381.1439347,
+    "ast_hash": "d90f5949faa32e08f4bfc15df7003594",
+    "semantic_hash": "d90f5949faa32e08f4bfc15df7003594"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\auth.logout.test.ts": {
+    "mtime": 1779216032.204383,
+    "ast_hash": "a0e2079f1a1252e500d0ef627e593d3d",
+    "semantic_hash": "a0e2079f1a1252e500d0ef627e593d3d"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\caregiver-state.test.ts": {
+    "mtime": 1779566843.9870336,
+    "ast_hash": "7442c79f317921e38c4d0853de93452d",
+    "semantic_hash": "7442c79f317921e38c4d0853de93452d"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\cors.test.ts": {
+    "mtime": 1778635131.6262267,
+    "ast_hash": "72f2f66805d3b9f6a6ba5a26b6a788a1",
+    "semantic_hash": "72f2f66805d3b9f6a6ba5a26b6a788a1"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\edge-function-auth.test.ts": {
+    "mtime": 1778635296.1615286,
+    "ast_hash": "862adbde5b7b724995648e2dd5b00d27",
+    "semantic_hash": "862adbde5b7b724995648e2dd5b00d27"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\edge-function-query.test.ts": {
+    "mtime": 1778636424.0568483,
+    "ast_hash": "d9f029ad4d174284b220685bf892516f",
+    "semantic_hash": "d9f029ad4d174284b220685bf892516f"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\id-entropy.test.ts": {
+    "mtime": 1778635485.6652358,
+    "ast_hash": "55d1086086b10806f223b195bd741ed1",
+    "semantic_hash": "55d1086086b10806f223b195bd741ed1"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\integration-services.test.ts": {
+    "mtime": 1778532816.5687952,
+    "ast_hash": "9f084868e11651b54cbac8971803ffa6",
+    "semantic_hash": "9f084868e11651b54cbac8971803ffa6"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\location-privacy.test.ts": {
+    "mtime": 1778636332.9573152,
+    "ast_hash": "1b8a740cb4153f479c7ed9421a0a91c6",
+    "semantic_hash": "1b8a740cb4153f479c7ed9421a0a91c6"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\monitoring.auth.test.ts": {
+    "mtime": 1779216065.5553212,
+    "ast_hash": "15ad4a0606e744b7d1f362bda8fe17be",
+    "semantic_hash": "15ad4a0606e744b7d1f362bda8fe17be"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\pdf-escape.test.ts": {
+    "mtime": 1778636220.454896,
+    "ast_hash": "79c8cc73d1f0e5ae5f037f494eb6787b",
+    "semantic_hash": "79c8cc73d1f0e5ae5f037f494eb6787b"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\purchases.test.ts": {
+    "mtime": 1778532816.5697923,
+    "ast_hash": "4f7bd58efba18482c161429ea7ca3c97",
+    "semantic_hash": "4f7bd58efba18482c161429ea7ca3c97"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\purchases_isolated.test.ts": {
+    "mtime": 1778532816.5727885,
+    "ast_hash": "7ff2d6d7dfedfcde50bc371eded57809",
+    "semantic_hash": "7ff2d6d7dfedfcde50bc371eded57809"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\rate-limit.test.ts": {
+    "mtime": 1778635693.8043327,
+    "ast_hash": "8944104d5ce12760a788472cf5416418",
+    "semantic_hash": "8944104d5ce12760a788472cf5416418"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\revenuecat-expo-key.test.ts": {
+    "mtime": 1778532816.574781,
+    "ast_hash": "a9052bc6ad35c3c48e90fec7dc59d4fa",
+    "semantic_hash": "a9052bc6ad35c3c48e90fec7dc59d4fa"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\revenuecat-key.test.ts": {
+    "mtime": 1778532816.5757773,
+    "ast_hash": "a941435136c3c810e721657ce54abbac",
+    "semantic_hash": "a941435136c3c810e721657ce54abbac"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\security-headers.test.ts": {
+    "mtime": 1778636111.4236567,
+    "ast_hash": "e249f92116faa145504eebe86c59163d",
+    "semantic_hash": "e249f92116faa145504eebe86c59163d"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\session-revocation.test.ts": {
+    "mtime": 1779216082.815475,
+    "ast_hash": "e1003f0d326b986efb9e1db9071001dc",
+    "semantic_hash": "e1003f0d326b986efb9e1db9071001dc"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\simple.test.ts": {
+    "mtime": 1778532816.577772,
+    "ast_hash": "bed01f59753cbd4b4adfbc02b6969471",
+    "semantic_hash": "bed01f59753cbd4b4adfbc02b6969471"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\supabase.lockdown.test.ts": {
+    "mtime": 1778811754.0676072,
+    "ast_hash": "2fdd199dc1eb84f86cc38a67c529d308",
+    "semantic_hash": "2fdd199dc1eb84f86cc38a67c529d308"
+  },
+  "C:\\Users\\55519\\vigora-saude\\tests\\whatsapp.auth.test.ts": {
+    "mtime": 1779216056.6804953,
+    "ast_hash": "4becdc22b077a9ad6ad35cfccae2869e",
+    "semantic_hash": "4becdc22b077a9ad6ad35cfccae2869e"
+  },
+  "C:\\Users\\55519\\vigora-saude\\widgets\\HealthWidget.tsx": {
+    "mtime": 1778532816.5837548,
+    "ast_hash": "7609169178925a8eefda28818f374fc2",
+    "semantic_hash": "7609169178925a8eefda28818f374fc2"
+  },
+  "C:\\Users\\55519\\vigora-saude\\widgets\\NextAlarmWidget.tsx": {
+    "mtime": 1778532816.584752,
+    "ast_hash": "b8911463c329488d2ac33c131c6ff18f",
+    "semantic_hash": "b8911463c329488d2ac33c131c6ff18f"
+  },
+  "C:\\Users\\55519\\vigora-saude\\widgets\\SosWidget.tsx": {
+    "mtime": 1778532816.585751,
+    "ast_hash": "0a01083d4cbff8b26509065ab510e29a",
+    "semantic_hash": "0a01083d4cbff8b26509065ab510e29a"
+  },
+  "C:\\Users\\55519\\vigora-saude\\widgets\\widget-task-handler.tsx": {
+    "mtime": 1778532816.5867486,
+    "ast_hash": "aa2af14831096b898915913177d39678",
+    "semantic_hash": "aa2af14831096b898915913177d39678"
+  },
+  "C:\\Users\\55519\\vigora-saude\\CLAUDE.md": {
+    "mtime": 1779568297.161643,
+    "ast_hash": "8a6643a420fdad6bfb583523bc6cef16",
+    "semantic_hash": "8a6643a420fdad6bfb583523bc6cef16"
+  },
+  "C:\\Users\\55519\\vigora-saude\\design.md": {
+    "mtime": 1778532816.44829,
+    "ast_hash": "a048f05ab39c2c9181aaf74843afb476",
+    "semantic_hash": "a048f05ab39c2c9181aaf74843afb476"
+  },
+  "C:\\Users\\55519\\vigora-saude\\README.md": {
+    "mtime": 1779482247.8980765,
+    "ast_hash": "d3281d11f54ab670e34631d3bf0ea96d",
+    "semantic_hash": "d3281d11f54ab670e34631d3bf0ea96d"
+  },
+  "C:\\Users\\55519\\vigora-saude\\todo.md": {
+    "mtime": 1778532816.5817604,
+    "ast_hash": "eb41a616a2756d8979f877de74609446",
+    "semantic_hash": "eb41a616a2756d8979f877de74609446"
+  },
+  "C:\\Users\\55519\\vigora-saude\\.claude\\CLAUDE.md": {
+    "mtime": 1779568297.1596456,
+    "ast_hash": "817fe671013b35ae0bc9301dfe449a87",
+    "semantic_hash": "817fe671013b35ae0bc9301dfe449a87"
+  },
+  "C:\\Users\\55519\\vigora-saude\\.claude\\skills\\graphify\\SKILL.md": {
+    "mtime": 1779568297.1546435,
+    "ast_hash": "e065bdafac4ca689ffd4e353ffd71160",
+    "semantic_hash": "e065bdafac4ca689ffd4e353ffd71160"
+  },
+  "C:\\Users\\55519\\vigora-saude\\.github\\workflows\\eas-build.yml": {
+    "mtime": 1778870959.2909853,
+    "ast_hash": "e7c63d2a613c21e08782e108efff9998",
+    "semantic_hash": "e7c63d2a613c21e08782e108efff9998"
+  },
+  "C:\\Users\\55519\\vigora-saude\\.github\\workflows\\test.yml": {
+    "mtime": 1778532816.360685,
+    "ast_hash": "1e5086d20283384a4e6bcc7b3dd0dd32",
+    "semantic_hash": "1e5086d20283384a4e6bcc7b3dd0dd32"
+  },
+  "C:\\Users\\55519\\vigora-saude\\.remember\\now.md": {
+    "mtime": 1779569059.460858,
+    "ast_hash": "4fdd928455f6f050f01fdbf550da8038",
+    "semantic_hash": "4fdd928455f6f050f01fdbf550da8038"
+  },
+  "C:\\Users\\55519\\vigora-saude\\.remember\\today-2026-05-23.md": {
+    "mtime": 1779568797.5250728,
+    "ast_hash": "5f487fc82c5a74d2a67343833ca4aa3f",
+    "semantic_hash": "5f487fc82c5a74d2a67343833ca4aa3f"
+  },
+  "C:\\Users\\55519\\vigora-saude\\docs\\ARCHITECTURE.md": {
+    "mtime": 1778532816.4492857,
+    "ast_hash": "0a0f343e16526c7477dbf4bfec5e156a",
+    "semantic_hash": "0a0f343e16526c7477dbf4bfec5e156a"
+  },
+  "C:\\Users\\55519\\vigora-saude\\docs\\BUILD_GUIDE.md": {
+    "mtime": 1778532816.450595,
+    "ast_hash": "8c2812ab12f38f3c824f4b0ca11e2e49",
+    "semantic_hash": "8c2812ab12f38f3c824f4b0ca11e2e49"
+  },
+  "C:\\Users\\55519\\vigora-saude\\docs\\DEVELOPMENT_PROCESS.md": {
+    "mtime": 1778532816.4512172,
+    "ast_hash": "76477ac9ca433574dfa90277b1eeaeaa",
+    "semantic_hash": "76477ac9ca433574dfa90277b1eeaeaa"
+  },
+  "C:\\Users\\55519\\vigora-saude\\docs\\REVENUECAT_SETUP.md": {
+    "mtime": 1778532816.4518106,
+    "ast_hash": "dfe1494d59c0524b30ece1a005e6c062",
+    "semantic_hash": "dfe1494d59c0524b30ece1a005e6c062"
+  },
+  "C:\\Users\\55519\\vigora-saude\\docs\\superpowers\\plans\\2026-05-23-caregiver-shell.md": {
+    "mtime": 1779546657.6630778,
+    "ast_hash": "7fcb1703c45040896178fbee44b7af9e",
+    "semantic_hash": "7fcb1703c45040896178fbee44b7af9e"
+  },
+  "C:\\Users\\55519\\vigora-saude\\docs\\superpowers\\specs\\2026-05-23-caregiver-shell-design.md": {
+    "mtime": 1779543735.0132315,
+    "ast_hash": "ba48f7fd3e8bc28fbbe043aac4746c90",
+    "semantic_hash": "ba48f7fd3e8bc28fbbe043aac4746c90"
+  },
+  "C:\\Users\\55519\\vigora-saude\\server\\README.md": {
+    "mtime": 1778532816.5298991,
+    "ast_hash": "94fd8e596563f4331b45098618a979fe",
+    "semantic_hash": "94fd8e596563f4331b45098618a979fe"
+  },
+  "C:\\Users\\55519\\vigora-saude\\assets\\images\\android-icon-background.png": {
+    "mtime": 1778532816.3925228,
+    "ast_hash": "9011684ac1db4c689c0911186463181b",
+    "semantic_hash": "9011684ac1db4c689c0911186463181b"
+  },
+  "C:\\Users\\55519\\vigora-saude\\assets\\images\\android-icon-foreground.png": {
+    "mtime": 1778532816.397508,
+    "ast_hash": "888339133fd299a3d9e4c6565d4dbb84",
+    "semantic_hash": "888339133fd299a3d9e4c6565d4dbb84"
+  },
+  "C:\\Users\\55519\\vigora-saude\\assets\\images\\android-icon-monochrome.png": {
+    "mtime": 1778532816.3985052,
+    "ast_hash": "52d5dabb515ac11b5816c8a0bebf3483",
+    "semantic_hash": "52d5dabb515ac11b5816c8a0bebf3483"
+  },
+  "C:\\Users\\55519\\vigora-saude\\assets\\images\\favicon.png": {
+    "mtime": 1778532816.399503,
+    "ast_hash": "7d83b13faab887996178feed9ac634e7",
+    "semantic_hash": "7d83b13faab887996178feed9ac634e7"
+  },
+  "C:\\Users\\55519\\vigora-saude\\assets\\images\\icon.png": {
+    "mtime": 1778532816.402494,
+    "ast_hash": "7f40a860a39296efd26b395cd6a3b1b9",
+    "semantic_hash": "7f40a860a39296efd26b395cd6a3b1b9"
+  },
+  "C:\\Users\\55519\\vigora-saude\\assets\\images\\partial-react-logo.png": {
+    "mtime": 1778532816.4034925,
+    "ast_hash": "8f14e478886737f3323a2ac79c833749",
+    "semantic_hash": "8f14e478886737f3323a2ac79c833749"
+  },
+  "C:\\Users\\55519\\vigora-saude\\assets\\images\\react-logo.png": {
+    "mtime": 1778532816.4034925,
+    "ast_hash": "695d5a1c6f29a689130f3aaa573aec6e",
+    "semantic_hash": "695d5a1c6f29a689130f3aaa573aec6e"
+  },
+  "C:\\Users\\55519\\vigora-saude\\assets\\images\\react-logo@2x.png": {
+    "mtime": 1778532816.4074833,
+    "ast_hash": "b507e7f2c91ebc8fe24dee79ccb3b600",
+    "semantic_hash": "b507e7f2c91ebc8fe24dee79ccb3b600"
+  },
+  "C:\\Users\\55519\\vigora-saude\\assets\\images\\react-logo@3x.png": {
+    "mtime": 1778532816.4094756,
+    "ast_hash": "8a4d0e5b845044e56e3b2df627d01cfd",
+    "semantic_hash": "8a4d0e5b845044e56e3b2df627d01cfd"
+  },
+  "C:\\Users\\55519\\vigora-saude\\assets\\images\\splash-icon.png": {
+    "mtime": 1778532816.4134655,
+    "ast_hash": "7f40a860a39296efd26b395cd6a3b1b9",
+    "semantic_hash": "7f40a860a39296efd26b395cd6a3b1b9"
+  },
+  "C:\\Users\\55519\\vigora-saude\\assets\\alarm-notification.wav": {
+    "mtime": 1778532816.3855402,
+    "ast_hash": "4a67a640ab63fb42d7ee6bf371c592cc",
+    "semantic_hash": "4a67a640ab63fb42d7ee6bf371c592cc"
+  },
+  "C:\\Users\\55519\\vigora-saude\\assets\\alarm.mp3": {
+    "mtime": 1778532816.387534,
+    "ast_hash": "41bcd6b84430e92d9a06aa20e9db5970",
+    "semantic_hash": "41bcd6b84430e92d9a06aa20e9db5970"
+  },
+  "C:\\Users\\55519\\vigora-saude\\assets\\alarm_notification.wav": {
+    "mtime": 1778532816.3915257,
+    "ast_hash": "4a67a640ab63fb42d7ee6bf371c592cc",
+    "semantic_hash": "4a67a640ab63fb42d7ee6bf371c592cc"
+  }
+}

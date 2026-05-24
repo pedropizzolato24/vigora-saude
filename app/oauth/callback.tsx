@@ -1,5 +1,6 @@
 import { ThemedView } from "@/components/themed-view";
 import * as Auth from "@/lib/_core/auth";
+import { useAppContext } from "@/lib/app-context";
 import { supabase } from "@/lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -9,10 +10,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { getApiBaseUrl } from "@/constants/oauth";
 
 const LOGIN_COMPLETED_KEY = 'vigora_login_completed';
+const CAREGIVER_ONBOARDING_KEY = 'vigora_caregiver_onboarding_completed';
 
 export default function OAuthCallback() {
   const router = useRouter();
   const params = useLocalSearchParams<{ code?: string; error?: string }>();
+  const { reconcileFromCloud } = useAppContext();
   const [status, setStatus] = useState<"processing" | "success" | "error">("processing");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -90,8 +93,21 @@ export default function OAuthCallback() {
         });
         await AsyncStorage.setItem(LOGIN_COMPLETED_KEY, 'true');
 
+        // The session token only exists now, after the provider already mounted
+        // and ran its first (unauthenticated) reconcile. Re-run it so a fresh
+        // install restores the user's cloud backup before landing on the tabs.
+        reconcileFromCloud().catch(() => {});
+
         setStatus("success");
-        const nextRoute = result.user.userType ? "/(tabs)" : "/register";
+        let nextRoute: string;
+        if (!result.user.userType) {
+          nextRoute = '/register';
+        } else if (result.user.userType === 'caregiver') {
+          const flag = await AsyncStorage.getItem(CAREGIVER_ONBOARDING_KEY);
+          nextRoute = flag ? '/(caregiver-tabs)' : '/caregiver-onboarding';
+        } else {
+          nextRoute = '/(tabs)';
+        }
         setTimeout(() => router.replace(nextRoute), 800);
       } catch (err) {
         console.error("[OAuth] Callback failed:", err);
@@ -103,7 +119,7 @@ export default function OAuthCallback() {
     };
 
     handleCallback();
-  }, [params.code, params.error, router]);
+  }, [params.code, params.error, router, reconcileFromCloud]);
 
   return (
     <SafeAreaView className="flex-1" edges={["top", "bottom", "left", "right"]}>
