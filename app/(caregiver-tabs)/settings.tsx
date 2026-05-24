@@ -116,7 +116,14 @@ export default function CaregiverSettingsScreen() {
               />
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <Pressable
-                  onPress={() => setEditing(false)}
+                  onPress={async () => {
+                    // Discard in-progress edits by re-reading the server-authoritative
+                    // values, so the next "Editar" tap starts clean.
+                    const u = await Auth.getUserInfo();
+                    setName(u?.name ?? '');
+                    setPhone(u?.phone ?? '');
+                    setEditing(false);
+                  }}
                   style={({ pressed }) => [styles.secondaryBtn, { borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
                 >
                   <Text style={{ color: colors.foreground, fontWeight: '600' }}>Cancelar</Text>
