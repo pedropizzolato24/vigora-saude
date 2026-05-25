@@ -85,12 +85,14 @@ Acesse [app.revenuecat.com](https://app.revenuecat.com).
 ### 4.1 Criar o App
 
 1. Clique em **+ New Project** → nomeie como `Vigora Saúde`
-2. Adicione dois apps: **iOS** (com o Bundle ID do `app.config.ts`) e **Android** (com o Package Name)
-3. Copie as **API Keys** de cada plataforma
+2. Adicione dois apps: **iOS** e **Android**
 
-A API Key de teste já configurada no app é: `test_vRsfCVmxAKkKikyiJxZLkiqYliI`
+| Plataforma | Campo | Valor |
+|---|---|---|
+| iOS | Bundle ID | `com.vigora.saude` |
+| Android | Package Name | `com.vigora.saude` |
 
-> Para produção, substitua pela chave de produção em `lib/purchases.ts` na constante `RC_API_KEY`.
+3. Copie as **API Keys** de cada plataforma e configure em `EXPO_PUBLIC_REVENUECAT_API_KEY`.
 
 ### 4.2 Criar o Entitlement
 
@@ -258,8 +260,9 @@ Antes de publicar o app nas lojas, verifique:
 - [ ] Entitlement `Vigora Saúde Pro` criado no RevenueCat com os 3 produtos vinculados
 - [ ] Offering `default` criado com os 3 pacotes (`$rc_lifetime`, `$rc_annual`, `$rc_monthly`)
 - [ ] Paywall configurado e publicado no RevenueCat
-- [ ] API Key de produção substituída em `lib/purchases.ts`
+- [ ] API Key de produção configurada em `EXPO_PUBLIC_REVENUECAT_API_KEY`
 - [ ] Server Notifications configuradas (App Store + Google Play)
+- [ ] Bundle ID `com.vigora.saude` configurado em ambas as plataformas
 - [ ] Testado o fluxo completo de compra em dispositivo real (Sandbox)
 - [ ] Testado o fluxo de restauração de compras
 - [ ] Customer Center testado (cancelamento, reembolso)

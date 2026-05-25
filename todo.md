@@ -1,6 +1,7 @@
 # Vigora Saúde — TODO
 
 ## Setup & Configuration
+
 - [x] Update theme.config.js with Vigora Saúde brand colors
 - [x] Install expo-location dependency
 - [x] Create lib/app-context.tsx (global state + AsyncStorage)
@@ -9,16 +10,19 @@
 - [x] Update app/_layout.tsx with all providers
 
 ## Navigation & Layout
+
 - [x] Update app/(tabs)/_layout.tsx with custom tab bar (5 tabs)
 - [x] Create components/custom-tab-bar.tsx
 - [x] Create components/sidebar-menu.tsx
 - [x] Add all icon mappings to icon-symbol.tsx
 
 ## Shared Components
+
 - [x] Create components/alarm-card.tsx
 - [x] Create components/contact-card.tsx
 
 ## Screens
+
 - [x] Dashboard (app/(tabs)/index.tsx) — SOS button, status cards, quick actions
 - [x] Alarmes (app/(tabs)/alarms.tsx) — CRUD alarmes
 - [x] Saúde (app/(tabs)/health.tsx) — métricas de saúde
@@ -29,21 +33,25 @@
 - [x] Localização (app/(tabs)/location.tsx) — compartilhar GPS
 
 ## Branding
+
 - [x] Generate app logo (heart + ECG line on blue gradient)
 - [x] Update app.config.ts with app name and logo
 - [x] Copy logo to all required asset locations
 
 ## Final
+
 - [x] Test all screens and flows
 - [x] Fix TypeScript errors (only pre-existing server template error remains)
 - [x] Add expo-location plugin to app.config.ts
 - [x] Create checkpoint
 
 ## Post-Launch Features
+
 - [x] Set app to light mode by default with dark mode toggle in Settings
 - [x] Replace all hardcoded colors with theme tokens for full dark/light mode support
 
 ## Theme Consistency Audit
+
 - [x] Review all hardcoded colors and replace with theme tokens
 - [x] Verify all buttons use theme colors
 - [x] Verify all icons use theme colors
@@ -53,56 +61,63 @@
 - [x] Test light mode on all screens
 
 ## UI/UX Adjustments
+
 - [x] Reorder tabs: Alarmes (left), Início (center), Saúde, Config
 - [x] Add rounded borders to tab bar icon containers
 
 ## New Features in Development
+
 - [ ] Implement alarm notifications with expo-notifications scheduling
 - [ ] Add PDF export for Anamnesis medical form
 
 ## Completed Features
+
 - [x] Alarm notifications with expo-notifications scheduling (daily, weekdays, weekends, one-time)
 - [x] PDF export for Anamnesis medical form with sharing capability
 
 ## Current Work
+
 - [x] Integrate alarm notifications with saved alarms (auto-schedule on add/update, cancel on delete)
 - [x] Add notification ID tracking to Alarm type and AppState
 - [x] Test alarm notifications fire at correct times
 
 ## In Progress
+
 - [x] Sync alarms on app startup to reschedule lost notifications
 - [x] Create AlarmSyncInitializer component to check and reschedule alarms
 - [x] Handle edge cases (disabled alarms, past times, etc.)
 
-
 ## Feature Verification & Implementation
+
 - [x] 1. Alarm escalation: Send notifications to emergency contacts if alarm not dismissed (with WhatsApp integration) — CREATED escalation utility
 - [x] 2. Location sharing: Send real-time GPS location via Google Maps link in notifications — LOCATION SCREEN EXISTS
 - [x] 3. Ambulance button: Pre-configured with SUS and health plan numbers — ALREADY IMPLEMENTED
 - [x] 4. Ad banners: Monetization banners for commercial partners — CREATED COMPONENT & INTEGRATED
 
-
 ## Alarm Timeout Escalation Feature
+
 - [x] Create alarm timeout manager utility
 - [x] Add timeout tracking to Alarm interface
 - [x] Implement auto-escalation after 2-3 minutes of no response
 - [x] Add dismiss/snooze buttons to alarm notifications
 - [x] Track escalation history in AppState
 
-
 ## Build Error Fixes
+
 - [x] Remove pdfbox-android dependency causing build failure
 - [x] Replace PDF generation with Expo-compatible solution (using expo-print + expo-sharing)
 - [ ] Test APK build again
 
 ## UI/UX Improvements
+
 - [x] Add ambulance call button next to/below SOS button on Dashboard
 
 ## Bug Fixes
+
 - [x] Fix status bar overlap on all screens (added useSafeAreaInsets to all 8 screens, removed top edge from ScreenContainer)
 
-
 ## New Features - Contacts & WhatsApp Escalation
+
 - [x] Integrate device contacts picker to import emergency contacts from phone agenda
 - [x] Add configurable missed alarm threshold in Settings (1-10, with +/- controls)
 - [x] Track consecutive missed alarms per user (with counter display)
@@ -110,23 +125,23 @@
 - [x] Include GPS location in WhatsApp escalation messages
 - [x] Add missed alarm counter reset when user responds to alarm
 
-
 ## Onboarding Tutorial
+
 - [x] Create onboarding screen with 5 animated slides explaining key features
 - [x] Add first-launch detection with AsyncStorage
 - [x] Integrate onboarding into app navigation flow (OnboardingGate component)
 - [x] Add skip, next, and start buttons with animated dot progress indicators
 
-
 ## UI/UX Adjustments v2
+
 - [x] 1. Standardize top padding across all screens (insets.top + 12, paddingHorizontal: 20, paddingVertical: 16)
 - [x] 2. Fix tab bar icon rounding with consistent borderRadius: 12 on all states
 - [x] 3. Improve contacts screen buttons (larger 44px touch targets, more spacing, row layout)
 - [x] 4. Enhance dashboard quick action cards with 1.5px borders, chevron indicators, and tap hints
 - [x] 5. Redesign Settings screen with 6 collapsible sections, new options (vibration, SOS confirmation, auto-location, font size, emergency message)
 
-
 ## User Profile & Animations
+
 - [x] Create user profile screen with photo, name, blood type, and basic info
 - [x] Add profile data to AppState and AppContext (UserProfile interface)
 - [x] Integrate profile into sidebar menu (avatar + name at top, tap to edit)
@@ -136,49 +151,54 @@
 - [x] Add card press animations with scale feedback (PressScale component)
 - [x] Add fade-in animations on screen mount (header, cards, quick actions)
 
-
 ## Help/FAQ Screen
+
 - [x] Create Help/FAQ screen with 8 sections and expandable questions
 - [x] Add FAQ to sidebar menu navigation
 - [x] Include sections: SOS, Alarmes, Contatos, Anamnese, Ambulância, Localização, Configurações, Perfil
 - [x] Design for elderly users with large text (15-18px), clear icons, and high contrast
 
-
 ## Bug Fixes v2
+
 - [x] Fix dashboard status cards layout (too narrow, text truncated, grid broken)
 - [x] Move "Sobre e Legal" section from Settings dropdown to fixed footer at bottom of page
 
-
 ## UI Fixes v3
+
 - [x] Move X (close) button on sidebar menu to be inline with profile block (remove empty space at top)
 - [x] Fix white line gap between blue profile header and white menu body in sidebar
 - [x] Improve alarm time picker: auto-insert colon between hours and minutes (no manual typing of ":")
 
-
 ## Alarm UX Improvements
+
 - [x] Add +/- increment/decrement buttons to alarm time picker (hour and minute fields)
 - [x] Show confirmation notification/toast when alarm is saved (with next occurrence info)
 
 ## Bug Fixes & Improvements v3
+
 - [x] Fix SOS button pulse animation loop (cuts at wrong moment, visually jarring)
 - [x] Improve FAQ text contrast for better readability against background
 - [x] Implement working font size setting (small/medium/large) with persistence via AsyncStorage, default medium — applied to Dashboard, Alarmes, Configurações, FAQ; remaining screens pending
 
 ## Feature Expansion v4
+
 - [x] Expand font size system to all remaining screens (Contacts, Health, Ambulance, Anamnesis, Location, Profile)
 - [x] Add live font size preview in Settings font size section
 - [x] Implement weekday selector (Mon-Sun checkboxes) for custom alarm repeat mode
 
 ## Alarm UX Improvements v2
+
 - [x] Show selected custom days in alarm list card (e.g., "Seg, Qua, Sex")
 - [x] Add full day name labels below weekday buttons in alarm modal
 
 ## Alarm UX Improvements v3
+
 - [x] Add delete confirmation dialog for alarms (prevent accidental deletion)
 - [x] Auto-sort alarms by time (ascending) after add/edit
 - [x] Add active alarm badge counter on tab bar icon
 
 ## UI & Alarm System v4
+
 - [x] Fix top safe area padding on all screens (standardize with status bar)
 - [x] Fix badge overflow/clipping in tab bar (badge being cut off)
 - [x] Improve alarm card edit/delete buttons (larger, more visible, spaced apart)
@@ -186,28 +206,35 @@
 - [x] Countdown timer on alarm screen: when reaches 0, auto-send WhatsApp message to all emergency contacts
 
 ## Alarm Test Feature
+
 - [x] Add test button to each alarm card to simulate alarm firing (navigate to alarm-ring screen)
 
 ## Bug Fixes v5
+
 - [x] Fix modal screens (Novo Alarme, Nova Métrica) showing behind status bar - add proper top padding
 - [x] Fix tab bar active indicator losing border radius after switching tabs
 - [x] Fix ambulance button misalignment on home screen
 - [x] Fix SOS and alarm ring pulse animation loops - remove micro-pauses between cycles
 
 ## Health Metrics UX
+
 - [x] Add green check confirmation animation when saving a new health metric
 
 ## Animation Refinements
+
 - [x] Fix pulse animation loop: add min-to-1 transition to eliminate jump/cut at loop restart
 
 ## Alarm Card UX Improvements
+
 - [x] Reorganize alarm card: move edit/delete buttons to bottom row (larger, distinct), increase sound/vibration buttons size
 
 ## Alarm Card & Tab Bar Fixes
+
 - [x] Remove toggle from alarm card, make edit/delete buttons full-width at bottom of card
 - [x] Fix tab bar active indicator border radius (not rounding after tab change)
 
 ## Alarmes Reais & WhatsApp Integration
+
 - [x] Alarmes reais: canal Android MAX importance que sobrescreve modo silencioso/DND
 - [x] Alarmes reais: som customizado (alarm-notification.wav) empacotado no build
 - [x] Alarmes reais: permissões SCHEDULE_EXACT_ALARM, USE_FULL_SCREEN_INTENT, WAKE_LOCK
@@ -217,6 +244,7 @@
 - [x] WhatsApp: integração híbrida implementada (deep link pessoal + fallback Business API)
 
 ## WhatsApp Hybrid Integration
+
 - [x] Criar módulo server/whatsapp.ts para envio via WhatsApp Business API (Meta Cloud API)
 - [x] Criar rota tRPC whatsapp.isConfigured e whatsapp.sendEmergencyAlert no servidor
 - [x] Implementar lógica híbrida no cliente: deep link primeiro, fallback para API do servidor
@@ -226,6 +254,7 @@
 - [ ] Testar fluxo completo com Business API ativa
 
 ## AlarmManager Nativo (expo-alarm-module)
+
 - [x] Instalar expo-alarm-module e adicionar plugin ao app.config.ts
 - [x] Criar lib/native-alarm-manager.ts com wrapper para scheduleAlarm/cancelAlarm/stopAlarm
 - [x] Adicionar campo nativeAlarmUids à interface Alarm no app-context.tsx
@@ -234,10 +263,12 @@
 - [x] Atualizar alarm-ring.tsx para chamar stopNativeAlarm ao dispensar
 
 ## Correção do Ícone Android
+
 - [x] Corrigir zoom excessivo do ícone adaptativo Android (adicionar padding de zona segura ao foreground: artwork em 65% do canvas, 179px de margem em cada lado)
 - [x] Atualizar backgroundColor do ícone adaptativo para #0033CC (combina com fundo azul do ícone)
 
 ## Leitura em Voz Alta (expo-speech)
+
 - [x] Instalar expo-speech
 - [x] Integrar Speech.speak() na tela alarm-ring para ler nome e descrição do alarme ao disparar
 - [x] Adicionar botão "Ouvir novamente" para reler o alarme em voz alta
@@ -246,6 +277,7 @@
 - [x] Usar idioma pt-BR (language: 'pt-BR') para voz em português
 
 ## Configurações de Voz (expo-speech)
+
 - [x] Adicionar campos speechRate (0.5/0.75/1.0/1.25) e speechVolume (0.0–1.0) ao AppState/Settings
 - [x] Adicionar seção "Voz do Alarme" na tela de Configurações com seletor de velocidade e slider de volume
 - [x] Implementar modo acessível para a seção de configurações de voz
@@ -264,21 +296,25 @@
 - [x] Implementar modo acessível para a configuração de duração do timer
 
 ## Bug Fixes - Notificações v6
+
 - [x] Remover notificação duplicada do alarme (aparece 2 notificações ao mesmo tempo)
 - [x] Corrigir timer na notificação (contagem regressiva não está aparecendo)
 - [x] Restaurar redirecionamento ao clicar na notificação (não abre a tela de alarme)
 
 ## Bug Fixes - Notificações v7
+
 - [ ] Eliminar notificação duplicada do AlarmManager nativo (segunda notificação com botões Dispensar/Soneca)
 - [ ] Implementar countdown funcional na notificação (texto com tempo restante)
 - [ ] Corrigir redirecionamento ao clicar na notificação (abrir tela de alarme)
 
 ## Bug Fixes - Notificações v8 (2026-04-20)
+
 - [x] Corrigir countdown em branco na notificação (updateAlarm não funciona em tempo real)
 - [x] Corrigir sincronização do timer: ao entrar no app via notificação, countdown começa do zero
 - [x] Remover botão Soneca da notificação nativa do alarme
 
 ## Permissão de Localização (2026-04-20)
+
 - [x] Solicitar permissão de localização (foreground) no onboarding na abertura do app
 - [x] Solicitar permissão de localização em background com guia passo a passo
 - [x] Adicionar tela/modal de guia para ativar "Permitir o tempo todo" nas configurações do Android
@@ -286,11 +322,13 @@
 - [x] Instalar expo-location se não estiver instalado
 
 ## Status de Localização nas Configurações e Bug de Volume (2026-04-20)
+
 - [ ] Adicionar status de permissão de localização (foreground/background/negada) na tela de Configurações
 - [ ] Botão para abrir Configurações do sistema a partir da tela de Configurações do app
 - [ ] Corrigir bug: volume do alarme não está sendo aplicado (alarme toca mesmo com volume em zero)
 
 ## Bug Fixes - Onboarding e Notificações v9 (2026-04-20)
+
 - [x] Remover botão "Pular" do onboarding na primeira abertura (firstLaunch=true via URL param)
 - [x] Corrigir countdown na notificação: canal separado vigora-countdown, dismissNotificationAsync antes de criar nova, remover supressão isCountdownUpdate no setNotificationHandler
 - [x] Corrigir dessincronização do timer: passar expiresAt como URL param na navegação para alarm-ring (elimina race condition com AsyncStorage)
@@ -347,6 +385,7 @@
 - [x] Botão mostra countdown de 10s com barra de progresso e estado ativo/cancelar
 
 ## AppDialog — Substituição de Alert.alert()
+
 - [x] Criar components/app-dialog.tsx com hook useAppDialog, variantes info/warning/error/confirm, suporte a tema claro/escuro e modo acessível
 - [x] Substituir Alert.alert() em app/(tabs)/profile.tsx
 - [x] Substituir Alert.alert() em app/(tabs)/anamnesis.tsx (+ corrigir TS2657 com Fragment)
@@ -360,6 +399,7 @@
 - [x] Verificar TypeScript: zero erros novos (apenas pré-existente do storageProxy.ts)
 
 ## UX Improvements v5 — Dialog & Toast
+
 - [x] Adicionar ícone animado (checkmark/warning/error) ao AppDialog para cada variante
 - [x] Criar componente AppToast (snackbar) para confirmações rápidas sem modal
 - [x] Integrar AppToast nas telas: contatos importados, alarme salvo, métrica salva, etc.
@@ -367,26 +407,31 @@
 - [x] Atualizar diálogo SOS no index.tsx para usar variante 'sos'
 
 ## UX Improvements v6 — Haptic Toast & SOS Countdown
+
 - [x] Adicionar haptic feedback no AppToast (success=Success, error=Error, warning=Medium, info=Light)
 - [x] Criar SOSCountdownDialog com contador regressivo 3→2→1→0 e animação circular
 - [x] Botão de cancelar durante a contagem regressiva do SOS
 - [x] Integrar SOSCountdownDialog no index.tsx substituindo o AppDialog de confirmação SOS
 
 ## Bug: Countdown na notificação do alarme real (Android)
+
 - [x] Investigar por que startCountdownNotification não é chamado quando o alarme nativo dispara
 - [x] Corrigir o fluxo para que a notificação do alarme real mostre o countdown igual ao teste
 
 ## Otimização: Polling condicional do alarme nativo
+
 - [x] Ativar polling apenas quando um alarme está próximo de disparar (janela de ~60s)
 - [x] Parar polling automaticamente após alarme ser tratado ou dispensado
 
 ## Tela pós-SOS
+
 - [x] Criar componente SOSActiveScreen (modal full-screen) com instruções de emergência
 - [x] Exibir status de envio de mensagens para contatos de emergência
 - [x] Botão para desativar o estado de emergência
 - [x] Integrar no fluxo do index.tsx após confirmação do SOS
 
 ## Sistema de Monitoramento via Servidor
+
 - [x] Schema DB: tabelas app_users, synced_alarms, device_heartbeat, alarm_events, warning_log
 - [x] tRPC: registrar usuário do app (deviceId + contatos)
 - [x] tRPC: sincronizar alarmes com o servidor
@@ -403,18 +448,22 @@
 - [x] Banco de dados: tabelas criadas no TiDB via SQL direto
 
 ## Bug Fix: Safe Area em Modais/Sheets
+
 - [x] Corrigir AlarmHistorySheet: título sobrepõe barra de notificação (falta insets.top no header)
 - [x] Verificar outros modais/sheets com o mesmo problema (demais já têm insets.top correto)
 
 ## Notificação de Alarmes Offline
+
 - [x] Detectar alarmes não enviados ao religar e exibir toast/dialog informativo
 - [x] Mostrar quantidade de alarmes perdidos e se avisos foram enviados aos contatos
 
 ## Painel de Status do Monitoramento (Configurações)
+
 - [x] Criar componente MonitoringStatusPanel com linguagem simples
 - [x] Integrar na tela de Configurações (modo normal e acessível)
 
 ## Sistema de Fallback SOS (WhatsApp → Email → SMS)
+
 - [x] Adicionar campo `email` opcional na interface EmergencyContact
 - [x] Adicionar campo de email no formulário de criar/editar contato (contacts.tsx)
 - [x] Criar serviço de email no servidor (Resend API) — server/email.ts
@@ -426,14 +475,17 @@
 - [x] Atualizar schema Zod no router de monitoramento para aceitar email nos contatos
 
 ## Bug Fix: Conexão com servidor (superjson wrapper)
+
 - [x] Corrigir trpcQuery e trpcMutation para extrair result.data.json (superjson wrapper)
 - [x] O servidor usa superjson transformer: resposta era {result:{data:{json:{...}}}} mas código lia result.data em vez de result.data.json
 
 ## UX: Posição do painel de Monitoramento nas Configurações
+
 - [x] Mover MonitoringStatusPanel para logo abaixo do toggle de Acessibilidade (modo normal)
 - [x] Remover MonitoringStatusPanel da posição antiga (entre Segurança e Aparência)
 
 ## UX: Melhorias de Monitoramento v2
+
 - [x] Mover MonitoringStatusPanel para logo abaixo do toggle de acessibilidade no modo acessível (settings.tsx)
 - [x] Adicionar indicador visual de status do monitoramento no header do Dashboard (index.tsx)
 - [x] Criar hook useMonitoringStatus reutilizável (hooks/use-monitoring-status.ts)
@@ -441,12 +493,14 @@
 - [x] Refatorar MonitoringStatusPanel para usar o hook useMonitoringStatus
 
 ## Bug Fix: Conexão com servidor (diagnóstico aprofundado - 2026-04-25)
+
 - [x] Identificar causa raiz 1: EXPO_PUBLIC_API_BASE_URL aponta para URL temporária do sandbox (muda a cada restart)
 - [x] Corrigir constants/oauth.ts: adicionar PRODUCTION_API_URL (vigoraapp-2ncfsgrj.manus.space) como fallback permanente para app nativo
 - [x] Identificar causa raiz 2: ECONNRESET por timeout de conexão MySQL inativa (~8h sem keepAlive)
 - [x] Corrigir server/db.ts: usar mysql2.createPool com enableKeepAlive e keepAliveInitialDelay em vez de drizzle(url)
 
 ## Integrações de Serviços de Mensagens (2026-04-25)
+
 - [x] Validar chave Resend API (re_hs8dYCef_...) — 7/7 testes passaram
 - [x] Validar credenciais Twilio (conta Trial ativa, número +15705590772 com SMS)
 - [x] Configurar TWILIO_FROM_NUMBER=+15705590772 nas variáveis de ambiente
@@ -455,10 +509,12 @@
 - [x] Criar tests/integration-services.test.ts para validar credenciais automaticamente
 
 ## Bug Fix: Notificações em branco (exceto teste)
+
 - [x] Investigar causa raiz: expo-alarm-module pode falhar ao recuperar alarme do Storage (ZonedDateTime parse)
 - [x] Corrigir: adicionado backup de notificação via expo-notifications no alarm-sync.ts (Android também agenda notificação como fallback)
 
 ## Bug Fix: Conexão persistente com o servidor
+
 - [x] Remover credentials: "include" do fetch (causa problemas no React Native nativo)
 - [x] Adicionar retry automático com backoff exponencial (até 2 tentativas) no trpcQuery e trpcMutation
 - [x] Adicionar timeout de 15s com AbortController para evitar fetch pendente infinito
@@ -484,14 +540,17 @@
 ## RevenueCat — Melhorias v2
 
 ### Opção 1: Guia de configuração do painel RevenueCat
+
 - [x] Criar docs/REVENUECAT_SETUP.md com passo a passo completo (App Store Connect, Google Play, painel RC)
 
 ### Opção 2: Build EAS para desenvolvimento
+
 - [x] Criar eas.json com profiles: development, simulator, preview, production
 - [x] Adicionar scripts eas:build:* ao package.json
 - [x] Instalar expo-dev-client e adicionar plugin no app.config.ts
 
 ### Opção 3: Restrição de recursos premium com isPro
+
 - [x] Criar components/pro-gate.tsx com ProGate, ProBanner, ProLimitBadge, useProFeature, FREE_LIMITS
 - [x] Contatos de emergência: limitar a 3 no plano gratuito (checkLimit + ProLimitBadge)
 - [x] Exportação PDF de Anamnese: bloquear no plano gratuito (requirePro + ícone star no botão)
@@ -501,6 +560,7 @@
 ## RevenueCat — Melhorias v3
 
 ### Opção 2: Configurar Entitlement no painel RevenueCat
+
 - [ ] Fazer login no painel RevenueCat com a chave sk_fK...
 - [ ] Criar Entitlement "Vigora Saúde Pro"
 - [ ] Criar produtos lifetime, yearly, monthly
@@ -508,6 +568,7 @@
 - [ ] Vincular produtos ao Entitlement
 
 ### Opção 3: Testes automatizados do fluxo de compra
+
 - [ ] Criar mock do react-native-purchases para testes
 - [ ] Testar initializePurchases
 - [ ] Testar checkProEntitlement (ativo/inativo)
@@ -515,7 +576,8 @@
 - [ ] Testar restorePurchases
 - [ ] Testar getOfferings
 
-## RevenueCat — Melhorias v3
+## RevenueCat — Melhorias v3.5
+
 - [x] Configurar Entitlement "Vigora Saúde Pro" no painel RevenueCat
 - [x] Verificar Offering default com 3 pacotes (lifetime, yearly, monthly)
 - [x] Criar e publicar Paywall visual no painel RevenueCat (template Health)
@@ -523,6 +585,7 @@
 - [x] Criar vitest.config.ts com alias @, suporte JSX e define __DEV__
 
 ## RevenueCat — Upsell Contextual v4
+
 - [ ] Criar components/pro-upsell-modal.tsx — modal de upsell contextual reutilizável
 - [ ] Atualizar useProFeature para aceitar configuração de upsell contextual
 - [ ] Integrar upsell contextual em contatos (4º contato bloqueado)
@@ -531,6 +594,7 @@
 - [ ] Integrar upsell contextual no monitoramento contínuo (Settings)
 
 ## RevenueCat — Upsell Contextual
+
 - [x] Criar components/pro-upsell-modal.tsx com hook useProUpsell e componente UpsellModal
 - [x] Integrar upsell contextual em contacts.tsx (limite de contatos)
 - [x] Integrar upsell contextual em alarms.tsx (limite de alarmes)
@@ -540,11 +604,13 @@
 - [x] 35 testes automatizados passando
 
 ## Parte 1 — Bugfix: Notificações Duplicadas e em Branco
+
 - [x] Remover agendamento de expo-notifications do alarm-sync.ts (manter apenas AlarmManager nativo)
 - [x] Adicionar texto estático descritivo no native-alarm-manager.ts
 - [x] Corrigir alarm-countdown-notifier.ts para não exibir countdown em foreground (AppState.active)
 
 ## Parte 2 — Migração para Supabase (Dead Man's Switch)
+
 - [x] Instalar @supabase/supabase-js
 - [x] Criar lib/supabase.ts com client e tipos
 - [x] Criar lib/supabase-sync.ts com syncUser, syncAlarms, syncContacts, sendHeartbeat, createAlarmEvent, respondToAlarmEvent
@@ -555,11 +621,55 @@
 - [x] Solicitar EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY via secrets
 
 ## Parte 3 — RevenueCat com Trial de 7 Dias
+
 - [x] Atualizar lib/purchases.ts com lógica de trial de 7 dias (firstLaunchDate)
 - [x] Criar components/trial-banner.tsx com TrialBanner e ExpiredBanner
 - [x] Integrar TrialBanner/ExpiredBanner no Dashboard (index.tsx)
 - [x] Atualizar botão "Ver Planos" nas Configurações para mostrar dias restantes do trial
 
 ## GitHub Actions & Supabase Setup
+
 - [x] Criar .github/workflows/test.yml com CI para rodar pnpm test a cada push
 - [ ] Executar supabase/schema.sql no painel Supabase (criar tabelas do dead man's switch) — PENDENTE: executar manualmente no SQL Editor do Supabase
+
+## Curadoria do Grafo de Conhecimento (Graphify)
+
+> Resultado da análise de 45 grupos isolados via pipeline de 3 subagentes (remove-advocate → keep-advocate → analyzer).
+> Ordem de execução: REPENSAR primeiro (decisões desbloqueiam trabalho downstream), depois REMOVER e MANTER em paralelo.
+
+### REPENSAR — Decisões arquiteturais pendentes (executar primeiro)
+
+- [ ] REPENSAR: Decidir camada de tooling — drizzle.config.ts e db/migrations/ pertencem à raiz ou devem ser movidos para um workspace/pacote dedicado?
+- [ ] REPENSAR: Verificar se drizzle.config.ts está sendo importado corretamente pelo pipeline de migração (não aparece como importado no grafo)
+- [ ] REPENSAR: Confirmar que theme.config.d.ts declara tipos para NativeWind e que o extrator do graphify suporta arquivos `.d.ts` como nós de declaração
+- [ ] REPENSAR: Definir estratégia para Screen Nodes A — os nós semânticos de tela (HealthMonitoringScreen, WeeklyHealthReport etc.) estão isolados com grau 0 junto com seus `.tsx`; decidir se reconectar ou remover conceitos sem implementação
+- [ ] REPENSAR: Verificar se `emergency-contact-screen.tsx` e `sos-active-screen.tsx` são telas reais e ativas ou candidatos à remoção (ambos apareceram isolados no grafo)
+- [ ] REPENSAR: Confirmar que o extrator do graphify suporta `eas.json` e configurações EAS CLI — se não, adicionar suporte ou documentar como exceção
+- [ ] REPENSAR: Verificar se os componentes template (`HelloWave`, `ThemedText`, `ThemedView`, `ParallaxScrollView`) ainda são usados no projeto ou são resíduos do template Expo inicial
+- [ ] REPENSAR: Rastrear a origem do nó `hooks` isolado — verificar se é um barrel export órfão ou um alias de módulo não resolvido pelo extrator
+- [ ] REPENSAR: Confirmar que o extrator do graphify suporta assets Android (`.xml`, `.png` em `android/`) — se não, documentar como exceção de plataforma nativa
+- [ ] REPENSAR: Identificar quem importa `notifications/index.ts` — verificar se é re-exportado por outro barrel ou se a cadeia de importação está quebrada no grafo
+
+### REMOVER — Nós/arquivos a deletar (podem ser executados em paralelo após REPENSAR)
+
+- [ ] REMOVER: `fix_colors.py` — script Python com path hardcoded `/home/ubuntu/vigora-saude` (ambiente remoto já destruído), já executado, sem valor futuro
+- [ ] REMOVER: `.remember/tmp/last-ndc.ts` — contém apenas um inteiro solto, não é módulo TypeScript válido, artefato temporário de sessão
+- [ ] REMOVER: Nó "Brand Identity" standalone isolado — duplicata semântica do nó principal de branding já conectado ao grafo
+- [ ] REMOVER: `HelloWave` e componentes template Expo (`ThemedText`, `ThemedView`, `ParallaxScrollView`) — resíduos do template inicial, não usados no app Vigora
+- [ ] REMOVER: `simple.test.ts` e nó `obj` associado — teste placeholder vazio sem cobertura real
+- [ ] REMOVER: `locationSrc` e `monitorInitSrc` — strings de source code embarcadas como literais em runtime, antipadrão; extrair lógica para módulos reais
+- [ ] REMOVER: Nós `numbers`, `data` e `credentials` — variáveis locais de teste ou constantes inline sem representação modular própria
+- [ ] REMOVER: `.remember/` artefatos de sessão — `last-save.json`, arquivos de sessão e line-buffer temporários gerados pelo sistema de memória
+- [ ] REMOVER: Artefatos de worktrees efêmeros — `settings.local.json`, `allow`, `permissions`, `PreToolUse` gerados em worktrees temporários de subagentes (30+ cópias)
+- [ ] REMOVER: Auto-referência do Graphify no grafo — nós `graph.json`, `GRAPH_REPORT.md`, `wiki/index.md` e scripts `.py` do graphify não devem fazer parte do grafo da aplicação
+- [ ] REMOVER: Nós semânticos duplicados sem código — `HealthMonitoringConcept` e `VigoraSaudeBrandIdentity` se confirmado que não têm implementação real (verificar após REPENSAR)
+- [ ] REMOVER: Metadados de migração Drizzle isolados — `_journal.json`, `dialect`, `version`, `entries` se confirmado que são apenas metadados internos do Drizzle sem valor no grafo de conhecimento
+
+### MANTER — Confirmar e reconectar ao grafo principal (após decisões REPENSAR)
+
+- [ ] MANTER: Feature Concepts (B6) — `sos-countdown-dialog.tsx`, `sos-active-screen.tsx`, `app-dialog.tsx`, expo-speech em `alarm-ring.tsx` (7 call-sites), arquivos de widget; todos são código real e ativo
+- [ ] MANTER: Declarações de tipo (B2) — `theme.config.d.ts` e tipos NativeWind; reconectar ao grafo adicionando edge de declaração para os consumidores
+- [ ] MANTER: Scripts utilitários (B3) — `last-ndc.ts` (se for script válido após verificação) e outros scripts de manutenção com valor operacional confirmado
+- [ ] MANTER: Testes críticos (B9) — testes de integração e unitários com cobertura real; reconectar apontando edges para os módulos que testam
+- [ ] MANTER: Teste de integração (B10) — testa Resend email + Twilio SMS (não RevenueCat/Railway como assumido inicialmente); manter e reconectar ao módulo de notificações
+- [ ] MANTER: Meta dev tools (B11) — `settings.local.json` no contexto do projeto principal (não worktrees), `eas.json`, arquivos de config de build; reconectar como nós de configuração

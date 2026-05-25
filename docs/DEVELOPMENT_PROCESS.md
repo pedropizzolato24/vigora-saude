@@ -92,13 +92,12 @@ Este documento descreve o processo de desenvolvimento do Vigora Saúde, incluind
 
 **Decisões:**
 - **RevenueCat:** Escolhido por gerenciamento completo de assinatura, webhooks e analytics.
-- **Env Vars:** API key armazenada como `EXPO_PUBLIC_REVENUECAT_API_KEY` (exposta ao cliente, necessário para SDK).
+- **Env Vars:** API key armazenada como `EXPO_PUBLIC_REVENUECAT_API_KEY`.
 - **Upsell Contextual:** Implementado ProUpsellModal com animação bottom sheet em vez de bloquear direto.
 
 **Desafios:**
-- API key de teste vs produção → Resolvido com env var `EXPO_PUBLIC_REVENUECAT_API_KEY`.
+- API key de teste vs produção → Resolvido com variável de ambiente `EXPO_PUBLIC_REVENUECAT_API_KEY`.
 - Paywall não exibindo em Expo Go → Resolvido com build de desenvolvimento EAS.
-- Erro "Wrong API Key" em produção → Corrigido ao substituir chave de teste pela de produção via Secrets do Manus.
 
 **Resultado:** Monetização completa com paywall nativo, upsell contextual em 4 pontos de bloqueio.
 
@@ -129,6 +128,7 @@ Este documento descreve o processo de desenvolvimento do Vigora Saúde, incluind
 2. Instalação de expo-dev-client para builds de desenvolvimento.
 3. EAS CLI v18.8.1 instalado globalmente.
 4. Criação de documentação inicial (README, ARCHITECTURE, BUILD_GUIDE, REVENUECAT_SETUP).
+5. Bundle ID migrado para `com.vigora.saude`.
 
 **Resultado:** App pronto para build com documentação completa.
 
@@ -150,16 +150,12 @@ Este documento descreve o processo de desenvolvimento do Vigora Saúde, incluind
 // lib/alarm-sync.ts
 export async function scheduleFullAlarm(alarm: Alarm) {
   if (Platform.OS === 'android' && isNativeAlarmAvailable()) {
-    // Android: usa AlarmManager nativo EXCLUSIVAMENTE
     await NativeAlarmManager.scheduleAlarm(alarm);
     return; // ← não chama expo-notifications
   }
-  // iOS e Web: usa expo-notifications
   await scheduleAlarmNotification(alarm);
 }
 ```
-
-O `native-alarm-manager.ts` também foi corrigido para incluir o nome real do alarme no título e corpo da notificação nativa.
 
 **Resultado:** Notificações sem duplicatas no Android; textos exibem nome correto do alarme.
 
@@ -182,38 +178,20 @@ O `native-alarm-manager.ts` também foi corrigido para incluir o nome real do al
 **Schema SQL:**
 
 ```sql
--- Tabelas principais
 CREATE TABLE users (device_id TEXT PRIMARY KEY, name TEXT, last_seen_at TIMESTAMPTZ);
 CREATE TABLE alarms (user_id UUID, local_id TEXT, description TEXT, time TEXT, ...);
 CREATE TABLE alarm_events (alarm_id UUID, scheduled_at TIMESTAMPTZ, responded_at TIMESTAMPTZ, response_type TEXT);
 CREATE TABLE emergency_contacts (user_id UUID, name TEXT, phone TEXT, whatsapp BOOLEAN);
 
 -- Cron job a cada 2 minutos
-SELECT cron.schedule('check-missed-alarms', '*/2 * * * *',
-  'SELECT net.http_post(url := ''https://SEU_REF.supabase.co/functions/v1/check-missed-alarms'', ...)');
+SELECT cron.schedule('check-missed-alarms', '*/2 * * * *', ...);
 ```
-
-**Integração no AppContext:** A sincronização é disparada automaticamente quando o estado de alarmes ou contatos muda:
-
-```typescript
-// lib/app-context.tsx
-useEffect(() => {
-  if (isSupabaseConfigured()) {
-    syncAlarms(deviceId, state.alarms);
-    syncEmergencyContacts(deviceId, state.contacts);
-  }
-}, [state.alarms, state.contacts]);
-```
-
-**Decisão:** Supabase foi escolhido em vez de implementar no servidor principal por oferecer Edge Functions serverless, pg_cron nativo e SDK JavaScript pronto para uso no Expo.
 
 **Resultado:** Dead man's switch implementado e testado. 3 testes de credenciais Supabase adicionados.
 
 ---
 
 #### Parte 3 — Trial de 7 Dias com TrialBanner e ExpiredBanner
-
-**Objetivo:** Exibir banners informativos no Dashboard durante e após o período de trial, incentivando a conversão para o plano pago.
 
 **Arquivos Criados/Modificados:**
 
@@ -222,21 +200,6 @@ useEffect(() => {
 | `components/trial-banner.tsx` | Novo: TrialBanner (azul) e ExpiredBanner (vermelho) |
 | `context/purchases-context.tsx` | Adicionado: isTrialActive, trialDaysLeft |
 | `app/(tabs)/index.tsx` | Integrado: TrialBanner e ExpiredBanner no Dashboard |
-
-**Lógica do Trial:**
-
-```typescript
-// context/purchases-context.tsx
-const proEntitlement = info.entitlements.active['Vigora Saúde Pro'];
-const isTrial = proEntitlement?.periodType === 'TRIAL';
-const expiryDate = proEntitlement?.expirationDate;
-const daysLeft = expiryDate
-  ? Math.ceil((new Date(expiryDate).getTime() - Date.now()) / 86400000)
-  : 0;
-
-setIsTrialActive(isTrial);
-setTrialDaysLeft(Math.max(0, daysLeft));
-```
 
 **Resultado:** Banners exibidos corretamente no Dashboard. Total de 38 testes passando.
 
@@ -251,6 +214,107 @@ setTrialDaysLeft(Math.max(0, daysLeft));
 2. Push de todo o histórico de commits (1.089 objetos).
 3. Atualização completa de README.md, ARCHITECTURE.md e DEVELOPMENT_PROCESS.md.
 4. Estabelecida regra: documentação deve ser atualizada a cada alteração no app.
+
+---
+
+### Sprint 11: Autenticação de Conta (Semanas 11-12)
+
+**Objetivo:** Implementar sistema de autenticação de conta com login, cadastro e OAuth.
+
+**Funcionalidades Implementadas:**
+1. Tela `app/login.tsx` — entrada por email/senha ou OAuth (Google/Apple).
+2. Tela `app/register.tsx` — cadastro com seleção de tipo de usuário (`caregiver` | `monitored`).
+3. `app/oauth/callback.tsx` — recebe o redirect OAuth, troca `code` por JWT no servidor, roteia por `userType`.
+4. `lib/_core/auth.ts` — `getSessionToken`, `setSessionToken`, `getUserInfo` usando `expo-secure-store` (nativo) ou `localStorage` (web).
+5. Tipo `User` com campos: `openId`, `name`, `email`, `userType`, `birthDate`, `bloodType`, `loginMethod`.
+6. `app/(tabs)/profile.tsx` — tela de perfil com edição de nome, data de nascimento e tipo sanguíneo.
+7. Tela de onboarding `app/onboarding.tsx` com gate de proteção de rota (`components/onboarding-gate.tsx`).
+
+**Servidor (Railway):**
+- Router `auth` no tRPC: `register`, `completeRegistration`, `updateProfile`, `me`, `logout`.
+- JWT emitido no servidor após autenticação OAuth bem-sucedida.
+- Tokens são armazenados em `SecureStore` (nativo) ou cookie `httpOnly` (web).
+
+**Decisões:**
+- **SecureStore para JWT:** Mais seguro que AsyncStorage; isolado por app no sistema operacional.
+- **Cookie httpOnly para web:** Evita acesso via JavaScript (XSS); gerenciado automaticamente pelo browser.
+- **userType no cadastro:** Define o fluxo do app — `monitored` acessa `(tabs)`, `caregiver` acessa `(caregiver-tabs)`.
+- **PKCE para OAuth:** Elimina necessidade de client_secret no app móvel.
+
+**Desafios:**
+- Deep link `vigora://oauth/callback` não disparando no Android → Resolvido com `intentFilters` no `app.config.ts`.
+- Token expirado quebrando requests → Resolvido com refresh automático no middleware tRPC.
+- Routing pós-login: primeiro login deve ir ao onboarding → Implementado flag `hasCompletedOnboarding` no servidor.
+
+**Resultado:** Autenticação completa funcional. Usuários podem criar contas, fazer login e o app roteia corretamente por tipo de usuário.
+
+---
+
+### Sprint 12: Cloud Backup por Conta (Semana 13)
+
+**Objetivo:** Implementar backup e restore automático de todos os dados do app associado à conta do usuário.
+
+**Funcionalidades Implementadas:**
+1. `lib/cloud-sync.ts` — `pullCloudData()` e `pushCloudData()` via `userData` tRPC router.
+2. `CloudSnapshot` — estrutura contendo: `anamnesis`, `emergencyContacts`, `alarms`, `settings`, `healthMetrics`, `profile`, `dataUpdatedAt`.
+3. Integração no `AppProvider`: pull na inicialização (se autenticado), push com debounce de 3s a cada mudança de estado.
+4. Reconciliação por `dataUpdatedAt`: cloud mais recente sobrescreve local (last-write-wins).
+5. Router `userData` no servidor: `get` (SELECT por openId) e `put` (UPSERT com timestamp).
+
+**Decisões:**
+- **Last-write-wins:** Suficiente para o caso de uso atual (usuário único por conta). Conflito de merge multi-device não é um requisito desta versão.
+- **Debounce 3s:** Evita push excessivo em edições rápidas (ex.: digitação em campos de texto).
+- **Dados sensíveis no servidor próprio:** Anamnese e saúde ficam no Railway (banco Postgres), não no Supabase. Supabase é usado exclusivamente para o dead man's switch.
+
+**Desafios:**
+- Fresh install sem auth ainda tentava pull → Resolvido com verificação de `hasAuthSession()` antes do pull.
+- Schema `user_data` no servidor não existia → Migração Drizzle criada para nova tabela.
+
+**Resultado:** Usuários podem reinstalar o app e recuperar todos os dados ao fazer login.
+
+---
+
+### Sprint 13: Caregiver Shell (Semanas 14-15)
+
+**Objetivo:** Implementar a seção completa do cuidador com 4 abas, wizard de vínculo e onboarding.
+
+**Funcionalidades Implementadas:**
+
+| Arquivo | Descrição |
+|---|---|
+| `lib/caregiver-state.ts` | Tipos + reducer puro (`CaregiverState`, `LinkedMonitored`, `LinkMethod`) |
+| `lib/caregiver-context.tsx` | `CaregiverProvider` com persistência AsyncStorage (`vigora_caregiver_*`) |
+| `app/(caregiver-tabs)/_layout.tsx` | Layout com 4 abas + proteção de rota (`userType === 'caregiver'`) |
+| `app/(caregiver-tabs)/index.tsx` | Dashboard do cuidador |
+| `app/(caregiver-tabs)/alerts.tsx` | Alertas recebidos da pessoa monitorada |
+| `app/(caregiver-tabs)/person.tsx` | Detalhes da pessoa monitorada com seções placeholder |
+| `app/(caregiver-tabs)/link.tsx` | Wizard de vínculo: 3 métodos (código, email/phone, QR) |
+| `app/(caregiver-tabs)/settings.tsx` | Config: perfil, gerenciamento de vínculo, notificações, logout |
+| `app/caregiver-onboarding.tsx` | Onboarding inicial do cuidador |
+| `components/caregiver-tab-bar.tsx` | Tab bar customizada para a seção caregiver |
+| `components/caregiver-empty-state.tsx` | Placeholder "aguardando vínculo" reutilizável |
+| `tests/caregiver-state.test.ts` | 6 testes unitários do reducer |
+
+**Wizard de Vínculo (3 métodos):**
+- **Código:** Cuidador insere código de 6 dígitos gerado pela pessoa monitorada.
+- **Email/Phone:** Cuidador insere email ou telefone da pessoa monitorada.
+- **QR:** Cuidador escaneia QR code exibido no dispositivo da pessoa monitorada.
+
+**Estado Inicial (Shell):** Links criados no wizard ficam com `status: 'pending'`. A sincronização real cuidador↔monitorado será implementada em versão futura quando a infraestrutura server-side estiver pronta.
+
+**Roteamento pós-login:**
+```
+login → oauth/callback → userType === 'caregiver'
+  → hasCompletedCaregiverOnboarding?
+    sim → (caregiver-tabs)
+    não → caregiver-onboarding
+```
+
+**Desafios:**
+- Tab bar nativa não suportando estilo customizado → Implementada `CaregiverTabBar` manual com Pressable.
+- Estado do cuidador precisando ser testável sem React → Reducer extraído para `caregiver-state.ts` separado do contexto.
+
+**Resultado:** Caregiver shell completo com UI funcional. 6 testes do reducer passando. 17 commits no feature branch.
 
 ---
 
@@ -270,7 +334,7 @@ setTrialDaysLeft(Math.max(0, daysLeft));
 
 **Decisão:** AsyncStorage para dados locais.
 
-**Justificativa:** Simples, integrado ao Expo, suficiente para dados estruturados (alarmes, contatos, métricas). O Supabase complementa com persistência remota apenas para o dead man's switch.
+**Justificativa:** Simples, integrado ao Expo, suficiente para dados estruturados (alarmes, contatos, métricas). O servidor Railway complementa com backup remoto por conta.
 
 **Quando Migrar:** Se precisar de queries complexas ou histórico de 5+ anos de dados.
 
@@ -298,9 +362,9 @@ setTrialDaysLeft(Math.max(0, daysLeft));
 
 ### 5. Supabase vs Servidor Principal para Dead Man's Switch
 
-**Decisão:** Supabase para o dead man's switch.
+**Decisão:** Supabase para o dead man's switch; Railway para dados do usuário.
 
-**Justificativa:** Edge Functions serverless com Deno, pg_cron nativo, SDK JavaScript pronto para Expo, e custo zero no plano gratuito para o volume esperado. O servidor principal (Node.js + tRPC) permanece responsável pelo monitoramento em tempo real e alertas imediatos.
+**Justificativa:** Edge Functions serverless com Deno, pg_cron nativo e custo zero no plano gratuito. O servidor Railway (Node.js + tRPC) é responsável por autenticação, cloud backup e alertas de emergência — dados mais sensíveis ficam no banco Postgres do Railway, não no Supabase.
 
 ---
 
@@ -312,51 +376,61 @@ setTrialDaysLeft(Math.max(0, daysLeft));
 
 ---
 
+### 7. JWT em SecureStore vs AsyncStorage para Tokens de Sessão
+
+**Decisão:** `expo-secure-store` para tokens JWT no nativo; cookie `httpOnly` no web.
+
+**Justificativa:** AsyncStorage não é criptografado e pode ser lido por outras partes do processo. SecureStore usa o keychain do iOS e o Android Keystore, que são isolados por app e protegidos pelo hardware quando disponível. No web, cookie `httpOnly` impede acesso via JavaScript (proteção contra XSS).
+
+---
+
+### 8. Dois Tipos de Usuário vs App Único
+
+**Decisão:** `userType: 'caregiver' | 'monitored'` com layouts completamente distintos.
+
+**Justificativa:** As necessidades de UX são fundamentalmente diferentes: o monitorado usa alarmes e dados de saúde; o cuidador recebe alertas e monitora outra pessoa. Um único layout genérico seria confuso e comprometeria a usabilidade de ambos os públicos.
+
+---
+
 ## Desafios Enfrentados e Soluções
 
 ### Desafio 1: Notificações Duplicadas no Android
 
-**Problema:** Alarmes disparavam duas notificações simultâneas no Android.
-
-**Causa Raiz:** `alarm-sync.ts` chamava tanto AlarmManager nativo quanto expo-notifications sem verificar disponibilidade.
-
-**Solução:** Adicionada verificação de plataforma e disponibilidade do AlarmManager nativo. Android usa exclusivamente o AlarmManager; iOS e Web usam expo-notifications.
+**Solução:** `alarm-sync.ts` verifica plataforma e disponibilidade do AlarmManager nativo. Android usa exclusivamente o AlarmManager; iOS e Web usam expo-notifications.
 
 ---
 
-### Desafio 2: Texto Genérico nas Notificações Nativas
+### Desafio 2: Supabase Quebrando App Quando Não Configurado
 
-**Problema:** Notificações nativas do Android exibiam ID do alarme em vez do nome da medicação.
-
-**Causa Raiz:** `native-alarm-manager.ts` usava `alarm.id` como título em vez de `alarm.name`.
-
-**Solução:** Corrigido para usar `alarm.name` e `alarm.description` nos campos de título e corpo da notificação.
+**Solução:** Lazy init com `isSupabaseConfigured()` — o cliente só é criado quando as env vars estão presentes.
 
 ---
 
-### Desafio 3: Supabase Quebrando App Quando Não Configurado
+### Desafio 3: Fresh Install Tentando Pull de Cloud Antes da Auth
 
-**Problema:** O cliente Supabase lançava exceção ao inicializar se as env vars não estivessem presentes (ex: em desenvolvimento local sem `.env`).
+**Problema:** `AppProvider` disparava `pullCloudData()` antes de qualquer verificação de sessão, resultando em request não autorizado no servidor.
 
-**Causa Raiz:** Inicialização eager do cliente Supabase no import do módulo.
-
-**Solução:** Implementado lazy init com `isSupabaseConfigured()` — o cliente só é criado quando as env vars estão presentes, e todas as funções de sync retornam silenciosamente se não configurado.
+**Solução:** Verificação explícita de `getSessionToken()` antes do pull. Se não houver token, carrega apenas do AsyncStorage local.
 
 ---
 
-### Desafio 4: RevenueCat API Key Exposta no Cliente
+### Desafio 4: Deep Link OAuth Não Disparando no Android
 
-**Problema:** API key de teste estava hardcoded no código, causando erro "Wrong API Key" em produção.
+**Problema:** O callback `vigora://oauth/callback` após autenticação Google não era capturado pelo app no Android.
 
-**Causa Raiz:** Não usar env vars para secrets.
-
-**Solução:** Migrar para `EXPO_PUBLIC_REVENUECAT_API_KEY` configurada via Secrets do Manus (não exposta no código-fonte).
+**Solução:** Adicionado `intentFilters` no `app.config.ts` com `scheme: 'vigora'` e `autoVerify: true`.
 
 ---
 
-### Desafio 5: Vitest Não Reconhecendo JSX e Alias @
+### Desafio 5: Estado do Cuidador Não Testável
 
-**Problema:** Testes falhando com erro "Expression expected" ao importar componentes JSX e módulos com alias `@`.
+**Problema:** O reducer do cuidador estava acoplado ao `CaregiverContext`, tornando os testes unitários dependentes de React e AsyncStorage.
+
+**Solução:** Reducer extraído para `lib/caregiver-state.ts` sem imports de React. Contexto importa e usa o reducer; testes importam diretamente o reducer.
+
+---
+
+### Desafio 6: Vitest Não Reconhecendo JSX e Alias @
 
 **Solução:**
 
@@ -376,15 +450,12 @@ export default defineConfig({
 
 | Métrica | Valor |
 |---|---|
-| Tempo Total de Desenvolvimento | 10 semanas |
-| Linhas de Código (Frontend) | ~9.500 |
-| Linhas de Código (Backend) | ~2.500 |
-| Linhas de Código (Supabase) | ~300 |
-| Telas Implementadas | 8 principais + 5 modais |
-| Componentes Reutilizáveis | 18+ |
-| Testes Automatizados | 38 |
+| Tempo Total de Desenvolvimento | 15 semanas |
+| Sprints Concluídas | 13 |
+| Arquivos de Teste | 20 |
+| Telas Implementadas | 14+ (tabs + caregiver-tabs + modais) |
+| Componentes Reutilizáveis | 25+ |
 | TypeScript Errors (novos) | 0 |
-| Checkpoints Salvos | 15 |
 
 ---
 
@@ -394,11 +465,15 @@ export default defineConfig({
 
 **2. Testar em dispositivos reais cedo.** Emuladores não capturam problemas de notificações, SafeArea e WhatsApp deep links.
 
-**3. Usar env vars para todos os secrets.** Nunca hardcode API keys, mesmo que sejam de teste. A migração posterior é custosa.
+**3. Usar env vars para todos os secrets.** Nunca hardcode API keys, mesmo que sejam de teste.
 
 **4. Implementar fallbacks graceful para serviços externos.** O Supabase e o servidor principal devem falhar silenciosamente para não quebrar o app offline.
 
 **5. Separar responsabilidades por plataforma.** O bugfix de notificações duplicadas mostrou a importância de tratar Android e iOS separadamente quando o comportamento nativo difere.
+
+**6. Extrair lógica de estado de contextos React.** O caregiver reducer separado do provider permitiu testes unitários limpos sem mocking de React.
+
+**7. Escolher o backend certo para cada dado.** Dados operacionais leves (dead man's switch) → Supabase grátis. Dados de usuário sensíveis (anamnese, saúde) → servidor próprio com auth JWT.
 
 ---
 
@@ -409,7 +484,7 @@ export default defineConfig({
 - [ ] Integração com wearables (Apple Watch, Wear OS)
 - [ ] Notificações push personalizadas baseadas em métricas de saúde
 - [ ] Suporte multilíngue (EN, ES, PT)
-- [ ] Backup de dados de saúde (opt-in)
+- [ ] Sincronização caregiver↔monitorado em tempo real (server-side)
 
 ### v3.0 (Q1 2027)
 
@@ -422,4 +497,4 @@ export default defineConfig({
 
 ## Conclusão
 
-O desenvolvimento do Vigora Saúde foi um processo iterativo de 10 sprints que evoluiu de um MVP básico para um app completo com monetização, dead man's switch e testes automatizados. As principais lições — documentar decisões, testar cedo, usar env vars e implementar fallbacks graceful — serão aplicadas em todos os desenvolvimentos futuros do projeto.
+O desenvolvimento do Vigora Saúde evoluiu de um MVP básico de alarmes para um ecossistema completo com autenticação de conta, cloud backup, dead man's switch, monetização e suporte a dois perfis de usuário (monitorado e cuidador). As principais lições — documentar decisões, testar cedo, usar env vars, implementar fallbacks graceful e extrair lógica testável — serão aplicadas em todos os desenvolvimentos futuros do projeto.

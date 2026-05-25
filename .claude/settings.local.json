@@ -60,7 +60,10 @@
       "Bash(Out-File -FilePath \"C:\\\\Users\\\\55519\\\\vigora-saude\\\\graphify-out\\\\.graphify_chunk_03.json\" -Encoding utf8)",
       "Bash(python -c \"import json,sys; m=json.load\\(sys.stdin\\); files=[f for f in m.keys\\(\\) if 'caregiver' in f.lower\\(\\)]; [print\\(f\\) for f in sorted\\(files\\)]\")",
       "Bash(git ls-remote *)",
-      "Bash(python graphify-out/../.claude/skills/graphify/graphify.py query \"Alarmes Screen Saúde Screen Configurações Screen Contatos Emergência\")"
+      "Bash(python graphify-out/../.claude/skills/graphify/graphify.py query \"Alarmes Screen Saúde Screen Configurações Screen Contatos Emergência\")",
+      "Bash(npx vitest *)",
+      "Bash(Test-Path \"c:\\\\Users\\\\55519\\\\vigora-saude\\\\graphify-out\\\\graph.json\")",
+      "Bash(graphify query *)"
     ]
   }
 }
