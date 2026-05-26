@@ -4,9 +4,8 @@ import { Alarm } from './app-context';
 import { setupCountdownChannel } from './alarm-countdown-notifier';
 
 // --- Notification Channel IDs ----------------------------------------------
-export const ALARM_CHANNEL_ID = 'vigora-alarms';
-export const DEFAULT_CHANNEL_ID = 'default';
-export const CHECKIN_CHANNEL_ID = 'vigora-checkin';
+import { ALARM_CHANNEL_ID, DEFAULT_CHANNEL_ID, CHECKIN_CHANNEL_ID } from './notification-constants';
+export { ALARM_CHANNEL_ID, DEFAULT_CHANNEL_ID, CHECKIN_CHANNEL_ID };
 
 // --- Configure notification handler ----------------------------------------
 // This controls how notifications are presented when the app is in the foreground.

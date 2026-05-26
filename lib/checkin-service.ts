@@ -17,11 +17,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-
-// Inlined to avoid importing notifications-utils (which pulls native modules
-// incompatible with the Node/vitest test environment). The canonical value is
-// also exported from lib/notifications-utils.ts for channel-setup code.
-const CHECKIN_CHANNEL_ID = 'vigora-checkin';
+import { CHECKIN_CHANNEL_ID } from './notification-constants';
 
 const PROMPT_ID_KEY = 'vigora_checkin_prompt_id';
 const TIMEOUT_ID_KEY = 'vigora_checkin_timeout_id';
@@ -77,34 +73,37 @@ export async function scheduleCheckin(
 ): Promise<void> {
   if (Platform.OS === 'web') return;
 
-  await cancelCheckin();
+  try {
+    await cancelCheckin();
 
-  const [hours, minutes] = checkinTime.split(':').map(Number);
+    const [hours, minutes] = checkinTime.split(':').map(Number);
 
-  // 1. Notificação-prompt diária recorrente
-  const promptId = await Notifications.scheduleNotificationAsync({
-    content: {
-      title: '💚 Check-in Vigora',
-      body: 'Você está bem hoje? Toque para confirmar.',
-      sound: false,
-      data: {
-        type: 'checkin_prompt',
-        url: '/checkin-response',
-        checkinTime,
-        windowMinutes,
+    // 1. Notificação-prompt diária recorrente
+    const promptId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '💚 Check-in Vigora',
+        body: 'Você está bem hoje? Toque para confirmar.',
+        data: {
+          type: 'checkin_prompt',
+          url: '/checkin-response',
+          checkinTime,
+          windowMinutes,
+        },
       },
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour: hours,
-      minute: minutes,
-      channelId: CHECKIN_CHANNEL_ID,
-    } as any,
-  });
-  await AsyncStorage.setItem(PROMPT_ID_KEY, promptId);
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour: hours,
+        minute: minutes,
+        channelId: CHECKIN_CHANNEL_ID,
+      } as any,
+    });
+    await AsyncStorage.setItem(PROMPT_ID_KEY, promptId);
 
-  // 2. Timeout one-shot para hoje (ou amanhã se já passou)
-  await _scheduleTimeoutNotification(checkinTime, windowMinutes);
+    // 2. Timeout one-shot para hoje (ou amanhã se já passou)
+    await scheduleTimeoutNotification(checkinTime, windowMinutes);
+  } catch (error) {
+    console.error('[Checkin] scheduleCheckin failed:', error);
+  }
 }
 
 /**
@@ -142,21 +141,25 @@ export async function markCheckinResponded(
 ): Promise<void> {
   if (Platform.OS === 'web') return;
 
-  // Cancela o timeout de hoje
-  const timeoutId = await AsyncStorage.getItem(TIMEOUT_ID_KEY);
-  if (timeoutId) {
-    await Notifications.cancelScheduledNotificationAsync(timeoutId).catch(() => {});
-    await AsyncStorage.removeItem(TIMEOUT_ID_KEY);
-  }
+  try {
+    // Cancela o timeout de hoje
+    const timeoutId = await AsyncStorage.getItem(TIMEOUT_ID_KEY);
+    if (timeoutId) {
+      await Notifications.cancelScheduledNotificationAsync(timeoutId).catch(() => {});
+      await AsyncStorage.removeItem(TIMEOUT_ID_KEY);
+    }
 
-  // Reagenda o timeout para amanhã (o prompt diário continua ativo)
-  await _scheduleTimeoutNotification(checkinTime, windowMinutes);
+    // Reagenda o timeout para amanhã (o prompt diário continua ativo)
+    await scheduleTimeoutNotification(checkinTime, windowMinutes);
+  } catch (error) {
+    console.error('[Checkin] markCheckinResponded failed:', error);
+  }
 }
 
 /**
  * Interno: agenda a notificação de timeout one-shot.
  */
-async function _scheduleTimeoutNotification(
+async function scheduleTimeoutNotification(
   checkinTime: string,
   windowMinutes: number
 ): Promise<void> {
