@@ -195,8 +195,8 @@ export default function LoginScreen() {
           },
         ]}
       >
-        <View style={[styles.iconCircle, { backgroundColor: "#0066CC" }]}>
-          <MaterialIcons name="favorite" size={56} color="#FFFFFF" />
+        <View style={[styles.iconCircle, { backgroundColor: colors.primary }]}>
+          <MaterialIcons name="favorite" size={56} color={colors.onPrimary} />
         </View>
 
         <Text style={[styles.title, { color: colors.foreground }]}>
