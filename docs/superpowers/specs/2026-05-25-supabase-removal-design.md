@@ -73,7 +73,7 @@ server/google-auth.ts
 ### Deletados
 
 | Arquivo | Motivo |
-|---------|--------|
+| ------- | ------ |
 | `lib/supabase.ts` | Cliente Supabase removido |
 | `lib/supabase-sync.ts` | Já era no-op; sem razão de existir |
 | `app/oauth/callback.tsx` | `expo-web-browser` intercepta o redirect; tela nunca é ativada |
@@ -82,39 +82,43 @@ server/google-auth.ts
 ### Modificados
 
 | Arquivo | O que muda |
-|---------|------------|
+| ------- | ---------- |
 | `app/login.tsx` | Substitui `supabase.auth.signInWithOAuth` por `useAuthRequest` + `exchangeCodeAsync`; absorve toda a lógica de pós-login (redirect, reconcileFromCloud, setSessionToken, roteamento) |
 | `package.json` | Remove `@supabase/supabase-js`; adiciona `expo-auth-session` |
-| `constants/oauth.ts` | Adiciona `GOOGLE_CLIENT_ID` lido de `EXPO_PUBLIC_GOOGLE_CLIENT_ID` |
+| `constants/oauth.ts` | Adiciona `GOOGLE_ANDROID_CLIENT_ID`, `GOOGLE_IOS_CLIENT_ID`, `GOOGLE_WEB_CLIENT_ID` lidos das variáveis `EXPO_PUBLIC_GOOGLE_*` |
 | `server/_core/env.ts` | Nenhuma variável nova obrigatória (tokeninfo é público) |
 | `server/_core/index.ts` | Troca `registerSupabaseAuthRoute` por `registerGoogleAuthRoute` |
 
 ### Criados
 
 | Arquivo | Conteúdo |
-|---------|---------|
+| ------- | -------- |
 | `server/google-auth.ts` | Endpoint `POST /api/auth/google`: recebe `id_token`, chama `tokeninfo`, faz upsert no Railway, retorna JWT |
 
 ---
 
 ## Configuração (Google Cloud Console)
 
-Antes de buildar, criar uma credencial OAuth 2.0 do tipo **Web** com os seguintes URIs de redirecionamento autorizados:
+O Google **não aceita** custom schemes arbitrários (`vigora://`) como redirect URI — apenas HTTPS ou o formato de domínio reverso da plataforma. Por isso, `expo-auth-session/providers/google` exige **3 Client IDs separados**, um por plataforma, cada um com a URI correta que o Google reconhece.
 
-| Ambiente | URI |
-|----------|-----|
-| Produção (nativo) | `vigora://oauth/callback` |
-| Desenvolvimento (Expo Go) | `https://auth.expo.io/@<username>/vigora-saude` |
-| Web local | `http://localhost:8081` |
+### Criar 3 credenciais OAuth 2.0
 
-> Um único Client ID do tipo Web é suficiente para `expo-auth-session` em todas as plataformas (iOS, Android, Web). IDs separados por plataforma só são necessários ao usar o Google Sign-In nativo SDK — não é o caso aqui.
+| Tipo no Console | Para | Redirect URI | O que informar |
+| --------------- | ---- | ------------ | -------------- |
+| **Android** | APK nativo | gerada automaticamente pelo Google (`com.vigora.saude:/`) | Package: `com.vigora.saude` + SHA-1 do keystore EAS |
+| **iOS** | app nativo | gerada automaticamente pelo Google (`com.vigora.saude:/`) | Bundle ID: `com.vigora.saude` |
+| **Web** | Expo Go (dev) e plataforma web | `https://auth.expo.io/@<username>/vigora-saude`, `http://localhost:8081` | só as URIs autorizadas |
+
+> O `expo-auth-session/providers/google` seleciona automaticamente o Client ID correto por plataforma e constrói a redirect URI certa internamente — nenhum URI customizado precisa ser registrado manualmente para nativo.
 
 ### Variáveis de Ambiente
 
 | Onde | Variável | Valor |
-|------|----------|-------|
-| App (`.env` / EAS Secrets) | `EXPO_PUBLIC_GOOGLE_CLIENT_ID` | Client ID Web gerado acima |
-| Railway (server) | nenhuma nova | `tokeninfo` é endpoint público |
+| ---- | -------- | ----- |
+| App (`.env` / EAS Secrets) | `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` | Client ID Android |
+| App (`.env` / EAS Secrets) | `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | Client ID iOS |
+| App (`.env` / EAS Secrets) | `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Client ID Web |
+| Railway (server) | nenhuma nova | `tokeninfo` é endpoint público, sem secret |
 
 ---
 
@@ -122,18 +126,19 @@ Antes de buildar, criar uma credencial OAuth 2.0 do tipo **Web** com os seguinte
 
 ```tsx
 import * as WebBrowser from 'expo-web-browser';
-import { useAuthRequest, exchangeCodeAsync, makeRedirectUri } from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
 
-WebBrowser.maybeCompleteAuthSession(); // obrigatório — limpa sessão de browser pendente
-
-const redirectUri = makeRedirectUri({ scheme: 'vigora', path: 'oauth/callback' });
+// Obrigatório: limpa sessão de browser pendente ao montar a tela
+WebBrowser.maybeCompleteAuthSession();
 
 // No componente:
+// Google.useAuthRequest seleciona automaticamente o clientId e a redirect URI
+// corretos por plataforma (Android usa domínio reverso, iOS idem, Web usa proxy Expo)
 const [request, response, promptAsync] = Google.useAuthRequest({
-  clientId: GOOGLE_CLIENT_ID,
+  androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+  iosClientId: GOOGLE_IOS_CLIENT_ID,
+  webClientId: GOOGLE_WEB_CLIENT_ID,
   scopes: ['openid', 'email', 'profile'],
-  redirectUri,
 });
 
 useEffect(() => {
@@ -144,9 +149,14 @@ useEffect(() => {
 }, [response]);
 
 async function handleCode(code: string) {
-  // 1. Troca code por tokens diretamente com o Google
+  // 1. Troca code por tokens (Google.useAuthRequest já gerencia codeVerifier/redirectUri internamente)
   const tokens = await exchangeCodeAsync(
-    { clientId: GOOGLE_CLIENT_ID, code, redirectUri, extraParams: { code_verifier: request!.codeVerifier! } },
+    {
+      clientId: /* id da plataforma atual */ request!.clientId,
+      code,
+      redirectUri: request!.redirectUri,
+      extraParams: { code_verifier: request!.codeVerifier! },
+    },
     { tokenEndpoint: 'https://oauth2.googleapis.com/token' }
   );
   // 2. Envia id_token ao servidor Railway
@@ -198,7 +208,7 @@ app.post('/api/auth/google', async (req, res) => {
 ## Tratamento de Erros
 
 | Cenário | Comportamento |
-|---------|---------------|
+| ------- | ------------- |
 | Usuário fecha o browser | `response.type === 'dismiss'` → silencioso, botão volta ao estado normal |
 | Google retorna `error` | `response.type === 'error'` → exibe mensagem inline |
 | `exchangeCodeAsync` falha | catch → "Não foi possível completar o login. Tente novamente." |
