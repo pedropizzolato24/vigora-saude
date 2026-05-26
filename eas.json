@@ -16,7 +16,8 @@
         "gradleCommand": ":app:assembleDebug"
       },
       "env": {
-        "NODE_ENV": "development"
+        "NODE_ENV": "development",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "39705729598-cm5s8hs0rare5smst57l1gbin9obt0u1.apps.googleusercontent.com"
       }
     },
     "simulator": {
@@ -24,6 +25,9 @@
       "distribution": "internal",
       "ios": {
         "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "39705729598-cm5s8hs0rare5smst57l1gbin9obt0u1.apps.googleusercontent.com"
       }
     },
     "preview": {
@@ -35,7 +39,8 @@
         "buildType": "apk"
       },
       "env": {
-        "NODE_ENV": "production"
+        "NODE_ENV": "production",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "39705729598-iv01adn3g5di03k6ukp9n02mri393s6n.apps.googleusercontent.com"
       }
     },
     "production": {
@@ -47,7 +52,8 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "NODE_ENV": "production"
+        "NODE_ENV": "production",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "39705729598-iv01adn3g5di03k6ukp9n02mri393s6n.apps.googleusercontent.com"
       }
     }
   },

@@ -33,3 +33,14 @@ export function getApiBaseUrl(): string {
 
 export const SESSION_TOKEN_KEY = "app_session_token";
 export const USER_INFO_KEY = "vigora-user-info";
+
+// Google OAuth Client IDs — configurar via EAS Secrets ou .env
+// expo-auth-session/providers/google seleciona o ID correto por plataforma automaticamente.
+// Android usa domínio reverso (com.vigora.saude:/), iOS idem — o Google valida por package/bundle.
+// Web usa o proxy Expo (https://auth.expo.io) durante desenvolvimento com Expo Go.
+export const GOOGLE_ANDROID_CLIENT_ID =
+  process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? "";
+export const GOOGLE_IOS_CLIENT_ID =
+  process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "";
+export const GOOGLE_WEB_CLIENT_ID =
+  process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "";

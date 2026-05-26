@@ -4,8 +4,8 @@ import { Alarm } from './app-context';
 import { setupCountdownChannel } from './alarm-countdown-notifier';
 
 // --- Notification Channel IDs ----------------------------------------------
-export const ALARM_CHANNEL_ID = 'vigora-alarms';
-export const DEFAULT_CHANNEL_ID = 'default';
+import { ALARM_CHANNEL_ID, DEFAULT_CHANNEL_ID, CHECKIN_CHANNEL_ID } from './notification-constants';
+export { ALARM_CHANNEL_ID, DEFAULT_CHANNEL_ID, CHECKIN_CHANNEL_ID };
 
 // --- Configure notification handler ----------------------------------------
 // This controls how notifications are presented when the app is in the foreground.
@@ -72,6 +72,16 @@ export async function setupNotificationChannels(): Promise<void> {
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250],
     enableVibrate: true,
+  });
+
+  // Check-in channel — HIGH importance (toca som padrão, não bypassa DND)
+  await Notifications.setNotificationChannelAsync(CHECKIN_CHANNEL_ID, {
+    name: 'Check-in Diário',
+    description: 'Notificação diária de bem-estar. Confirme que está tudo bem.',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+    enableVibrate: true,
+    sound: 'default',
   });
 }
 

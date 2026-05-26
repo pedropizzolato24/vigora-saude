@@ -21,6 +21,7 @@ import { useRouter } from 'expo-router';
 import { AlarmSyncInitializer } from "@/components/alarm-sync-initializer";
 import { AlarmNotificationHandler } from '@/components/alarm-notification-handler';
 import { MonitoringInitializer } from '@/components/monitoring-initializer';
+import { CheckinInitializer } from '@/components/checkin-initializer';
 import { OnboardingGate } from '@/components/onboarding-gate';
 import {
   SafeAreaFrameContext,
@@ -139,7 +140,18 @@ export default function RootLayout() {
         // Strategy 2: iOS/Web - expo-notifications last response
         const response = await Notifications.getLastNotificationResponseAsync();
         if (response) {
-          const alarmId = response.notification.request.content.data?.alarmId as string | undefined;
+          const data = response.notification.request.content.data;
+          const alarmId = data?.alarmId as string | undefined;
+          const notifType = data?.type as string | undefined;
+
+          // Check-in notification cold-start: navigate to response screen
+          if (notifType === 'checkin_prompt' || notifType === 'checkin_timeout') {
+            const { router: navRouter } = require('expo-router');
+            navRouter.push('/checkin-response');
+            Notifications.clearLastNotificationResponseAsync();
+            return;
+          }
+
           if (alarmId) {
             const { router } = require('expo-router');
             router.push(`/alarm-ring?alarmId=${alarmId}`);
@@ -195,6 +207,7 @@ export default function RootLayout() {
           <FontSizeProvider>
           <AccessibilityProvider>
           <MonitoringInitializer />
+          <CheckinInitializer />
           <MenuProvider>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
@@ -205,6 +218,14 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen
               name="alarm-ring"
+              options={{
+                presentation: 'fullScreenModal',
+                gestureEnabled: false,
+                animation: 'fade',
+              }}
+            />
+            <Stack.Screen
+              name="checkin-response"
               options={{
                 presentation: 'fullScreenModal',
                 gestureEnabled: false,

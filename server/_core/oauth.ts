@@ -22,9 +22,9 @@ function buildUserResponse(
 }
 
 /**
- * Auth routes shared across sign-in methods. The OAuth flow itself runs
- * through Supabase (see ../supabase-auth.ts); these endpoints handle the
- * session lifecycle (who am I, logout, cookie sync from a Bearer token).
+ * Auth routes shared across sign-in methods. The OAuth flow runs through
+ * expo-auth-session + Google directly (see ../google-auth.ts); these endpoints
+ * handle the session lifecycle (who am I, logout, cookie sync from a Bearer token).
  */
 export function registerAuthRoutes(app: Express) {
   app.post("/api/auth/logout", (req: Request, res: Response) => {

@@ -32,26 +32,10 @@ Informe seu e-mail e senha da conta Expo. Se ainda não tiver conta, crie em [ex
 
 ---
 
-### Passo 2 — Publicar pelo botão Publish (recomendado)
-
-O jeito mais simples de gerar o APK/IPA é pelo botão **Publish** no painel do Manus:
-
-1. Certifique-se de que o último checkpoint foi salvo (já está salvo: `f520b63b`)
-2. Clique no botão **Publish** no canto superior direito do painel
-3. Escolha a plataforma (**Android** ou **iOS**)
-4. Aguarde o build ser gerado (5–20 minutos)
-5. Baixe o arquivo `.apk` (Android) ou `.ipa` (iOS)
-
-> **Android APK:** Pode ser instalado diretamente em qualquer dispositivo Android (ative "Instalar de fontes desconhecidas" nas configurações do dispositivo).
-
----
-
-### Passo 3 — Build via EAS CLI (alternativo)
-
-Se preferir usar o terminal diretamente:
+### Passo 2 — Build via EAS CLI
 
 ```bash
-# Build de preview para Android (APK para testes)
+# Build de preview para Android (APK para testes internos)
 eas build --profile preview --platform android
 
 # Build de produção para Android (AAB para Google Play)
@@ -63,9 +47,11 @@ eas build --profile production --platform ios
 
 Os builds são executados na nuvem do Expo. Você receberá um link para acompanhar o progresso e baixar o arquivo ao final.
 
+> **Android APK (preview):** Pode ser instalado diretamente em qualquer dispositivo Android (ative "Instalar de fontes desconhecidas" nas configurações do dispositivo).
+
 ---
 
-### Passo 4 — Enviar para o Google Play
+### Passo 3 — Enviar para o Google Play
 
 1. Acesse [Google Play Console](https://play.google.com/console)
 2. Crie um novo app → **Criar aplicativo**
@@ -78,17 +64,16 @@ Os builds são executados na nuvem do Expo. Você receberá um link para acompan
 
 ---
 
-### Passo 5 — Enviar para a App Store (iOS)
+### Passo 4 — Enviar para a App Store (iOS)
 
 1. Acesse [App Store Connect](https://appstoreconnect.apple.com)
 2. Crie um novo app em **Meus Apps** → **+**
-3. Preencha: Bundle ID (`space.manus.vigora.saude.t20250417181420`), nome, SKU
-4. Use o **Transporter** (macOS) ou **Xcode** para fazer upload do `.ipa`
-5. Ou use o EAS Submit: `eas submit --profile production --platform ios`
+3. Preencha: Bundle ID (`com.vigora.saude`), nome, SKU
+4. Use o EAS Submit: `eas submit --profile production --platform ios`
 
 ---
 
-### Passo 6 — Configurar o eas.json para Submit (opcional)
+### Passo 5 — Configurar o eas.json para Submit (opcional)
 
 Para automatizar o envio às lojas, edite o `eas.json` com suas credenciais:
 
@@ -132,16 +117,16 @@ No projeto criado, clique em **+ New App**:
 **Para iOS:**
 - Platform: **App Store**
 - App Name: `Vigora Saúde`
-- Bundle ID: `space.manus.vigora.saude.t20250417181420`
+- Bundle ID: `com.vigora.saude`
 - Copie a **Public API Key** gerada
 
 **Para Android:**
 - Platform: **Google Play**
 - App Name: `Vigora Saúde`
-- Package Name: `space.manus.vigora.saude.t20250417181420`
+- Package Name: `com.vigora.saude`
 - Copie a **Public API Key** gerada
 
-> **Importante:** Atualize a API Key em `lib/purchases.ts` substituindo `test_vRsfCVmxAKkKikyiJxZLkiqYliI` pela chave de produção antes do lançamento.
+> **Importante:** Atualize a API Key em `lib/purchases.ts` e na variável de ambiente `EXPO_PUBLIC_REVENUECAT_API_KEY` substituindo o valor de teste pela chave de produção antes do lançamento.
 
 ---
 
@@ -263,8 +248,8 @@ eas build:list
 | Campo | Valor |
 |---|---|
 | App Name | Vigora Saúde |
-| Bundle ID / Package | `space.manus.vigora.saude.t20250417181420` |
+| Bundle ID / Package | `com.vigora.saude` |
+| URL Scheme (deep link) | `vigora://` |
 | Versão atual | 1.0.0 |
-| API Key RevenueCat (teste) | `test_vRsfCVmxAKkKikyiJxZLkiqYliI` |
 | Entitlement | `Vigora Saúde Pro` |
 | Offering padrão | `default` |

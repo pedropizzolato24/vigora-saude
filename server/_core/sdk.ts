@@ -152,7 +152,7 @@ class SDKServer {
 
     const user = await db.getUserByOpenId(session.openId);
     if (!user) {
-      // Users are provisioned via /api/auth/supabase on login. If we don't
+      // Users are provisioned via /api/auth/google on login. If we don't
       // find them here, the session is stale or pointing at a deleted user.
       throw ForbiddenError("User not found");
     }
