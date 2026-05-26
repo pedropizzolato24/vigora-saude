@@ -63,7 +63,14 @@
       "Bash(python graphify-out/../.claude/skills/graphify/graphify.py query \"Alarmes Screen Saúde Screen Configurações Screen Contatos Emergência\")",
       "Bash(npx vitest *)",
       "Bash(Test-Path \"c:\\\\Users\\\\55519\\\\vigora-saude\\\\graphify-out\\\\graph.json\")",
-      "Bash(graphify query *)"
+      "Bash(graphify query *)",
+      "Bash(npx tsc *)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\55519\\\\vigora-saude\\\\fix_colors.py\" -Force)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\55519\\\\vigora-saude\\\\tests\\\\simple.test.ts\" -Force)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\55519\\\\vigora-saude\\\\.remember\\\\tmp\\\\last-ndc.ts\" -Force)",
+      "Bash(Write-Host \"Deletados com sucesso\")",
+      "Bash(git -C /c/Users/55519/vigora-saude add lib/checkin-service.ts tests/checkin-service.test.ts)",
+      "Bash(git -C /c/Users/55519/vigora-saude commit -m \"feat\\(checkin\\): add checkin-service with scheduling and pure helpers\")"
     ]
   }
 }

@@ -639,31 +639,31 @@
 
 ### REPENSAR — Decisões arquiteturais pendentes (executar primeiro)
 
-- [ ] REPENSAR: Decidir camada de tooling — drizzle.config.ts e db/migrations/ pertencem à raiz ou devem ser movidos para um workspace/pacote dedicado?
-- [ ] REPENSAR: Verificar se drizzle.config.ts está sendo importado corretamente pelo pipeline de migração (não aparece como importado no grafo)
-- [ ] REPENSAR: Confirmar que theme.config.d.ts declara tipos para NativeWind e que o extrator do graphify suporta arquivos `.d.ts` como nós de declaração
-- [ ] REPENSAR: Definir estratégia para Screen Nodes A — os nós semânticos de tela (HealthMonitoringScreen, WeeklyHealthReport etc.) estão isolados com grau 0 junto com seus `.tsx`; decidir se reconectar ou remover conceitos sem implementação
-- [ ] REPENSAR: Verificar se `emergency-contact-screen.tsx` e `sos-active-screen.tsx` são telas reais e ativas ou candidatos à remoção (ambos apareceram isolados no grafo)
-- [ ] REPENSAR: Confirmar que o extrator do graphify suporta `eas.json` e configurações EAS CLI — se não, adicionar suporte ou documentar como exceção
-- [ ] REPENSAR: Verificar se os componentes template (`HelloWave`, `ThemedText`, `ThemedView`, `ParallaxScrollView`) ainda são usados no projeto ou são resíduos do template Expo inicial
-- [ ] REPENSAR: Rastrear a origem do nó `hooks` isolado — verificar se é um barrel export órfão ou um alias de módulo não resolvido pelo extrator
-- [ ] REPENSAR: Confirmar que o extrator do graphify suporta assets Android (`.xml`, `.png` em `android/`) — se não, documentar como exceção de plataforma nativa
-- [ ] REPENSAR: Identificar quem importa `notifications/index.ts` — verificar se é re-exportado por outro barrel ou se a cadeia de importação está quebrada no grafo
+- [x] REPENSAR: Decidir camada de tooling — drizzle.config.ts e drizzle/ ficam na raiz (convenção Drizzle Kit); mover quebraria imports em server/db.ts, server/db-monitoring.ts e server/_core/context.ts. DECISÃO: MANTER NA RAIZ.
+- [x] REPENSAR: drizzle.config.ts não aparece como importado no grafo pois é lido pelo CLI drizzle-kit, não por módulos TS. Comportamento esperado — exceção de tooling CLI.
+- [x] REPENSAR: theme.config.d.ts é arquivo de declaração ativo — lib/_core/theme.ts importa @/theme.config e usa themeColors. Graphify não rastreia .d.ts como importação explícita (lido pelo compilador TypeScript). Exceção documentada — sem ação.
+- [x] REPENSAR: Screen Nodes A (HealthMonitoringScreen, WeeklyHealthReport etc.) — nenhum desses arquivos existe no codebase (grep retornou zero). São nós semânticos fantasma criados pelo extrator. Sem implementação real para reconectar — ignorar.
+- [x] REPENSAR: sos-active-screen.tsx EXISTS e está ATIVO (components/sos-active-screen.tsx, importado 2x em app/(tabs)/index.tsx). emergency-contact-screen.tsx NÃO EXISTE — nó fantasma no grafo. Ambos sem ação de código necessária.
+- [x] REPENSAR: eas.json existe mas é JSON puro — o extrator AST do graphify opera em TS/JS, não rastreia .json como módulo. Exceção documentada de configuração.
+- [x] REPENSAR: HelloWave, ThemedText, ThemedView, ParallaxScrollView — nenhum arquivo encontrado no codebase. Removidos anteriormente. Nós fantasma no grafo — sem ação.
+- [x] REPENSAR: Nó hooks isolado — hooks/ tem 6 arquivos individuais mas não tem index.ts (barrel export). O nó hooks no grafo é o diretório sem entry point — não é módulo real. Sem ação necessária.
+- [x] REPENSAR: Assets Android (.xml, .png em android/) — extrator AST opera em TS/JS apenas. Recursos nativos não serão rastreados. Exceção de plataforma nativa documentada.
+- [x] REPENSAR: notifications/index.ts — arquivo NÃO EXISTE (pasta notifications/ inexistente). Imports de notificação usam expo-notifications (lib externa) e lib/notifications-utils.ts. Nó fantasma no grafo.
 
 ### REMOVER — Nós/arquivos a deletar (podem ser executados em paralelo após REPENSAR)
 
-- [ ] REMOVER: `fix_colors.py` — script Python com path hardcoded `/home/ubuntu/vigora-saude` (ambiente remoto já destruído), já executado, sem valor futuro
-- [ ] REMOVER: `.remember/tmp/last-ndc.ts` — contém apenas um inteiro solto, não é módulo TypeScript válido, artefato temporário de sessão
-- [ ] REMOVER: Nó "Brand Identity" standalone isolado — duplicata semântica do nó principal de branding já conectado ao grafo
-- [ ] REMOVER: `HelloWave` e componentes template Expo (`ThemedText`, `ThemedView`, `ParallaxScrollView`) — resíduos do template inicial, não usados no app Vigora
-- [ ] REMOVER: `simple.test.ts` e nó `obj` associado — teste placeholder vazio sem cobertura real
-- [ ] REMOVER: `locationSrc` e `monitorInitSrc` — strings de source code embarcadas como literais em runtime, antipadrão; extrair lógica para módulos reais
-- [ ] REMOVER: Nós `numbers`, `data` e `credentials` — variáveis locais de teste ou constantes inline sem representação modular própria
-- [ ] REMOVER: `.remember/` artefatos de sessão — `last-save.json`, arquivos de sessão e line-buffer temporários gerados pelo sistema de memória
-- [ ] REMOVER: Artefatos de worktrees efêmeros — `settings.local.json`, `allow`, `permissions`, `PreToolUse` gerados em worktrees temporários de subagentes (30+ cópias)
-- [ ] REMOVER: Auto-referência do Graphify no grafo — nós `graph.json`, `GRAPH_REPORT.md`, `wiki/index.md` e scripts `.py` do graphify não devem fazer parte do grafo da aplicação
-- [ ] REMOVER: Nós semânticos duplicados sem código — `HealthMonitoringConcept` e `VigoraSaudeBrandIdentity` se confirmado que não têm implementação real (verificar após REPENSAR)
-- [ ] REMOVER: Metadados de migração Drizzle isolados — `_journal.json`, `dialect`, `version`, `entries` se confirmado que são apenas metadados internos do Drizzle sem valor no grafo de conhecimento
+- [x] REMOVER: `fix_colors.py` — DELETADO. Script com path hardcoded `/home/ubuntu/vigora-saude` do ambiente remoto destruído.
+- [x] REMOVER: `.remember/tmp/last-ndc.ts` — DELETADO. Artefato temporário de sessão sem valor.
+- [x] REMOVER: Nó "Brand Identity" standalone — nó semântico do graphify sem arquivo real correspondente. Sem ação de código.
+- [x] REMOVER: `HelloWave`, `ThemedText`, `ThemedView`, `ParallaxScrollView` — confirmado: nenhum desses arquivos existe no codebase. Nós fantasma no grafo. Sem ação.
+- [x] REMOVER: `simple.test.ts` — DELETADO. Teste placeholder de 9 linhas que só testa `obj.name === "test"`, sem cobertura real.
+- [x] REMOVER: `locationSrc` e `monitorInitSrc` — variáveis em `tests/location-privacy.test.ts` que leem arquivos via readFileSync para validar strings de privacidade. Padrão legítimo de teste — MANTER. Graphify os interpretou erroneamente como nós standalone.
+- [x] REMOVER: Nós `numbers`, `data`, `credentials` — variáveis locais em arquivos de teste, não módulos independentes. Nós do grafo sem arquivo real. Sem ação.
+- [x] REMOVER: `.remember/` artefatos — diretório gerenciado pelo sistema de memória do Claude Code. NÃO TOCAR. Apenas `.remember/tmp/last-ndc.ts` deletado (item acima).
+- [x] REMOVER: Artefatos de worktrees — gerenciados automaticamente pelo sistema de subagentes em `.claude/worktrees/`. NÃO TOCAR manualmente.
+- [x] REMOVER: Auto-referência do Graphify — `graph.json`, `GRAPH_REPORT.md`, `wiki/index.md` são outputs do graphify que aparecem como nós no próprio grafo. Solução: adicionar ao `.graphifyignore` na próxima rodada de `graphify update`.
+- [x] REMOVER: Nós semânticos duplicados (`HealthMonitoringConcept`, `VigoraSaudeBrandIdentity`) — confirmado: nenhum arquivo real. Nós fantasma do extrator. Sem ação.
+- [x] REMOVER: Metadados de migração Drizzle (`_journal.json`, `dialect`, `version`, `entries`) — são arquivos internos do Drizzle Kit em `drizzle/meta/` e DEVEM ser mantidos (rastreiam quais migrations foram aplicadas). Nós isolados no grafo mas críticos para o pipeline. Sem ação.
 
 ### MANTER — Confirmar e reconectar ao grafo principal (após decisões REPENSAR)
 
