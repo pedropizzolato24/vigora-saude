@@ -1,0 +1,183 @@
+/**
+ * checkin-service.ts
+ *
+ * Serviço de check-in diário "Você está bem?".
+ *
+ * Fluxo:
+ * 1. scheduleCheckin() agenda duas notificações:
+ *    - Prompt diário recorrente (DAILY trigger) → abre /checkin-response
+ *    - Timeout one-shot (DATE trigger, checkinTime + windowMinutes) → escalona se não respondido
+ * 2. Usuário toca "Estou Bem" → markCheckinResponded() cancela o timeout e reagenda para amanhã
+ * 3. Se não responder → notificação de timeout dispara; _layout.tsx a intercepta e escalona
+ *
+ * IDs de notificação persistidos em AsyncStorage:
+ *   vigora_checkin_prompt_id  — ID do prompt diário
+ *   vigora_checkin_timeout_id — ID do timeout one-shot
+ */
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
+
+// Inlined to avoid importing notifications-utils (which pulls native modules
+// incompatible with the Node/vitest test environment). The canonical value is
+// also exported from lib/notifications-utils.ts for channel-setup code.
+const CHECKIN_CHANNEL_ID = 'vigora-checkin';
+
+const PROMPT_ID_KEY = 'vigora_checkin_prompt_id';
+const TIMEOUT_ID_KEY = 'vigora_checkin_timeout_id';
+
+// ---------------------------------------------------------------------------
+// Funções puras (testáveis sem mocks)
+// ---------------------------------------------------------------------------
+
+/**
+ * Calcula a data/hora do próximo timeout:
+ * checkinTime + windowMinutes. Se já passou, avança para amanhã.
+ */
+export function computeTimeoutDate(
+  checkinTime: string,
+  windowMinutes: number,
+  now: Date = new Date()
+): Date {
+  const [h, m] = checkinTime.split(':').map(Number);
+  const totalMinutes = h * 60 + m + windowMinutes;
+  const timeoutHour = Math.floor(totalMinutes / 60) % 24;
+  const timeoutMinute = totalMinutes % 60;
+
+  const result = new Date(now);
+  result.setHours(timeoutHour, timeoutMinute, 0, 0);
+
+  // Se o timeout já passou hoje, agenda para amanhã
+  if (result <= now) {
+    result.setDate(result.getDate() + 1);
+  }
+  return result;
+}
+
+/**
+ * Formata segundos restantes em "MM:SS" para o countdown.
+ */
+export function formatCountdown(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+// ---------------------------------------------------------------------------
+// Funções de agendamento (dependem de expo-notifications + AsyncStorage)
+// ---------------------------------------------------------------------------
+
+/**
+ * Agenda (ou reagenda) o check-in diário.
+ * Cancela qualquer agendamento anterior antes de criar os novos.
+ */
+export async function scheduleCheckin(
+  checkinTime: string,
+  windowMinutes: number
+): Promise<void> {
+  if (Platform.OS === 'web') return;
+
+  await cancelCheckin();
+
+  const [hours, minutes] = checkinTime.split(':').map(Number);
+
+  // 1. Notificação-prompt diária recorrente
+  const promptId = await Notifications.scheduleNotificationAsync({
+    content: {
+      title: '💚 Check-in Vigora',
+      body: 'Você está bem hoje? Toque para confirmar.',
+      sound: false,
+      data: {
+        type: 'checkin_prompt',
+        url: '/checkin-response',
+        checkinTime,
+        windowMinutes,
+      },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+      hour: hours,
+      minute: minutes,
+      channelId: CHECKIN_CHANNEL_ID,
+    } as any,
+  });
+  await AsyncStorage.setItem(PROMPT_ID_KEY, promptId);
+
+  // 2. Timeout one-shot para hoje (ou amanhã se já passou)
+  await _scheduleTimeoutNotification(checkinTime, windowMinutes);
+}
+
+/**
+ * Cancela prompt e timeout do check-in.
+ */
+export async function cancelCheckin(): Promise<void> {
+  if (Platform.OS === 'web') return;
+
+  const [promptId, timeoutId] = await Promise.all([
+    AsyncStorage.getItem(PROMPT_ID_KEY),
+    AsyncStorage.getItem(TIMEOUT_ID_KEY),
+  ]);
+
+  await Promise.all([
+    promptId
+      ? Notifications.cancelScheduledNotificationAsync(promptId).catch(() => {})
+      : Promise.resolve(),
+    timeoutId
+      ? Notifications.cancelScheduledNotificationAsync(timeoutId).catch(() => {})
+      : Promise.resolve(),
+    AsyncStorage.multiRemove([PROMPT_ID_KEY, TIMEOUT_ID_KEY]),
+  ]);
+}
+
+/**
+ * Marca o check-in como respondido:
+ * - Cancela o timeout de hoje
+ * - Reagenda o timeout para amanhã
+ *
+ * Chamar quando o usuário tocar "Estou Bem".
+ */
+export async function markCheckinResponded(
+  checkinTime: string,
+  windowMinutes: number
+): Promise<void> {
+  if (Platform.OS === 'web') return;
+
+  // Cancela o timeout de hoje
+  const timeoutId = await AsyncStorage.getItem(TIMEOUT_ID_KEY);
+  if (timeoutId) {
+    await Notifications.cancelScheduledNotificationAsync(timeoutId).catch(() => {});
+    await AsyncStorage.removeItem(TIMEOUT_ID_KEY);
+  }
+
+  // Reagenda o timeout para amanhã (o prompt diário continua ativo)
+  await _scheduleTimeoutNotification(checkinTime, windowMinutes);
+}
+
+/**
+ * Interno: agenda a notificação de timeout one-shot.
+ */
+async function _scheduleTimeoutNotification(
+  checkinTime: string,
+  windowMinutes: number
+): Promise<void> {
+  const timeoutDate = computeTimeoutDate(checkinTime, windowMinutes);
+
+  const timeoutId = await Notifications.scheduleNotificationAsync({
+    content: {
+      title: '⚠️ Check-in não respondido',
+      body: 'Você não confirmou seu check-in. Seus contatos de emergência serão notificados.',
+      sound: true,
+      data: {
+        type: 'checkin_timeout',
+        checkinTime,
+        windowMinutes,
+      },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: timeoutDate,
+      channelId: CHECKIN_CHANNEL_ID,
+    } as any,
+  });
+  await AsyncStorage.setItem(TIMEOUT_ID_KEY, timeoutId);
+}
