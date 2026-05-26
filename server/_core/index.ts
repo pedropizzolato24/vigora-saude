@@ -6,7 +6,7 @@ import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { corsMiddleware } from "./cors";
 import { registerAuthRoutes } from "./oauth";
-import { registerSupabaseAuthRoute } from "../supabase-auth";
+import { registerGoogleAuthRoute } from "../google-auth";
 import { createRateLimit } from "./rate-limit";
 import { securityHeadersMiddleware } from "./security-headers";
 import { appRouter } from "../routers";
@@ -45,11 +45,11 @@ async function startServer() {
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ limit: "1mb", extended: true }));
 
-  // Auth endpoints — /api/auth/supabase exchanges a Supabase token for a
-  // session JWT; the rest are session lifecycle (me / logout / cookie sync).
+  // Auth endpoints — /api/auth/google verifies the Google id_token and emits
+  // the session JWT; the rest are session lifecycle (me / logout / cookie sync).
   app.use("/api/auth", createRateLimit({ max: 30, windowMs: 60_000 }));
   registerAuthRoutes(app);
-  registerSupabaseAuthRoute(app);
+  registerGoogleAuthRoute(app);
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });
