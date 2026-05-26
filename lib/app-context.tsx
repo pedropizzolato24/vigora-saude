@@ -63,6 +63,12 @@ export interface AppSettings {
   speechRate: 0.5 | 0.75 | 1.0 | 1.25; // TTS speech rate
   speechVolume: number; // TTS volume 0-100 (independent of alarm volume)
   timerDuration: 15 | 30 | 45 | 60; // Seconds before emergency escalation
+  /** Check-in diário "Você está bem?" */
+  checkinEnabled: boolean;
+  /** Horário do check-in no formato HH:mm */
+  checkinTime: string;
+  /** Minutos que o usuário tem para responder antes de escalonar */
+  checkinWindowMinutes: number;
 }
 
 export interface UserProfile {
@@ -140,6 +146,9 @@ const initialState: AppState = {
     speechRate: 0.75,
     speechVolume: 90,
     timerDuration: 30,
+    checkinEnabled: false,
+    checkinTime: '09:00',
+    checkinWindowMinutes: 30,
   },
   ads: [],
   missedAlarmCount: 0,
