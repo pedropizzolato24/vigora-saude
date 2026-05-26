@@ -29,6 +29,7 @@ import { usePurchases } from '@/hooks/use-purchases';
 import { useRouter } from 'expo-router';
 import { ProGate, ProBanner } from '@/components/pro-gate';
 import { useProUpsell } from '@/components/pro-upsell-modal';
+import { scheduleCheckin, cancelCheckin } from '@/lib/checkin-service';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
 
@@ -972,6 +973,136 @@ export default function SettingsScreen() {
               </View>
             )}
           </View>
+        </CollapsibleSection>
+
+        {/* ═══ SECTION: Check-in Diário ═══ */}
+        <CollapsibleSection
+          title="Check-in Diário"
+          icon="check-circle"
+          iconBg="#E8F5E9"
+          iconColor="#2E7D32"
+          colors={colors}
+          defaultOpen={false}
+        >
+          {/* Toggle: habilitar/desabilitar */}
+          <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
+            <View style={styles.settingTextBlock}>
+              <Text style={[styles.settingLabel, { color: colors.foreground, fontSize: fs.md }]}>
+                Check-in ativo
+              </Text>
+              <Text style={[styles.settingSubLabel, { color: colors.muted, fontSize: fs.sm }]}>
+                Notificação diária para confirmar que está bem
+              </Text>
+            </View>
+            <Switch
+              value={settings.checkinEnabled}
+              onValueChange={async (value) => {
+                updateSetting('checkinEnabled', value);
+                if (value) {
+                  await scheduleCheckin(settings.checkinTime, settings.checkinWindowMinutes);
+                } else {
+                  await cancelCheckin();
+                }
+              }}
+              trackColor={{ false: colors.border, true: '#2E7D32' }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+
+          {/* Horário e janela (só visíveis quando ativo) */}
+          {settings.checkinEnabled && (
+            <>
+              {/* Horário do check-in */}
+              <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
+                <View style={styles.settingTextBlock}>
+                  <Text style={[styles.settingLabel, { color: colors.foreground, fontSize: fs.md }]}>
+                    Horário
+                  </Text>
+                  <Text style={[styles.settingSubLabel, { color: colors.muted, fontSize: fs.sm }]}>
+                    Quando você receberá a notificação
+                  </Text>
+                </View>
+                <TextInput
+                  value={settings.checkinTime}
+                  onChangeText={(v) => {
+                    const timeRegex = /^([01]?\d|2[0-3]):([0-5]\d)$/;
+                    if (timeRegex.test(v)) {
+                      updateSetting('checkinTime', v);
+                      scheduleCheckin(v, settings.checkinWindowMinutes).catch(() => {});
+                    }
+                  }}
+                  onEndEditing={(e) => {
+                    const v = e.nativeEvent.text;
+                    const timeRegex = /^([01]?\d|2[0-3]):([0-5]\d)$/;
+                    if (timeRegex.test(v)) {
+                      updateSetting('checkinTime', v);
+                      scheduleCheckin(v, settings.checkinWindowMinutes).catch(() => {});
+                    }
+                  }}
+                  keyboardType="numbers-and-punctuation"
+                  maxLength={5}
+                  placeholder="09:00"
+                  placeholderTextColor={colors.muted}
+                  style={{
+                    color: colors.primary,
+                    fontSize: fs.md,
+                    fontWeight: '700',
+                    textAlign: 'right',
+                    minWidth: 60,
+                  }}
+                />
+              </View>
+
+              {/* Janela de resposta */}
+              <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
+                <View style={styles.settingTextBlock}>
+                  <Text style={[styles.settingLabel, { color: colors.foreground, fontSize: fs.md }]}>
+                    Janela de resposta
+                  </Text>
+                  <Text style={[styles.settingSubLabel, { color: colors.muted, fontSize: fs.sm }]}>
+                    Tempo para responder antes de notificar contatos
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  {([15, 30, 60] as const).map((mins) => (
+                    <Pressable
+                      key={mins}
+                      onPress={async () => {
+                        updateSetting('checkinWindowMinutes', mins);
+                        await scheduleCheckin(settings.checkinTime, mins);
+                      }}
+                      style={({ pressed }) => [{
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        backgroundColor:
+                          settings.checkinWindowMinutes === mins ? '#2E7D32' : colors.surface,
+                        borderColor:
+                          settings.checkinWindowMinutes === mins ? '#2E7D32' : colors.border,
+                        opacity: pressed ? 0.7 : 1,
+                      }]}
+                    >
+                      <Text style={{
+                        color: settings.checkinWindowMinutes === mins ? '#FFFFFF' : colors.foreground,
+                        fontSize: fs.sm,
+                        fontWeight: '600',
+                      }}>
+                        {mins}min
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              {/* Disclaimer LGPD */}
+              <View style={{ padding: 16, paddingTop: 8 }}>
+                <Text style={{ color: colors.muted, fontSize: fs.xs, lineHeight: 18 }}>
+                  ⚠️ O check-in não substitui serviços de emergência. Em caso de emergência, ligue 192 (SAMU).
+                </Text>
+              </View>
+            </>
+          )}
         </CollapsibleSection>
 
         {/* ═══ SECTION 2: Segurança e Emergência ═══ */}
