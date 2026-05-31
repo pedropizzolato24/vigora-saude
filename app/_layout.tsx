@@ -144,8 +144,46 @@ export default function RootLayout() {
           const alarmId = data?.alarmId as string | undefined;
           const notifType = data?.type as string | undefined;
 
-          // Check-in notification cold-start: navigate to response screen
-          if (notifType === 'checkin_prompt' || notifType === 'checkin_timeout') {
+          // Check-in notification cold-start
+          if (notifType === 'checkin_prompt') {
+            // Marca como respondido imediatamente — checkin-response.tsx não executa essa lógica
+            const { markCheckinResponded } = require('@/lib/checkin-service');
+            const ct = data?.checkinTime as string | undefined;
+            const wm = data?.windowMinutes as number | undefined;
+            if (ct && wm) {
+              markCheckinResponded(ct, wm).catch(() => {});
+            }
+            const { router: navRouter } = require('expo-router');
+            navRouter.push('/checkin-response');
+            Notifications.clearLastNotificationResponseAsync();
+            return;
+          }
+          if (notifType === 'checkin_timeout') {
+            // Timeout cold-start: escalona para contatos e navega para confirmação
+            const { escalateAlarmToContacts } = require('@/lib/alarm-escalation');
+            const { markCheckinResponded } = require('@/lib/checkin-service');
+            const AsyncStorageMod = require('@react-native-async-storage/async-storage').default;
+            try {
+              const raw = await AsyncStorageMod.getItem('vigora_app_state');
+              if (raw) {
+                const parsed = JSON.parse(raw);
+                const contacts = parsed?.emergencyContacts ?? [];
+                const ct = data?.checkinTime as string | undefined ?? '09:00';
+                const wm = data?.windowMinutes as number | undefined ?? 30;
+                const checkinAsAlarm = {
+                  id: 'checkin-daily',
+                  time: ct,
+                  description: 'Check-in diário sem resposta',
+                  enabled: true,
+                  repeat: 'daily',
+                  customDays: [],
+                  sound: false,
+                  vibration: false,
+                };
+                escalateAlarmToContacts(checkinAsAlarm, contacts).catch(() => {});
+                markCheckinResponded(ct, wm).catch(() => {});
+              }
+            } catch {}
             const { router: navRouter } = require('expo-router');
             navRouter.push('/checkin-response');
             Notifications.clearLastNotificationResponseAsync();
