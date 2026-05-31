@@ -30,6 +30,7 @@ import { useRouter } from 'expo-router';
 import { ProGate, ProBanner } from '@/components/pro-gate';
 import { useProUpsell } from '@/components/pro-upsell-modal';
 import { scheduleCheckin, cancelCheckin } from '@/lib/checkin-service';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
 
@@ -180,9 +181,21 @@ export default function SettingsScreen() {
 
   const [countdownTestActive, setCountdownTestActive] = useState(false);
   const [countdownTestSecondsLeft, setCountdownTestSecondsLeft] = useState(10);
+  const [showCheckinTimePicker, setShowCheckinTimePicker] = useState(false);
   const countdownTestIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const TEST_ALARM_ID = 'settings_test';
   const TEST_DURATION = 10;
+
+  function parseCheckinTime(timeStr: string): Date {
+    const [h, m] = timeStr.split(':').map(Number);
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    return d;
+  }
+
+  function formatCheckinHHMM(date: Date): string {
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  }
 
   const handleTestCountdown = useCallback(() => {
     if (countdownTestActive) {
@@ -1012,87 +1025,108 @@ export default function SettingsScreen() {
           {/* Horário e janela (só visíveis quando ativo) */}
           {settings.checkinEnabled && (
             <>
-              {/* Horário do check-in */}
-              <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
-                <View style={styles.settingTextBlock}>
-                  <Text style={[styles.settingLabel, { color: colors.foreground, fontSize: fs.md }]}>
-                    Horário
-                  </Text>
-                  <Text style={[styles.settingSubLabel, { color: colors.muted, fontSize: fs.sm }]}>
-                    Quando você receberá a notificação
-                  </Text>
-                </View>
-                <TextInput
-                  value={settings.checkinTime}
-                  onChangeText={(v) => {
-                    const timeRegex = /^([01]?\d|2[0-3]):([0-5]\d)$/;
-                    if (timeRegex.test(v)) {
-                      updateSetting('checkinTime', v);
-                      scheduleCheckin(v, settings.checkinWindowMinutes).catch(() => {});
-                    }
-                  }}
-                  onEndEditing={(e) => {
-                    const v = e.nativeEvent.text;
-                    const timeRegex = /^([01]?\d|2[0-3]):([0-5]\d)$/;
-                    if (timeRegex.test(v)) {
-                      updateSetting('checkinTime', v);
-                      scheduleCheckin(v, settings.checkinWindowMinutes).catch(() => {});
-                    }
-                  }}
-                  keyboardType="numbers-and-punctuation"
-                  maxLength={5}
-                  placeholder="09:00"
-                  placeholderTextColor={colors.muted}
-                  style={{
-                    color: colors.primary,
-                    fontSize: fs.md,
-                    fontWeight: '700',
-                    textAlign: 'right',
-                    minWidth: 60,
-                  }}
-                />
-              </View>
+              {/* Horário do check-in — preset buttons + Personalizar */}
+              <View style={{ padding: 16, gap: 10 }}>
+                <Text style={[styles.settingLabel, { color: colors.foreground, fontSize: fs.md, marginBottom: 2 }]}>
+                  Horário
+                </Text>
+                <Text style={[styles.settingSubLabel, { color: colors.muted, fontSize: fs.sm }]}>
+                  Quando você receberá a notificação diária
+                </Text>
 
-              {/* Janela de resposta */}
-              <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
-                <View style={styles.settingTextBlock}>
-                  <Text style={[styles.settingLabel, { color: colors.foreground, fontSize: fs.md }]}>
-                    Janela de resposta
-                  </Text>
-                  <Text style={[styles.settingSubLabel, { color: colors.muted, fontSize: fs.sm }]}>
-                    Tempo para responder antes de notificar contatos
-                  </Text>
+                {/* Botões de atalho */}
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
+                  {(['09:00', '17:00'] as const).map((preset) => {
+                    const label = preset === '09:00' ? '☀️ Manhã — 09:00' : '🌆 Tarde — 17:00';
+                    const isSelected = settings.checkinTime === preset;
+                    return (
+                      <Pressable
+                        key={preset}
+                        onPress={async () => {
+                          updateSetting('checkinTime', preset);
+                          await scheduleCheckin(preset, settings.checkinWindowMinutes);
+                        }}
+                        style={({ pressed }) => [{
+                          flex: 1,
+                          paddingVertical: 14,
+                          borderRadius: 12,
+                          borderWidth: 1.5,
+                          alignItems: 'center' as const,
+                          justifyContent: 'center' as const,
+                          backgroundColor: isSelected ? '#2E7D32' : colors.surface,
+                          borderColor: isSelected ? '#2E7D32' : colors.border,
+                          opacity: pressed ? 0.75 : 1,
+                        }]}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: isSelected }}
+                      >
+                        <Text style={{
+                          color: isSelected ? '#FFFFFF' : colors.foreground,
+                          fontSize: fs.sm,
+                          fontWeight: '700',
+                          textAlign: 'center',
+                        }}>
+                          {label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
                 </View>
-                <View style={{ flexDirection: 'row', gap: 6 }}>
-                  {([15, 30, 60] as const).map((mins) => (
+
+                {/* Botão personalizar */}
+                {(() => {
+                  const isCustom = settings.checkinTime !== '09:00' && settings.checkinTime !== '17:00';
+                  return (
                     <Pressable
-                      key={mins}
-                      onPress={async () => {
-                        updateSetting('checkinWindowMinutes', mins);
-                        await scheduleCheckin(settings.checkinTime, mins);
-                      }}
+                      onPress={() => setShowCheckinTimePicker(true)}
                       style={({ pressed }) => [{
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        borderRadius: 8,
-                        borderWidth: 1,
-                        backgroundColor:
-                          settings.checkinWindowMinutes === mins ? '#2E7D32' : colors.surface,
-                        borderColor:
-                          settings.checkinWindowMinutes === mins ? '#2E7D32' : colors.border,
-                        opacity: pressed ? 0.7 : 1,
+                        flexDirection: 'row' as const,
+                        alignItems: 'center' as const,
+                        justifyContent: 'center' as const,
+                        gap: 8,
+                        paddingVertical: 12,
+                        borderRadius: 12,
+                        borderWidth: 1.5,
+                        borderColor: isCustom ? '#2E7D32' : colors.border,
+                        backgroundColor: isCustom ? '#E8F5E9' : colors.surface,
+                        opacity: pressed ? 0.75 : 1,
                       }]}
+                      accessibilityRole="button"
+                      accessibilityLabel="Personalizar horário do check-in"
                     >
+                      <MaterialIcons
+                        name="schedule"
+                        size={20}
+                        color={isCustom ? '#2E7D32' : colors.muted}
+                      />
                       <Text style={{
-                        color: settings.checkinWindowMinutes === mins ? '#FFFFFF' : colors.foreground,
                         fontSize: fs.sm,
                         fontWeight: '600',
+                        color: isCustom ? '#2E7D32' : colors.muted,
                       }}>
-                        {mins}min
+                        {isCustom ? `🕐 ${settings.checkinTime} — Personalizado` : 'Personalizar horário'}
                       </Text>
                     </Pressable>
-                  ))}
-                </View>
+                  );
+                })()}
+
+                {/* DateTimePicker nativo */}
+                {showCheckinTimePicker && (
+                  <DateTimePicker
+                    value={parseCheckinTime(settings.checkinTime)}
+                    mode="time"
+                    is24Hour={true}
+                    display={Platform.OS === 'android' ? 'spinner' : 'spinner'}
+                    onChange={(event, date) => {
+                      setShowCheckinTimePicker(false);
+                      if (event.type === 'set' && date) {
+                        const newTime = formatCheckinHHMM(date);
+                        updateSetting('checkinTime', newTime);
+                        scheduleCheckin(newTime, settings.checkinWindowMinutes).catch(() => {});
+                      }
+                    }}
+                  />
+                )}
               </View>
 
               {/* Disclaimer LGPD */}
