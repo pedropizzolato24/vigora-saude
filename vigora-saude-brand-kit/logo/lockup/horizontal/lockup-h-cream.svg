@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="64" viewBox="0 0 400 64">
+  <defs><style>@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@1,700&amp;display=swap');</style></defs>
+  <!-- Symbol (48px) on dark background -->
+  <g transform="translate(0,8) scale(0.75)">
+    <circle cx="32" cy="32" r="28" fill="#F4EFE5"/>
+    <circle cx="44" cy="26" r="20" fill="#0E1417"/>
+    <circle cx="14" cy="20" r="2.5" fill="#F4EFE5" opacity="0.35"/>
+    <circle cx="54" cy="46" r="1.5" fill="#F4EFE5" opacity="0.25"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="62" y="44" font-family="Fraunces, Georgia, serif" font-style="italic" font-weight="700" font-size="38" fill="#F4EFE5" letter-spacing="-0.5">Vigora Saúde</text>
+</svg>
