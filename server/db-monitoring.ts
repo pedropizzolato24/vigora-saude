@@ -224,6 +224,23 @@ export async function getInactiveDevices(thresholdMinutes: number) {
 export async function createAlarmEvent(data: InsertAlarmEvent): Promise<number> {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
+
+  // Idempotency: return existing row if (deviceId, alarmId, scheduledAt) already exists.
+  // Prevents duplicate pending events when createEvent is called multiple times
+  // (e.g., startup effect + respond-and-recreate on the same deadline).
+  const existing = await db
+    .select({ id: alarmEvents.id })
+    .from(alarmEvents)
+    .where(
+      and(
+        eq(alarmEvents.deviceId, data.deviceId),
+        eq(alarmEvents.alarmId, data.alarmId),
+        eq(alarmEvents.scheduledAt, data.scheduledAt as Date)
+      )
+    )
+    .limit(1);
+  if (existing.length > 0) return existing[0].id;
+
   const result = await db.insert(alarmEvents).values(data);
   return (result as any).insertId as number;
 }
@@ -264,9 +281,13 @@ export async function updateAlarmEventStatusByAlarmId(
 
   if (rows.length === 0) return;
 
+  // When the client confirms a missed event it has already escalated client-side.
+  // Set warningSent=true so Step 3 of the monitoring job doesn't double-escalate.
+  const warningSent = status === "missed";
+
   await db
     .update(alarmEvents)
-    .set({ status, resolvedAt: new Date() })
+    .set({ status, resolvedAt: new Date(), warningSent })
     .where(eq(alarmEvents.id, rows[0].id));
 }
 
@@ -285,6 +306,30 @@ export async function getExpiredPendingEvents(gracePeriodMinutes: number) {
       and(
         eq(alarmEvents.status, "pending"),
         lte(alarmEvents.scheduledAt, cutoff)
+      )
+    );
+}
+
+/**
+ * Returns check-in alarm events that were missed (status = 'missed' | 'not_sent')
+ * and haven't had a server-side warning sent yet (warningSent = false).
+ * Scoped to a single alarmId (e.g. 'checkin-daily') to avoid escalating
+ * every missed medication alarm via the server cascade.
+ * lookbackHours caps how far back we search to avoid re-escalating stale events.
+ */
+export async function getMissedCheckinEvents(alarmId: string, lookbackHours: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const cutoff = new Date(Date.now() - lookbackHours * 60 * 60 * 1000);
+  return db
+    .select()
+    .from(alarmEvents)
+    .where(
+      and(
+        eq(alarmEvents.alarmId, alarmId),
+        inArray(alarmEvents.status, ["missed", "not_sent"]),
+        eq(alarmEvents.warningSent, false),
+        gte(alarmEvents.scheduledAt, cutoff)
       )
     );
 }

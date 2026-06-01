@@ -16,8 +16,9 @@ import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useAppContext } from '@/lib/app-context';
-import { scheduleCheckin, cancelCheckin, markCheckinResponded } from '@/lib/checkin-service';
+import { scheduleCheckin, cancelCheckin, markCheckinResponded, createNextCheckinEvent } from '@/lib/checkin-service';
 import { escalateAlarmToContacts } from '@/lib/alarm-escalation';
+import { confirmAlarmResponded, confirmAlarmMissed } from '@/lib/monitoring-service';
 
 type PopupState = 'asking' | 'confirmed';
 
@@ -48,6 +49,9 @@ export function CheckinInitializer() {
       scheduleCheckin(checkinTime, checkinWindowMinutes).catch((err) =>
         console.error('[CheckinInitializer] Failed to schedule checkin:', err)
       );
+      // Garante que o próximo evento de check-in existe no servidor antes do prazo,
+      // mesmo que o celular desligue antes de a notificação disparar.
+      createNextCheckinEvent(checkinTime, checkinWindowMinutes).catch(() => {});
     } else {
       cancelCheckin().catch((err) =>
         console.error('[CheckinInitializer] Failed to cancel checkin:', err)
@@ -59,6 +63,9 @@ export function CheckinInitializer() {
   const handleConfirm = useCallback(async () => {
     if (popupState !== 'asking') return;
     await markCheckinResponded(popupCheckinTime, popupWindowMinutes).catch(() => {});
+    // Confirma no servidor (warningSent=true → Step 3 não escalona) e já cria o evento de amanhã.
+    confirmAlarmResponded({ id: 'checkin-daily', time: popupCheckinTime } as any, new Date()).catch(() => {});
+    createNextCheckinEvent(popupCheckinTime, popupWindowMinutes).catch(() => {});
     setPopupState('confirmed');
     if (autoCloseRef.current) clearTimeout(autoCloseRef.current);
     autoCloseRef.current = setTimeout(() => {
@@ -80,9 +87,11 @@ export function CheckinInitializer() {
         setPopupState('asking');
         setPopupVisible(true);
       } else if (data?.type === 'checkin_timeout') {
+        const ct = (data.checkinTime as string | undefined) ?? checkinTime;
+        const wm = (data.windowMinutes as number | undefined) ?? checkinWindowMinutes;
         const checkinAsAlarm = {
           id: 'checkin-daily',
-          time: checkinTime,
+          time: ct,
           description: 'Check-in diário sem resposta',
           enabled: true,
           repeat: 'daily' as const,
@@ -91,7 +100,10 @@ export function CheckinInitializer() {
           vibration: false,
         };
         escalateAlarmToContacts(checkinAsAlarm, state.emergencyContacts).catch(() => {});
-        markCheckinResponded(checkinTime, checkinWindowMinutes).catch(() => {});
+        // Marca como perdido no servidor (warningSent=true) e reagenda evento de amanhã.
+        confirmAlarmMissed({ id: 'checkin-daily', time: ct } as any, new Date()).catch(() => {});
+        markCheckinResponded(ct, wm).catch(() => {});
+        createNextCheckinEvent(ct, wm).catch(() => {});
         router.push('/checkin-response');
       }
     });
@@ -110,11 +122,15 @@ export function CheckinInitializer() {
         const ct = (data.checkinTime as string | undefined) ?? checkinTime;
         const wm = (data.windowMinutes as number | undefined) ?? checkinWindowMinutes;
         markCheckinResponded(ct, wm).catch(() => {});
+        confirmAlarmResponded({ id: 'checkin-daily', time: ct } as any, new Date()).catch(() => {});
+        createNextCheckinEvent(ct, wm).catch(() => {});
         router.push('/checkin-response');
       } else if (data?.type === 'checkin_timeout') {
+        const ct = (data.checkinTime as string | undefined) ?? checkinTime;
+        const wm = (data.windowMinutes as number | undefined) ?? checkinWindowMinutes;
         const checkinAsAlarm = {
           id: 'checkin-daily',
-          time: checkinTime,
+          time: ct,
           description: 'Check-in diário sem resposta',
           enabled: true,
           repeat: 'daily' as const,
@@ -123,7 +139,9 @@ export function CheckinInitializer() {
           vibration: false,
         };
         escalateAlarmToContacts(checkinAsAlarm, state.emergencyContacts).catch(() => {});
-        markCheckinResponded(checkinTime, checkinWindowMinutes).catch(() => {});
+        confirmAlarmMissed({ id: 'checkin-daily', time: ct } as any, new Date()).catch(() => {});
+        markCheckinResponded(ct, wm).catch(() => {});
+        createNextCheckinEvent(ct, wm).catch(() => {});
         router.push('/checkin-response');
       }
     });
