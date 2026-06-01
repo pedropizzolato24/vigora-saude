@@ -336,10 +336,10 @@ export default function SettingsScreen() {
   };
 
   const locationStatusInfo = {
-    background: { label: 'Ativo (Tempo Todo)', color: '#22C55E', icon: 'location-on' as const },
-    granted: { label: 'Ativo (Apenas em Uso)', color: '#F59E0B', icon: 'location-on' as const },
-    denied: { label: 'Negado', color: '#EF4444', icon: 'location-off' as const },
-    unknown: { label: 'Verificando...', color: '#687076', icon: 'location-searching' as const },
+    background: { label: 'Ativo (Tempo Todo)', color: colors.success, icon: 'location-on' as const },
+    granted: { label: 'Ativo (Apenas em Uso)', color: colors.warning, icon: 'location-on' as const },
+    denied: { label: 'Negado', color: colors.error, icon: 'location-off' as const },
+    unknown: { label: 'Verificando...', color: colors.muted, icon: 'location-searching' as const },
   };
 
   const handleClearData = () => {
@@ -399,14 +399,14 @@ export default function SettingsScreen() {
           {/* Accessibility toggle - always visible at top */}
           <Pressable
             onPress={handleToggleAccessibility}
-            style={({ pressed }) => [{ borderRadius: 20, borderWidth: 3, borderColor: '#003388', backgroundColor: '#0055CC', padding: 20, flexDirection: 'row', alignItems: 'center', gap: 14, opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [{ borderRadius: 20, borderWidth: 3, borderColor: colors.primary, backgroundColor: colors.primary, padding: 20, flexDirection: 'row', alignItems: 'center', gap: 14, opacity: pressed ? 0.85 : 1 }]}
           >
-            <MaterialIcons name="accessibility-new" size={36} color="#FFFFFF" />
+            <MaterialIcons name="accessibility-new" size={36} color={colors.onPrimary} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: af.lg, fontWeight: '900', color: '#FFFFFF' }}>Modo de Acessibilidade</Text>
-              <Text style={{ fontSize: af.sm, color: '#FFFFFFCC', marginTop: 4 }}>Ativado - toque para desativar</Text>
+              <Text style={{ fontSize: af.lg, fontWeight: '900', color: colors.onPrimary }}>Modo de Acessibilidade</Text>
+              <Text style={{ fontSize: af.sm, color: colors.onPrimary + 'CC', marginTop: 4 }}>Ativado - toque para desativar</Text>
             </View>
-            <Switch value={true} onValueChange={handleToggleAccessibility} trackColor={{ false: '#888', true: '#0033AA' }} thumbColor="#FFFFFF" />
+            <Switch value={true} onValueChange={handleToggleAccessibility} trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFFFFF" />
           </Pressable>
 
           {/* Status do Monitoramento - logo abaixo do toggle de acessibilidade */}
@@ -449,10 +449,10 @@ export default function SettingsScreen() {
               </Pressable>
               <Pressable
                 onPress={() => handleVolumeChange(10)}
-                style={({ pressed }) => [{ flex: 1, backgroundColor: ac.primary, borderRadius: 16, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 3, borderColor: '#003388', opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ flex: 1, backgroundColor: ac.primary, borderRadius: 16, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 3, borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
               >
-                <MaterialIcons name="volume-up" size={28} color="#FFFFFF" />
-                <Text style={{ fontSize: af.lg, fontWeight: '800', color: '#FFFFFF' }}>+10</Text>
+                <MaterialIcons name="volume-up" size={28} color={colors.onPrimary} />
+                <Text style={{ fontSize: af.lg, fontWeight: '800', color: colors.onPrimary }}>+10</Text>
               </Pressable>
             </View>
           </View>
@@ -478,10 +478,10 @@ export default function SettingsScreen() {
               </Pressable>
               <Pressable
                 onPress={() => handleSpeechVolumeChange(10)}
-                style={({ pressed }) => [{ flex: 1, backgroundColor: ac.primary, borderRadius: 16, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 3, borderColor: '#003388', opacity: pressed ? 0.7 : 1 }]}
+                style={({ pressed }) => [{ flex: 1, backgroundColor: ac.primary, borderRadius: 16, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 3, borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
               >
-                <MaterialIcons name="volume-up" size={28} color="#FFFFFF" />
-                <Text style={{ fontSize: af.lg, fontWeight: '800', color: '#FFFFFF' }}>+10</Text>
+                <MaterialIcons name="volume-up" size={28} color={colors.onPrimary} />
+                <Text style={{ fontSize: af.lg, fontWeight: '800', color: colors.onPrimary }}>+10</Text>
               </Pressable>
             </View>
 
@@ -503,14 +503,14 @@ export default function SettingsScreen() {
                     paddingVertical: 18,
                     alignItems: 'center',
                     borderWidth: 3,
-                    borderColor: settings.speechRate === opt.value ? '#003388' : ac.border,
+                    borderColor: settings.speechRate === opt.value ? colors.primary : ac.border,
                     opacity: pressed ? 0.7 : 1,
                   }]}
                 >
-                  <Text style={{ fontSize: af.md, fontWeight: '800', color: settings.speechRate === opt.value ? '#FFFFFF' : ac.foreground }}>
+                  <Text style={{ fontSize: af.md, fontWeight: '800', color: settings.speechRate === opt.value ? colors.onPrimary : ac.foreground }}>
                     {opt.label}
                   </Text>
-                  <Text style={{ fontSize: af.sm, color: settings.speechRate === opt.value ? '#FFFFFFBB' : ac.muted, marginTop: 2 }}>
+                  <Text style={{ fontSize: af.sm, color: settings.speechRate === opt.value ? colors.onPrimary + 'BB' : ac.muted, marginTop: 2 }}>
                     {opt.sublabel}
                   </Text>
                 </Pressable>
@@ -535,14 +535,14 @@ export default function SettingsScreen() {
                     paddingVertical: 18,
                     alignItems: 'center',
                     borderWidth: 3,
-                    borderColor: settings.timerDuration === opt.value ? '#003388' : ac.border,
+                    borderColor: settings.timerDuration === opt.value ? colors.primary : ac.border,
                     opacity: pressed ? 0.7 : 1,
                   }]}
                 >
-                  <Text style={{ fontSize: af.lg, fontWeight: '900', color: settings.timerDuration === opt.value ? '#FFFFFF' : ac.foreground }}>
+                  <Text style={{ fontSize: af.lg, fontWeight: '900', color: settings.timerDuration === opt.value ? colors.onPrimary : ac.foreground }}>
                     {opt.label}
                   </Text>
-                  <Text style={{ fontSize: af.sm, color: settings.timerDuration === opt.value ? '#FFFFFFBB' : ac.muted, marginTop: 2 }}>
+                  <Text style={{ fontSize: af.sm, color: settings.timerDuration === opt.value ? colors.onPrimary + 'BB' : ac.muted, marginTop: 2 }}>
                     {opt.sublabel}
                   </Text>
                 </Pressable>
@@ -561,20 +561,20 @@ export default function SettingsScreen() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 12,
-                backgroundColor: countdownTestActive ? '#CC0000' : ac.primary,
+                backgroundColor: countdownTestActive ? colors.emergency : ac.primary,
                 borderRadius: 16,
                 paddingVertical: as_.buttonPadding,
                 borderWidth: 3,
-                borderColor: countdownTestActive ? '#990000' : '#003388',
+                borderColor: countdownTestActive ? colors.emergency : colors.primary,
                 opacity: pressed ? 0.8 : 1,
               }]}
             >
               <MaterialIcons
                 name={countdownTestActive ? 'stop' : 'notifications-active'}
                 size={32}
-                color="#FFFFFF"
+                color={colors.onPrimary}
               />
-              <Text style={{ fontSize: af.lg, fontWeight: '900', color: '#FFFFFF' }}>
+              <Text style={{ fontSize: af.lg, fontWeight: '900', color: colors.onPrimary }}>
                 {countdownTestActive
                   ? `Parar Teste (${countdownTestSecondsLeft}s)`
                   : 'Iniciar Teste (10s)'}
@@ -584,7 +584,7 @@ export default function SettingsScreen() {
               <View style={{ height: 10, backgroundColor: ac.border, borderRadius: 5, overflow: 'hidden' }}>
                 <View style={{
                   height: 10,
-                  backgroundColor: '#CC0000',
+                  backgroundColor: colors.emergency,
                   borderRadius: 5,
                   width: `${(countdownTestSecondsLeft / TEST_DURATION) * 100}%` as any,
                 }} />
@@ -633,7 +633,7 @@ export default function SettingsScreen() {
                 opacity: pressed ? 0.7 : 1,
               }]}
             >
-              <Text style={{ fontSize: af.md, fontWeight: '800', color: '#FFFFFF' }}>Abrir Configurações</Text>
+              <Text style={{ fontSize: af.md, fontWeight: '800', color: colors.onPrimary }}>Abrir Configurações</Text>
             </Pressable>
           </View>
 
@@ -665,23 +665,23 @@ export default function SettingsScreen() {
           style={({ pressed }) => [{
             borderRadius: 24,
             borderWidth: 3,
-            borderColor: settings.accessibilityMode ? '#003388' : '#0055CC',
-            backgroundColor: settings.accessibilityMode ? '#0055CC' : '#FFFFFF',
+            borderColor: colors.primary,
+            backgroundColor: settings.accessibilityMode ? colors.primary : colors.surface,
             overflow: 'hidden',
             opacity: pressed ? 0.88 : 1,
           }]}
         >
           {/* Top banner strip */}
           <View style={{
-            backgroundColor: settings.accessibilityMode ? '#003388' : '#0055CC',
+            backgroundColor: colors.primary,
             paddingHorizontal: 18,
             paddingVertical: 10,
             flexDirection: 'row',
             alignItems: 'center',
             gap: 10,
           }}>
-            <MaterialIcons name="accessibility-new" size={22} color="#FFFFFF" />
-            <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+            <MaterialIcons name="accessibility-new" size={22} color={colors.onPrimary} />
+            <Text style={{ fontSize: 13, fontWeight: '800', color: colors.onPrimary, letterSpacing: 0.5, textTransform: 'uppercase' }}>
               {settings.accessibilityMode ? 'Modo de Acessibilidade - Ativado' : 'Modo de Acessibilidade'}
             </Text>
           </View>
@@ -693,21 +693,21 @@ export default function SettingsScreen() {
               borderRadius: 20,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: settings.accessibilityMode ? '#FFFFFF20' : '#0055CC15',
+              backgroundColor: settings.accessibilityMode ? colors.onPrimary + '20' : colors.primaryLight,
               borderWidth: 2,
-              borderColor: settings.accessibilityMode ? '#FFFFFF40' : '#0055CC40',
+              borderColor: settings.accessibilityMode ? colors.onPrimary + '40' : colors.primary + '40',
             }}>
               <MaterialIcons
                 name="accessibility-new"
                 size={36}
-                color={settings.accessibilityMode ? '#FFFFFF' : '#0055CC'}
+                color={settings.accessibilityMode ? colors.onPrimary : colors.primary}
               />
             </View>
             <View style={{ flex: 1, gap: 6 }}>
-              <Text style={{ fontSize: 18, fontWeight: '900', color: settings.accessibilityMode ? '#FFFFFF' : '#0055CC', lineHeight: 22 }}>
+              <Text style={{ fontSize: 18, fontWeight: '900', color: settings.accessibilityMode ? colors.onPrimary : colors.primary, lineHeight: 22 }}>
                 {settings.accessibilityMode ? 'Ativado' : 'Para idosos e pessoas com\ndificuldades visuais'}
               </Text>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: settings.accessibilityMode ? '#FFFFFFBB' : '#555555', lineHeight: 18 }}>
+              <Text style={{ fontSize: 13, fontWeight: '500', color: settings.accessibilityMode ? colors.onPrimary + 'BB' : colors.muted, lineHeight: 18 }}>
                 {settings.accessibilityMode
                   ? 'Fontes maiores, alto contraste e interface simplificada'
                   : 'Fontes maiores * Alto contraste * Botões maiores'}
@@ -716,7 +716,7 @@ export default function SettingsScreen() {
             <Switch
               value={settings.accessibilityMode}
               onValueChange={handleToggleAccessibility}
-              trackColor={{ false: '#CCCCCC', true: '#003388' }}
+              trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -967,9 +967,9 @@ export default function SettingsScreen() {
               <MaterialIcons
                 name={countdownTestActive ? 'stop' : 'notifications-active'}
                 size={22}
-                color="#FFFFFF"
+                color={colors.onPrimary}
               />
-              <Text style={{ fontSize: fs.md, fontWeight: '700', color: '#FFFFFF' }}>
+              <Text style={{ fontSize: fs.md, fontWeight: '700', color: colors.onPrimary }}>
                 {countdownTestActive
                   ? `Cancelar Teste (${countdownTestSecondsLeft}s)`
                   : 'Iniciar Teste (10s)'}
@@ -992,8 +992,8 @@ export default function SettingsScreen() {
         <CollapsibleSection
           title="Check-in Diário"
           icon="check-circle"
-          iconBg="#E8F5E9"
-          iconColor="#2E7D32"
+          iconBg={colors.successLight}
+          iconColor={colors.success}
           colors={colors}
           defaultOpen={false}
         >
@@ -1017,7 +1017,7 @@ export default function SettingsScreen() {
                   await cancelCheckin();
                 }
               }}
-              trackColor={{ false: colors.border, true: '#2E7D32' }}
+              trackColor={{ false: colors.border, true: colors.success }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -1053,15 +1053,15 @@ export default function SettingsScreen() {
                           borderWidth: 1.5,
                           alignItems: 'center' as const,
                           justifyContent: 'center' as const,
-                          backgroundColor: isSelected ? '#2E7D32' : colors.surface,
-                          borderColor: isSelected ? '#2E7D32' : colors.border,
+                          backgroundColor: isSelected ? colors.success : colors.surface,
+                          borderColor: isSelected ? colors.success : colors.border,
                           opacity: pressed ? 0.75 : 1,
                         }]}
                         accessibilityRole="button"
                         accessibilityState={{ selected: isSelected }}
                       >
                         <Text style={{
-                          color: isSelected ? '#FFFFFF' : colors.foreground,
+                          color: isSelected ? colors.onSuccess : colors.foreground,
                           fontSize: fs.sm,
                           fontWeight: '700',
                           textAlign: 'center',
@@ -1087,8 +1087,8 @@ export default function SettingsScreen() {
                         paddingVertical: 12,
                         borderRadius: 12,
                         borderWidth: 1.5,
-                        borderColor: isCustom ? '#2E7D32' : colors.border,
-                        backgroundColor: isCustom ? '#E8F5E9' : colors.surface,
+                        borderColor: isCustom ? colors.success : colors.border,
+                        backgroundColor: isCustom ? colors.successLight : colors.surface,
                         opacity: pressed ? 0.75 : 1,
                       }]}
                       accessibilityRole="button"
@@ -1097,12 +1097,12 @@ export default function SettingsScreen() {
                       <MaterialIcons
                         name="schedule"
                         size={20}
-                        color={isCustom ? '#2E7D32' : colors.muted}
+                        color={isCustom ? colors.success : colors.muted}
                       />
                       <Text style={{
                         fontSize: fs.sm,
                         fontWeight: '600',
-                        color: isCustom ? '#2E7D32' : colors.muted,
+                        color: isCustom ? colors.success : colors.muted,
                       }}>
                         {isCustom ? `🕐 ${settings.checkinTime} — Personalizado` : 'Personalizar horário'}
                       </Text>
@@ -1322,7 +1322,7 @@ export default function SettingsScreen() {
               setColorScheme(v ? 'dark' : 'light');
             }}
             colors={colors}
-            trackColor="#F59E0B"
+            trackColor={colors.warning}
           />
           <Divider colors={colors} />
 
@@ -1489,8 +1489,8 @@ export default function SettingsScreen() {
               onPress={() => router.push('/(modal)/paywall')}
               style={({ pressed }) => [styles.proButton, { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
             >
-              <MaterialIcons name="star" size={16} color="#fff" />
-              <Text style={[styles.proButtonText, { color: '#fff', fontSize: fs.sm }]}>Assinar Vigora Pro</Text>
+              <MaterialIcons name="star" size={16} color={colors.onPrimary} />
+              <Text style={[styles.proButtonText, { color: colors.onPrimary, fontSize: fs.sm }]}>Assinar Vigora Pro</Text>
             </Pressable>
           )}
         </View>

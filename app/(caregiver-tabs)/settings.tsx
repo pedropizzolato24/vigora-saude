@@ -132,7 +132,7 @@ export default function CaregiverSettingsScreen() {
                   onPress={saveProfile} disabled={saving}
                   style={({ pressed }) => [styles.primaryBtn, { backgroundColor: colors.primary, opacity: saving ? 0.6 : pressed ? 0.85 : 1 }]}
                 >
-                  {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryBtnText}>Salvar</Text>}
+                  {saving ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={[styles.primaryBtnText, { color: colors.onPrimary }]}>Salvar</Text>}
                 </Pressable>
               </View>
             </View>
@@ -157,7 +157,7 @@ export default function CaregiverSettingsScreen() {
               </Text>
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
                 <Pressable onPress={confirmUnlink}>
-                  <Text style={[styles.editLink, { color: '#DC2626' }]}>Desvincular</Text>
+                  <Text style={[styles.editLink, { color: colors.error }]}>Desvincular</Text>
                 </Pressable>
                 <Pressable onPress={() => router.push('/(caregiver-tabs)/link')}>
                   <Text style={[styles.editLink, { color: colors.primary }]}>Trocar</Text>
@@ -169,7 +169,7 @@ export default function CaregiverSettingsScreen() {
               onPress={() => router.push('/(caregiver-tabs)/link')}
               style={({ pressed }) => [styles.primaryBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
             >
-              <Text style={styles.primaryBtnText}>Vincular agora</Text>
+              <Text style={[styles.primaryBtnText, { color: colors.onPrimary }]}>Vincular agora</Text>
             </Pressable>
           )}
         </Section>
@@ -219,7 +219,7 @@ export default function CaregiverSettingsScreen() {
             onPress={() => router.push('/(modal)/paywall')}
             style={({ pressed }) => [styles.primaryBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
           >
-            <Text style={styles.primaryBtnText}>Ver planos</Text>
+            <Text style={[styles.primaryBtnText, { color: colors.onPrimary }]}>Ver planos</Text>
           </Pressable>
         </Section>
 
@@ -236,10 +236,10 @@ export default function CaregiverSettingsScreen() {
         {/* Logout */}
         <Pressable
           onPress={confirmLogout}
-          style={({ pressed }) => [styles.logoutBtn, { borderColor: '#DC2626', opacity: pressed ? 0.85 : 1 }]}
+          style={({ pressed }) => [styles.logoutBtn, { borderColor: colors.error, opacity: pressed ? 0.85 : 1 }]}
         >
-          <MaterialIcons name="logout" size={20} color="#DC2626" />
-          <Text style={styles.logoutText}>Sair da conta</Text>
+          <MaterialIcons name="logout" size={20} color={colors.error} />
+          <Text style={[styles.logoutText, { color: colors.error }]}>Sair da conta</Text>
         </Pressable>
       </ScrollView>
       <AppDialog {...dialogProps} />
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600' },
   input: { paddingHorizontal: 14, paddingVertical: 12, borderRadius: 10, borderWidth: 1, fontSize: 15 },
   primaryBtn: { paddingVertical: 12, borderRadius: 12, alignItems: 'center', flex: 1 },
-  primaryBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  primaryBtnText: { fontSize: 15, fontWeight: '700' },
   secondaryBtn: { paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, flex: 1 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 },
   note: { fontSize: 12, lineHeight: 18 },
@@ -285,5 +285,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, padding: 14, borderRadius: 12, borderWidth: 1, marginTop: 12,
   },
-  logoutText: { color: '#DC2626', fontSize: 15, fontWeight: '700' },
+  logoutText: { fontSize: 15, fontWeight: '700' },
 });

@@ -208,16 +208,16 @@ export default function ContactsScreen() {
           </View>
           <Pressable
             onPress={openAddModal}
-            style={({ pressed }) => [{ backgroundColor: ac.emergency, width: as_.touchTarget, height: as_.touchTarget, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: '#880000', opacity: pressed ? 0.8 : 1 }]}
+            style={({ pressed }) => [{ backgroundColor: ac.emergency, width: as_.touchTarget, height: as_.touchTarget, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: ac.emergency, opacity: pressed ? 0.8 : 1 }]}
             accessibilityLabel="Adicionar contato"
           >
             <MaterialIcons name="add" size={36} color={ac.onEmergency} />
           </Pressable>
         </View>
 
-        <View style={{ margin: 12, padding: 16, backgroundColor: '#FFF3CD', borderRadius: 16, borderWidth: 2, borderColor: '#885500', flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-          <MaterialIcons name="info" size={28} color="#885500" />
-          <Text style={{ flex: 1, fontSize: af.sm, color: '#553300', fontWeight: '600', lineHeight: af.sm * 1.5 }}>
+        <View style={{ margin: 12, padding: 16, backgroundColor: ac.warning + '20', borderRadius: 16, borderWidth: 2, borderColor: ac.warning, flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+          <MaterialIcons name="info" size={28} color={ac.warning} />
+          <Text style={{ flex: 1, fontSize: af.sm, color: ac.warning, fontWeight: '600', lineHeight: af.sm * 1.5 }}>
             Estes contatos serão avisados quando você apertar o botão SOS.
           </Text>
         </View>
@@ -229,7 +229,7 @@ export default function ContactsScreen() {
             <Text style={{ fontSize: af.md, color: ac.muted, textAlign: 'center', lineHeight: af.md * 1.5 }}>Adicione contatos para serem avisados em uma emergência.</Text>
             <Pressable
               onPress={openAddModal}
-              style={({ pressed }) => [{ backgroundColor: ac.emergency, borderRadius: 20, paddingVertical: as_.buttonPadding, paddingHorizontal: 32, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 3, borderColor: '#880000', opacity: pressed ? 0.85 : 1 }]}
+              style={({ pressed }) => [{ backgroundColor: ac.emergency, borderRadius: 20, paddingVertical: as_.buttonPadding, paddingHorizontal: 32, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 3, borderColor: ac.emergency, opacity: pressed ? 0.85 : 1 }]}
             >
               <MaterialIcons name="add" size={32} color={ac.onEmergency} />
               <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.onEmergency }}>Adicionar Contato</Text>
@@ -247,14 +247,14 @@ export default function ContactsScreen() {
                 <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
                   <Pressable
                     onPress={() => openEditModal(item)}
-                    style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 14, borderWidth: 2, borderColor: ac.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: pressed ? '#E0EEFF' : ac.background }]}
+                    style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 14, borderWidth: 2, borderColor: ac.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: pressed ? ac.primary + '20' : ac.background }]}
                   >
                     <MaterialIcons name="edit" size={24} color={ac.primary} />
                     <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.primary }}>Editar</Text>
                   </Pressable>
                   <Pressable
                     onPress={() => handleDelete(item.id)}
-                    style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 14, borderWidth: 2, borderColor: ac.emergency, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: pressed ? '#FFE0E0' : ac.background }]}
+                    style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 14, borderWidth: 2, borderColor: ac.emergency, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: pressed ? ac.error + '20' : ac.background }]}
                   >
                     <MaterialIcons name="delete" size={24} color={ac.emergency} />
                     <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.emergency }}>Excluir</Text>
@@ -345,7 +345,7 @@ export default function ContactsScreen() {
             ]}
             accessibilityLabel="Importar contato do celular"
           >
-            <MaterialIcons name="contacts" size={22} color="#FFFFFF" />
+            <MaterialIcons name="contacts" size={22} color={colors.onPrimary} />
           </Pressable>
           <Pressable
             onPress={openAddModal}
@@ -355,7 +355,7 @@ export default function ContactsScreen() {
             ]}
             accessibilityLabel="Adicionar contato"
           >
-            <MaterialIcons name="add" size={24} color="#FFFFFF" />
+            <MaterialIcons name="add" size={24} color={colors.onEmergency} />
           </Pressable>
         </View>
       </View>
@@ -394,8 +394,8 @@ export default function ContactsScreen() {
               { backgroundColor: colors.emergency, opacity: pressed ? 0.85 : 1 },
             ]}
           >
-            <MaterialIcons name="add" size={20} color="#FFFFFF" />
-            <Text style={styles.emptyButtonText}>Adicionar Contato</Text>
+            <MaterialIcons name="add" size={20} color={colors.onEmergency} />
+            <Text style={[styles.emptyButtonText, { color: colors.onEmergency }]}>Adicionar Contato</Text>
           </Pressable>
         </View>
       ) : (
@@ -520,7 +520,7 @@ export default function ContactsScreen() {
               ]}
             >
               <View style={styles.toggleLeft}>
-                <MaterialIcons name="chat" size={20} color="#22C55E" />
+                <MaterialIcons name="chat" size={20} color={colors.success} />
                 <View>
                   <Text style={[styles.toggleLabel, { color: colors.foreground }]}>WhatsApp</Text>
                   <Text style={[styles.toggleSubLabel, { color: colors.muted }]}>
@@ -675,7 +675,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginTop: 8,
   },
-  emptyButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  emptyButtonText: { fontSize: 16, fontWeight: '600' },
   modal: { flex: 1 },
   modalHeader: {
     flexDirection: 'row',

@@ -119,8 +119,8 @@ export default function AmbulanceScreen() {
   // --- ACCESSIBILITY MODE --------------------------------------------------
   if (isAccessibilityMode) {
     const a11yOptions = [
-      { label: 'SAMU (SUS)', phone: '192', icon: 'local-hospital' as const, color: ac.emergency, borderColor: '#880000' },
-      { label: 'Bombeiros', phone: '193', icon: 'warning' as const, color: '#885500', borderColor: '#553300' },
+      { label: 'SAMU (SUS)', phone: '192', icon: 'local-hospital' as const, color: ac.emergency, borderColor: ac.emergency },
+      { label: 'Bombeiros', phone: '193', icon: 'warning' as const, color: colors.accent, borderColor: colors.accent },
     ];
     return (
       <>
@@ -131,7 +131,7 @@ export default function AmbulanceScreen() {
         </View>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }} showsVerticalScrollIndicator={false}>
           {/* Emergency banner */}
-          <View style={{ backgroundColor: '#FFE0E0', borderRadius: 16, padding: 16, borderWidth: 2, borderColor: '#CC0000', flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+          <View style={{ backgroundColor: ac.error + '20', borderRadius: 16, padding: 16, borderWidth: 2, borderColor: ac.emergency, flexDirection: 'row', gap: 12, alignItems: 'center' }}>
             <MaterialIcons name="warning" size={36} color={ac.emergency} />
             <Text style={{ flex: 1, fontSize: af.md, fontWeight: '800', color: ac.emergency, lineHeight: af.md * 1.4 }}>
               Emergência grave? Ligue agora: SAMU 192
@@ -167,10 +167,10 @@ export default function AmbulanceScreen() {
                 transform: [{ scale: pressed ? 0.97 : 1 }],
               }]}
             >
-              <MaterialIcons name={opt.icon} size={44} color="#FFFFFF" />
+              <MaterialIcons name={opt.icon} size={44} color={ac.onEmergency} />
               <View>
-                <Text style={{ fontSize: af.xl, fontWeight: '900', color: '#FFFFFF' }}>{opt.label}</Text>
-                <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: '#FFFFFF', letterSpacing: 4 }}>{opt.phone}</Text>
+                <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.onEmergency }}>{opt.label}</Text>
+                <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.onEmergency, letterSpacing: 4 }}>{opt.phone}</Text>
               </View>
             </Pressable>
           ))}
@@ -211,7 +211,7 @@ export default function AmbulanceScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Emergency Banner */}
-        <View style={[styles.emergencyBanner, { backgroundColor: colors.emergencyLight, borderColor: '#FF000040' }]}>
+        <View style={[styles.emergencyBanner, { backgroundColor: colors.emergencyLight, borderColor: colors.emergency + '40' }]}>
           <MaterialIcons name="warning" size={22} color={colors.emergency} />
           <Text style={[styles.emergencyText, { color: colors.foreground }]}>
             <Text style={{ fontWeight: '700', color: colors.emergency }}>Emergência grave? </Text>
@@ -246,7 +246,7 @@ export default function AmbulanceScreen() {
               </Text>
               {selectedType === opt.type && (
                 <View style={[styles.selectedBadge, { backgroundColor: opt.color }]}>
-                  <MaterialIcons name="check" size={14} color="#FFFFFF" />
+                  <MaterialIcons name="check" size={14} color={colors.onPrimary} />
                 </View>
               )}
             </Pressable>
@@ -294,15 +294,15 @@ export default function AmbulanceScreen() {
           <MaterialIcons
             name={selectedOption.type === 'plan' && !isHealthPlanConfigured ? 'settings' : 'phone'}
             size={28}
-            color="#FFFFFF"
+            color={colors.onPrimary}
           />
-          <Text style={styles.callButtonText}>
+          <Text style={[styles.callButtonText, { color: colors.onPrimary }]}>
             {selectedOption.type === 'plan' && !isHealthPlanConfigured
               ? 'Configurar Plano de Saúde'
               : `Chamar ${selectedOption.label}`}
           </Text>
           {!(selectedOption.type === 'plan' && !isHealthPlanConfigured) && (
-            <Text style={styles.callButtonPhone}>{selectedOption.phone}</Text>
+            <Text style={[styles.callButtonPhone, { color: colors.onPrimary }]}>{selectedOption.phone}</Text>
           )}
         </Pressable>
 
@@ -320,7 +320,7 @@ export default function AmbulanceScreen() {
           ].map((instruction, i) => (
             <View key={i} style={styles.instructionRow}>
               <View style={[styles.instructionBullet, { backgroundColor: colors.primary }]}>
-                <Text style={styles.instructionNumber}>{i + 1}</Text>
+                <Text style={[styles.instructionNumber, { color: colors.onPrimary }]}>{i + 1}</Text>
               </View>
               <Text style={[styles.instructionText, { color: colors.foreground }]}>
                 {instruction}
@@ -418,8 +418,8 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  callButtonText: { color: '#FFFFFF', fontSize: 20, fontWeight: '800' },
-  callButtonPhone: { color: '#FFFFFF', fontSize: 16, opacity: 0.85, fontWeight: '600' },
+  callButtonText: { fontSize: 20, fontWeight: '800' },
+  callButtonPhone: { fontSize: 16, opacity: 0.85, fontWeight: '600' },
   instructionsCard: {
     borderRadius: 16,
     padding: 16,
@@ -435,6 +435,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  instructionNumber: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  instructionNumber: { fontSize: 12, fontWeight: '700' },
   instructionText: { flex: 1, fontSize: 14, lineHeight: 20 },
 });

@@ -56,10 +56,10 @@ export interface AppToastProps {
 type IconName = React.ComponentProps<typeof MaterialIcons>['name'];
 
 const TOAST_CONFIG: Record<ToastVariant, { icon: IconName; color: string; darkColor: string }> = {
-  success: { icon: 'check-circle',  color: '#22C55E', darkColor: '#4ADE80' },
+  success: { icon: 'check-circle',  color: '#0F8A4A', darkColor: '#2CB966' },
   info:    { icon: 'info',          color: '#0a7ea4', darkColor: '#38BDF8' },
-  warning: { icon: 'warning',       color: '#F59E0B', darkColor: '#FBBF24' },
-  error:   { icon: 'error',         color: '#EF4444', darkColor: '#F87171' },
+  warning: { icon: 'warning',       color: '#F0C24A', darkColor: '#F5D06E' },
+  error:   { icon: 'error',         color: '#D6161C', darkColor: '#F04040' },
 };
 
 // --- Componente ---------------------------------------------------------------

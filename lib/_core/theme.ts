@@ -41,12 +41,25 @@ type RuntimePalette = SchemePaletteItem & {
   onSuccess: string;
   onWarning: string;
   primaryLight: string;
+  accentLight: string;
   emergencyLight: string;
   successLight: string;
   warningLight: string;
   warningDark: string;
   errorLight: string;
+  accent: string;
 };
+
+// Brand accent colors — defined here directly because the JS config
+// cannot propagate literal key types through TypeScript inference.
+const BRAND_ACCENT = {
+  light: '#C96442',
+  dark:  '#D4784A',
+} as const;
+const BRAND_ACCENT_LIGHT = {
+  light: '#C9644215',
+  dark:  '#D4784A25',
+} as const;
 
 function buildRuntimePalette(scheme: ColorScheme): RuntimePalette {
   const base = SchemeColors[scheme];
@@ -69,6 +82,8 @@ function buildRuntimePalette(scheme: ColorScheme): RuntimePalette {
     warningLight: base.warningLight,
     warningDark: base.warningDark,
     errorLight: base.errorLight,
+    accent: BRAND_ACCENT[scheme],
+    accentLight: BRAND_ACCENT_LIGHT[scheme],
   };
 }
 

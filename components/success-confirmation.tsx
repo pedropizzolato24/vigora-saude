@@ -90,7 +90,7 @@ export function SuccessConfirmation({ visible, onComplete }: SuccessConfirmation
             },
           ]}
         >
-          <MaterialIcons name="check" size={48} color="#FFFFFF" />
+          <MaterialIcons name="check" size={48} color={colors.onSuccess} />
         </Animated.View>
       </Animated.View>
     </View>

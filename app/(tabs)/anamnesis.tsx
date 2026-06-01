@@ -156,10 +156,10 @@ export default function AnamnesisScreen() {
           {/* Save button */}
           <Pressable
             onPress={handleSave}
-            style={({ pressed }) => [{ backgroundColor: saved ? ac.success : ac.primary, borderRadius: 20, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, borderWidth: 3, borderColor: saved ? '#004400' : '#003388', opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [{ backgroundColor: saved ? ac.success : ac.primary, borderRadius: 20, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, borderWidth: 3, borderColor: saved ? ac.success : ac.primary, opacity: pressed ? 0.85 : 1 }]}
           >
-            <MaterialIcons name={saved ? 'check-circle' : 'save'} size={32} color="#FFFFFF" />
-            <Text style={{ fontSize: af.xl, fontWeight: '800', color: '#FFFFFF' }}>{saved ? 'Salvo!' : 'Salvar Ficha'}</Text>
+            <MaterialIcons name={saved ? 'check-circle' : 'save'} size={32} color={ac.onPrimary} />
+            <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.onPrimary }}>{saved ? 'Salvo!' : 'Salvar Ficha'}</Text>
           </Pressable>
         </ScrollView>
       </ScreenContainer>
@@ -180,13 +180,13 @@ export default function AnamnesisScreen() {
           </Text>
         </View>
         <View style={[styles.headerIcon, { backgroundColor: colors.primaryLight }]}>
-          <MaterialIcons name="description" size={24} color="#0066CC" />
+          <MaterialIcons name="description" size={24} color={colors.primary} />
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Personal Info Section */}
-        <SectionHeader title="Informações Pessoais" icon="person" color="#0066CC" colors={colors} />
+        <SectionHeader title="Informações Pessoais" icon="person" color={colors.primary} colors={colors} />
 
         <View style={styles.formGroup}>
           <Text style={[styles.formLabel, { color: colors.foreground }]}>Nome completo *</Text>
@@ -225,8 +225,8 @@ export default function AnamnesisScreen() {
                 style={[
                   styles.genderOption,
                   {
-                    backgroundColor: form.gender === opt.value ? '#0066CC' : colors.surface,
-                    borderColor: form.gender === opt.value ? '#0066CC' : colors.border,
+                    backgroundColor: form.gender === opt.value ? colors.primary : colors.surface,
+                    borderColor: form.gender === opt.value ? colors.primary : colors.border,
                     flex: 1,
                   },
                 ]}
@@ -234,7 +234,7 @@ export default function AnamnesisScreen() {
                 <Text
                   style={[
                     styles.genderOptionText,
-                    { color: form.gender === opt.value ? '#FFFFFF' : colors.foreground },
+                    { color: form.gender === opt.value ? colors.onPrimary : colors.foreground },
                   ]}
                 >
                   {opt.label}
@@ -290,7 +290,7 @@ export default function AnamnesisScreen() {
         </View>
 
         {/* Health Plan Section */}
-        <SectionHeader title="Plano de Saúde" icon="local-hospital" color="#22C55E" colors={colors} />
+        <SectionHeader title="Plano de Saúde" icon="local-hospital" color={colors.success} colors={colors} />
 
         <View style={styles.formGroup}>
           <Text style={[styles.formLabel, { color: colors.foreground }]}>Número do SUS (CNS)</Text>

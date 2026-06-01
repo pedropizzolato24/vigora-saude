@@ -100,7 +100,7 @@ export default function LinkScreen() {
                     },
                   ]}
                 >
-                  <Text style={[styles.chipText, { color: selected ? '#FFFFFF' : colors.foreground }]}>{r}</Text>
+                  <Text style={[styles.chipText, { color: selected ? colors.onPrimary : colors.foreground }]}>{r}</Text>
                 </Pressable>
               );
             })}
@@ -110,7 +110,7 @@ export default function LinkScreen() {
             onPress={confirm}
             style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
           >
-            <Text style={styles.primaryText}>Concluir vínculo</Text>
+            <Text style={[styles.primaryText, { color: colors.onPrimary }]}>Concluir vínculo</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -236,7 +236,7 @@ function MethodCard({ icon, title, description, placeholder, keyboard, onSubmit,
                   },
                 ]}
               >
-                <Text style={{ color: selected ? '#FFFFFF' : colors.foreground, fontWeight: '600', fontSize: 13 }}>
+                <Text style={{ color: selected ? colors.onPrimary : colors.foreground, fontWeight: '600', fontSize: 13 }}>
                   {opt.label}
                 </Text>
               </Pressable>
@@ -265,7 +265,7 @@ function MethodCard({ icon, title, description, placeholder, keyboard, onSubmit,
           },
         ]}
       >
-        <Text style={styles.primaryText}>Vincular</Text>
+        <Text style={[styles.primaryText, { color: colors.onPrimary }]}>Vincular</Text>
       </Pressable>
     </View>
   );
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     borderRadius: 10, borderWidth: 1,
   },
   primary: { paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 6 },
-  primaryText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  primaryText: { fontSize: 15, fontWeight: '700' },
   secondary: { paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1 },
   secondaryText: { fontSize: 14, fontWeight: '700' },
   cameraBox: { height: 220, borderRadius: 12, overflow: 'hidden' },

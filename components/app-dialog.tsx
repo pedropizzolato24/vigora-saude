@@ -62,12 +62,12 @@ type IconName = React.ComponentProps<typeof MaterialIcons>['name'];
 
 const VARIANT_CONFIG: Record<DialogVariant, { icon: IconName; bgLight: string; bgDark: string; iconBg: string }> = {
   info:    { icon: 'info',            bgLight: '#0a7ea4', bgDark: '#0a7ea4', iconBg: '#0a7ea418' },
-  success: { icon: 'check-circle',    bgLight: '#22C55E', bgDark: '#4ADE80', iconBg: '#22C55E18' },
-  warning: { icon: 'warning',         bgLight: '#F59E0B', bgDark: '#FBBF24', iconBg: '#F59E0B18' },
-  error:   { icon: 'error',           bgLight: '#EF4444', bgDark: '#F87171', iconBg: '#EF444418' },
+  success: { icon: 'check-circle',    bgLight: '#0F8A4A', bgDark: '#2CB966', iconBg: '#0F8A4A18' },
+  warning: { icon: 'warning',         bgLight: '#F0C24A', bgDark: '#F5D06E', iconBg: '#F0C24A18' },
+  error:   { icon: 'error',           bgLight: '#D6161C', bgDark: '#F04040', iconBg: '#D6161C18' },
   confirm: { icon: 'help',            bgLight: '#0a7ea4', bgDark: '#0a7ea4', iconBg: '#0a7ea418' },
   select:  { icon: 'list',            bgLight: '#0a7ea4', bgDark: '#0a7ea4', iconBg: '#0a7ea418' },
-  sos:     { icon: 'emergency',       bgLight: '#DC2626', bgDark: '#EF4444', iconBg: '#DC262618' },
+  sos:     { icon: 'emergency',       bgLight: '#D6161C', bgDark: '#F04040', iconBg: '#D6161C18' },
 };
 
 // --- Componente de Ícone Animado ----------------------------------------------
@@ -266,7 +266,7 @@ export function AppDialog({
             />
 
             {/* Título */}
-            <Text style={[styles.titleA11y, { color: isSos ? '#FFFFFF' : ac.foreground, fontSize: af.lg }]}>
+            <Text style={[styles.titleA11y, { color: isSos ? ac.onEmergency : ac.foreground, fontSize: af.lg }]}>
               {title}
             </Text>
 
@@ -378,7 +378,7 @@ export function AppDialog({
             styles.dialog,
             {
               backgroundColor: isSos ? '#1C0000' : colors.surface,
-              shadowColor: isSos ? '#DC2626' : '#000',
+              shadowColor: isSos ? colors.emergency : '#000',
               transform: [{ scale: scaleAnim }],
               opacity: opacityAnim,
             },
@@ -398,7 +398,7 @@ export function AppDialog({
           </View>
 
           {/* Título */}
-          <Text style={[styles.title, { color: isSos ? '#FFFFFF' : colors.foreground }]}>
+          <Text style={[styles.title, { color: isSos ? colors.onEmergency : colors.foreground }]}>
             {title}
           </Text>
 

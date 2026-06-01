@@ -41,7 +41,7 @@ const FAQ_DATA: FAQSection[] = [
   {
     title: 'Botão SOS',
     icon: 'warning',
-    color: '#DC2626',
+    color: '#D6161C',
     items: [
       {
         question: 'Como funciona o botão SOS?',
@@ -63,7 +63,7 @@ const FAQ_DATA: FAQSection[] = [
   {
     title: 'Alarmes',
     icon: 'alarm',
-    color: '#0066CC',
+    color: '#1E4D8C',
     items: [
       {
         question: 'Como criar um novo alarme?',
@@ -134,7 +134,7 @@ const FAQ_DATA: FAQSection[] = [
   {
     title: 'Ambulância',
     icon: 'local-hospital',
-    color: '#DC2626',
+    color: '#D6161C',
     items: [
       {
         question: 'Como chamar uma ambulância?',

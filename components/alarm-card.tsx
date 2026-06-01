@@ -36,18 +36,18 @@ export function AlarmCard({ alarm, onEdit, onDelete, onToggle, onTest }: AlarmCa
         styles.card,
         {
           backgroundColor: colors.surface,
-          borderColor: alarm.enabled ? '#0066CC30' : colors.border,
-          borderLeftColor: alarm.enabled ? '#0066CC' : colors.border,
+          borderColor: alarm.enabled ? colors.primary + '30' : colors.border,
+          borderLeftColor: alarm.enabled ? colors.primary : colors.border,
         },
       ]}
     >
       {/* Top section: icon + info + test button */}
       <View style={styles.topSection}>
-        <View style={[styles.iconBadge, { backgroundColor: alarm.enabled ? '#0066CC15' : colors.border + '40' }]}>
+        <View style={[styles.iconBadge, { backgroundColor: alarm.enabled ? colors.primaryLight : colors.border + '40' }]}>
           <MaterialIcons
             name="alarm"
             size={24}
-            color={alarm.enabled ? '#0066CC' : colors.muted}
+            color={alarm.enabled ? colors.primary : colors.muted}
           />
         </View>
 
@@ -75,13 +75,13 @@ export function AlarmCard({ alarm, onEdit, onDelete, onToggle, onTest }: AlarmCa
               </Text>
             </View>
             {alarm.sound && (
-              <View style={[styles.tag, { backgroundColor: '#0066CC15' }]}>
-                <MaterialIcons name="volume-up" size={13} color="#0066CC" />
+              <View style={[styles.tag, { backgroundColor: colors.primaryLight }]}>
+                <MaterialIcons name="volume-up" size={13} color={colors.primary} />
               </View>
             )}
             {alarm.vibration && (
-              <View style={[styles.tag, { backgroundColor: '#0066CC15' }]}>
-                <MaterialIcons name="vibration" size={13} color="#0066CC" />
+              <View style={[styles.tag, { backgroundColor: colors.primaryLight }]}>
+                <MaterialIcons name="vibration" size={13} color={colors.primary} />
               </View>
             )}
           </View>
@@ -92,13 +92,13 @@ export function AlarmCard({ alarm, onEdit, onDelete, onToggle, onTest }: AlarmCa
           onPress={() => onTest(alarm)}
           style={({ pressed }) => [
             styles.testBtn,
-            { borderColor: '#22C55E', backgroundColor: colors.background },
+            { borderColor: colors.success, backgroundColor: colors.background },
             pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] },
           ]}
           accessibilityLabel="Testar alarme"
         >
-          <MaterialIcons name="play-arrow" size={20} color="#22C55E" />
-          <Text style={styles.testBtnText}>Testar</Text>
+          <MaterialIcons name="play-arrow" size={20} color={colors.success} />
+          <Text style={[styles.testBtnText, { color: colors.success }]}>Testar</Text>
         </Pressable>
       </View>
 
@@ -111,25 +111,26 @@ export function AlarmCard({ alarm, onEdit, onDelete, onToggle, onTest }: AlarmCa
           onPress={() => onEdit(alarm)}
           style={({ pressed }) => [
             styles.editBtn,
-            { borderColor: '#0066CC', backgroundColor: colors.background },
+            { borderColor: colors.primary + '30', backgroundColor: colors.background },
             pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] },
           ]}
           accessibilityLabel="Editar alarme"
         >
-          <MaterialIcons name="edit" size={22} color="#0066CC" />
-          <Text style={styles.editBtnText}>Editar</Text>
+          <MaterialIcons name="edit" size={22} color={colors.primary} />
+          <Text style={[styles.editBtnText, { color: colors.primary }]}>Editar</Text>
         </Pressable>
 
         <Pressable
           onPress={() => onDelete(alarm.id)}
           style={({ pressed }) => [
             styles.deleteBtn,
+            { backgroundColor: colors.error },
             pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] },
           ]}
           accessibilityLabel="Excluir alarme"
         >
-          <MaterialIcons name="delete" size={22} color="#FFFFFF" />
-          <Text style={styles.deleteBtnText}>Excluir</Text>
+          <MaterialIcons name="delete" size={22} color={colors.onEmergency} />
+          <Text style={[styles.deleteBtnText, { color: colors.onEmergency }]}>Excluir</Text>
         </Pressable>
       </View>
     </View>
@@ -202,7 +203,6 @@ const styles = StyleSheet.create({
   testBtnText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#22C55E',
   },
   divider: {
     height: 1,
@@ -220,13 +220,11 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 0,
     borderRightWidth: 1,
-    borderColor: '#0066CC30',
     paddingVertical: 16,
   },
   editBtnText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0066CC',
   },
   deleteBtn: {
     flex: 1,
@@ -234,12 +232,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#EF4444',
     paddingVertical: 16,
   },
   deleteBtnText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
   },
 });

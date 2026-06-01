@@ -132,9 +132,9 @@ export default function LocationScreen() {
         </View>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           {/* Privacy note */}
-          <View style={{ backgroundColor: '#E0F0FF', borderRadius: 16, padding: 16, borderWidth: 2, borderColor: '#0066CC', flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
-            <MaterialIcons name="lock" size={28} color="#0066CC" />
-            <Text style={{ flex: 1, fontSize: af.sm, color: '#003388', fontWeight: '600', lineHeight: af.sm * 1.5 }}>
+          <View style={{ backgroundColor: ac.primary + '20', borderRadius: 16, padding: 16, borderWidth: 2, borderColor: ac.primary, flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
+            <MaterialIcons name="lock" size={28} color={ac.primary} />
+            <Text style={{ flex: 1, fontSize: af.sm, color: ac.primary, fontWeight: '600', lineHeight: af.sm * 1.5 }}>
               Se você ativar "Compartilhar localização automaticamente" em Configurações, sua posição é enviada ao servidor para o monitoramento de emergência. Caso contrário, só é compartilhada quando você toca em Compartilhar. Nunca repassada a terceiros.
             </Text>
           </View>
@@ -144,8 +144,8 @@ export default function LocationScreen() {
             disabled={loading}
             style={({ pressed }) => [{ backgroundColor: ac.success, borderRadius: 20, paddingVertical: as_.buttonPadding + 8, paddingHorizontal: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, borderWidth: 4, borderColor: '#004400', opacity: loading ? 0.6 : pressed ? 0.85 : 1 }]}
           >
-            <MaterialIcons name={loading ? 'refresh' : 'my-location'} size={44} color="#FFFFFF" />
-            <Text style={{ fontSize: af.xl, fontWeight: '900', color: '#FFFFFF' }}>
+            <MaterialIcons name={loading ? 'refresh' : 'my-location'} size={44} color={ac.onEmergency} />
+            <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.onEmergency }}>
               {loading ? 'Obtendo...' : 'Obter Minha Localização'}
             </Text>
           </Pressable>
@@ -165,10 +165,10 @@ export default function LocationScreen() {
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <Pressable
                   onPress={() => shareLocation(currentLocation)}
-                  style={({ pressed }) => [{ flex: 1, backgroundColor: ac.primary, borderRadius: 16, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 3, borderColor: '#003388', opacity: pressed ? 0.85 : 1 }]}
+                  style={({ pressed }) => [{ flex: 1, backgroundColor: ac.primary, borderRadius: 16, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 3, borderColor: ac.primary, opacity: pressed ? 0.85 : 1 }]}
                 >
-                  <MaterialIcons name="share" size={28} color="#FFFFFF" />
-                  <Text style={{ fontSize: af.md, fontWeight: '800', color: '#FFFFFF' }}>Compartilhar</Text>
+                  <MaterialIcons name="share" size={28} color={ac.onPrimary} />
+                  <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.onPrimary }}>Compartilhar</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => openInMaps(currentLocation)}
@@ -198,14 +198,14 @@ export default function LocationScreen() {
           </Text>
         </View>
         <View style={[styles.headerIcon, { backgroundColor: colors.successLight }]}>
-          <MaterialIcons name="location-on" size={24} color="#22C55E" />
+          <MaterialIcons name="location-on" size={24} color={colors.success} />
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Privacy Note */}
-        <View style={[styles.privacyNote, { backgroundColor: colors.primaryLight, borderColor: '#0066CC30' }]}>
-          <MaterialIcons name="lock" size={16} color="#0066CC" />
+        <View style={[styles.privacyNote, { backgroundColor: colors.primaryLight, borderColor: colors.primary + '30' }]}>
+          <MaterialIcons name="lock" size={16} color={colors.primary} />
           <Text style={[styles.privacyText, { color: colors.foreground }]}>
             Se "Compartilhar localização automaticamente" estiver ativo nas Configurações, sua localização é enviada periodicamente ao servidor para o monitoramento de emergência (dead-man's switch). Caso contrário, só é enviada quando você toca em Compartilhar. Nunca é repassada a terceiros.
           </Text>
@@ -220,18 +220,18 @@ export default function LocationScreen() {
           ]}
           disabled={loading}
         >
-          <MaterialIcons name={loading ? 'refresh' : 'my-location'} size={24} color="#FFFFFF" />
-          <Text style={styles.getLocationText}>
+          <MaterialIcons name={loading ? 'refresh' : 'my-location'} size={24} color={colors.onSuccess} />
+          <Text style={[styles.getLocationText, { color: colors.onSuccess }]}>
             {loading ? 'Obtendo localização...' : 'Obter Localização Atual'}
           </Text>
         </Pressable>
 
         {/* Current Location Card */}
         {currentLocation && (
-          <View style={[styles.locationCard, { backgroundColor: colors.surface, borderColor: '#22C55E40' }]}>
+          <View style={[styles.locationCard, { backgroundColor: colors.surface, borderColor: colors.success + '40' }]}>
             <View style={styles.locationCardHeader}>
               <View style={[styles.locationIconBadge, { backgroundColor: colors.successLight }]}>
-                <MaterialIcons name="location-on" size={22} color="#22C55E" />
+                <MaterialIcons name="location-on" size={22} color={colors.success} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.locationCardTitle, { color: colors.foreground }]}>
@@ -280,8 +280,8 @@ export default function LocationScreen() {
                   { backgroundColor: colors.success, opacity: pressed ? 0.85 : 1, flex: 1.5 },
                 ]}
               >
-                <MaterialIcons name="share" size={18} color="#FFFFFF" />
-                <Text style={[styles.locationActionText, { color: '#FFFFFF' }]}>Compartilhar</Text>
+                <MaterialIcons name="share" size={18} color={colors.onSuccess} />
+                <Text style={[styles.locationActionText, { color: colors.onSuccess }]}>Compartilhar</Text>
               </Pressable>
             </View>
           </View>
@@ -311,7 +311,7 @@ export default function LocationScreen() {
                   onPress={() => shareLocation(record)}
                   style={({ pressed }) => [styles.reshareBtn, pressed && { opacity: 0.6 }]}
                 >
-                  <MaterialIcons name="share" size={18} color="#0066CC" />
+                  <MaterialIcons name="share" size={18} color={colors.primary} />
                 </Pressable>
               </View>
             ))}
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 16,
   },
-  getLocationText: { color: '#FFFFFF', fontSize: 17, fontWeight: '700' },
+  getLocationText: { fontSize: 17, fontWeight: '700' },
   locationCard: {
     borderRadius: 16,
     padding: 16,
