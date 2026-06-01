@@ -311,6 +311,40 @@ export async function getAlarmEventHistory(deviceId: string, limit = 50) {
 
 // --- Warning Log --------------------------------------------------------------
 
+/**
+ * Inserts a placeholder warning row before the send loop begins.
+ * Returns the inserted row ID, or null if DB is unavailable.
+ * Callers must call updateWarningResult() after sending to fill in actual counts.
+ * Claiming before sending closes the TOCTOU race: a concurrent run that reads
+ * warningHistory after this insert will see the row and skip its own send.
+ */
+export async function claimWarning(data: {
+  deviceId: string;
+  level: number;
+  offlineHours: number;
+  locationIncluded: boolean;
+}): Promise<number | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .insert(warningLog)
+    .values({ ...data, contactsReached: 0, sentAt: new Date() });
+  return (result as any).insertId as number;
+}
+
+export async function updateWarningResult(
+  id: number,
+  contactsReached: number,
+  locationIncluded: boolean
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(warningLog)
+    .set({ contactsReached, locationIncluded })
+    .where(eq(warningLog.id, id));
+}
+
 export async function recordWarning(data: {
   deviceId: string;
   level: number;

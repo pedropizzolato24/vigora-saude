@@ -103,3 +103,16 @@ export const Fonts = Platform.select({
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
+
+/**
+ * Brand typefaces — load via expo-font before use.
+ * display: Fraunces italic — headlines, wordmark, hero text.
+ * body:    Plus Jakarta Sans — all UI text, labels, buttons.
+ * mono:    Space Mono — timestamps, health data readouts.
+ */
+export const BrandFonts = {
+  display: "Fraunces-Italic",
+  body: "PlusJakartaSans",
+  monoRegular: "SpaceMono-Regular",
+  monoBold: "SpaceMono-Bold",
+} as const;

@@ -1,5 +1,19 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, ViewProps, Easing } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, ViewProps, Easing, AccessibilityInfo } from 'react-native';
+
+/**
+ * Respects the OS reduce-motion preference (iOS "Reduce Motion" / Android "Remove animations").
+ * When true, all enter/exit animations skip to their final state instantly.
+ */
+function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduced);
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduced);
+    return () => sub.remove();
+  }, []);
+  return reduced;
+}
 
 // --- Fade In View -----------------------------------------------------------
 // Fades in children on mount with optional delay
@@ -11,10 +25,16 @@ interface FadeInViewProps extends ViewProps {
 }
 
 export function FadeInView({ delay = 0, duration = 300, children, style, ...props }: FadeInViewProps) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(12)).current;
+  const reduceMotion = useReducedMotion();
+  const opacity = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
+  const translateY = useRef(new Animated.Value(reduceMotion ? 0 : 12)).current;
 
   useEffect(() => {
+    if (reduceMotion) {
+      opacity.setValue(1);
+      translateY.setValue(0);
+      return;
+    }
     Animated.parallel([
       Animated.timing(opacity, {
         toValue: 1,
@@ -31,7 +51,7 @@ export function FadeInView({ delay = 0, duration = 300, children, style, ...prop
         easing: Easing.out(Easing.cubic),
       }),
     ]).start();
-  }, [opacity, translateY, delay, duration]);
+  }, [opacity, translateY, delay, duration, reduceMotion]);
 
   return (
     <Animated.View style={[{ opacity, transform: [{ translateY }] }, style]} {...props}>
@@ -50,10 +70,16 @@ interface ScaleInViewProps extends ViewProps {
 }
 
 export function ScaleInView({ delay = 0, duration = 250, children, style, ...props }: ScaleInViewProps) {
-  const scale = useRef(new Animated.Value(0.92)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+  const reduceMotion = useReducedMotion();
+  const scale = useRef(new Animated.Value(reduceMotion ? 1 : 0.92)).current;
+  const opacity = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
 
   useEffect(() => {
+    if (reduceMotion) {
+      scale.setValue(1);
+      opacity.setValue(1);
+      return;
+    }
     Animated.parallel([
       Animated.timing(scale, {
         toValue: 1,
@@ -70,7 +96,7 @@ export function ScaleInView({ delay = 0, duration = 250, children, style, ...pro
         easing: Easing.out(Easing.cubic),
       }),
     ]).start();
-  }, [scale, opacity, delay, duration]);
+  }, [scale, opacity, delay, duration, reduceMotion]);
 
   return (
     <Animated.View style={[{ opacity, transform: [{ scale }] }, style]} {...props}>
@@ -116,11 +142,11 @@ export function PulseView({
   style,
   ...props
 }: PulseViewProps) {
-  // Start at minScale so the loop begins from the bottom
+  const reduceMotion = useReducedMotion();
   const scale = useRef(new Animated.Value(minScale)).current;
 
   useEffect(() => {
-    if (!active) {
+    if (!active || reduceMotion) {
       scale.setValue(1);
       return;
     }
@@ -151,7 +177,7 @@ export function PulseView({
     pulse.start();
 
     return () => pulse.stop();
-  }, [active, scale, minScale, maxScale, duration]);
+  }, [active, scale, minScale, maxScale, duration, reduceMotion]);
 
   return (
     <Animated.View style={[{ transform: [{ scale }] }, style]} {...props}>

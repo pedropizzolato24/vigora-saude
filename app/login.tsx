@@ -7,7 +7,8 @@ import {
   Text,
   View,
 } from "react-native";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import Svg, { Circle } from "react-native-svg";
+import { FadeInView, StaggeredItem } from "@/components/animated-components";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -26,8 +27,6 @@ import {
   GOOGLE_WEB_CLIENT_ID,
 } from "@/constants/oauth";
 
-// Obrigatório: limpa sessão de browser pendente ao montar a tela.
-// Deve ser chamado no nível do módulo, fora do componente.
 WebBrowser.maybeCompleteAuthSession();
 
 const LOGIN_COMPLETED_KEY = "vigora_login_completed";
@@ -46,6 +45,21 @@ function getNextRoute(
   return "/(tabs)";
 }
 
+// Lua crescente — símbolo da marca Vigora
+function MoonSymbol({ size = 72 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 72 72" fill="none">
+      {/* Lua: dois círculos sobrepostos */}
+      <Circle cx="36" cy="36" r="28" fill="#1E4D8C" />
+      <Circle cx="48" cy="28" r="22" fill="#F4EFE5" />
+      {/* Estrelas pequenas */}
+      <Circle cx="22" cy="20" r="2" fill="#1E4D8C" />
+      <Circle cx="16" cy="34" r="1.5" fill="#1E4D8C" />
+      <Circle cx="28" cy="54" r="1.5" fill="#1E4D8C" />
+    </Svg>
+  );
+}
+
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -54,9 +68,6 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // expo-auth-session seleciona o clientId e redirect URI corretos por plataforma.
-  // Android/iOS usam o formato de domínio reverso (com.vigora.saude:/).
-  // Web usa o proxy Expo (https://auth.expo.io) com o webClientId.
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: GOOGLE_ANDROID_CLIENT_ID,
     iosClientId: GOOGLE_IOS_CLIENT_ID,
@@ -64,27 +75,21 @@ export default function LoginScreen() {
     scopes: ["openid", "email", "profile"],
   });
 
-  // expo-web-browser intercepta o redirect antes do Expo Router.
-  // O resultado da autenticação chega aqui via hook, não via app/oauth/callback.tsx.
   useEffect(() => {
     if (!response) return;
-
     if (response.type === "success") {
       handleAuthCode(response.params.code);
     } else if (response.type === "error") {
       setError("Autenticação cancelada ou recusada pelo Google.");
       setLoading(false);
     } else if (response.type === "dismiss") {
-      // Usuário fechou o browser — silencioso
       setLoading(false);
     }
   }, [response]);
 
   async function handleAuthCode(code: string) {
     if (!request) return;
-
     try {
-      // 1. Trocar code por tokens diretamente com o Google
       const tokens = await exchangeCodeAsync(
         {
           clientId: request.clientId,
@@ -95,17 +100,10 @@ export default function LoginScreen() {
         { tokenEndpoint: "https://oauth2.googleapis.com/token" }
       );
 
-      if (!tokens.idToken) {
-        throw new Error("id_token não recebido do Google");
-      }
+      if (!tokens.idToken) throw new Error("id_token não recebido do Google");
 
-      // 2. Trocar Google id_token por JWT de sessão do Railway
       const baseUrl = getApiBaseUrl();
-      if (!baseUrl) {
-        throw new Error(
-          "URL do servidor não configurada. Rebuilde o app com EXPO_PUBLIC_API_BASE_URL."
-        );
-      }
+      if (!baseUrl) throw new Error("URL do servidor não configurada. Rebuilde o app com EXPO_PUBLIC_API_BASE_URL.");
 
       const res = await fetch(`${baseUrl}/api/auth/google`, {
         method: "POST",
@@ -114,9 +112,7 @@ export default function LoginScreen() {
       });
 
       if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as {
-          error?: string;
-        };
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error ?? `Erro ${res.status}`);
       }
 
@@ -136,7 +132,6 @@ export default function LoginScreen() {
         };
       };
 
-      // 3. Persistir sessão (mesma lógica que era feita em oauth/callback.tsx)
       await Auth.setSessionToken(result.sessionToken);
       await Auth.setUserInfo({
         id: result.user.id ?? 0,
@@ -159,9 +154,7 @@ export default function LoginScreen() {
     } catch (err) {
       console.error("[Login] Auth failed:", err);
       setError(
-        err instanceof Error
-          ? err.message
-          : "Falha ao completar a autenticação"
+        err instanceof Error ? err.message : "Falha ao completar a autenticação"
       );
     } finally {
       setLoading(false);
@@ -177,170 +170,180 @@ export default function LoginScreen() {
     try {
       await promptAsync();
     } catch {
-      setError(
-        "Não foi possível iniciar o login. Verifique sua conexão e tente novamente."
-      );
+      setError("Não foi possível iniciar o login. Verifique sua conexão e tente novamente.");
       setLoading(false);
     }
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View
+      {/* Área superior — marca */}
+      {/* Jakub enter recipe: opacity + translateY, duration 420ms (RARE — brand moment) */}
+      <FadeInView delay={0} duration={420} style={[styles.brandArea, { paddingTop: Math.max(insets.top, 48) + 24 }]}>
+        <MoonSymbol size={64} />
+        <View style={styles.wordmark}>
+          <Text style={[styles.wordmarkText, { color: colors.primary }]}>
+            Vigora Saúde
+          </Text>
+        </View>
+        <FadeInView delay={100} duration={380}>
+          <Text style={[styles.tagline, { color: colors.muted }]}>
+            Perto de você. Sempre.
+          </Text>
+        </FadeInView>
+      </FadeInView>
+
+      {/* Área inferior — ação: FadeInView com delay maior que brand area */}
+      <FadeInView
+        delay={200}
+        duration={400}
         style={[
-          styles.content,
+          styles.actionArea,
           {
-            paddingTop: Math.max(insets.top, 40) + 20,
-            paddingBottom: Math.max(insets.bottom, 20) + 20,
+            paddingBottom: Math.max(insets.bottom, 24) + 16,
+            borderTopColor: colors.border,
           },
         ]}
       >
-        <View style={[styles.iconCircle, { backgroundColor: colors.primary }]}>
-          <MaterialIcons name="favorite" size={56} color={colors.onPrimary} />
-        </View>
-
-        <Text style={[styles.title, { color: colors.foreground }]}>
-          Vigora Saúde
-        </Text>
-        <Text style={[styles.subtitle, { color: colors.muted }]}>
-          Faça login para sincronizar seus dados de saúde e garantir sua
-          segurança em emergências.
-        </Text>
-
-        <View
-          style={[
-            styles.benefitsBox,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-          ]}
-        >
+        {/* Proposta de valor — staggered (Emil: RARE, each line gets its own moment) */}
+        <View style={styles.valueProps}>
           {[
-            {
-              icon: "cloud-upload" as const,
-              text: "Dados salvos e sincronizados na nuvem",
-            },
-            {
-              icon: "people" as const,
-              text: "Contatos de emergência sempre protegidos",
-            },
-            {
-              icon: "alarm" as const,
-              text: "Alarmes de medicamentos preservados",
-            },
-            {
-              icon: "lock" as const,
-              text: "Informações criptografadas e seguras",
-            },
+            "Dados sincronizados na nuvem",
+            "Contatos de emergência sempre ativos",
+            "Se você não responder, sua família saberá",
+            "Informações criptografadas",
           ].map((item, i) => (
-            <View key={i} style={styles.benefitItem}>
-              <MaterialIcons name={item.icon} size={20} color={colors.primary} />
-              <Text
-                style={[styles.benefitText, { color: colors.foreground }]}
-              >
-                {item.text}
+            <StaggeredItem key={item} index={i} staggerDelay={70} style={styles.valuePropRow}>
+              <View style={[styles.dot, { backgroundColor: colors.primary }]} />
+              <Text style={[styles.valuePropText, { color: colors.foreground }]}>
+                {item}
               </Text>
-            </View>
+            </StaggeredItem>
           ))}
         </View>
 
-        {error && (
-          <View
-            style={[
-              styles.errorBox,
-              { backgroundColor: "#FEE2E2", borderColor: "#FCA5A5" },
-            ]}
-          >
-            <MaterialIcons name="error-outline" size={18} color="#DC2626" />
-            <Text style={styles.errorText}>{error}</Text>
+        {/* Erro */}
+        {error ? (
+          <View style={[styles.errorBox, { backgroundColor: colors.errorLight, borderColor: colors.error + '40' }]}>
+            <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
           </View>
-        )}
+        ) : null}
 
+        {/* Botão Google — FadeInView com delay após os value props */}
+        {/* Emil: login é raro, entrada suave na ação é ok */}
         <Pressable
           onPress={handleLogin}
           disabled={loading || !request}
           style={({ pressed }) => [
             styles.googleButton,
             {
-              borderColor: colors.border,
-              backgroundColor: colors.surface,
-              opacity: pressed || loading || !request ? 0.7 : 1,
+              backgroundColor: colors.primary,
+              opacity: pressed || loading || !request ? 0.75 : 1,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
             },
           ]}
+          accessibilityLabel="Entrar com o Google"
+          accessibilityRole="button"
         >
           {loading ? (
-            <ActivityIndicator size="small" color="#4285F4" />
+            <ActivityIndicator size="small" color={colors.onPrimary} />
           ) : (
             <>
-              <AntDesign name="google" size={22} color="#4285F4" />
-              <Text
-                style={[styles.googleButtonText, { color: colors.foreground }]}
-              >
-                Entrar com o Google
-              </Text>
+              <AntDesign name="google" size={20} color={colors.onPrimary} />
+              <Text style={[styles.googleButtonText, { color: colors.onPrimary }]}>Entrar com o Google</Text>
             </>
           )}
         </Pressable>
 
         <Text style={[styles.privacyNote, { color: colors.muted }]}>
-          Ao entrar, você concorda com nossos Termos de Uso e Política de
-          Privacidade.
+          Ao entrar, você concorda com os Termos de Uso e Política de Privacidade.
         </Text>
-      </View>
+      </FadeInView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: {
+  container: {
     flex: 1,
+    justifyContent: "space-between",
+  },
+  brandArea: {
     alignItems: "center",
-    justifyContent: "center",
     paddingHorizontal: 32,
+    gap: 16,
+  },
+  wordmark: {
+    marginTop: 4,
+  },
+  wordmarkText: {
+    fontFamily: "Fraunces-Italic",
+    fontStyle: "italic",
+    fontSize: 38,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+    textAlign: "center",
+  },
+  tagline: {
+    fontFamily: "PlusJakartaSans",
+    fontSize: 16,
+    fontWeight: "400",
+    letterSpacing: 0.1,
+    textAlign: "center",
+  },
+  actionArea: {
+    paddingHorizontal: 28,
+    paddingTop: 28,
+    borderTopWidth: 1,
     gap: 20,
   },
-  iconCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+  valueProps: {
+    gap: 12,
   },
-  title: { fontSize: 32, fontWeight: "800", textAlign: "center" },
-  subtitle: { fontSize: 16, textAlign: "center", lineHeight: 24 },
-  benefitsBox: {
-    width: "100%",
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 14,
-  },
-  benefitItem: { flexDirection: "row", alignItems: "center", gap: 12 },
-  benefitText: { fontSize: 15, flex: 1, lineHeight: 22 },
-  errorBox: {
+  valuePropRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    width: "100%",
+    alignItems: "center",
+    gap: 12,
   },
-  errorText: { flex: 1, fontSize: 14, lineHeight: 20, color: "#DC2626" },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  valuePropText: {
+    fontFamily: "PlusJakartaSans",
+    fontSize: 15,
+    fontWeight: "500",
+    lineHeight: 22,
+    flex: 1,
+  },
+  errorBox: {
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  errorText: {
+    fontFamily: "PlusJakartaSans",
+    fontSize: 14,
+    lineHeight: 20,
+  },
   googleButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
-    width: "100%",
+    gap: 10,
     paddingVertical: 16,
-    borderRadius: 16,
-    borderWidth: 1.5,
+    borderRadius: 14,
   },
-  googleButtonText: { fontSize: 17, fontWeight: "600" },
-  privacyNote: { fontSize: 12, textAlign: "center", lineHeight: 18 },
+  googleButtonText: {
+    fontFamily: "PlusJakartaSans",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  privacyNote: {
+    fontFamily: "PlusJakartaSans",
+    fontSize: 12,
+    textAlign: "center",
+    lineHeight: 18,
+  },
 });

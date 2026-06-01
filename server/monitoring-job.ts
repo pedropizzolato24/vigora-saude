@@ -10,11 +10,12 @@
  *       WhatsApp (primary) -> Email (fallback) -> SMS (last resort)
  *
  * Warning escalation levels:
- *   Level 1 (12h)  -> Aviso leve: dispositivo sem atividade
- *   Level 2 (24h)  -> Preocupação moderada: múltiplos alarmes perdidos
- *   Level 3 (48h+) -> Alerta sério: possível emergência
+ *   Level 1 (30min) -> Aviso leve: dispositivo sem atividade
+ *   Level 2 (2h)    -> Preocupação moderada: múltiplos alarmes perdidos
+ *   Level 3 (6h+)   -> Alerta sério: possível emergência
  */
 import {
+  claimWarning,
   getAppUser,
   getExpiredPendingEvents,
   getInactiveDevices,
@@ -22,8 +23,8 @@ import {
   getLastWarning,
   getWarningHistory,
   markEventWarningSent,
-  recordWarning,
   updateAlarmEventStatus,
+  updateWarningResult,
 } from "./db-monitoring";
 import { sendWhatsAppMessage, isWhatsAppApiConfigured } from "./whatsapp";
 import { sendEmail, isEmailConfigured } from "./email";
@@ -35,15 +36,24 @@ const GRACE_PERIOD_MINUTES = 15;
 // Heartbeat threshold: if device hasn't pinged in this many minutes, it's considered offline
 const OFFLINE_THRESHOLD_MINUTES = 30;
 
-// Warning thresholds in hours
+// Warning thresholds in hours (fractional allowed, e.g. 0.5 = 30 min)
 const WARNING_LEVELS = [
-  { level: 1, hours: 12, label: "aviso leve" },
-  { level: 2, hours: 24, label: "preocupação moderada" },
-  { level: 3, hours: 48, label: "alerta sério" },
+  { level: 1, hours: 0.5, label: "aviso leve" },
+  { level: 2, hours: 2,   label: "preocupação moderada" },
+  { level: 3, hours: 6,   label: "alerta sério" },
 ];
 
 // Minimum interval between warnings of the same level (hours)
-const MIN_WARNING_INTERVAL_HOURS = 12;
+const MIN_WARNING_INTERVAL_HOURS = 2;
+
+function formatOfflineDuration(offlineHours: number): string {
+  if (offlineHours < 1) {
+    const minutes = Math.round(offlineHours * 60);
+    return `${minutes} minutos`;
+  }
+  const hours = Math.round(offlineHours);
+  return `${hours} hora${hours !== 1 ? "s" : ""}`;
+}
 
 /**
  * Build a progressive warning message based on escalation level.
@@ -55,6 +65,7 @@ function buildWarningMessage(
   locationUrl?: string
 ): string {
   const name = userName || "O usuário do Vigora Saúde";
+  const duration = formatOfflineDuration(offlineHours);
 
   let header: string;
   let body: string;
@@ -62,20 +73,20 @@ function buildWarningMessage(
   if (level === 1) {
     header = "⚠️ AVISO - Vigora Saúde";
     body =
-      `${name} está sem atividade no aplicativo há aproximadamente ${offlineHours} horas.\n\n` +
+      `${name} está sem atividade no aplicativo há aproximadamente ${duration}.\n\n` +
       `Os alarmes de medicamento/saúde não estão sendo confirmados. ` +
       `Isso pode indicar que o celular está desligado, sem bateria ou sem conexão.\n\n` +
       `Recomendamos entrar em contato para verificar se está tudo bem.`;
   } else if (level === 2) {
     header = "⚠️⚠️ ATENÇÃO - Vigora Saúde";
     body =
-      `${name} está sem atividade há aproximadamente ${offlineHours} horas.\n\n` +
+      `${name} está sem atividade há aproximadamente ${duration}.\n\n` +
       `Múltiplos alarmes de saúde não foram confirmados. ` +
       `Por favor, tente entrar em contato com urgência.`;
   } else {
     header = "🚨 ALERTA SÉRIO - Vigora Saúde";
     body =
-      `${name} está sem atividade há mais de ${offlineHours} horas.\n\n` +
+      `${name} está sem atividade há mais de ${duration}.\n\n` +
       `Todos os alarmes de saúde do período ficaram sem resposta. ` +
       `Esta situação requer atenção imediata. ` +
       `Considere acionar serviços de emergência se não conseguir contato.`;
@@ -97,8 +108,8 @@ function buildWarningMessage(
 function buildEmailSubject(userName: string, level: number): string {
   const name = userName || "Usuário do Vigora Saúde";
   if (level === 1) return `⚠️ Aviso: ${name} sem atividade no Vigora Saúde`;
-  if (level === 2) return `⚠️⚠️ Atenção: ${name} sem atividade há 24h - Vigora Saúde`;
-  return `🚨 ALERTA SÉRIO: ${name} sem atividade há 48h+ - Vigora Saúde`;
+  if (level === 2) return `⚠️⚠️ Atenção: ${name} sem atividade há 2h - Vigora Saúde`;
+  return `🚨 ALERTA SÉRIO: ${name} sem atividade há 6h+ - Vigora Saúde`;
 }
 
 /**
@@ -206,7 +217,7 @@ export async function runMonitoringJob(): Promise<void> {
 
     for (const device of inactiveDevices) {
       const offlineMs = now.getTime() - device.lastSeenAt.getTime();
-      const offlineHours = Math.floor(offlineMs / (1000 * 60 * 60));
+      const offlineHours = offlineMs / (1000 * 60 * 60);
 
       const warningLevel = getWarningLevel(offlineHours);
       if (warningLevel === null) continue;
@@ -250,6 +261,16 @@ export async function runMonitoringJob(): Promise<void> {
           locationUrl = `https://maps.google.com/?q=${lat},${lng}`;
         }
       }
+
+      // Claim the warning slot BEFORE sending. A concurrent run that reads
+      // warningHistory after this insert will see the row and skip its own send,
+      // closing the TOCTOU window to a DB round-trip rather than the entire send loop.
+      const claimId = await claimWarning({
+        deviceId: device.deviceId,
+        level: warningLevel,
+        offlineHours,
+        locationIncluded: !!locationUrl,
+      });
 
       const message = buildWarningMessage(
         appUser.userName || "",
@@ -297,13 +318,9 @@ export async function runMonitoringJob(): Promise<void> {
         await new Promise((r) => setTimeout(r, 500));
       }
 
-      await recordWarning({
-        deviceId: device.deviceId,
-        level: warningLevel,
-        offlineHours,
-        contactsReached: totalSent,
-        locationIncluded: !!locationUrl,
-      });
+      if (claimId !== null) {
+        await updateWarningResult(claimId, totalSent, !!locationUrl);
+      }
 
       console.log(
         `[Monitor] Warning sent: ${totalSent} contacts reached (WhatsApp: ${channelSummary.whatsapp}, Email: ${channelSummary.email}, SMS: ${channelSummary.sms}), ${totalFailed} failed`

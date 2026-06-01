@@ -5,6 +5,8 @@ import { CaregiverEmptyState } from '@/components/caregiver-empty-state';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useCaregiverContext } from '@/lib/caregiver-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FadeInView, ScaleInView, StaggeredItem } from '@/components/animated-components';
 
 function initialsOf(name: string): string {
   return name
@@ -15,6 +17,7 @@ function initialsOf(name: string): string {
 export default function CaregiverHomeScreen() {
   const colors = useColors();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { state } = useCaregiverContext();
   const linked = state.linkedMonitored;
 
@@ -33,78 +36,232 @@ export default function CaregiverHomeScreen() {
   }
 
   return (
-    <ScreenContainer>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={[styles.hero, { backgroundColor: colors.primary }]}>
-          <View style={styles.heroAvatar}>
-            <Text style={styles.heroAvatarText}>{initialsOf(linked.displayName)}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.heroName}>{linked.displayName}</Text>
-            {linked.relationship ? (
-              <Text style={styles.heroRel}>{linked.relationship}</Text>
-            ) : null}
-            <Text style={styles.heroStatus}>Aguardando sincronização com o app</Text>
-          </View>
-        </View>
+    <ScreenContainer edges={['left', 'right']}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Cabeçalho — Jakub enter: OCCASIONAL (once per app open) */}
+        <FadeInView delay={0} duration={320} style={styles.pageHeader}>
+          <Text style={[styles.pageLabel, { color: colors.muted, fontFamily: 'PlusJakartaSans' }]}>
+            Acompanhando
+          </Text>
+          <Text style={[styles.pageTitle, { color: colors.primary, fontFamily: 'Fraunces-Italic', fontStyle: 'italic' }]}>
+            {linked.displayName}
+          </Text>
+        </FadeInView>
 
-        <SummaryCard icon="medication" title="Próxima medicação" body="Sem dados ainda." />
-        <SummaryCard icon="favorite" title="Última métrica" body="Sem dados ainda." />
-        <SummaryCard icon="wifi" title="Último heartbeat" body="Sem dados ainda." />
+        {/* Person card — ScaleInView: card "materializa" com escala suave */}
+        <ScaleInView delay={60} duration={300}>
+          <View style={[styles.personCard, { backgroundColor: colors.primary }]}>
+            <View style={styles.avatarRow}>
+              <View style={[styles.avatar, { backgroundColor: 'rgba(244,239,229,0.2)' }]}>
+                <Text style={[styles.avatarText, { color: colors.background }]}>
+                  {initialsOf(linked.displayName)}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                {linked.relationship ? (
+                  <Text style={[styles.relationship, { color: 'rgba(244,239,229,0.75)', fontFamily: 'PlusJakartaSans' }]}>
+                    {linked.relationship}
+                  </Text>
+                ) : null}
+                <Text style={[styles.statusLine, { color: 'rgba(244,239,229,0.85)', fontFamily: 'PlusJakartaSans' }]}>
+                  Aguardando sincronização
+                </Text>
+              </View>
+              <View style={[styles.statusDot, { backgroundColor: 'rgba(244,239,229,0.4)' }]} />
+            </View>
+          </View>
+        </ScaleInView>
 
+        {/* Summary cards — staggered (3 cards, 80ms apart) */}
+        <StaggeredItem index={0} staggerDelay={80}>
+          <SummaryCard
+            icon="medication"
+            title="Próxima medicação"
+            body="Sem dados ainda."
+            colors={colors}
+          />
+        </StaggeredItem>
+        <StaggeredItem index={1} staggerDelay={80}>
+          <SummaryCard
+            icon="favorite"
+            title="Última métrica registrada"
+            body="Sem dados ainda."
+            colors={colors}
+          />
+        </StaggeredItem>
+        <StaggeredItem index={2} staggerDelay={80}>
+          <SummaryCard
+            icon="wifi"
+            title="Último heartbeat"
+            body="Sem dados ainda."
+            colors={colors}
+            mono
+          />
+        </StaggeredItem>
+
+        {/* Link para alertas */}
         <Pressable
           onPress={() => router.push('/(caregiver-tabs)/alerts')}
           style={({ pressed }) => [
             styles.alertsLink,
-            { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.85 : 1 },
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              opacity: pressed ? 0.85 : 1,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+            },
           ]}
+          accessibilityRole="button"
         >
-          <MaterialIcons name="notifications" size={22} color={colors.primary} />
-          <Text style={[styles.alertsLinkText, { color: colors.foreground }]}>Alertas recentes</Text>
-          <MaterialIcons name="chevron-right" size={22} color={colors.muted} />
+          <View style={[styles.alertIconWrap, { backgroundColor: colors.primaryLight }]}>
+            <MaterialIcons name="notifications" size={20} color={colors.primary} />
+          </View>
+          <Text style={[styles.alertsLinkText, { color: colors.foreground, fontFamily: 'PlusJakartaSans' }]}>
+            Alertas recentes
+          </Text>
+          <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
         </Pressable>
       </ScrollView>
     </ScreenContainer>
   );
 }
 
-function SummaryCard({
-  icon, title, body,
-}: { icon: React.ComponentProps<typeof MaterialIcons>['name']; title: string; body: string }) {
-  const colors = useColors();
+type SummaryCardProps = {
+  icon: React.ComponentProps<typeof MaterialIcons>['name'];
+  title: string;
+  body: string;
+  colors: ReturnType<typeof useColors>;
+  mono?: boolean;
+};
+
+function SummaryCard({ icon, title, body, colors, mono }: SummaryCardProps) {
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={styles.cardHeader}>
-        <MaterialIcons name={icon} size={22} color={colors.primary} />
-        <Text style={[styles.cardTitle, { color: colors.foreground }]}>{title}</Text>
+        <View style={[styles.cardIconWrap, { backgroundColor: colors.primaryLight }]}>
+          <MaterialIcons name={icon} size={18} color={colors.primary} />
+        </View>
+        <Text style={[styles.cardTitle, { color: colors.foreground, fontFamily: 'PlusJakartaSans' }]}>
+          {title}
+        </Text>
       </View>
-      <Text style={[styles.cardBody, { color: colors.muted }]}>{body}</Text>
+      <Text style={[
+        styles.cardBody,
+        {
+          color: colors.muted,
+          fontFamily: mono ? 'SpaceMono-Regular' : 'PlusJakartaSans',
+          fontSize: mono ? 13 : 14,
+        },
+      ]}>
+        {body}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16, gap: 12, paddingBottom: 32 },
-  hero: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    padding: 16, borderRadius: 18,
+  content: {
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+    gap: 12,
   },
-  heroAvatar: {
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center', justifyContent: 'center',
+  pageHeader: {
+    paddingHorizontal: 4,
+    marginBottom: 4,
   },
-  heroAvatarText: { color: '#FFFFFF', fontSize: 20, fontWeight: '800' },
-  heroName: { color: '#FFFFFF', fontSize: 19, fontWeight: '800' },
-  heroRel: { color: 'rgba(255,255,255,0.85)', fontSize: 13, marginTop: 2 },
-  heroStatus: { color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 6 },
-  card: { padding: 14, borderRadius: 14, borderWidth: 1, gap: 6 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  cardTitle: { fontSize: 16, fontWeight: '700' },
-  cardBody: { fontSize: 13, lineHeight: 18 },
+  pageLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  pageTitle: {
+    fontSize: 30,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    lineHeight: 36,
+  },
+  personCard: {
+    borderRadius: 18,
+    padding: 18,
+  },
+  avatarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontFamily: 'PlusJakartaSans',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  relationship: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  statusLine: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  card: {
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  cardIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  cardBody: {
+    lineHeight: 20,
+    paddingLeft: 42,
+  },
   alertsLink: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    padding: 14, borderRadius: 14, borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 4,
   },
-  alertsLinkText: { flex: 1, fontSize: 15, fontWeight: '700' },
+  alertIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertsLinkText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+  },
 });

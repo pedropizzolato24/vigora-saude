@@ -1,25 +1,36 @@
 /** @type {const} */
 const themeColors = {
-  primary: { light: '#0066CC', dark: '#3399FF' },
-  background: { light: '#FFFFFF', dark: '#151718' },
-  surface: { light: '#F5F5F5', dark: '#1E2022' },
-  foreground: { light: '#11181C', dark: '#ECEDEE' },
-  muted: { light: '#687076', dark: '#9BA1A6' },
-  border: { light: '#E5E7EB', dark: '#334155' },
-  success: { light: '#22C55E', dark: '#4ADE80' },
-  warning: { light: '#F59E0B', dark: '#FBBF24' },
-  error: { light: '#EF4444', dark: '#F87171' },
-  emergency: { light: '#FF0000', dark: '#FF4444' },
-  onPrimary: { light: '#FFFFFF', dark: '#FFFFFF' },
+  // --- Brand core ---
+  primary:    { light: '#1E4D8C', dark: '#4A7EC4' }, // Azul profundo
+  accent:     { light: '#C96442', dark: '#D4784A' }, // Terracota
+  background: { light: '#F4EFE5', dark: '#0E1417' }, // Creme / Dark
+  surface:    { light: '#FFFFFF', dark: '#1A1714' }, // Branco / Warm dark surface
+  foreground: { light: '#0E1417', dark: '#F4EFE5' }, // Dark / Creme invertido
+  muted:      { light: '#5B636A', dark: '#8A9298' }, // Cinza médio
+  border:     { light: '#D8D1C2', dark: '#2D2722' }, // Borda quente
+
+  // --- Semantic ---
+  success:   { light: '#0F8A4A', dark: '#2CB966' },
+  warning:   { light: '#F0C24A', dark: '#F5D06E' }, // Âmbar
+  error:     { light: '#D6161C', dark: '#F04040' },
+  emergency: { light: '#D6161C', dark: '#F04040' }, // Dead man's switch — max legibility
+
+  // --- On-color (text sobre fundos coloridos) ---
+  onPrimary:   { light: '#FFFFFF', dark: '#FFFFFF' },
   onEmergency: { light: '#FFFFFF', dark: '#FFFFFF' },
-  onSuccess: { light: '#FFFFFF', dark: '#FFFFFF' },
-  onWarning: { light: '#FFFFFF', dark: '#000000' },
-  primaryLight: { light: '#0066CC15', dark: '#3399FF20' },
-  emergencyLight: { light: '#FF000010', dark: '#FF444420' },
-  successLight: { light: '#22C55E15', dark: '#4ADE8020' },
-  warningLight: { light: '#F59E0B15', dark: '#FBBF2420' },
-  warningDark: { light: '#92400E', dark: '#FCD34D' },
-  errorLight: { light: '#EF444415', dark: '#F8717120' },
+  onSuccess:   { light: '#FFFFFF', dark: '#FFFFFF' },
+  onWarning:   { light: '#5C3A0A', dark: '#0E1417' },
+
+  // --- Light tints (ghost backgrounds) ---
+  primaryLight:   { light: '#1E4D8C15', dark: '#4A7EC425' },
+  accentLight:    { light: '#C9644215', dark: '#D4784A25' },
+  emergencyLight: { light: '#D6161C12', dark: '#F0404020' },
+  successLight:   { light: '#0F8A4A15', dark: '#2CB96625' },
+  warningLight:   { light: '#F0C24A20', dark: '#F5D06E25' },
+  errorLight:     { light: '#D6161C12', dark: '#F0404020' },
+
+  // --- Warning dark (text on warning bg) ---
+  warningDark: { light: '#7A5200', dark: '#F5D06E' },
 };
 
 module.exports = { themeColors };

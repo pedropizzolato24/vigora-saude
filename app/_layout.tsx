@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import { Platform } from "react-native";
+import { useFonts } from "expo-font";
 import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { AppProvider, useAppContext } from "@/lib/app-context";
@@ -48,6 +49,13 @@ export default function RootLayout() {
 
   const [insets] = useState<EdgeInsets>(initialInsets);
   const [frame] = useState<Rect>(initialFrame);
+
+  useFonts({
+    'Fraunces-Italic': require('../assets/fonts/Fraunces-Variable.ttf'),
+    'PlusJakartaSans': require('../assets/fonts/PlusJakartaSans-Variable.ttf'),
+    'SpaceMono-Regular': require('../assets/fonts/SpaceMono-Regular.ttf'),
+    'SpaceMono-Bold': require('../assets/fonts/SpaceMono-Bold.ttf'),
+  });
 
   // Initialize RevenueCat SDK on app startup
   useEffect(() => {
