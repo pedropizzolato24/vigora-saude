@@ -201,9 +201,9 @@ export default function ProfileScreen() {
           {hasChanges && (
             <TouchableOpacity
               onPress={handleSave}
-              style={{ backgroundColor: ac.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14, borderWidth: 2, borderColor: '#003388' }}
+              style={{ backgroundColor: ac.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14, borderWidth: 2, borderColor: ac.primary }}
             >
-              <Text style={{ fontSize: af.md, fontWeight: '800', color: '#FFFFFF' }}>Salvar</Text>
+              <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.onPrimary }}>Salvar</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -218,8 +218,8 @@ export default function ProfileScreen() {
                   <MaterialIcons name="person" size={72} color={ac.primary} />
                 </View>
               )}
-              <View style={{ position: 'absolute', bottom: 0, right: 0, width: 40, height: 40, borderRadius: 20, backgroundColor: ac.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: '#003388' }}>
-                <MaterialIcons name="camera-alt" size={20} color="#FFFFFF" />
+              <View style={{ position: 'absolute', bottom: 0, right: 0, width: 40, height: 40, borderRadius: 20, backgroundColor: ac.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: ac.primary }}>
+                <MaterialIcons name="camera-alt" size={20} color={ac.onPrimary} />
               </View>
             </TouchableOpacity>
             <Text style={{ fontSize: af.sm, color: ac.muted, fontWeight: '600' }}>Toque para alterar a foto</Text>
@@ -248,9 +248,9 @@ export default function ProfileScreen() {
                 <TouchableOpacity
                   key={bt}
                   onPress={() => { setBloodType(bt); markChanged(); }}
-                  style={{ paddingHorizontal: 20, paddingVertical: 14, borderRadius: 14, borderWidth: 3, backgroundColor: bloodType === bt ? ac.emergency : ac.surface, borderColor: bloodType === bt ? '#880000' : ac.border }}
+                  style={{ paddingHorizontal: 20, paddingVertical: 14, borderRadius: 14, borderWidth: 3, backgroundColor: bloodType === bt ? ac.emergency : ac.surface, borderColor: bloodType === bt ? ac.emergency : ac.border }}
                 >
-                  <Text style={{ fontSize: af.md, fontWeight: '900', color: bloodType === bt ? '#FFFFFF' : ac.foreground }}>{bt}</Text>
+                  <Text style={{ fontSize: af.md, fontWeight: '900', color: bloodType === bt ? ac.onEmergency : ac.foreground }}>{bt}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -258,10 +258,10 @@ export default function ProfileScreen() {
           {hasChanges && (
             <TouchableOpacity
               onPress={handleSave}
-              style={{ backgroundColor: ac.primary, borderRadius: 20, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, borderWidth: 3, borderColor: '#003388' }}
+              style={{ backgroundColor: ac.primary, borderRadius: 20, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, borderWidth: 3, borderColor: ac.primary }}
             >
-              <MaterialIcons name="save" size={32} color="#FFFFFF" />
-              <Text style={{ fontSize: af.xl, fontWeight: '800', color: '#FFFFFF' }}>Salvar Perfil</Text>
+              <MaterialIcons name="save" size={32} color={ac.onPrimary} />
+              <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.onPrimary }}>Salvar Perfil</Text>
             </TouchableOpacity>
           )}
         </ScrollView>
@@ -297,7 +297,7 @@ export default function ProfileScreen() {
                 <MaterialIcons name="person" size={60} color={colors.primary} />
               </View>
             )}
-            <View style={[styles.cameraButton, { backgroundColor: colors.primary }]}>
+            <View style={[styles.cameraButton, { backgroundColor: colors.primary, borderColor: colors.onPrimary }]}>
               <MaterialIcons name="camera-alt" size={18} color={colors.onPrimary} />
             </View>
           </TouchableOpacity>
@@ -467,7 +467,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#fff',
   },
   avatarHint: {
     fontSize: 13,

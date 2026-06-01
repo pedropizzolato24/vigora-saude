@@ -22,8 +22,6 @@ export const ENV = {
   // CORS origins for browser requests. Comma-separated. Each entry is
   // either an exact match or a prefix ending in `*`.
   corsOriginAllowlist: parseCsv(process.env.CORS_ORIGIN_ALLOWLIST),
-  // Shared secret required by the check-missed-alarms edge function.
-  checkMissedAlarmsSecret: process.env.CHECK_MISSED_ALARMS_SECRET ?? "",
 };
 
 /**

@@ -126,8 +126,8 @@ export default function RegisterScreen() {
         ]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.iconCircle, { backgroundColor: '#0066CC' }]}>
-          <MaterialIcons name="person-add" size={48} color="#FFFFFF" />
+        <View style={[styles.iconCircle, { backgroundColor: colors.primary }]}>
+          <MaterialIcons name="person-add" size={48} color={colors.onPrimary} />
         </View>
 
         <Text style={[styles.title, { color: colors.foreground }]}>Vamos te conhecer</Text>
@@ -194,13 +194,13 @@ export default function RegisterScreen() {
                   style={({ pressed }) => [
                     styles.bloodOption,
                     {
-                      backgroundColor: selected ? '#0066CC' : colors.surface,
-                      borderColor: selected ? '#0066CC' : colors.border,
+                      backgroundColor: selected ? colors.primary : colors.surface,
+                      borderColor: selected ? colors.primary : colors.border,
                       opacity: pressed ? 0.85 : 1,
                     },
                   ]}
                 >
-                  <Text style={[styles.bloodOptionText, { color: selected ? '#FFFFFF' : colors.foreground }]}>
+                  <Text style={[styles.bloodOptionText, { color: selected ? colors.onPrimary : colors.foreground }]}>
                     {bt}
                   </Text>
                 </Pressable>
@@ -232,9 +232,9 @@ export default function RegisterScreen() {
         </View>
 
         {error && (
-          <View style={[styles.errorBox, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' }]}>
-            <MaterialIcons name="error-outline" size={18} color="#DC2626" />
-            <Text style={styles.errorText}>{error}</Text>
+          <View style={[styles.errorBox, { backgroundColor: colors.errorLight, borderColor: colors.error }]}>
+            <MaterialIcons name="error-outline" size={18} color={colors.error} />
+            <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
           </View>
         )}
 
@@ -244,15 +244,15 @@ export default function RegisterScreen() {
           style={({ pressed }) => [
             styles.submit,
             {
-              backgroundColor: '#0066CC',
+              backgroundColor: colors.primary,
               opacity: pressed || loading ? 0.7 : 1,
             },
           ]}
         >
           {loading ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator size="small" color={colors.onPrimary} />
           ) : (
-            <Text style={styles.submitText}>Concluir cadastro</Text>
+            <Text style={[styles.submitText, { color: colors.onPrimary }]}>Concluir cadastro</Text>
           )}
         </Pressable>
       </ScrollView>
@@ -281,17 +281,17 @@ function TypeOption({
       style={({ pressed }) => [
         styles.typeOption,
         {
-          backgroundColor: selected ? '#0066CC' : colors.surface,
-          borderColor: selected ? '#0066CC' : colors.border,
+          backgroundColor: selected ? colors.primary : colors.surface,
+          borderColor: selected ? colors.primary : colors.border,
           opacity: pressed ? 0.85 : 1,
         },
       ]}
     >
-      <MaterialIcons name={icon} size={28} color={selected ? '#FFFFFF' : colors.primary} />
-      <Text style={[styles.typeTitle, { color: selected ? '#FFFFFF' : colors.foreground }]}>
+      <MaterialIcons name={icon} size={28} color={selected ? colors.onPrimary : colors.primary} />
+      <Text style={[styles.typeTitle, { color: selected ? colors.onPrimary : colors.foreground }]}>
         {title}
       </Text>
-      <Text style={[styles.typeDescription, { color: selected ? '#E0F2FE' : colors.muted }]}>
+      <Text style={[styles.typeDescription, { color: selected ? colors.onPrimary + 'CC' : colors.muted }]}>
         {description}
       </Text>
     </Pressable>
@@ -390,7 +390,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     lineHeight: 20,
-    color: '#DC2626',
   },
   submit: {
     width: '100%',
@@ -400,7 +399,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   submitText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },

@@ -157,7 +157,7 @@ Auto-hospedado no **Railway** (`https://api.vigorasaude.com`). Responsável por 
 
 ### Dead Man's Switch
 
-Detecta quando o usuário não responde a um alarme e aciona os contatos de emergência. Roda no próprio servidor via router `monitoring` autenticado, com verificação periódica de alarmes perdidos protegida por `CHECK_MISSED_ALARMS_SECRET`.
+Detecta quando o usuário não responde a um alarme e aciona os contatos de emergência. Roda no próprio servidor via `monitoring-job.ts`, iniciado em processo no boot do servidor com `setInterval` de 5 minutos.
 
 **Tabelas (MySQL / Drizzle ORM):**
 
@@ -242,7 +242,6 @@ vigora-saude/
 | `DATABASE_URL` | URL do MySQL (fornecida pelo plugin do Railway) | Sim |
 | `JWT_SECRET` | Segredo para assinar a sessão JWT (≥ 32 caracteres) | Sim |
 | `NODE_ENV` | `production` em produção | Sim |
-| `CHECK_MISSED_ALARMS_SECRET` | Protege a verificação de alarmes perdidos | Recomendado |
 | `CORS_ORIGIN_ALLOWLIST` | Origens permitidas (ex.: `https://...,vigora://*`) | Recomendado |
 | `WHATSAPP_API_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp Business API | Recomendado |
 | `RESEND_API_KEY` / `RESEND_FROM_EMAIL` | Emails de alerta (fallback) | Opcional |

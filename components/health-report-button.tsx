@@ -137,13 +137,13 @@ export function HealthReportButton({ compact = false }: HealthReportButtonProps)
     >
       {isGenerating ? (
         <>
-          <ActivityIndicator size="small" color="#FFFFFF" />
-          <Text style={styles.fullButtonText}>Gerando PDF...</Text>
+          <ActivityIndicator size="small" color={colors.onPrimary} />
+          <Text style={[styles.fullButtonText, { color: colors.onPrimary }]}>Gerando PDF...</Text>
         </>
       ) : (
         <>
-          <MaterialIcons name="picture-as-pdf" size={20} color="#FFFFFF" />
-          <Text style={styles.fullButtonText}>Relatório PDF</Text>
+          <MaterialIcons name="picture-as-pdf" size={20} color={colors.onPrimary} />
+          <Text style={[styles.fullButtonText, { color: colors.onPrimary }]}>Relatório PDF</Text>
         </>
       )}
     </Pressable>
@@ -167,7 +167,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   fullButtonText: {
-    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600',
   },

@@ -224,7 +224,7 @@ export function SOSCountdownDialog({
     };
   }, [visible]);
 
-  const SOS_RED = '#DC2626';
+  const SOS_RED = colors.emergency;
 
   // -- Modo Acessível ----------------------------------------------------------
   if (isAccessibilityMode) {

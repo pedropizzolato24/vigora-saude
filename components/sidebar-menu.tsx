@@ -113,7 +113,7 @@ export function SidebarMenu() {
         ]}
       >
         {/* Profile Header */}
-        <View style={[styles.profileSection, { backgroundColor: isAccessibilityMode ? '#003388' : colors.primary, paddingTop: Math.max(insets.top, 20) + 12 }]}>
+        <View style={[styles.profileSection, { backgroundColor: colors.primary, paddingTop: Math.max(insets.top, 20) + 12 }]}>
           <Pressable
             onPress={() => handleItemPress('/(tabs)/profile')}
             style={({ pressed }) => [styles.profileContent, pressed && { opacity: 0.8 }]}
@@ -122,7 +122,7 @@ export function SidebarMenu() {
               <Image source={{ uri: profilePhoto }} style={[styles.profileAvatar, isAccessibilityMode && { width: 64, height: 64, borderRadius: 32 }]} />
             ) : (
               <View style={[styles.profileAvatarPlaceholder, { backgroundColor: 'rgba(255,255,255,0.25)' }, isAccessibilityMode && { width: 64, height: 64, borderRadius: 32 }]}>
-                <MaterialIcons name="person" size={isAccessibilityMode ? 44 : 36} color="#FFFFFF" />
+                <MaterialIcons name="person" size={isAccessibilityMode ? 44 : 36} color={colors.onPrimary} />
               </View>
             )}
             <View style={styles.profileInfo}>
@@ -141,7 +141,7 @@ export function SidebarMenu() {
               onPress={(e) => { e.stopPropagation(); closeMenu(); }}
               style={({ pressed }) => [styles.closeButton, isAccessibilityMode && { width: 44, height: 44, borderRadius: 22 }, pressed && { opacity: 0.6 }]}
             >
-              <MaterialIcons name="close" size={isAccessibilityMode ? 30 : 24} color="#FFFFFF" />
+              <MaterialIcons name="close" size={isAccessibilityMode ? 30 : 24} color={colors.onPrimary} />
             </Pressable>
           </Pressable>
         </View>

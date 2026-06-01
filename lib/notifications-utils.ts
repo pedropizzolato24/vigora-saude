@@ -13,12 +13,13 @@ Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const isAlarm = !!notification.request.content.data?.alarmId;
     const isCountdownUpdate = !!notification.request.content.data?.isCountdownUpdate;
+    const isCheckinPrompt = notification.request.content.data?.type === 'checkin_prompt';
     return {
-      // Countdown updates: show in tray but no sound/badge
-      shouldShowAlert: true,
-      shouldPlaySound: isAlarm && !isCountdownUpdate,
-      shouldSetBadge: !isCountdownUpdate,
-      shouldShowBanner: true,
+      // checkin_prompt: suppress system banner — in-app Modal handles it instead
+      shouldShowAlert: !isCheckinPrompt,
+      shouldShowBanner: !isCheckinPrompt,
+      shouldPlaySound: isAlarm && !isCountdownUpdate && !isCheckinPrompt,
+      shouldSetBadge: !isCountdownUpdate && !isCheckinPrompt,
       shouldShowList: true,
     };
   },

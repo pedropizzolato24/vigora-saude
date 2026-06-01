@@ -62,6 +62,7 @@ export function TrialBanner() {
  */
 export function ExpiredBanner() {
   const { isTrialActive, isPro, isLoading } = usePurchases();
+  const colors = useColors();
 
   // Não exibir durante carregamento, se ainda estiver no trial ou já for Pro
   if (isLoading || isPro || isTrialActive) return null;
@@ -70,7 +71,7 @@ export function ExpiredBanner() {
     <Pressable
       style={({ pressed }) => [
         styles.container,
-        styles.expiredContainer,
+        { backgroundColor: colors.emergency },
         pressed && { opacity: 0.85 },
       ]}
       onPress={() => router.push("/(modal)/paywall")}
@@ -78,14 +79,14 @@ export function ExpiredBanner() {
       accessibilityLabel="Período de teste encerrado. Toque para assinar."
     >
       <View style={styles.textContainer}>
-        <Text style={[styles.title, styles.expiredTitle]}>
+        <Text style={[styles.title, styles.expiredTitle, { color: colors.onEmergency }]}>
           🔒 Período de teste encerrado
         </Text>
-        <Text style={[styles.subtitle, styles.expiredSubtitle]}>
+        <Text style={[styles.subtitle, styles.expiredSubtitle, { color: colors.onEmergency + 'DD' }]}>
           Assine o Vigora Pro para continuar usando todos os recursos
         </Text>
       </View>
-      <Text style={[styles.arrow, styles.expiredArrow]}>{'->'}</Text>
+      <Text style={[styles.arrow, styles.expiredArrow, { color: colors.onEmergency }]}>{'->'}</Text>
     </Pressable>
   );
 }
@@ -103,15 +104,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  expiredContainer: {
-    backgroundColor: "#dc2626",
-  },
+  expiredContainer: {},
   textContainer: {
     flex: 1,
     marginRight: 8,
   },
   title: {
-    color: "#ffffff",
     fontWeight: "600",
     fontSize: 13,
     lineHeight: 18,
@@ -121,7 +119,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   subtitle: {
-    color: "rgba(255, 255, 255, 0.85)",
     fontSize: 11,
     marginTop: 2,
     lineHeight: 15,
@@ -131,7 +128,6 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   arrow: {
-    color: "#ffffff",
     fontSize: 18,
     fontWeight: "600",
   },

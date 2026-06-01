@@ -163,7 +163,7 @@ export function SOSActiveScreen({
       <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
         {/* -- Header -- */}
         <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-          <Animated.View style={[styles.sosIconWrap, { transform: [{ scale: pulseAnim }] }]}>
+          <Animated.View style={[styles.sosIconWrap, { backgroundColor: colors.error, shadowColor: colors.error, transform: [{ scale: pulseAnim }] }]}>
             <MaterialIcons name="warning" size={40} color="#fff" />
           </Animated.View>
           <Text style={styles.headerTitle}>SOS ATIVADO</Text>
@@ -202,13 +202,13 @@ export function SOSActiveScreen({
                     </View>
                     <View style={styles.statusBadge}>
                       {status === 'sending' && (
-                        <MaterialIcons name="schedule" size={20} color="#F59E0B" />
+                        <MaterialIcons name="schedule" size={20} color={colors.warning} />
                       )}
                       {status === 'sent' && (
-                        <MaterialIcons name="check-circle" size={20} color="#10B981" />
+                        <MaterialIcons name="check-circle" size={20} color={colors.success} />
                       )}
                       {status === 'failed' && (
-                        <MaterialIcons name="error" size={20} color="#EF4444" />
+                        <MaterialIcons name="error" size={20} color={colors.error} />
                       )}
                     </View>
                   </View>
@@ -258,11 +258,11 @@ export function SOSActiveScreen({
               { name: 'Polícia', number: '190', icon: 'local-police' as const },
             ].map((item) => (
               <View key={item.number} style={styles.emergencyNumberRow}>
-                <MaterialIcons name={item.icon} size={20} color="#EF4444" />
+                <MaterialIcons name={item.icon} size={20} color={colors.error} />
                 <Text style={[styles.emergencyNumberName, { color: colors.foreground, fontSize: fs.scaled(14) }]}>
                   {item.name}
                 </Text>
-                <Text style={[styles.emergencyNumber, { color: '#EF4444', fontSize: fs.scaled(20) }]}>
+                <Text style={[styles.emergencyNumber, { color: colors.error, fontSize: fs.scaled(20) }]}>
                   {item.number}
                 </Text>
               </View>
@@ -310,11 +310,9 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#EF4444',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
-    shadowColor: '#EF4444',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 16,

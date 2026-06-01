@@ -289,7 +289,7 @@ export default function AlarmsScreen() {
               alignItems: 'center',
               justifyContent: 'center',
               borderWidth: 3,
-              borderColor: '#003388',
+              borderColor: ac.primary,
               opacity: pressed ? 0.8 : 1,
             }]}
             accessibilityLabel="Adicionar alarme"
@@ -318,7 +318,7 @@ export default function AlarmsScreen() {
                 alignItems: 'center',
                 gap: 12,
                 borderWidth: 3,
-                borderColor: '#003388',
+                borderColor: ac.primary,
                 opacity: pressed ? 0.85 : 1,
               }]}
             >
@@ -365,7 +365,7 @@ export default function AlarmsScreen() {
                       justifyContent: 'center',
                       flexDirection: 'row',
                       gap: 10,
-                      backgroundColor: pressed ? '#E0EEFF' : ac.background,
+                      backgroundColor: pressed ? ac.primary + '20' : ac.background,
                       borderRightWidth: 1,
                       borderRightColor: ac.border,
                     }]}
@@ -382,7 +382,7 @@ export default function AlarmsScreen() {
                       justifyContent: 'center',
                       flexDirection: 'row',
                       gap: 10,
-                      backgroundColor: pressed ? '#FFE0E0' : ac.background,
+                      backgroundColor: pressed ? ac.error + '20' : ac.background,
                     }]}
                   >
                     <MaterialIcons name="delete" size={28} color={ac.emergency} />
@@ -604,7 +604,7 @@ export default function AlarmsScreen() {
             ]}
             accessibilityLabel="Adicionar alarme"
           >
-            <MaterialIcons name="add" size={24} color="#FFFFFF" />
+            <MaterialIcons name="add" size={24} color={colors.onPrimary} />
           </Pressable>
         </View>
       </View>
@@ -636,8 +636,8 @@ export default function AlarmsScreen() {
               { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
             ]}
           >
-            <MaterialIcons name="add" size={20} color="#FFFFFF" />
-            <Text style={styles.emptyButtonText}>Adicionar Alarme</Text>
+            <MaterialIcons name="add" size={20} color={colors.onPrimary} />
+            <Text style={[styles.emptyButtonText, { color: colors.onPrimary }]}>Adicionar Alarme</Text>
           </Pressable>
         </View>
       ) : (
@@ -747,16 +747,16 @@ export default function AlarmsScreen() {
                       styles.repeatOption,
                       {
                         backgroundColor:
-                          form.repeat === opt.value ? '#0066CC' : colors.surface,
+                          form.repeat === opt.value ? colors.primary : colors.surface,
                         borderColor:
-                          form.repeat === opt.value ? '#0066CC' : colors.border,
+                          form.repeat === opt.value ? colors.primary : colors.border,
                       },
                     ]}
                   >
                     <Text
                       style={[
                         styles.repeatOptionText,
-                        { color: form.repeat === opt.value ? '#FFFFFF' : colors.foreground },
+                        { color: form.repeat === opt.value ? colors.onPrimary : colors.foreground },
                       ]}
                     >
                       {opt.label}
@@ -930,7 +930,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   emptyButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },

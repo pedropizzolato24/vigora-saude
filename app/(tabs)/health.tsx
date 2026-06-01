@@ -55,7 +55,7 @@ const getMetricConfig = (colors: any) => ({
 const getStatusConfig = (colors: any) => ({
   normal: { label: 'Normal', color: colors.success, bg: colors.successLight },
   warning: { label: 'Atenção', color: colors.warning, bg: colors.warningLight },
-  critical: { label: 'Crítico', color: colors.error, bg: '#EF444415' },
+  critical: { label: 'Crítico', color: colors.error, bg: colors.errorLight },
 });
 function formatTimestamp(ts: number): string {
   const d = new Date(ts);
@@ -159,7 +159,7 @@ export default function HealthScreen() {
             onPress={() => handleDelete(item.id)}
             style={({ pressed }) => [styles.deleteBtn, pressed && { opacity: 0.6 }]}
           >
-            <MaterialIcons name="delete-outline" size={18} color="#EF4444" />
+            <MaterialIcons name="delete-outline" size={18} color={colors.error} />
           </Pressable>
         </View>
       </View>
@@ -168,7 +168,7 @@ export default function HealthScreen() {
 
   // --- ACCESSIBILITY MODE --------------------------------------------------
   if (isAccessibilityMode) {
-    const A11Y_METRIC_CONFIG = getMetricConfig({ emergency: '#CC0000', primary: ac.primary, warning: '#885500' });
+    const A11Y_METRIC_CONFIG = getMetricConfig({ emergency: ac.emergency, primary: ac.primary, warning: ac.warning });
     return (
       <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
         <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: ac.background }}>
@@ -178,10 +178,10 @@ export default function HealthScreen() {
           </View>
           <Pressable
             onPress={() => { setValueText(''); setSelectedType('heart_rate'); setModalVisible(true); }}
-            style={({ pressed }) => [{ backgroundColor: ac.success, width: as_.touchTarget, height: as_.touchTarget, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: '#004400', opacity: pressed ? 0.8 : 1 }]}
+            style={({ pressed }) => [{ backgroundColor: ac.success, width: as_.touchTarget, height: as_.touchTarget, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: ac.success, opacity: pressed ? 0.8 : 1 }]}
             accessibilityLabel="Adicionar métrica de saúde"
           >
-            <MaterialIcons name="add" size={36} color="#FFFFFF" />
+            <MaterialIcons name="add" size={36} color={ac.onPrimary} />
           </Pressable>
         </View>
 
@@ -192,10 +192,10 @@ export default function HealthScreen() {
             <Text style={{ fontSize: af.md, color: ac.muted, textAlign: 'center', lineHeight: af.md * 1.5 }}>Registre seus dados de saúde para acompanhar sua evolução.</Text>
             <Pressable
               onPress={() => { setValueText(''); setSelectedType('heart_rate'); setModalVisible(true); }}
-              style={({ pressed }) => [{ backgroundColor: ac.success, borderRadius: 20, paddingVertical: as_.buttonPadding, paddingHorizontal: 32, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 3, borderColor: '#004400', opacity: pressed ? 0.85 : 1 }]}
+              style={({ pressed }) => [{ backgroundColor: ac.success, borderRadius: 20, paddingVertical: as_.buttonPadding, paddingHorizontal: 32, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 3, borderColor: ac.success, opacity: pressed ? 0.85 : 1 }]}
             >
-              <MaterialIcons name="add" size={32} color="#FFFFFF" />
-              <Text style={{ fontSize: af.lg, fontWeight: '800', color: '#FFFFFF' }}>Registrar Métrica</Text>
+              <MaterialIcons name="add" size={32} color={ac.onPrimary} />
+              <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.onPrimary }}>Registrar Métrica</Text>
             </Pressable>
           </View>
         ) : (
@@ -205,7 +205,7 @@ export default function HealthScreen() {
             renderItem={({ item }) => {
               const cfg = A11Y_METRIC_CONFIG[item.type];
               const status = getHealthStatus(item.type, item.value);
-              const statusColor = status === 'normal' ? ac.success : status === 'warning' ? '#885500' : ac.emergency;
+              const statusColor = status === 'normal' ? ac.success : status === 'warning' ? ac.warning : ac.emergency;
               const statusLabel = status === 'normal' ? 'Normal' : status === 'warning' ? 'Atenção' : 'Crítico';
               return (
                 <View style={{ margin: 12, marginBottom: 0, backgroundColor: ac.surface, borderRadius: as_.cardRadius, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 8 }}>
@@ -221,7 +221,7 @@ export default function HealthScreen() {
                   <Text style={{ fontSize: af.sm, color: ac.muted }}>{formatTimestamp(item.timestamp)}</Text>
                   <Pressable
                     onPress={() => handleDelete(item.id)}
-                    style={({ pressed }) => [{ marginTop: 4, paddingVertical: 12, borderRadius: 12, borderWidth: 2, borderColor: ac.emergency, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: pressed ? '#FFE0E0' : ac.background }]}
+                    style={({ pressed }) => [{ marginTop: 4, paddingVertical: 12, borderRadius: 12, borderWidth: 2, borderColor: ac.emergency, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: pressed ? ac.error + '20' : ac.background }]}
                   >
                     <MaterialIcons name="delete" size={24} color={ac.emergency} />
                     <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.emergency }}>Excluir</Text>
@@ -313,7 +313,7 @@ export default function HealthScreen() {
             ]}
             accessibilityLabel="Adicionar métrica de saúde"
           >
-            <MaterialIcons name="add" size={24} color="#FFFFFF" />
+            <MaterialIcons name="add" size={24} color={colors.onSuccess} />
           </Pressable>
         </View>
       </View>
@@ -366,8 +366,8 @@ export default function HealthScreen() {
               { backgroundColor: colors.success, opacity: pressed ? 0.85 : 1 },
             ]}
           >
-            <MaterialIcons name="add" size={20} color="#FFFFFF" />
-            <Text style={styles.emptyButtonText}>Registrar Métrica</Text>
+            <MaterialIcons name="add" size={20} color={colors.onSuccess} />
+            <Text style={[styles.emptyButtonText, { color: colors.onSuccess }]}>Registrar Métrica</Text>
           </Pressable>
         </View>
       ) : (
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginTop: 8,
   },
-  emptyButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  emptyButtonText: { fontSize: 16, fontWeight: '600' },
   modal: { flex: 1 },
   modalHeader: {
     flexDirection: 'row',

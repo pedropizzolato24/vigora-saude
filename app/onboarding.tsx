@@ -48,7 +48,7 @@ const SLIDES: OnboardingSlide[] = [
     type: 'info',
     icon: 'favorite',
     iconColor: '#FFFFFF',
-    iconBg: '#0066CC',
+    iconBg: '#1E4D8C',
     title: 'Bem-vindo ao Vigora Saúde',
     description:
       'Seu assistente pessoal de saúde e segurança. Monitore sua saúde, configure alarmes de medicamentos e tenha acesso rápido a serviços de emergência.',
@@ -58,7 +58,7 @@ const SLIDES: OnboardingSlide[] = [
     type: 'info',
     icon: 'warning',
     iconColor: '#FFFFFF',
-    iconBg: '#DC2626',
+    iconBg: '#D6161C',
     title: 'Botão SOS',
     description:
       'Em caso de emergência, pressione o botão SOS na tela inicial. Seus contatos de emergência serão notificados automaticamente via WhatsApp com sua localização.',
@@ -68,7 +68,7 @@ const SLIDES: OnboardingSlide[] = [
     type: 'info',
     icon: 'alarm',
     iconColor: '#FFFFFF',
-    iconBg: '#F59E0B',
+    iconBg: '#F0C24A',
     title: 'Alarmes Inteligentes',
     description:
       'Configure até 24 alarmes para medicamentos e consultas. Se você não responder, o app notifica automaticamente seus contatos de emergência.',
@@ -78,7 +78,7 @@ const SLIDES: OnboardingSlide[] = [
     type: 'info',
     icon: 'people',
     iconColor: '#FFFFFF',
-    iconBg: '#22C55E',
+    iconBg: '#0F8A4A',
     title: 'Contatos de Emergência',
     description:
       'Cadastre contatos de emergência ou importe direto da agenda do celular. Eles serão notificados via WhatsApp em situações de emergência.',
@@ -233,9 +233,9 @@ export default function OnboardingScreen() {
         </Text>
 
         {locationGranted ? (
-          <View style={[styles.permissionGrantedBadge, { backgroundColor: '#DCFCE7' }]}>
-            <MaterialIcons name="check-circle" size={20} color="#16A34A" />
-            <Text style={[styles.permissionGrantedText, { color: '#16A34A' }]}>
+          <View style={[styles.permissionGrantedBadge, { backgroundColor: colors.successLight }]}>
+            <MaterialIcons name="check-circle" size={20} color={colors.success} />
+            <Text style={[styles.permissionGrantedText, { color: colors.success }]}>
               Localização permitida
             </Text>
           </View>
@@ -266,9 +266,9 @@ export default function OnboardingScreen() {
         </Text>
 
         {backgroundGranted ? (
-          <View style={[styles.permissionGrantedBadge, { backgroundColor: '#DCFCE7' }]}>
-            <MaterialIcons name="check-circle" size={20} color="#16A34A" />
-            <Text style={[styles.permissionGrantedText, { color: '#16A34A' }]}>
+          <View style={[styles.permissionGrantedBadge, { backgroundColor: colors.successLight }]}>
+            <MaterialIcons name="check-circle" size={20} color={colors.success} />
+            <Text style={[styles.permissionGrantedText, { color: colors.success }]}>
               Localização em segundo plano ativada
             </Text>
           </View>
@@ -288,7 +288,7 @@ export default function OnboardingScreen() {
               ].map((step, i) => (
                 <View key={i} style={styles.guideStep}>
                   <View style={[styles.guideStepNumber, { backgroundColor: item.iconBg }]}>
-                    <Text style={styles.guideStepNumberText}>{i + 1}</Text>
+                    <Text style={[styles.guideStepNumberText, { color: colors.onPrimary }]}>{i + 1}</Text>
                   </View>
                   <Text style={[styles.guideStepText, { color: colors.foreground }]}>{step}</Text>
                 </View>
@@ -302,8 +302,8 @@ export default function OnboardingScreen() {
                 { backgroundColor: item.iconBg, opacity: pressed ? 0.85 : 1 },
               ]}
             >
-              <MaterialIcons name="settings" size={20} color="#FFFFFF" />
-              <Text style={styles.settingsButtonText}>Ir para Configurações</Text>
+              <MaterialIcons name="settings" size={20} color={colors.onPrimary} />
+              <Text style={[styles.settingsButtonText, { color: colors.onPrimary }]}>Ir para Configurações</Text>
             </Pressable>
 
             <Text style={[styles.skipHint, { color: colors.muted }]}>
@@ -426,8 +426,8 @@ export default function OnboardingScreen() {
             },
           ]}
         >
-          <Text style={styles.nextButtonText}>{getNextButtonLabel()}</Text>
-          <MaterialIcons name="arrow-forward" size={22} color="#FFFFFF" />
+          <Text style={[styles.nextButtonText, { color: colors.onPrimary }]}>{getNextButtonLabel()}</Text>
+          <MaterialIcons name="arrow-forward" size={22} color={colors.onPrimary} />
         </Pressable>
       </View>
     </View>
@@ -544,7 +544,6 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   guideStepNumberText: {
-    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
   },
@@ -563,7 +562,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   settingsButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },
@@ -596,7 +594,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   nextButtonText: {
-    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
   },

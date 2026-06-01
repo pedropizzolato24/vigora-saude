@@ -67,7 +67,7 @@ export default function CaregiverPersonScreen() {
         {/* Header */}
         <View style={[styles.header, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-            <Text style={styles.avatarText}>{initialsOf(linked.displayName)}</Text>
+            <Text style={[styles.avatarText, { color: colors.onPrimary }]}>{initialsOf(linked.displayName)}</Text>
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.name, { color: colors.foreground }]}>{linked.displayName}</Text>
@@ -75,7 +75,7 @@ export default function CaregiverPersonScreen() {
               <Text style={[styles.relationship, { color: colors.muted }]}>{linked.relationship}</Text>
             ) : null}
             <View style={styles.statusRow}>
-              <View style={[styles.statusDot, { backgroundColor: '#F59E0B' }]} />
+              <View style={[styles.statusDot, { backgroundColor: colors.warning }]} />
               <Text style={[styles.statusText, { color: colors.muted }]}>
                 Aguardando sincronização
               </Text>
@@ -93,8 +93,8 @@ export default function CaregiverPersonScreen() {
         {menuOpen ? (
           <View style={[styles.menu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Pressable onPress={confirmUnlink} style={styles.menuItem}>
-              <MaterialIcons name="link-off" size={20} color="#DC2626" />
-              <Text style={[styles.menuItemText, { color: '#DC2626' }]}>Desvincular</Text>
+              <MaterialIcons name="link-off" size={20} color={colors.error} />
+              <Text style={[styles.menuItemText, { color: colors.error }]}>Desvincular</Text>
             </Pressable>
           </View>
         ) : null}
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     width: 64, height: 64, borderRadius: 32,
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { color: '#FFFFFF', fontSize: 22, fontWeight: '800' },
+  avatarText: { fontSize: 22, fontWeight: '800' },
   name: { fontSize: 19, fontWeight: '800' },
   relationship: { fontSize: 14, marginTop: 2 },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },

@@ -81,8 +81,9 @@ export async function scheduleCheckin(
     // 1. Notificação-prompt diária recorrente
     const promptId = await Notifications.scheduleNotificationAsync({
       content: {
-        title: '💚 Check-in Vigora',
-        body: 'Você está bem hoje? Toque para confirmar.',
+        title: '💚 Como você está?',
+        body: 'Toque para confirmar que está tudo bem 🌿',
+        color: '#2E7D32',
         data: {
           type: 'checkin_prompt',
           url: '/checkin-response',

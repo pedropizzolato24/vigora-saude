@@ -28,6 +28,7 @@ import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
 import { useAppContext } from '@/lib/app-context';
 import { useAccessibility } from '@/lib/accessibility-context';
+import { useColors } from '@/hooks/use-colors';
 import { escalateAlarmToContacts } from '@/lib/alarm-escalation';
 import { stopNativeAlarm } from '@/lib/native-alarm-manager';
 import { PulseView } from '@/components/animated-components';
@@ -60,6 +61,7 @@ export default function AlarmRingScreen() {
   const { alarmId, expiresAt: expiresAtParam } = useLocalSearchParams<{ alarmId: string; expiresAt?: string }>();
   const { state, dispatch } = useAppContext();
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac } = useAccessibility();
+  const colors = useColors();
 
   const alarm = state.alarms.find((a) => a.id === alarmId);
   // Initialize with the configured duration; will be overridden by persisted timer on mount.
@@ -395,10 +397,10 @@ export default function AlarmRingScreen() {
         <View style={[styles.countdownSection, { gap: 10 }]}>
           {!isExpired ? (
             <>
-              <Text style={[styles.countdownLabel, { color: isUrgent ? '#F59E0B' : ac.muted, fontSize: af.sm, fontWeight: isUrgent ? '700' : '400' }]}>
+              <Text style={[styles.countdownLabel, { color: isUrgent ? colors.warning : ac.muted, fontSize: af.sm, fontWeight: isUrgent ? '700' : '400' }]}>
                 {isUrgent ? '⚠️ Mensagem de emergência em' : 'Mensagem de emergência em'}
               </Text>
-              <Text style={[styles.countdownTimer, { color: isUrgent ? '#F59E0B' : ac.foreground, fontSize: 56 }]}>
+              <Text style={[styles.countdownTimer, { color: isUrgent ? colors.warning : ac.foreground, fontSize: 56 }]}>
                 {formatTime(secondsLeft)}
               </Text>
               <Text style={[styles.countdownSub, { color: ac.muted, fontSize: af.xs }]}>
@@ -406,9 +408,9 @@ export default function AlarmRingScreen() {
               </Text>
             </>
           ) : (
-            <View style={[styles.escalatedBox, { borderColor: '#EF4444', borderWidth: 3 }]}>
-              <MaterialIcons name="warning" size={36} color="#EF4444" />
-              <Text style={[styles.escalatedText, { color: '#FCA5A5', fontSize: af.md, lineHeight: af.md * 1.4 }]}>
+            <View style={[styles.escalatedBox, { backgroundColor: colors.errorLight, borderColor: colors.error, borderWidth: 3 }]}>
+              <MaterialIcons name="warning" size={36} color={colors.error} />
+              <Text style={[styles.escalatedText, { color: colors.error, fontSize: af.md, lineHeight: af.md * 1.4 }]}>
                 Mensagem de emergência enviada para seus contatos
               </Text>
             </View>
@@ -442,11 +444,17 @@ export default function AlarmRingScreen() {
       {/* Top section: pulsing icon */}
       <View style={styles.topSection}>
         <PulseView active minScale={0.85} maxScale={1.15} duration={800}>
-          <View style={[styles.iconCircle, isUrgent && styles.iconCircleUrgent, isExpired && styles.iconCircleExpired]}>
+          <View style={[
+            styles.iconCircle,
+            {
+              backgroundColor: isExpired ? colors.error : isUrgent ? colors.warning : colors.primary,
+              shadowColor: isExpired ? colors.error : isUrgent ? colors.warning : colors.primary,
+            },
+          ]}>
             <MaterialIcons
               name="alarm"
               size={72}
-              color="#FFFFFF"
+              color={colors.onPrimary}
             />
           </View>
         </PulseView>
@@ -486,10 +494,10 @@ export default function AlarmRingScreen() {
       <View style={styles.countdownSection}>
         {!isExpired ? (
           <>
-            <Text style={[styles.countdownLabel, isUrgent && styles.countdownLabelUrgent]}>
+            <Text style={[styles.countdownLabel, isUrgent && { color: colors.warning, fontWeight: '600' }]}>
               {isUrgent ? '⚠️ Mensagem de emergência em' : 'Mensagem de emergência em'}
             </Text>
-            <Text style={[styles.countdownTimer, isUrgent && styles.countdownTimerUrgent]}>
+            <Text style={[styles.countdownTimer, isUrgent && { color: colors.warning }]}>
               {formatTime(secondsLeft)}
             </Text>
             <Text style={styles.countdownSub}>
@@ -497,9 +505,9 @@ export default function AlarmRingScreen() {
             </Text>
           </>
         ) : (
-          <View style={styles.escalatedBox}>
-            <MaterialIcons name="warning" size={28} color="#EF4444" />
-            <Text style={styles.escalatedText}>
+          <View style={[styles.escalatedBox, { backgroundColor: colors.errorLight, borderColor: colors.error }]}>
+            <MaterialIcons name="warning" size={28} color={colors.error} />
+            <Text style={[styles.escalatedText, { color: colors.error }]}>
               Mensagem de emergência enviada para seus contatos
             </Text>
           </View>
@@ -511,12 +519,13 @@ export default function AlarmRingScreen() {
         <Pressable
           style={({ pressed }) => [
             styles.dismissButton,
+            { backgroundColor: colors.error, shadowColor: colors.error },
             pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
           ]}
           onPress={handleDismiss}
           accessibilityLabel="Desligar alarme"
         >
-          <MaterialIcons name="alarm-off" size={32} color="#FFFFFF" />
+          <MaterialIcons name="alarm-off" size={32} color={colors.onEmergency} />
           <Text style={styles.dismissText}>Desligar Alarme</Text>
         </Pressable>
       </View>
@@ -542,23 +551,15 @@ const styles = StyleSheet.create({
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: '#0066CC',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#0066CC',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 30,
     elevation: 20,
   },
-  iconCircleUrgent: {
-    backgroundColor: '#F59E0B',
-    shadowColor: '#F59E0B',
-  },
-  iconCircleExpired: {
-    backgroundColor: '#EF4444',
-    shadowColor: '#EF4444',
-  },
+  iconCircleUrgent: {},
+  iconCircleExpired: {},
   alarmLabel: {
     fontSize: 13,
     fontWeight: '700',
@@ -616,7 +617,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   countdownLabelUrgent: {
-    color: '#F59E0B',
     fontWeight: '600',
   },
   countdownTimer: {
@@ -625,9 +625,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 2,
   },
-  countdownTimerUrgent: {
-    color: '#F59E0B',
-  },
+  countdownTimerUrgent: {},
   countdownSub: {
     fontSize: 12,
     color: '#64748B',
@@ -638,16 +636,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#EF444420',
     borderRadius: 12,
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderWidth: 1,
-    borderColor: '#EF4444',
   },
   escalatedText: {
     fontSize: 14,
-    color: '#FCA5A5',
     fontWeight: '600',
     flex: 1,
     lineHeight: 20,
@@ -661,12 +656,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
-    backgroundColor: '#EF4444',
     borderRadius: 20,
     paddingVertical: 22,
     paddingHorizontal: 40,
     width: '100%',
-    shadowColor: '#EF4444',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 16,

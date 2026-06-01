@@ -49,19 +49,19 @@ type Tab = 'events' | 'warnings';
 const STATUS_CONFIG = {
   responded: {
     icon: 'check-circle' as const,
-    color: '#22C55E',
+    color: '#0F8A4A',
     label: 'Respondido',
     description: 'Alarme confirmado pelo usuário',
   },
   missed: {
     icon: 'cancel' as const,
-    color: '#EF4444',
+    color: '#D6161C',
     label: 'Não respondido',
     description: 'Alarme não foi atendido - SOS enviado',
   },
   not_sent: {
     icon: 'phone-disabled' as const,
-    color: '#F59E0B',
+    color: '#F0C24A',
     label: 'Não enviado',
     description: 'Celular estava offline quando o alarme disparou',
   },
@@ -74,9 +74,9 @@ const STATUS_CONFIG = {
 };
 
 const WARNING_LEVEL_CONFIG = {
-  1: { color: '#F59E0B', label: 'Aviso leve', icon: 'warning' as const },
+  1: { color: '#F0C24A', label: 'Aviso leve', icon: 'warning' as const },
   2: { color: '#F97316', label: 'Atenção moderada', icon: 'report-problem' as const },
-  3: { color: '#EF4444', label: 'Alerta sério', icon: 'error' as const },
+  3: { color: '#D6161C', label: 'Alerta sério', icon: 'error' as const },
 };
 
 function formatDate(isoString: string): string {
@@ -154,17 +154,17 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
 
         {/* Summary cards */}
         <View style={styles.summaryRow}>
-          <View style={[styles.summaryCard, { backgroundColor: '#DCFCE7' }]}>
-            <Text style={[styles.summaryNum, { color: '#15803D' }]}>{respondedCount}</Text>
-            <Text style={[styles.summaryLabel, { color: '#15803D' }]}>Respondidos</Text>
+          <View style={[styles.summaryCard, { backgroundColor: colors.successLight }]}>
+            <Text style={[styles.summaryNum, { color: colors.success }]}>{respondedCount}</Text>
+            <Text style={[styles.summaryLabel, { color: colors.success }]}>Respondidos</Text>
           </View>
-          <View style={[styles.summaryCard, { backgroundColor: '#FEE2E2' }]}>
-            <Text style={[styles.summaryNum, { color: '#B91C1C' }]}>{missedCount}</Text>
-            <Text style={[styles.summaryLabel, { color: '#B91C1C' }]}>Perdidos</Text>
+          <View style={[styles.summaryCard, { backgroundColor: colors.errorLight }]}>
+            <Text style={[styles.summaryNum, { color: colors.error }]}>{missedCount}</Text>
+            <Text style={[styles.summaryLabel, { color: colors.error }]}>Perdidos</Text>
           </View>
-          <View style={[styles.summaryCard, { backgroundColor: '#FEF3C7' }]}>
-            <Text style={[styles.summaryNum, { color: '#92400E' }]}>{notSentCount}</Text>
-            <Text style={[styles.summaryLabel, { color: '#92400E' }]}>Offline</Text>
+          <View style={[styles.summaryCard, { backgroundColor: colors.warningLight }]}>
+            <Text style={[styles.summaryNum, { color: colors.warningDark }]}>{notSentCount}</Text>
+            <Text style={[styles.summaryLabel, { color: colors.warningDark }]}>Offline</Text>
           </View>
         </View>
 
