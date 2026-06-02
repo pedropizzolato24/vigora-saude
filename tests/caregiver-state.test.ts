@@ -8,12 +8,13 @@ import {
 
 const link: LinkedMonitored = {
   id: 'uuid-1',
+  monitoredOpenId: 'open-maria',
   method: 'code',
   identifier: '123456',
   displayName: 'Maria',
   relationship: 'mãe',
   linkedAt: 1_700_000_000_000,
-  status: 'pending',
+  status: 'active',
 };
 
 describe('caregiverReducer', () => {
