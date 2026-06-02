@@ -17,6 +17,7 @@ import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/use-colors';
 import * as Auth from '@/lib/_core/auth';
 import { trpc } from '@/lib/trpc';
+import { clearPendingInvite, getPendingInvite } from '@/lib/pending-invite';
 
 type UserType = 'caregiver' | 'monitored';
 
@@ -100,6 +101,14 @@ export default function RegisterScreen() {
           birthDate: updated.birthDate,
           bloodType: updated.bloodType,
         });
+      }
+
+      // Resume a pending invite link (the monitored just finished registering).
+      const pendingInvite = await getPendingInvite();
+      if (pendingInvite) {
+        await clearPendingInvite();
+        router.replace(`/convite/${pendingInvite}`);
+        return;
       }
 
       router.replace('/(tabs)');

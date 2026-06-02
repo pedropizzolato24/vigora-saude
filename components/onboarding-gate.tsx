@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
+import * as Linking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Auth from '@/lib/_core/auth';
+import { setPendingInvite } from '@/lib/pending-invite';
 
 const ONBOARDING_KEY = 'vigora_onboarding_completed';
 const LOGIN_COMPLETED_KEY = 'vigora_login_completed';
@@ -21,13 +23,32 @@ const CAREGIVER_ONBOARDING_KEY = 'vigora_caregiver_onboarding_completed';
  */
 export function OnboardingGate() {
   const router = useRouter();
+  const pathname = usePathname();
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
     if (checked) return;
 
+    // A deep-linked invite (/convite/[token]) owns its own routing — don't let
+    // the startup funnel clobber it. The accept screen handles auth itself.
+    if (pathname?.startsWith('/convite')) {
+      setChecked(true);
+      return;
+    }
+
     (async () => {
       try {
+        // Cold-start robustness: if the app was opened via an invite link, stash
+        // the token now so it survives the funnel even if pathname hasn't
+        // resolved to /convite yet and we redirect to /login below.
+        try {
+          const initialUrl = await Linking.getInitialURL();
+          const match = initialUrl?.match(/\/convite\/([^/?#]+)/);
+          if (match?.[1]) await setPendingInvite(decodeURIComponent(match[1]));
+        } catch {
+          // best-effort
+        }
+
         const [onboardingDone, loginCompleted, user] = await Promise.all([
           AsyncStorage.getItem(ONBOARDING_KEY),
           AsyncStorage.getItem(LOGIN_COMPLETED_KEY),
@@ -66,7 +87,7 @@ export function OnboardingGate() {
         setChecked(true);
       }
     })();
-  }, [checked, router]);
+  }, [checked, router, pathname]);
 
   return null;
 }

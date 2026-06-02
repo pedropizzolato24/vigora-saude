@@ -20,6 +20,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/use-colors";
 import { useAppContext } from "@/lib/app-context";
 import * as Auth from "@/lib/_core/auth";
+import { clearPendingInvite, getPendingInvite } from "@/lib/pending-invite";
 import {
   getApiBaseUrl,
   GOOGLE_ANDROID_CLIENT_ID,
@@ -148,6 +149,16 @@ export default function LoginScreen() {
 
       await AsyncStorage.setItem(LOGIN_COMPLETED_KEY, "true");
       reconcileFromCloud().catch(() => {});
+
+      // Resume a pending invite link if the user opened one before logging in.
+      // Only once registration is complete (userType set) — otherwise fall
+      // through to /register and resume after that.
+      const pendingInvite = await getPendingInvite();
+      if (pendingInvite && result.user.userType) {
+        await clearPendingInvite();
+        router.replace(`/convite/${pendingInvite}`);
+        return;
+      }
 
       const flag = await AsyncStorage.getItem(CAREGIVER_ONBOARDING_KEY);
       router.replace(getNextRoute(result.user.userType, flag === "true"));

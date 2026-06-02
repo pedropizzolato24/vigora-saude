@@ -12,6 +12,12 @@ const env = {
   androidPackage: "com.vigora.saude",
 };
 
+// Host for Universal Links (iOS) / App Links (Android) used by caregiver
+// share-invite links (https://<host>/convite/<token>). Set EXPO_PUBLIC_LINK_HOST
+// to the domain serving /.well-known/{apple-app-site-association,assetlinks.json}.
+// When unset, only the custom scheme (vigora://) deep links are registered.
+const linkHost = process.env.EXPO_PUBLIC_LINK_HOST?.trim() || undefined;
+
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
@@ -24,9 +30,10 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
+    ...(linkHost ? { associatedDomains: [`applinks:${linkHost}`] } : {}),
     "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
+      "ITSAppUsesNonExemptEncryption": false
+    }
   },
   android: {
     adaptiveIcon: {
@@ -63,6 +70,18 @@ const config: ExpoConfig = {
         ],
         category: ["BROWSABLE", "DEFAULT"],
       },
+      // https App Link for caregiver share invites (verified via assetlinks.json
+      // on the host). Only added when EXPO_PUBLIC_LINK_HOST is configured.
+      ...(linkHost
+        ? [
+          {
+            action: "VIEW",
+            autoVerify: true,
+            data: [{ scheme: "https", host: linkHost, pathPrefix: "/convite" }],
+            category: ["BROWSABLE", "DEFAULT"],
+          },
+        ]
+        : []),
     ],
   },
   web: {

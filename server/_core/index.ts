@@ -11,6 +11,7 @@ import { createRateLimit } from "./rate-limit";
 import { securityHeadersMiddleware } from "./security-headers";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
+import { renderInviteLanding } from "../invite-landing";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
@@ -44,6 +45,61 @@ async function startServer() {
   // 1MB is plenty for normal tRPC payloads (alarm lists, contacts).
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ limit: "1mb", extended: true }));
+
+  // Deep-link association files for caregiver share invites
+  // (https://<host>/convite/<token>). Served only when the platform IDs are
+  // configured via env. Apple/Google fetch these directly (no auth, no CORS).
+  app.get("/.well-known/apple-app-site-association", (_req, res) => {
+    const teamId = process.env.APPLE_TEAM_ID;
+    if (!teamId) {
+      res.status(404).json({ error: "Universal Links not configured" });
+      return;
+    }
+    res.type("application/json").json({
+      applinks: {
+        apps: [],
+        details: [{ appID: `${teamId}.com.vigora.saude`, paths: ["/convite/*"] }],
+      },
+    });
+  });
+
+  app.get("/.well-known/assetlinks.json", (_req, res) => {
+    const sha256 = process.env.ANDROID_CERT_SHA256;
+    if (!sha256) {
+      res.status(404).json([]);
+      return;
+    }
+    // Accept comma-separated fingerprints (e.g. Play App Signing + upload key).
+    const fingerprints = sha256.split(",").map((s) => s.trim()).filter(Boolean);
+    res.type("application/json").json([
+      {
+        relation: ["delegate_permission/common.handle_all_urls"],
+        target: {
+          namespace: "android_app",
+          package_name: "com.vigora.saude",
+          sha256_cert_fingerprints: fingerprints,
+        },
+      },
+    ]);
+  });
+
+  // "Instale o app" landing for invite links opened without the app installed
+  // (or on desktop). With the app installed, the verified App/Universal Link
+  // opens the app and this is never hit. Relax the API's strict CSP just enough
+  // to render inline styles (the page has no external resources or scripts).
+  app.get("/convite/:token", (req, res) => {
+    const androidUrl =
+      process.env.ANDROID_PLAY_STORE_URL ||
+      "https://play.google.com/store/apps/details?id=com.vigora.saude";
+    const iosUrl = process.env.IOS_APP_STORE_URL || undefined;
+    res.setHeader(
+      "Content-Security-Policy",
+      "default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'"
+    );
+    res
+      .type("html")
+      .send(renderInviteLanding({ token: String(req.params.token ?? ""), iosUrl, androidUrl }));
+  });
 
   // Auth endpoints — /api/auth/google verifies the Google id_token and emits
   // the session JWT; the rest are session lifecycle (me / logout / cookie sync).
