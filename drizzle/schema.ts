@@ -1,12 +1,14 @@
 import {
   bigint,
   boolean,
+  index,
   int,
   json,
   mysqlEnum,
   mysqlTable,
   text,
   timestamp,
+  unique,
   varchar,
 } from "drizzle-orm/mysql-core";
 
@@ -184,3 +186,80 @@ export const warningLog = mysqlTable("warning_log", {
 
 export type WarningLog = typeof warningLog.$inferSelect;
 export type InsertWarningLog = typeof warningLog.$inferInsert;
+
+// -----------------------------------------------------------------------------
+// Caregiver Links - persistent monitored <-> caregiver relationship
+// -----------------------------------------------------------------------------
+
+/**
+ * One row per (caregiver, monitored) pairing. Keyed by the two accounts'
+ * `openId`s (the Google account id), independent of device. A pairing is
+ * established when a caregiver redeems an invite the monitored person
+ * generated — the invite code itself is the monitored person's consent, so
+ * the link is created directly as `active`.
+ *
+ * Either side can `revoke` the link (LGPD Art. 18 — the data subject must be
+ * able to revoke a caregiver's access at any time). Revoked rows are kept for
+ * audit but are excluded from all data-access checks (`assertActiveLink`).
+ */
+export const caregiverLinks = mysqlTable(
+  "caregiver_links",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    caregiverOpenId: varchar("caregiverOpenId", { length: 64 }).notNull(),
+    monitoredOpenId: varchar("monitoredOpenId", { length: 64 }).notNull(),
+    /** Caregiver-chosen display name for the monitored person (nickname). */
+    displayName: varchar("displayName", { length: 255 }),
+    /** Caregiver-chosen relationship label ("Mãe", "Pai", ...). */
+    relationship: varchar("relationship", { length: 64 }),
+    /** How the link was established. `invite_link` is reserved for the future caregiver-initiated flow. */
+    method: mysqlEnum("method", ["code", "qr", "invite_link"]).notNull().default("code"),
+    status: mysqlEnum("status", ["active", "revoked"]).notNull().default("active"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    revokedAt: timestamp("revokedAt"),
+  },
+  (t) => [
+    unique("caregiver_links_pair_unq").on(t.caregiverOpenId, t.monitoredOpenId),
+    index("caregiver_links_monitored_idx").on(t.monitoredOpenId),
+    index("caregiver_links_caregiver_idx").on(t.caregiverOpenId),
+  ]
+);
+
+export type CaregiverLink = typeof caregiverLinks.$inferSelect;
+export type InsertCaregiverLink = typeof caregiverLinks.$inferInsert;
+
+// -----------------------------------------------------------------------------
+// Link Invites - short-lived, single-use codes used to establish a link
+// -----------------------------------------------------------------------------
+
+/**
+ * Ephemeral invite codes. Generic in both directions so the same table backs
+ * the current monitored-generated code flow and the future caregiver-generated
+ * deep-link flow:
+ *   - `createdByRole = 'monitored'`: the monitored person generated a 6-char
+ *     code; a caregiver redeems it.
+ *   - `createdByRole = 'caregiver'`: (future) the caregiver generated an
+ *     opaque token shared via a link; the monitored person accepts it.
+ *
+ * Codes are crypto-random, expire after a few minutes, and are single-use
+ * (`consumedAt` set on redemption). The pairing they create lives in
+ * `caregiver_links`.
+ */
+export const linkInvites = mysqlTable(
+  "link_invites",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    code: varchar("code", { length: 16 }).notNull(),
+    createdByOpenId: varchar("createdByOpenId", { length: 64 }).notNull(),
+    createdByRole: mysqlEnum("createdByRole", ["monitored", "caregiver"]).notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    consumedAt: timestamp("consumedAt"),
+    consumedByOpenId: varchar("consumedByOpenId", { length: 64 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [index("link_invites_code_idx").on(t.code)]
+);
+
+export type LinkInvite = typeof linkInvites.$inferSelect;
+export type InsertLinkInvite = typeof linkInvites.$inferInsert;
