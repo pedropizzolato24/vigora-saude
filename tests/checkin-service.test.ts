@@ -23,6 +23,13 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
+// monitoring-service transitively imports device-id → expo-crypto →
+// expo-modules-core, which requires TurboModuleRegistry (unavailable in Node).
+// The functions under test never call monitoring-service, so a stub is enough.
+vi.mock('../lib/monitoring-service', () => ({
+  createPendingAlarmEvent: vi.fn(),
+}));
+
 import { computeTimeoutDate, formatCountdown } from '../lib/checkin-service';
 
 describe('computeTimeoutDate', () => {
