@@ -5,11 +5,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CaregiverTabBar } from '@/components/caregiver-tab-bar';
 import { useColors } from '@/hooks/use-colors';
 import * as Auth from '@/lib/_core/auth';
+import { useCaregiverContext } from '@/lib/caregiver-context';
 
 export default function CaregiverTabLayout() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { refreshLink } = useCaregiverContext();
   const [checked, setChecked] = useState(false);
 
   // Defense in depth: a monitored user that somehow lands on a caregiver-tabs
@@ -22,9 +24,13 @@ export default function CaregiverTabLayout() {
         router.replace('/(tabs)');
         return;
       }
+      // Auth is available now (the provider mounts pre-login at the app root, so
+      // its initial hydration may have run unauthenticated). Re-sync the link
+      // from the server so fresh logins / reinstalls see their active link.
+      refreshLink();
       setChecked(true);
     })();
-  }, [router]);
+  }, [router, refreshLink]);
 
   if (!checked) return null;
 

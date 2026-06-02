@@ -21,6 +21,7 @@ import {
   getInactiveDevices,
   getLastHeartbeat,
   getLastWarning,
+  getMissedCheckinEvents,
   getWarningHistory,
   markEventWarningSent,
   updateAlarmEventStatus,
@@ -325,6 +326,57 @@ export async function runMonitoringJob(): Promise<void> {
       console.log(
         `[Monitor] Warning sent: ${totalSent} contacts reached (WhatsApp: ${channelSummary.whatsapp}, Email: ${channelSummary.email}, SMS: ${channelSummary.sms}), ${totalFailed} failed`
       );
+    }
+
+    // -- Step 3: Escalate missed check-in events --------------------------------
+    // Scoped to 'checkin-daily' to avoid cascading on every missed medication alarm.
+    // warningSent=false means the client did not handle escalation (device was offline).
+    // Look back 48h so events that missed a job run still get caught.
+    const missedCheckins = await getMissedCheckinEvents("checkin-daily", 48);
+    console.log(`[Monitor] Found ${missedCheckins.length} missed check-in events to escalate`);
+
+    for (const event of missedCheckins) {
+      const appUser = await getAppUser(event.deviceId);
+      if (!appUser) {
+        console.log(`[Monitor] Step 3: no app user for device ${event.deviceId}, skipping`);
+        await markEventWarningSent(event.id);
+        continue;
+      }
+
+      const contacts = (appUser.emergencyContacts as any[]) || [];
+      if (contacts.length === 0) {
+        console.log(`[Monitor] Step 3: no contacts for device ${event.deviceId}, skipping`);
+        await markEventWarningSent(event.id);
+        continue;
+      }
+
+      const name = appUser.userName || "O usuário do Vigora Saúde";
+      const scheduledStr = event.scheduledAt.toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const message =
+        `⚠️ CHECK-IN NÃO RESPONDIDO - Vigora Saúde\n\n` +
+        `${name} não respondeu ao check-in de saúde previsto para ${scheduledStr}.\n\n` +
+        `Por favor, entre em contato para verificar se está tudo bem.\n\n` +
+        `- Enviado automaticamente pelo Vigora Saúde`;
+      const emailSubject = `⚠️ Check-in não respondido: ${name} - Vigora Saúde`;
+
+      console.log(`[Monitor] Step 3: escalating check-in for device ${event.deviceId}`);
+
+      let totalSent = 0;
+      for (const contact of contacts) {
+        const result = await sendWithFallback(
+          { name: contact.name, phone: contact.phone, email: contact.email, whatsapp: contact.whatsapp },
+          message,
+          emailSubject
+        );
+        if (result.channel) totalSent++;
+        await new Promise((r) => setTimeout(r, 500));
+      }
+
+      await markEventWarningSent(event.id);
+      console.log(`[Monitor] Step 3: escalated check-in event ${event.id}, ${totalSent} contacts reached`);
     }
 
     console.log(`[Monitor] Job completed successfully`);

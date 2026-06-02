@@ -9,6 +9,7 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { isWhatsAppApiConfigured, sendEmergencyAlerts } from "./whatsapp";
 import { assertDeviceOwnership, getAppUserForOwner } from "./db-monitoring";
 import { monitoringRouter } from "./routers-monitoring";
+import { linkRouter } from "./routers-links";
 import { getUserByOpenId, getUserData, upsertUser, upsertUserData } from "./db";
 import type { EmergencyContactRecord } from "../drizzle/schema";
 
@@ -210,6 +211,9 @@ export const appRouter = router({
 
   // Alarm monitoring system
   monitoring: monitoringRouter,
+
+  // Monitored <-> caregiver linking
+  link: linkRouter,
 
   // WhatsApp emergency escalation routes
   whatsapp: router({

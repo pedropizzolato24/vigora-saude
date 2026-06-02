@@ -6,18 +6,18 @@
  * so the reducer stays unit-testable and free of React/AsyncStorage imports.
  */
 
-export type LinkMethod = 'code' | 'email_phone' | 'qr';
+export type LinkMethod = 'code' | 'email_phone' | 'qr' | 'invite_link';
 
 /**
- * Lifecycle of a link. In the shell, all stubs are created as `'pending'`.
- * The status transitions to `'active'` once real caregiver↔monitored sync
- * is wired up server-side. Widened now so the future write doesn't require
- * a type change at every call site.
+ * Lifecycle of a link. `'pending'` was the shell stub state; real links
+ * established via the server come back as `'active'`.
  */
 export type LinkStatus = 'pending' | 'active';
 
 export interface LinkedMonitored {
   id: string;
+  /** OpenId of the monitored account on the server. Drives all scoped reads. */
+  monitoredOpenId: string;
   method: LinkMethod;
   identifier: string;
   displayName: string;

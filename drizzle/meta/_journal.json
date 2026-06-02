@@ -50,6 +50,13 @@
       "when": 1779480586218,
       "tag": "0006_cloudy_nighthawk",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1780341978098,
+      "tag": "0007_silent_scream",
+      "breakpoints": true
     }
   ]
 }

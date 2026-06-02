@@ -1,23 +1,26 @@
 /**
  * link.tsx — caregiver-side wizard for linking a monitored person.
  *
- * Three methods (code, email/phone, QR). In the shell, all three converge to
- * `setLinkedMonitored` with whatever the user entered/scanned — no validation
- * against a real server. Replaced by a real handshake when sync is built.
+ * Two methods: invite code and QR (the QR just carries the same code). The
+ * monitored person generates the code in their app; entering or scanning it
+ * here calls `redeemInvite`, which creates the real link on the server. A short
+ * details step collects an optional nickname + relationship.
  */
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
+  ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { useColors } from '@/hooks/use-colors';
 import { useCaregiverContext } from '@/lib/caregiver-context';
-import type { LinkMethod } from '@/lib/caregiver-state';
+import { trpc } from '@/lib/trpc';
+import { buildInviteUrl } from '@/constants/links';
 
-type Mode = 'code' | 'email_phone' | 'qr';
+type Mode = 'code' | 'qr';
 
 const RELATIONSHIP_OPTIONS = ['Mãe', 'Pai', 'Filho(a)', 'Avô(ó)', 'Esposo(a)', 'Outro'];
 
@@ -25,36 +28,62 @@ export default function LinkScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { setLinkedMonitored } = useCaregiverContext();
+  const { redeemInvite } = useCaregiverContext();
+  const { dialogProps, showDialog } = useAppDialog();
+  const createShareInvite = trpc.link.createShareInvite.useMutation();
+
+  const shareLink = async () => {
+    try {
+      const result = await createShareInvite.mutateAsync();
+      const url = buildInviteUrl(result.token);
+      await Share.share({
+        message: `Quero acompanhar sua saúde no Vigora Saúde. Toque para aceitar o convite: ${url}`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Não foi possível gerar o convite.';
+      showDialog({ title: 'Não foi possível convidar', message, variant: 'warning', buttons: [{ text: 'OK' }] });
+    }
+  };
 
   const [mode, setMode] = useState<Mode | null>(null);
   const [identifier, setIdentifier] = useState('');
-  const [emailPhone, setEmailPhone] = useState<'email' | 'phone'>('phone');
   const [displayName, setDisplayName] = useState('');
   const [relationship, setRelationship] = useState<string | null>(null);
   const [step, setStep] = useState<'method' | 'details'>('method');
+  const [submitting, setSubmitting] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   // Latch so the QR camera doesn't fire submitMethod repeatedly between the
   // first scan and the re-render that unmounts CameraView.
   const scannedRef = useRef(false);
 
-  const submitMethod = (method: LinkMethod, value: string) => {
+  const submitMethod = (method: Mode, value: string) => {
     if (!value.trim()) return;
     setMode(method);
     setIdentifier(value.trim());
     setStep('details');
   };
 
-  const confirm = () => {
-    if (!mode) return;
-    const finalName = displayName.trim() || identifier;
-    setLinkedMonitored({
-      method: mode,
-      identifier,
-      displayName: finalName,
-      relationship: relationship ?? undefined,
-    });
-    router.replace('/(caregiver-tabs)/person');
+  const confirm = async () => {
+    if (!mode || submitting) return;
+    setSubmitting(true);
+    try {
+      await redeemInvite(identifier, {
+        displayName: displayName.trim() || undefined,
+        relationship: relationship ?? undefined,
+        method: mode,
+      });
+      router.replace('/(caregiver-tabs)/person');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Não foi possível vincular agora.';
+      showDialog({
+        title: 'Não foi possível vincular',
+        message,
+        variant: 'warning',
+        buttons: [{ text: 'OK' }],
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (step === 'details') {
@@ -78,7 +107,7 @@ export default function LinkScreen() {
           <TextInput
             value={displayName}
             onChangeText={setDisplayName}
-            placeholder={identifier}
+            placeholder="Ex.: Minha mãe"
             placeholderTextColor={colors.muted}
             style={[styles.input, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]}
           />
@@ -108,11 +137,20 @@ export default function LinkScreen() {
 
           <Pressable
             onPress={confirm}
-            style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
+            disabled={submitting}
+            style={({ pressed }) => [
+              styles.primary,
+              { backgroundColor: colors.primary, opacity: submitting ? 0.6 : pressed ? 0.85 : 1 },
+            ]}
           >
-            <Text style={[styles.primaryText, { color: colors.onPrimary }]}>Concluir vínculo</Text>
+            {submitting ? (
+              <ActivityIndicator color={colors.onPrimary} />
+            ) : (
+              <Text style={[styles.primaryText, { color: colors.onPrimary }]}>Concluir vínculo</Text>
+            )}
           </Pressable>
         </ScrollView>
+        <AppDialog {...dialogProps} />
       </KeyboardAvoidingView>
     );
   }
@@ -127,37 +165,16 @@ export default function LinkScreen() {
     >
       <Text style={[styles.title, { color: colors.foreground }]}>Vincular pessoa monitorada</Text>
       <Text style={[styles.subtitle, { color: colors.muted }]}>
-        Escolha como você quer vincular agora. Você sempre pode trocar o método nas configurações.
+        A pessoa que você vai acompanhar gera um código no app dela (em "Convidar cuidador"). Digite o
+        código aqui ou escaneie o QR que aparece na tela dela.
       </Text>
 
       <MethodCard
         icon="dialpad"
         title="Código de convite"
-        description="A pessoa monitorada gera um código de 6 dígitos no app dela."
+        description="Digite o código de 6 caracteres que a pessoa monitorada gerou."
         onSubmit={(v) => submitMethod('code', v)}
-        placeholder="123-456"
-        keyboard="number-pad"
-      />
-
-      <MethodCard
-        // Remount when the toggle changes so the input value resets — prevents
-        // a user from typing a phone, switching to Email, and submitting the
-        // stale phone string.
-        key={emailPhone}
-        icon="alternate-email"
-        title="Email ou telefone"
-        description="Envie um pedido de vínculo para o email ou telefone cadastrado."
-        onSubmit={(v) => submitMethod('email_phone', v)}
-        placeholder={emailPhone === 'email' ? 'email@exemplo.com' : '(11) 99999-9999'}
-        keyboard={emailPhone === 'email' ? 'email-address' : 'phone-pad'}
-        toggle={{
-          options: [
-            { label: 'Telefone', value: 'phone' },
-            { label: 'Email', value: 'email' },
-          ],
-          selected: emailPhone,
-          onSelect: (v) => setEmailPhone(v as 'email' | 'phone'),
-        }}
+        placeholder="ABC-DEF"
       />
 
       <View style={[styles.methodCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -191,6 +208,30 @@ export default function LinkScreen() {
           </Pressable>
         )}
       </View>
+
+      <View style={[styles.methodCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.methodHeader}>
+          <MaterialIcons name="share" size={26} color={colors.primary} />
+          <Text style={[styles.methodTitle, { color: colors.foreground }]}>Convidar por link</Text>
+        </View>
+        <Text style={[styles.methodDesc, { color: colors.muted }]}>
+          Mande um link (WhatsApp, SMS…) para a pessoa. Ela toca em "Aceitar" no aparelho dela e o vínculo é criado.
+        </Text>
+        <Pressable
+          onPress={shareLink}
+          disabled={createShareInvite.isPending}
+          style={({ pressed }) => [
+            styles.primary,
+            { backgroundColor: colors.primary, opacity: createShareInvite.isPending ? 0.6 : pressed ? 0.85 : 1 },
+          ]}
+        >
+          {createShareInvite.isPending ? (
+            <ActivityIndicator color={colors.onPrimary} />
+          ) : (
+            <Text style={[styles.primaryText, { color: colors.onPrimary }]}>Gerar e compartilhar link</Text>
+          )}
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }
@@ -200,16 +241,10 @@ interface MethodCardProps {
   title: string;
   description: string;
   placeholder: string;
-  keyboard?: 'default' | 'email-address' | 'phone-pad' | 'number-pad';
   onSubmit: (value: string) => void;
-  toggle?: {
-    options: { label: string; value: string }[];
-    selected: string;
-    onSelect: (value: string) => void;
-  };
 }
 
-function MethodCard({ icon, title, description, placeholder, keyboard, onSubmit, toggle }: MethodCardProps) {
+function MethodCard({ icon, title, description, placeholder, onSubmit }: MethodCardProps) {
   const colors = useColors();
   const [value, setValue] = useState('');
   return (
@@ -220,37 +255,13 @@ function MethodCard({ icon, title, description, placeholder, keyboard, onSubmit,
       </View>
       <Text style={[styles.methodDesc, { color: colors.muted }]}>{description}</Text>
 
-      {toggle ? (
-        <View style={styles.toggleRow}>
-          {toggle.options.map((opt) => {
-            const selected = toggle.selected === opt.value;
-            return (
-              <Pressable
-                key={opt.value}
-                onPress={() => toggle.onSelect(opt.value)}
-                style={[
-                  styles.toggleBtn,
-                  {
-                    backgroundColor: selected ? colors.primary : 'transparent',
-                    borderColor: selected ? colors.primary : colors.border,
-                  },
-                ]}
-              >
-                <Text style={{ color: selected ? colors.onPrimary : colors.foreground, fontWeight: '600', fontSize: 13 }}>
-                  {opt.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : null}
-
       <TextInput
         value={value}
         onChangeText={setValue}
         placeholder={placeholder}
         placeholderTextColor={colors.muted}
-        keyboardType={keyboard ?? 'default'}
+        autoCapitalize="characters"
+        autoCorrect={false}
         style={[styles.input, { color: colors.foreground, backgroundColor: colors.background, borderColor: colors.border }]}
       />
 
@@ -285,12 +296,7 @@ const styles = StyleSheet.create({
   methodHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   methodTitle: { fontSize: 17, fontWeight: '700' },
   methodDesc: { fontSize: 13, lineHeight: 18 },
-  toggleRow: { flexDirection: 'row', gap: 8 },
-  toggleBtn: {
-    paddingVertical: 8, paddingHorizontal: 14,
-    borderRadius: 10, borderWidth: 1,
-  },
-  primary: { paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 6 },
+  primary: { paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 6, minHeight: 50, justifyContent: 'center' },
   primaryText: { fontSize: 15, fontWeight: '700' },
   secondary: { paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1 },
   secondaryText: { fontSize: 14, fontWeight: '700' },

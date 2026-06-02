@@ -18,6 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { CHECKIN_CHANNEL_ID } from './notification-constants';
+import { createPendingAlarmEvent } from './monitoring-service';
 
 const PROMPT_ID_KEY = 'vigora_checkin_prompt_id';
 const TIMEOUT_ID_KEY = 'vigora_checkin_timeout_id';
@@ -154,6 +155,31 @@ export async function markCheckinResponded(
     await scheduleTimeoutNotification(checkinTime, windowMinutes);
   } catch (error) {
     console.error('[Checkin] markCheckinResponded failed:', error);
+  }
+}
+
+/**
+ * Registra o próximo evento de check-in como pending no servidor.
+ * scheduledAt = checkinTime + windowMinutes (o deadline, não o horário de início),
+ * para que GRACE_PERIOD_MINUTES no servidor só expire após o prazo do usuário.
+ *
+ * Chamado em três pontos: enable no settings, confirmação do usuário,
+ * e timeout (para reagendar o de amanhã mesmo quando hoje foi perdido).
+ * createAlarmEvent é idempotente: chamadas duplicadas para o mesmo deadline não duplicam eventos.
+ */
+export async function createNextCheckinEvent(
+  checkinTime: string,
+  windowMinutes: number
+): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const scheduledAt = computeTimeoutDate(checkinTime, windowMinutes);
+    await createPendingAlarmEvent(
+      { id: 'checkin-daily', time: checkinTime, description: 'Check-in diário', enabled: true, repeat: 'daily', customDays: [] } as any,
+      scheduledAt
+    );
+  } catch (error) {
+    console.error('[Checkin] createNextCheckinEvent failed:', error);
   }
 }
 
