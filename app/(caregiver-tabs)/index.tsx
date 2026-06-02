@@ -7,6 +7,9 @@ import { useColors } from '@/hooks/use-colors';
 import { useCaregiverContext } from '@/lib/caregiver-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FadeInView, ScaleInView, StaggeredItem } from '@/components/animated-components';
+import { trpc } from '@/lib/trpc';
+import type { Alarm, HealthMetric } from '@/lib/app-context';
+import { formatMetricValue, isRecent, latestMetric, metricTypeLabel, nextAlarm, relativeTime } from '@/lib/caregiver-format';
 
 function initialsOf(name: string): string {
   return name
@@ -20,6 +23,33 @@ export default function CaregiverHomeScreen() {
   const insets = useSafeAreaInsets();
   const { state } = useCaregiverContext();
   const linked = state.linkedMonitored;
+
+  const monitored = trpc.link.getMonitoredData.useQuery(undefined, { enabled: !!linked });
+  const data = monitored.data;
+  const loading = monitored.isLoading;
+
+  const alarms = (data?.alarms ?? []) as Alarm[];
+  const metrics = (data?.healthMetrics ?? []) as HealthMetric[];
+  const upcoming = nextAlarm(alarms);
+  const latest = latestMetric(metrics);
+  const hb = data?.lastHeartbeatAt ?? null;
+
+  const nextMedBody = loading
+    ? 'Carregando…'
+    : upcoming
+    ? `${upcoming.time} — ${upcoming.description || 'Medicação'}`
+    : 'Nenhum alarme ativo.';
+  const latestMetricBody = loading
+    ? 'Carregando…'
+    : latest
+    ? `${metricTypeLabel(latest.type)}: ${formatMetricValue(latest)} · ${relativeTime(latest.timestamp)}`
+    : 'Sem registros ainda.';
+  const heartbeatBody = loading ? 'Carregando…' : hb ? relativeTime(hb) : 'Sem sinal ainda.';
+  const statusLine = hb
+    ? isRecent(hb)
+      ? 'Ativo recentemente'
+      : `Visto ${relativeTime(hb)}`
+    : 'Aguardando primeiro sinal';
 
   if (!linked) {
     return (
@@ -67,7 +97,7 @@ export default function CaregiverHomeScreen() {
                   </Text>
                 ) : null}
                 <Text style={[styles.statusLine, { color: 'rgba(244,239,229,0.85)', fontFamily: 'PlusJakartaSans' }]}>
-                  Aguardando sincronização
+                  {statusLine}
                 </Text>
               </View>
               <View style={[styles.statusDot, { backgroundColor: 'rgba(244,239,229,0.4)' }]} />
@@ -80,7 +110,7 @@ export default function CaregiverHomeScreen() {
           <SummaryCard
             icon="medication"
             title="Próxima medicação"
-            body="Sem dados ainda."
+            body={nextMedBody}
             colors={colors}
           />
         </StaggeredItem>
@@ -88,7 +118,7 @@ export default function CaregiverHomeScreen() {
           <SummaryCard
             icon="favorite"
             title="Última métrica registrada"
-            body="Sem dados ainda."
+            body={latestMetricBody}
             colors={colors}
           />
         </StaggeredItem>
@@ -96,7 +126,7 @@ export default function CaregiverHomeScreen() {
           <SummaryCard
             icon="wifi"
             title="Último heartbeat"
-            body="Sem dados ainda."
+            body={heartbeatBody}
             colors={colors}
             mono
           />
