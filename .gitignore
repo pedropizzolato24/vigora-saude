@@ -70,3 +70,11 @@ Thumbs.db
 .remember/
 .superpowers/
 docs/superpowers/
+graphify-out/
+
+# Obsidian
+.obsidian/
+
+# EAS Credentials
+credentials/
+credentials.json
