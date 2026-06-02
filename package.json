@@ -14,8 +14,8 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "qr": "node scripts/generate_qr.mjs",
     "eas:build:dev": "eas build --profile development --platform all",
     "eas:build:dev:android": "eas build --profile development --platform android",
@@ -115,6 +115,7 @@
   "packageManager": "pnpm@9.12.0",
   "pnpm": {
     "overrides": {
+      "expo-auth-session>expo-crypto": "~14.1.5",
       "axios": ">=1.15.2",
       "follow-redirects": ">=1.16.0",
       "tar": ">=7.5.11",
