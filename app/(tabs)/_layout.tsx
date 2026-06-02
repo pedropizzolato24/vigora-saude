@@ -36,6 +36,7 @@ export default function TabLayout() {
         <Tabs.Screen name="location" options={{ title: "Localização" }} />
         <Tabs.Screen name="profile" options={{ title: "Perfil" }} />
         <Tabs.Screen name="help" options={{ title: "Ajuda" }} />
+        <Tabs.Screen name="invite-caregiver" options={{ title: "Convidar Cuidador" }} />
       </Tabs>
       <SidebarMenu />
     </View>

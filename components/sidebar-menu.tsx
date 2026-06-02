@@ -32,6 +32,7 @@ const MENU_ITEMS: MenuItem[] = [
   { label: 'Ficha de Anamnese', icon: 'description', route: '/(tabs)/anamnesis' },
   { label: 'Chamada de Ambulância', icon: 'local-hospital', route: '/(tabs)/ambulance' },
   { label: 'Compartilhar Localização', icon: 'location-on', route: '/(tabs)/location' },
+  { label: 'Convidar Cuidador', icon: 'person-add', route: '/(tabs)/invite-caregiver' },
   { label: 'Configurações', icon: 'settings', route: '/(tabs)/settings' },
   { label: 'Ajuda e FAQ', icon: 'help-outline', route: '/(tabs)/help' },
 ];
