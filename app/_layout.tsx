@@ -284,6 +284,7 @@ export default function RootLayout() {
             <Stack.Screen name="(caregiver-tabs)" />
             <Stack.Screen name="caregiver-onboarding" options={{ gestureEnabled: false }} />
             <Stack.Screen name="convite/[token]" options={{ gestureEnabled: false }} />
+            <Stack.Screen name="oauthredirect" options={{ gestureEnabled: false }} />
             <Stack.Screen name="oauth/callback" />
             <Stack.Screen
               name="(modal)/paywall"
