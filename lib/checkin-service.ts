@@ -110,22 +110,32 @@ export async function scheduleCheckin(
 
 /**
  * Cancela prompt e timeout do check-in.
+ * Varre todas as notificações agendadas para garantir que não sobram órfãos
+ * de sessões anteriores mesmo que o ID no AsyncStorage esteja desatualizado.
  */
 export async function cancelCheckin(): Promise<void> {
   if (Platform.OS === 'web') return;
 
-  const [promptId, timeoutId] = await Promise.all([
+  const [scheduled, promptId, timeoutId] = await Promise.all([
+    Notifications.getAllScheduledNotificationsAsync(),
     AsyncStorage.getItem(PROMPT_ID_KEY),
     AsyncStorage.getItem(TIMEOUT_ID_KEY),
   ]);
 
+  const idsToCancel = new Set<string>();
+  if (promptId) idsToCancel.add(promptId);
+  if (timeoutId) idsToCancel.add(timeoutId);
+  for (const n of scheduled) {
+    const type = n.content.data?.type;
+    if (type === 'checkin_prompt' || type === 'checkin_timeout') {
+      idsToCancel.add(n.identifier);
+    }
+  }
+
   await Promise.all([
-    promptId
-      ? Notifications.cancelScheduledNotificationAsync(promptId).catch(() => {})
-      : Promise.resolve(),
-    timeoutId
-      ? Notifications.cancelScheduledNotificationAsync(timeoutId).catch(() => {})
-      : Promise.resolve(),
+    ...[...idsToCancel].map(id =>
+      Notifications.cancelScheduledNotificationAsync(id).catch(() => {})
+    ),
     AsyncStorage.multiRemove([PROMPT_ID_KEY, TIMEOUT_ID_KEY]),
   ]);
 }
