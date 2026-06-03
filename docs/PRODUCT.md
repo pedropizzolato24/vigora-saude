@@ -2,7 +2,7 @@
 
 ## Product Purpose
 
-App de monitoramento de saúde para idosos brasileiros. Dead man's switch: se o idoso não responde ao alarme, contatos de emergência são alertados automaticamente via WhatsApp/Email/SMS.
+App de monitoramento de saúde para idosos brasileiros. Dead man's switch: se o idoso não responde ao alarme, os contatos de emergência são alertados automaticamente via WhatsApp e os cuidadores recebem push no próprio app.
 
 ## Register
 

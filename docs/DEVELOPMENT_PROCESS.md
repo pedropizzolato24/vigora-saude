@@ -163,6 +163,8 @@ export async function scheduleFullAlarm(alarm: Alarm) {
 
 #### Parte 2 — Supabase Dead Man's Switch
 
+> **⚠️ Superado (registro histórico):** este desenho com Supabase + Edge Functions + pg_cron foi **removido** posteriormente. O dead man's switch hoje roda no backend Node (Railway) via `server/monitoring-job.ts` (`setInterval` 5 min) sobre MySQL. Os alertas, que originalmente seguiam a cascata WhatsApp → Email → SMS, foram simplificados para **WhatsApp (contatos) + push no app (cuidadores)**. Mantido abaixo para histórico.
+
 **Objetivo:** Criar um sistema de segurança que detecta quando o usuário não responde a um alarme e aciona contatos de emergência automaticamente, mesmo que o app esteja fechado.
 
 **Arquivos Criados:**
@@ -362,9 +364,11 @@ login → oauth/callback → userType === 'caregiver'
 
 ### 5. Supabase vs Servidor Principal para Dead Man's Switch
 
-**Decisão:** Supabase para o dead man's switch; Railway para dados do usuário.
+> **⚠️ Decisão revertida:** o Supabase foi **removido**. O dead man's switch foi consolidado no próprio backend Railway (`monitoring-job.ts`, `setInterval` 5 min, MySQL), eliminando o segundo backend. Os trade-offs originais ficam abaixo para histórico.
 
-**Justificativa:** Edge Functions serverless com Deno, pg_cron nativo e custo zero no plano gratuito. O servidor Railway (Node.js + tRPC) é responsável por autenticação, cloud backup e alertas de emergência — dados mais sensíveis ficam no banco Postgres do Railway, não no Supabase.
+**Decisão (histórica):** Supabase para o dead man's switch; Railway para dados do usuário.
+
+**Justificativa (histórica):** Edge Functions serverless com Deno, pg_cron nativo e custo zero no plano gratuito. O servidor Railway (Node.js + tRPC) é responsável por autenticação, cloud backup e alertas de emergência — dados mais sensíveis ficam no banco do Railway, não no Supabase.
 
 ---
 
