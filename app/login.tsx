@@ -14,37 +14,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
-import { exchangeCodeAsync } from "expo-auth-session";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/use-colors";
 import { useAppContext } from "@/lib/app-context";
-import * as Auth from "@/lib/_core/auth";
-import { clearPendingInvite, getPendingInvite } from "@/lib/pending-invite";
+import { finishGoogleLogin, persistOAuthPkce } from "@/lib/google-signin";
 import {
-  getApiBaseUrl,
   GOOGLE_ANDROID_CLIENT_ID,
   GOOGLE_IOS_CLIENT_ID,
   GOOGLE_WEB_CLIENT_ID,
 } from "@/constants/oauth";
 
 WebBrowser.maybeCompleteAuthSession();
-
-const LOGIN_COMPLETED_KEY = "vigora_login_completed";
-const CAREGIVER_ONBOARDING_KEY = "vigora_caregiver_onboarding_completed";
-
-function getNextRoute(
-  userType: "caregiver" | "monitored" | null,
-  caregiverOnboardingDone: boolean
-): string {
-  if (!userType) return "/register";
-  if (userType === "caregiver") {
-    return caregiverOnboardingDone
-      ? "/(caregiver-tabs)"
-      : "/caregiver-onboarding";
-  }
-  return "/(tabs)";
-}
 
 // Lua crescente — símbolo da marca Vigora
 function MoonSymbol({ size = 72 }: { size?: number }) {
@@ -79,7 +59,23 @@ export default function LoginScreen() {
   useEffect(() => {
     if (!response) return;
     if (response.type === "success") {
-      handleAuthCode(response.params.code);
+      // No Android o redirect volta como deep link e é tratado em
+      // app/oauthredirect.tsx; aqui tratamos a sessão "warm" (iOS/web).
+      if (Platform.OS !== "android") {
+        finishGoogleLogin(
+          response.params.code,
+          router,
+          reconcileFromCloud
+        ).catch((err) => {
+          console.error("[Login] Auth failed:", err);
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Falha ao completar a autenticação"
+          );
+          setLoading(false);
+        });
+      }
     } else if (response.type === "error") {
       setError("Autenticação cancelada ou recusada pelo Google.");
       setLoading(false);
@@ -88,90 +84,6 @@ export default function LoginScreen() {
     }
   }, [response]);
 
-  async function handleAuthCode(code: string) {
-    if (!request) return;
-    try {
-      const tokens = await exchangeCodeAsync(
-        {
-          clientId: request.clientId,
-          code,
-          redirectUri: request.redirectUri,
-          extraParams: { code_verifier: request.codeVerifier ?? "" },
-        },
-        { tokenEndpoint: "https://oauth2.googleapis.com/token" }
-      );
-
-      if (!tokens.idToken) throw new Error("id_token não recebido do Google");
-
-      const baseUrl = getApiBaseUrl();
-      if (!baseUrl) throw new Error("URL do servidor não configurada. Rebuilde o app com EXPO_PUBLIC_API_BASE_URL.");
-
-      const res = await fetch(`${baseUrl}/api/auth/google`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_token: tokens.idToken }),
-      });
-
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(body.error ?? `Erro ${res.status}`);
-      }
-
-      const result = (await res.json()) as {
-        sessionToken: string;
-        user: {
-          id: number | null;
-          openId: string;
-          name: string | null;
-          email: string | null;
-          phone: string | null;
-          userType: "caregiver" | "monitored" | null;
-          birthDate: string | null;
-          bloodType: string | null;
-          loginMethod: string | null;
-          lastSignedIn: string;
-        };
-      };
-
-      await Auth.setSessionToken(result.sessionToken);
-      await Auth.setUserInfo({
-        id: result.user.id ?? 0,
-        openId: result.user.openId,
-        name: result.user.name,
-        email: result.user.email,
-        phone: result.user.phone,
-        userType: result.user.userType,
-        birthDate: result.user.birthDate,
-        bloodType: result.user.bloodType,
-        loginMethod: result.user.loginMethod,
-        lastSignedIn: new Date(result.user.lastSignedIn),
-      });
-
-      await AsyncStorage.setItem(LOGIN_COMPLETED_KEY, "true");
-      reconcileFromCloud().catch(() => {});
-
-      // Resume a pending invite link if the user opened one before logging in.
-      // Only once registration is complete (userType set) — otherwise fall
-      // through to /register and resume after that.
-      const pendingInvite = await getPendingInvite();
-      if (pendingInvite && result.user.userType) {
-        await clearPendingInvite();
-        router.replace(`/convite/${pendingInvite}`);
-        return;
-      }
-
-      const flag = await AsyncStorage.getItem(CAREGIVER_ONBOARDING_KEY);
-      router.replace(getNextRoute(result.user.userType, flag === "true"));
-    } catch (err) {
-      console.error("[Login] Auth failed:", err);
-      setError(
-        err instanceof Error ? err.message : "Falha ao completar a autenticação"
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
   const handleLogin = async () => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -179,6 +91,12 @@ export default function LoginScreen() {
     setLoading(true);
     setError(null);
     try {
+      // Persiste o PKCE antes de abrir o browser: no Android o redirect volta
+      // como deep link (podendo reabrir o app do zero) e a troca acontece em
+      // app/oauthredirect.tsx, fora do estado em memória deste componente.
+      if (request?.codeVerifier && request.redirectUri) {
+        await persistOAuthPkce(request.codeVerifier, request.redirectUri);
+      }
       await promptAsync();
     } catch {
       setError("Não foi possível iniciar o login. Verifique sua conexão e tente novamente.");

@@ -29,9 +29,13 @@ export function OnboardingGate() {
   useEffect(() => {
     if (checked) return;
 
-    // A deep-linked invite (/convite/[token]) owns its own routing — don't let
-    // the startup funnel clobber it. The accept screen handles auth itself.
-    if (pathname?.startsWith('/convite')) {
+    // A deep-linked invite (/convite/[token]) and the Google OAuth callback
+    // (/oauthredirect) own their own routing — don't let the startup funnel
+    // clobber them. Each screen handles auth/navigation itself.
+    if (
+      pathname?.startsWith('/convite') ||
+      pathname?.startsWith('/oauthredirect')
+    ) {
       setChecked(true);
       return;
     }
@@ -45,6 +49,12 @@ export function OnboardingGate() {
           const initialUrl = await Linking.getInitialURL();
           const match = initialUrl?.match(/\/convite\/([^/?#]+)/);
           if (match?.[1]) await setPendingInvite(decodeURIComponent(match[1]));
+          // Cold-start via Google OAuth redirect: let app/oauthredirect.tsx own
+          // the navigation (pathname may still be '/' before the link resolves).
+          if (initialUrl?.includes('oauthredirect')) {
+            setChecked(true);
+            return;
+          }
         } catch {
           // best-effort
         }
