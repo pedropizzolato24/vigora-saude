@@ -24,7 +24,10 @@ const config: ExpoConfig = {
   version: "1.0.0",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
-  scheme: env.scheme,
+  // Array: "vigora" para deep links do app; o package (com.vigora.saude) é o
+  // scheme que o expo-auth-session usa no redirect do Google
+  // (`${applicationId}:/oauthredirect`) — sem ele o login não volta pro app.
+  scheme: [env.scheme, env.androidPackage],
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
   ios: {
