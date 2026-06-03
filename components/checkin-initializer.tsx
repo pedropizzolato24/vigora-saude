@@ -41,22 +41,25 @@ export function CheckinInitializer() {
     };
   }, []);
 
-  // Re-agenda (ou cancela) o check-in sempre que as configurações mudarem
+  // Re-agenda (ou cancela) o check-in sempre que as configurações mudarem.
+  // Debounce de 400ms para evitar múltiplos scheduleCheckin() por renders rápidos no startup.
   useEffect(() => {
     if (state.isLoading) return;
 
-    if (checkinEnabled && notificationsEnabled) {
-      scheduleCheckin(checkinTime, checkinWindowMinutes).catch((err) =>
-        console.error('[CheckinInitializer] Failed to schedule checkin:', err)
-      );
-      // Garante que o próximo evento de check-in existe no servidor antes do prazo,
-      // mesmo que o celular desligue antes de a notificação disparar.
-      createNextCheckinEvent(checkinTime, checkinWindowMinutes).catch(() => {});
-    } else {
-      cancelCheckin().catch((err) =>
-        console.error('[CheckinInitializer] Failed to cancel checkin:', err)
-      );
-    }
+    const timer = setTimeout(() => {
+      if (checkinEnabled && notificationsEnabled) {
+        scheduleCheckin(checkinTime, checkinWindowMinutes).catch((err) =>
+          console.error('[CheckinInitializer] Failed to schedule checkin:', err)
+        );
+        createNextCheckinEvent(checkinTime, checkinWindowMinutes).catch(() => {});
+      } else {
+        cancelCheckin().catch((err) =>
+          console.error('[CheckinInitializer] Failed to cancel checkin:', err)
+        );
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
   }, [state.isLoading, checkinEnabled, checkinTime, checkinWindowMinutes, notificationsEnabled]);
 
   // Tap no popup (overlay ou card) confirma o check-in
