@@ -10,6 +10,7 @@ import { isWhatsAppApiConfigured, sendEmergencyAlerts } from "./whatsapp";
 import { assertDeviceOwnership, getAppUserForOwner } from "./db-monitoring";
 import { monitoringRouter } from "./routers-monitoring";
 import { linkRouter } from "./routers-links";
+import { pushRouter } from "./routers-push";
 import { getUserByOpenId, getUserData, upsertUser, upsertUserData } from "./db";
 import type { EmergencyContactRecord } from "../drizzle/schema";
 
@@ -214,6 +215,9 @@ export const appRouter = router({
 
   // Monitored <-> caregiver linking
   link: linkRouter,
+
+  // Expo push-token registration (real-time caregiver alerts)
+  push: pushRouter,
 
   // WhatsApp emergency escalation routes
   whatsapp: router({

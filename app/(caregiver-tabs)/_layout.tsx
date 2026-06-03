@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CaregiverTabBar } from '@/components/caregiver-tab-bar';
+import { CaregiverPushInitializer } from '@/components/caregiver-push-initializer';
 import { useColors } from '@/hooks/use-colors';
 import * as Auth from '@/lib/_core/auth';
 import { useCaregiverContext } from '@/lib/caregiver-context';
@@ -39,6 +40,7 @@ export default function CaregiverTabLayout() {
 
   return (
     <View style={{ flex: 1 }}>
+      <CaregiverPushInitializer />
       <Tabs
         tabBar={() => <CaregiverTabBar />}
         screenOptions={{
