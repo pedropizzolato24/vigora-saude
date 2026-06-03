@@ -91,7 +91,7 @@ export interface EmergencyContactRecord {
   phone: string;
   relation: string;
   whatsapp: boolean;
-  /** Optional email address for fallback notifications (Email -> SMS) */
+  /** Optional email address, collected for the contact card (not used for alerts). */
   email?: string;
 }
 
@@ -263,3 +263,33 @@ export const linkInvites = mysqlTable(
 
 export type LinkInvite = typeof linkInvites.$inferSelect;
 export type InsertLinkInvite = typeof linkInvites.$inferInsert;
+
+// -----------------------------------------------------------------------------
+// Push Tokens - Expo push tokens for delivering alerts to a user's devices
+// -----------------------------------------------------------------------------
+
+/**
+ * One row per device push token. Keyed by the account `openId` so the
+ * monitoring job can look up every device a linked caregiver is signed in on
+ * and deliver an in-app alert (the real-time companion to the WhatsApp
+ * escalation that targets emergency contacts).
+ *
+ * The Expo token itself is unique — a device that re-registers updates its
+ * existing row rather than creating a duplicate. Tokens that Expo reports as
+ * `DeviceNotRegistered` are pruned on the next send.
+ */
+export const pushTokens = mysqlTable(
+  "push_tokens",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    openId: varchar("openId", { length: 64 }).notNull(),
+    token: varchar("token", { length: 255 }).notNull().unique(),
+    platform: mysqlEnum("platform", ["ios", "android", "web"]).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => [index("push_tokens_openid_idx").on(t.openId)]
+);
+
+export type PushToken = typeof pushTokens.$inferSelect;
+export type InsertPushToken = typeof pushTokens.$inferInsert;

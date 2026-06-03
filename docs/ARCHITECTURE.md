@@ -6,7 +6,7 @@ Este documento descreve a arquitetura técnica, stack de tecnologias, padrões d
 
 ## Visão Geral da Arquitetura
 
-O Vigora Saúde segue uma arquitetura **mobile-first com autenticação de conta e dois backends complementares**: o servidor principal (Node.js + tRPC, hospedado no Railway) para autenticação, cloud backup e alertas de emergência, e o Supabase para o dead man's switch. A aplicação funciona completamente offline, com sincronização opcional para os backends quando o usuário está autenticado.
+O Vigora Saúde segue uma arquitetura **mobile-first com um backend próprio único**: o servidor Node.js + tRPC hospedado no Railway cuida de autenticação, cloud backup, dead man's switch e envio de alertas. A aplicação funciona completamente offline, com sincronização opcional para o backend quando o usuário está autenticado.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -17,18 +17,17 @@ O Vigora Saúde segue uma arquitetura **mobile-first com autenticação de conta
                            │
 ┌──────────────────────────▼──────────────────────────────────────┐
 │                   Camada de Lógica de Negócio                   │
-│  Context API + Custom Hooks + RevenueCat SDK + Supabase SDK     │
+│  Context API + Custom Hooks + RevenueCat SDK                     │
 │  AppContext · CaregiverContext · PurchasesContext                │
 └──────────────────────────┬──────────────────────────────────────┘
                            │
           ┌────────────────┼────────────────┐
           │                │                │
 ┌─────────▼──────────┐  ┌──▼────────────┐  ┌──▼──────────────────┐
-│  AsyncStorage Local │  │  Auth Layer   │  │  Backends Remotos   │
-│  (dados de saúde,  │  │  SecureStore  │  │  - Node.js + tRPC   │
-│   alarmes, perfil) │  │  JWT / Cookie │  │    (Railway)        │
-└────────────────────┘  └───────────────┘  │  - Supabase (DMS)   │
-                                           └─────────────────────┘
+│  AsyncStorage Local │  │  Auth Layer   │  │  Backend Railway    │
+│  (dados de saúde,  │  │  SecureStore  │  │  Node.js + tRPC     │
+│   alarmes, perfil) │  │  JWT / Cookie │  │  + MySQL (Drizzle)  │
+└────────────────────┘  └───────────────┘  └─────────────────────┘
 ```
 
 ---
@@ -58,26 +57,29 @@ O Vigora Saúde segue uma arquitetura **mobile-first com autenticação de conta
 | Express | 4.22.1 | HTTP server |
 | tRPC | 11.7.2 | Type-safe API |
 | Drizzle ORM | 0.44.7 | Database ORM |
-| PostgreSQL | 15+ | Database |
+| MySQL | 8+ | Database (plugin Railway) |
 | Zod | 4.2.1 | Schema validation |
 
 **Routers tRPC:**
 
 | Router | Procedimentos | Propósito |
 |---|---|---|
-| `auth` | `register`, `completeRegistration`, `updateProfile`, `me`, `logout` | Autenticação e perfil |
+| `auth` | `completeRegistration`, `updateProfile`, `me`, `logout` | Autenticação e perfil |
 | `userData` | `get`, `put` | Cloud backup por conta |
-| `monitoring` | `sendEmergencyAlert`, `sendHeartbeat`, etc. | Alertas de emergência |
+| `monitoring` | `register`, `heartbeat`, `syncAlarms`, `createEvent`, `confirmEvent`, `getHistory` | Registro de device e eventos de alarme |
+| `link` | convites (código/QR/link), `getMonitoredAlerts` | Vínculo monitorado↔cuidador |
+| `push` | `register` | Registro do token de push (Expo) do cuidador |
+| `whatsapp` | `sendEmergencyAlert`, `isConfigured` | Alertas via WhatsApp |
 | `system` | health check | Status do servidor |
 
-### Dead Man's Switch (Supabase)
+### Dead Man's Switch (Railway)
 
 | Tecnologia | Propósito |
 |---|---|
-| Supabase (PostgreSQL) | Banco de dados para alarmes, usuários e eventos |
-| Supabase Edge Functions (Deno) | `check-missed-alarms` — verifica alarmes não respondidos |
-| pg_cron | Agendamento da Edge Function a cada 2 minutos |
-| Meta Graph API (WhatsApp) | Envio de alertas para contatos de emergência |
+| `monitoring-job.ts` | Job em processo (`setInterval` 5 min) que detecta alarmes/check-ins não respondidos |
+| MySQL (Drizzle) | Banco de dados para dispositivos, alarmes, eventos e avisos |
+| Meta Graph API (WhatsApp) | Alertas aos contatos de emergência |
+| Expo Push (`exp.host`) | Push em tempo real aos cuidadores vinculados |
 
 ### Monetização
 
@@ -98,7 +100,7 @@ O Vigora Saúde segue uma arquitetura **mobile-first com autenticação de conta
 | expo-sharing | 13.x | Compartilhamento de arquivos |
 | expo-haptics | 15.0.8 | Feedback háptico |
 | @react-native-async-storage/async-storage | 2.2.0 | Persistência local |
-| @supabase/supabase-js | latest | Cliente Supabase (dead man's switch) |
+| expo-auth-session | latest | OAuth PKCE direto com o Google |
 
 ### Ferramentas de Desenvolvimento
 
@@ -179,9 +181,8 @@ vigora-saude/
 │   ├── caregiver-state.ts            # Tipos + reducer puro do estado do cuidador (unit-testável)
 │   ├── cloud-sync.ts                 # pullCloudData / pushCloudData via userData tRPC router
 │   ├── purchases.ts                  # RevenueCat SDK (inicialização, entitlement)
-│   ├── supabase.ts                   # Cliente Supabase (lazy init, isSupabaseConfigured)
 │   ├── device-id.ts                  # Device ID persistente via AsyncStorage
-│   ├── supabase-sync.ts              # syncUser, syncAlarms, syncContacts, sendHeartbeat (dead man's switch)
+│   ├── push-registration.ts          # Resolve o token de push (Expo) do dispositivo
 │   ├── alarm-sync.ts                 # Sincronização de alarmes (Android: nativo; iOS: expo-notifications)
 │   ├── native-alarm-manager.ts       # AlarmManager nativo Android
 │   ├── alarm-timer-store.ts          # Persistência do timer de alarme para cold-start
@@ -202,21 +203,19 @@ vigora-saude/
 │   │   ├── rate-limit.ts             # Rate limiting por rota
 │   │   ├── security-headers.ts       # Headers de segurança HTTP
 │   │   └── env.ts                    # Validação de variáveis de ambiente
-│   ├── routers.ts                    # Router principal (auth, userData, monitoring)
+│   ├── routers.ts                    # Router principal (auth, userData, monitoring, link, push, whatsapp)
 │   ├── routers-monitoring.ts         # Sub-router de monitoramento e alertas
+│   ├── routers-links.ts              # Vínculo monitorado↔cuidador (link.*)
+│   ├── routers-push.ts               # Registro de push token (push.register)
+│   ├── monitoring-job.ts             # Dead man's switch em processo (setInterval 5 min)
 │   ├── db.ts                         # Queries Drizzle (getUserByOpenId, upsertUserData, etc.)
-│   ├── db-monitoring.ts              # Queries de monitoramento (assertDeviceOwnership)
-│   ├── supabase-auth.ts              # Verificação de tokens Supabase no servidor
-│   ├── whatsapp.ts                   # Envio de alertas via Meta Graph API
-│   └── email.ts / sms.ts             # Alertas por email e SMS
-├── supabase/
-│   ├── schema.sql                    # Schema SQL (tabelas, RLS, índices, cron)
-│   └── functions/
-│       └── check-missed-alarms/
-│           └── index.ts              # Edge Function dead man's switch
-├── tests/                            # 20 arquivos de teste (Vitest)
+│   ├── db-monitoring.ts / db-links.ts / db-push.ts  # Queries de monitoramento, vínculo e push
+│   ├── google-auth.ts                # Verifica id_token do Google → JWT próprio
+│   ├── whatsapp.ts                   # Alertas a contatos via Meta Graph API
+│   └── push.ts                       # Push (Expo) para cuidadores vinculados
+├── tests/                            # Suíte Vitest
 │   ├── purchases_isolated.test.ts    # RevenueCat SDK
-│   ├── supabase-credentials.test.ts  # Credenciais Supabase
+│   ├── push.test.ts                  # Sender de push (Expo): batching + poda de token
 │   ├── caregiver-state.test.ts       # Reducer do estado do cuidador (6 testes)
 │   ├── rate-limit.test.ts            # Rate limiting do servidor
 │   ├── security-headers.test.ts      # Headers de segurança
@@ -361,22 +360,21 @@ export async function scheduleFullAlarm(alarm: Alarm) {
 
 ---
 
-### 8. Dead Man's Switch (Supabase)
+### 8. Dead Man's Switch (Railway)
 
 ```
-1. App sincroniza alarmes com Supabase ao iniciar
+1. App sincroniza alarmes com o backend (monitoring.syncAlarms) e envia heartbeat
    ↓
-2. Quando alarme dispara, cria alarm_event no Supabase
+2. Quando um alarme dispara, cria alarm_event (status 'pending')
    ↓
-3. Usuário confirma → alarm_event.response_type = 'dismissed'
+3. Usuário confirma → alarm_event.status = 'responded'
    ↓
-4. Se não confirmado em 5 min → pg_cron chama check-missed-alarms
+4. Se não confirmado → monitoring-job.ts (setInterval 5 min) detecta o evento expirado
    ↓
-5. Edge Function detecta evento sem resposta
+5. Marca como 'missed' (device online) ou 'not_sent' (device offline)
    ↓
-6. Envia WhatsApp para contatos de emergência via Meta Graph API
-   ↓
-7. alarm_event.response_type = 'missed'
+6. Avisa contatos de emergência por WhatsApp (Meta Graph API) E
+   envia push (Expo) aos cuidadores vinculados — destinatários independentes
 ```
 
 ---
@@ -467,12 +465,12 @@ O root layout monta 8 providers em ordem específica:
 
 ### Testes Automatizados (Vitest)
 
-**20 arquivos de teste** cobrindo frontend e backend:
+Suíte Vitest cobrindo frontend e backend:
 
 | Área | Arquivos de Teste |
 |---|---|
 | RevenueCat / Monetização | `purchases_isolated.test.ts`, `purchases.test.ts`, `revenuecat-*.test.ts` |
-| Supabase | `supabase-credentials.test.ts`, `supabase.lockdown.test.ts`, `edge-function-*.test.ts` |
+| Notificações / Push | `push.test.ts` (sender Expo: batching, poda de token morto) |
 | Caregiver | `caregiver-state.test.ts` (6 testes do reducer) |
 | Segurança (servidor) | `rate-limit.test.ts`, `security-headers.test.ts`, `cors.test.ts` |
 | Auth | `auth.logout.test.ts`, `session-revocation.test.ts`, `monitoring.auth.test.ts` |
@@ -492,14 +490,10 @@ O root layout monta 8 providers em ordem específica:
 | Variável | Escopo | Propósito |
 |---|---|---|
 | `EXPO_PUBLIC_REVENUECAT_API_KEY` | Cliente (público) | API key RevenueCat |
-| `EXPO_PUBLIC_SUPABASE_URL` | Cliente (público) | URL do projeto Supabase |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Cliente (público) | Chave anônima Supabase |
-| `EXPO_PUBLIC_API_URL` | Cliente (público) | URL do servidor Railway |
+| `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` / `_IOS_` / `_WEB_` | Cliente (público) | OAuth Google — Client IDs |
+| `EXPO_PUBLIC_API_BASE_URL` | Cliente (público) | URL do servidor Railway |
 | `JWT_SECRET` | Servidor (privado) | Assinatura de tokens JWT |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Servidor (privado) | OAuth Google |
-| `RESEND_API_KEY` | Servidor (privado) | Email de alertas |
-| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | Servidor (privado) | SMS de alertas |
-| `WHATSAPP_TOKEN` | Servidor (privado) | Meta Graph API (WhatsApp) |
+| `WHATSAPP_API_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` | Servidor (privado) | Meta Graph API (WhatsApp) — alertas a contatos |
 
 ### Armazenamento de Tokens
 
@@ -508,7 +502,7 @@ O root layout monta 8 providers em ordem específica:
 
 ### Dados de Saúde
 
-Dados de saúde (métricas, anamnese) são armazenados no **AsyncStorage local** e no cloud backup do servidor próprio (Railway), protegido por autenticação JWT. Nenhum dado médico é enviado ao Supabase — a sincronização com o Supabase é limitada a dados operacionais do dead man's switch (alarmes, heartbeat, contatos de emergência).
+Dados de saúde (métricas, anamnese) são armazenados no **AsyncStorage local** e no cloud backup do servidor próprio (Railway), protegido por autenticação JWT. Nenhum dado de saúde é enviado a serviços de terceiros: o backend único no Railway concentra autenticação, backup e o dead man's switch (alarmes, heartbeat, contatos de emergência).
 
 ---
 
@@ -524,6 +518,8 @@ Dados de saúde (métricas, anamnese) são armazenados no **AsyncStorage local**
 | v1.5 | Autenticação de conta (OAuth Google/Apple + email) | ✅ Concluído |
 | v1.6 | Cloud backup por conta (cloud-sync, userData router) | ✅ Concluído |
 | v1.7 | Caregiver shell (4 abas, wizard de vínculo, onboarding) | ✅ Concluído |
+| v1.8 | Migração do dead man's switch para o Railway (Supabase removido) | ✅ Concluído |
+| v1.9 | Alertas: WhatsApp (contatos) + push no app (cuidadores); Email/SMS removidos | ✅ Concluído |
 | v2.0 | Integração com wearables (Apple Watch, Wear OS) | Q3 2026 |
 | v2.1 | Notificações push personalizadas (saúde) | Q4 2026 |
 | v3.0 | IA para recomendações de saúde | Q1 2027 |
@@ -532,4 +528,4 @@ Dados de saúde (métricas, anamnese) são armazenados no **AsyncStorage local**
 
 ## Conclusão
 
-A arquitetura do Vigora Saúde foi projetada para ser **simples, resiliente e segura**. O uso de Expo, Context API e AsyncStorage permite funcionamento completo offline. A autenticação por conta (OAuth + JWT) habilita cloud backup automático, permitindo que o usuário reinstale o app e recupere todos os dados. O Supabase fornece o dead man's switch sem necessidade de infraestrutura própria. O RevenueCat gerencia toda a complexidade de monetização cross-platform. O sistema de dois tipos de usuário (`monitored` / `caregiver`) com layouts completamente distintos cobre o caso de uso de monitoramento remoto de pessoas dependentes.
+A arquitetura do Vigora Saúde foi projetada para ser **simples, resiliente e segura**. O uso de Expo, Context API e AsyncStorage permite funcionamento completo offline. A autenticação por conta (OAuth + JWT) habilita cloud backup automático, permitindo que o usuário reinstale o app e recupere todos os dados. O backend único no Railway concentra o dead man's switch (job em processo), os alertas por WhatsApp e o push aos cuidadores. O RevenueCat gerencia toda a complexidade de monetização cross-platform. O sistema de dois tipos de usuário (`monitored` / `caregiver`) com layouts completamente distintos cobre o caso de uso de monitoramento remoto de pessoas dependentes.

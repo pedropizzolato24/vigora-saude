@@ -8,7 +8,7 @@
 
 O Vigora Saúde foi desenvolvido com **Expo SDK 54** (React Native 0.81) e oferece uma experiência mobile-first otimizada para usuários com diferentes níveis de literacia digital. O app combina funcionalidades de saúde, segurança e comunicação em uma interface intuitiva com suporte a modo claro/escuro, ajuste de tamanho de fonte e modo de acessibilidade.
 
-A infraestrutura é **100% própria**: o backend roda em Node.js auto-hospedado no Railway, a autenticação usa Supabase Auth (login com Google), e os dados do usuário são respaldados na própria conta para sobreviver a uma reinstalação.
+A infraestrutura é **100% própria**: o backend roda em Node.js auto-hospedado no Railway, a autenticação usa **OAuth direto com o Google** (`expo-auth-session`, PKCE) com sessão JWT própria, e os dados do usuário são respaldados na própria conta para sobreviver a uma reinstalação.
 
 ### Números-Chave
 
@@ -17,10 +17,10 @@ A infraestrutura é **100% própria**: o backend roda em Node.js auto-hospedado 
 | Plataformas | iOS 14+ e Android 7.0+ (Expo managed workflow) |
 | Stack Frontend | React Native 0.81 + Expo Router 6 + NativeWind 4 + TypeScript 5.9 |
 | Backend | Node.js + Express + tRPC v11 + MySQL + Drizzle ORM (hospedado no Railway) |
-| Autenticação | Supabase Auth (Google OAuth via PKCE) + sessão JWT própria |
+| Autenticação | Google OAuth direto (`expo-auth-session`, PKCE) + sessão JWT própria |
 | API | `https://api.vigorasaude.com` |
 | Monetização | RevenueCat SDK v10 — Lifetime, Anual, Mensal + trial de 7 dias |
-| Testes Automatizados | Suíte com Vitest (20 arquivos de teste) |
+| Testes Automatizados | Suíte com Vitest (auth, segurança, monitoramento, push, RevenueCat) |
 | Telas | 10 abas + 5 telas de fluxo (onboarding, login, registro, callback, alarme) + 2 modais |
 | Repositório | [github.com/pedropizzolato24/vigora-saude](https://github.com/pedropizzolato24/vigora-saude) |
 
@@ -31,7 +31,7 @@ A infraestrutura é **100% própria**: o backend roda em Node.js auto-hospedado 
 O app guia o usuário por um funil **onboarding → login → registro** controlado pelo componente `OnboardingGate` no startup:
 
 1. **Onboarding:** slides de apresentação na primeira abertura.
-2. **Login (Google):** autenticação via Supabase Auth com fluxo **PKCE**. O retorno usa o deep link `vigora://oauth/callback`. O servidor troca o código por uma sessão e emite um **JWT próprio** (Bearer no nativo, cookie na web).
+2. **Login (Google):** OAuth direto com o Google via `expo-auth-session` (fluxo **PKCE**). O `expo-web-browser` intercepta o retorno `vigora://oauth/callback`; o cliente troca o código por tokens e envia o `id_token` para `POST /api/auth/google`, que o verifica e emite um **JWT próprio** (Bearer no nativo, cookie na web).
 3. **Registro:** novos usuários completam o cadastro informando nome, telefone, **tipo de conta** (cuidador ou monitorado) e, opcionalmente, data de nascimento e tipo sanguíneo. Enquanto o `userType` não é definido, o app roteia para `/register` em vez das abas principais.
 
 ### Tipos de Usuário
@@ -74,7 +74,7 @@ Todos os dados do app são respaldados na conta Google do usuário, permitindo r
 - **Agendamento Flexível:** diário, dias úteis, fins de semana, dias personalizados.
 - **Notificações Nativas:** no Android os alarmes disparam via AlarmManager nativo (`expo-alarm-module`); no iOS/Web via `expo-notifications`.
 - **Full-Screen Alarm:** tela cheia com contador regressivo e botão de confirmação.
-- **Escalação Automática:** se não confirmado, o servidor notifica os contatos de emergência (WhatsApp) com localização GPS.
+- **Escalação Automática:** se não confirmado, o servidor avisa os contatos de emergência por WhatsApp (com localização GPS) e envia push em tempo real aos cuidadores vinculados.
 - **Limite Gratuito:** 5 alarmes no plano gratuito; ilimitados no Vigora Pro.
 
 ### 3. Saúde (Métricas)
@@ -149,11 +149,13 @@ Auto-hospedado no **Railway** (`https://api.vigorasaude.com`). Responsável por 
 - `auth.me` / `auth.completeRegistration` / `auth.updateProfile` / `auth.logout` — sessão e perfil.
 - `userData.get` / `userData.put` — backup/restore do estado do app por conta.
 - `monitoring.*` — registro de dispositivo, heartbeat, sync de alarmes, eventos e histórico (todas autenticadas e amarradas ao `openId`).
-- `whatsapp.sendEmergencyAlert` / `whatsapp.isConfigured` — alertas de emergência.
+- `link.*` — vínculo monitorado↔cuidador (convites por código/QR/link, alertas do monitorado).
+- `push.register` — registro do token de push (Expo) do cuidador.
+- `whatsapp.sendEmergencyAlert` / `whatsapp.isConfigured` — alertas de emergência via WhatsApp.
 
-**Rotas REST de auth:** `GET /api/auth/me`, `POST /api/auth/logout`, `POST /api/auth/session`, e `POST /api/auth/supabase` (troca de sessão Supabase por JWT próprio).
+**Rotas REST de auth:** `GET /api/auth/me`, `POST /api/auth/logout`, `POST /api/auth/session`, e `POST /api/auth/google` (verifica o `id_token` do Google e emite o JWT próprio).
 
-**Fallback de Alertas (cascata):** WhatsApp Business API → Email (Resend) → SMS (Twilio).
+**Canais de alerta:** WhatsApp Business API para os **contatos de emergência** + push (Expo) em tempo real para os **cuidadores vinculados**. São conjuntos de destinatários independentes.
 
 ### Dead Man's Switch
 
@@ -170,8 +172,11 @@ Detecta quando o usuário não responde a um alarme e aciona os contatos de emer
 | `alarm_events` | Eventos de disparo de alarme (pending/responded/missed/not_sent). |
 | `device_heartbeat` | Último "estou vivo" por dispositivo. |
 | `warning_log` | Registro de avisos enviados aos contatos. |
+| `caregiver_links` | Vínculo persistente monitorado↔cuidador (`active`/`revoked`). |
+| `link_invites` | Convites efêmeros de vínculo (código/QR/link), single-use. |
+| `push_tokens` | Tokens de push (Expo) por conta — usados para alertar cuidadores. |
 
-> O diretório `supabase/` contém um schema e a Edge Function `check-missed-alarms` de uma arquitetura anterior; o monitoramento ativo hoje é servido pelo backend Node.
+> Uma arquitetura anterior usava Supabase (Auth + Edge Function `check-missed-alarms`) para o dead man's switch. O Supabase foi **removido**: autenticação e monitoramento são servidos pelo backend Node no Railway.
 
 ---
 
@@ -184,7 +189,6 @@ vigora-saude/
 │   ├── onboarding.tsx           ← Slides de apresentação
 │   ├── login.tsx                ← Login com Google
 │   ├── register.tsx             ← Cadastro (tipo de conta, nome, telefone, etc.)
-│   ├── oauth/callback.tsx       ← Callback OAuth (troca de sessão → JWT)
 │   ├── alarm-ring.tsx           ← Tela cheia de alarme disparado
 │   ├── (tabs)/
 │   │   ├── index.tsx            ← Dashboard
@@ -197,12 +201,15 @@ vigora-saude/
 │   │   ├── help.tsx             ← Ajuda
 │   │   ├── profile.tsx          ← Meu Perfil (sincronizado com o servidor)
 │   │   └── settings.tsx         ← Configurações
+│   ├── (caregiver-tabs)/        ← Fluxo do cuidador (início, alertas, pessoa, vínculo, config)
+│   │   └── _layout.tsx          ← Tabs do cuidador + registro do token de push
 │   └── (modal)/
 │       ├── paywall.tsx          ← RevenueCat Paywall nativo
 │       └── customer-center.tsx  ← RevenueCat Customer Center
 ├── components/
 │   ├── onboarding-gate.tsx      ← Funil onboarding → login → registro
 │   ├── monitoring-initializer.tsx ← Registro de device + heartbeat + sync de alarmes
+│   ├── caregiver-push-initializer.tsx ← Registra o token de push do cuidador
 │   ├── pro-gate.tsx             ← ProGate, ProBanner, ProLimitBadge
 │   └── pro-upsell-modal.tsx     ← Upsell contextual
 ├── hooks/
@@ -211,20 +218,24 @@ vigora-saude/
 ├── lib/
 │   ├── app-context.tsx          ← Estado global + reconcile/push do cloud backup
 │   ├── cloud-sync.ts            ← pullCloudData / pushCloudData (userData tRPC)
-│   ├── supabase.ts              ← Cliente Supabase Auth (PKCE)
 │   ├── monitoring-service.ts    ← Cliente do dead man's switch (tRPC via HTTP)
+│   ├── push-registration.ts     ← Resolve o token de push (Expo) do dispositivo
 │   ├── _core/auth.ts            ← Token de sessão e cache do usuário
 │   ├── _core/api.ts             ← Helper de chamadas autenticadas
 │   └── trpc.ts                  ← Cliente tRPC (React Query)
 ├── server/
 │   ├── _core/                   ← Bootstrap Express, tRPC, sessão JWT, cookies, env
-│   ├── routers.ts               ← auth, userData, whatsapp
+│   ├── routers.ts               ← auth, userData, whatsapp, push
 │   ├── routers-monitoring.ts    ← Dead man's switch (monitoring.*)
-│   ├── supabase-auth.ts         ← Troca de sessão Supabase → JWT próprio
+│   ├── routers-links.ts         ← Vínculo monitorado↔cuidador (link.*)
+│   ├── routers-push.ts          ← Registro de token de push (push.register)
+│   ├── push.ts / db-push.ts     ← Push (Expo) para cuidadores + tokens
+│   ├── whatsapp.ts              ← Alertas a contatos via Meta Graph API
+│   ├── google-auth.ts           ← Verifica id_token do Google → JWT próprio
 │   └── db.ts                    ← Drizzle (MySQL) + queries
 ├── drizzle/
-│   ├── schema.ts                ← Schema (users, user_data, app_users, ...)
-│   └── 0000..0006_*.sql         ← Migrations
+│   ├── schema.ts                ← Schema (users, user_data, app_users, push_tokens, ...)
+│   └── 0000..0008_*.sql         ← Migrations
 ├── tests/                       ← Suíte Vitest (auth, monitoring, segurança, RevenueCat, ...)
 ├── eas.json                     ← Profiles EAS: development/preview/production
 ├── vitest.config.ts             ← Vitest com alias @, JSX, __DEV__
@@ -243,17 +254,18 @@ vigora-saude/
 | `JWT_SECRET` | Segredo para assinar a sessão JWT (≥ 32 caracteres) | Sim |
 | `NODE_ENV` | `production` em produção | Sim |
 | `CORS_ORIGIN_ALLOWLIST` | Origens permitidas (ex.: `https://...,vigora://*`) | Recomendado |
-| `WHATSAPP_API_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp Business API | Recomendado |
-| `RESEND_API_KEY` / `RESEND_FROM_EMAIL` | Emails de alerta (fallback) | Opcional |
-| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM_NUMBER` | SMS (fallback) | Opcional |
+| `WHATSAPP_API_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp Business API (alertas a contatos) | Recomendado |
+
+> Push aos cuidadores usa o serviço público da Expo (`exp.host`) — não requer secret no servidor.
 
 ### App (build time, prefixo `EXPO_PUBLIC_`)
 
 | Variável | Descrição | Obrigatória |
 |---|---|---|
 | `EXPO_PUBLIC_API_BASE_URL` | URL do backend (ex.: `https://api.vigorasaude.com`) | Sim |
-| `EXPO_PUBLIC_SUPABASE_URL` | URL do projeto Supabase (Auth) | Sim |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Chave anônima do Supabase (Auth) | Sim |
+| `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` | OAuth Google — Client ID Android | Sim |
+| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | OAuth Google — Client ID iOS | Sim |
+| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | OAuth Google — Client ID Web/Expo Go | Sim |
 | `EXPO_PUBLIC_REVENUECAT_API_KEY` | API key do RevenueCat | Sim |
 
 ---
@@ -314,7 +326,7 @@ Boas práticas de segurança aplicadas: sessões JWT com revogação (`jti`), au
 ## Próximos Passos
 
 1. **Aplicar migrations no Railway MySQL** (incluindo a tabela `user_data`).
-2. **Configurar Google OAuth no Supabase Auth** (Client ID/Secret + redirect `vigora://oauth/callback`).
+2. **Configurar Google OAuth** (Client IDs Android/iOS/Web + redirect `vigora://oauth/callback`).
 3. **Publicação nas Lojas** — seguir `docs/BUILD_GUIDE.md` para App Store e Google Play.
 4. **Testes Beta** — distribuir APK de preview para usuários idosos e validar UX.
 5. **Integração com Wearables** — Apple Watch e Wear OS (roadmap v2.0).

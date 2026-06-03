@@ -6,8 +6,7 @@
  *    -> If device was offline (no heartbeat): mark as "not_sent"
  *    -> If device was online but user didn't respond: mark as "missed"
  * 2. Check for devices that have been offline for 12h+ with unresolved alarms
- *    -> Send progressive warning messages to emergency contacts via:
- *       WhatsApp (primary) -> Email (fallback) -> SMS (last resort)
+ *    -> Send progressive warning messages to emergency contacts via WhatsApp
  *
  * Warning escalation levels:
  *   Level 1 (30min) -> Aviso leve: dispositivo sem atividade
@@ -28,8 +27,9 @@ import {
   updateWarningResult,
 } from "./db-monitoring";
 import { sendWhatsAppMessage, isWhatsAppApiConfigured } from "./whatsapp";
-import { sendEmail, isEmailConfigured } from "./email";
-import { sendSms, isSmsConfigured } from "./sms";
+import { getActiveCaregiversForMonitored } from "./db-links";
+import { getPushTokensForOpenIds } from "./db-push";
+import { sendExpoPush } from "./push";
 
 // Grace period: how long after scheduledAt we wait before resolving a pending event
 const GRACE_PERIOD_MINUTES = 15;
@@ -103,67 +103,71 @@ function buildWarningMessage(
   return message;
 }
 
-/**
- * Build email subject based on warning level.
- */
-function buildEmailSubject(userName: string, level: number): string {
-  const name = userName || "Usuário do Vigora Saúde";
-  if (level === 1) return `⚠️ Aviso: ${name} sem atividade no Vigora Saúde`;
-  if (level === 2) return `⚠️⚠️ Atenção: ${name} sem atividade há 2h - Vigora Saúde`;
-  return `🚨 ALERTA SÉRIO: ${name} sem atividade há 6h+ - Vigora Saúde`;
+/** Short push title for an offline warning, by escalation level. */
+function buildWarningPushTitle(level: number): string {
+  if (level === 1) return "⚠️ Aviso — Vigora Saúde";
+  if (level === 2) return "⚠️ Atenção — Vigora Saúde";
+  return "🚨 Alerta sério — Vigora Saúde";
+}
+
+/** Short push body summarizing the offline duration. */
+function buildWarningPushBody(userName: string, offlineHours: number): string {
+  const name = userName || "A pessoa que você acompanha";
+  return `${name} está sem atividade no app há ${formatOfflineDuration(offlineHours)}. Toque para ver os detalhes.`;
 }
 
 /**
- * Send a message to a single contact using fallback chain:
- * WhatsApp -> Email -> SMS
+ * Send a warning message to a single contact via WhatsApp.
  *
- * Returns the channel that succeeded, or null if all failed.
+ * Returns whether the message was sent, and the error when it was not.
  */
-async function sendWithFallback(
-  contact: { name: string; phone: string; email?: string; whatsapp?: boolean },
-  message: string,
-  emailSubject: string
-): Promise<{ channel: "whatsapp" | "email" | "sms" | null; error?: string }> {
-
-  // -- 1. WhatsApp (primary) -------------------------------------------------
-  if (contact.whatsapp && contact.phone && isWhatsAppApiConfigured()) {
-    const result = await sendWhatsAppMessage(contact.phone, message);
-    if (result.success) {
-      console.log(`[Monitor] ✅ WhatsApp sent to ${contact.name} (${contact.phone})`);
-      return { channel: "whatsapp" };
-    }
-    console.warn(`[Monitor] ⚠️ WhatsApp failed for ${contact.name}: ${result.error}`);
-  } else if (!isWhatsAppApiConfigured()) {
-    console.log(`[Monitor] WhatsApp API not configured, trying next channel`);
+async function sendToContact(
+  contact: { name: string; phone: string; whatsapp?: boolean },
+  message: string
+): Promise<{ sent: boolean; error?: string }> {
+  if (!isWhatsAppApiConfigured()) {
+    return { sent: false, error: "WhatsApp Business API not configured" };
+  }
+  if (!contact.whatsapp || !contact.phone) {
+    return { sent: false, error: "Contact has no WhatsApp number" };
   }
 
-  // -- 2. Email (fallback) ---------------------------------------------------
-  if (contact.email && isEmailConfigured()) {
-    const result = await sendEmail(contact.email, emailSubject, message);
-    if (result.success) {
-      console.log(`[Monitor] ✅ Email sent to ${contact.name} (${contact.email})`);
-      return { channel: "email" };
-    }
-    console.warn(`[Monitor] ⚠️ Email failed for ${contact.name}: ${result.error}`);
-  } else if (contact.email && !isEmailConfigured()) {
-    console.log(`[Monitor] Email API not configured, trying next channel`);
+  const result = await sendWhatsAppMessage(contact.phone, message);
+  if (result.success) {
+    console.log(`[Monitor] ✅ WhatsApp sent to ${contact.name} (${contact.phone})`);
+    return { sent: true };
   }
+  console.warn(`[Monitor] ⚠️ WhatsApp failed for ${contact.name}: ${result.error}`);
+  return { sent: false, error: result.error };
+}
 
-  // -- 3. SMS (last resort) --------------------------------------------------
-  if (contact.phone && isSmsConfigured()) {
-    const result = await sendSms(contact.phone, message);
-    if (result.success) {
-      console.log(`[Monitor] ✅ SMS sent to ${contact.name} (${contact.phone})`);
-      return { channel: "sms" };
-    }
-    console.warn(`[Monitor] ⚠️ SMS failed for ${contact.name}: ${result.error}`);
-    return { channel: null, error: result.error };
-  }
+/** Open IDs of every caregiver actively linked to the monitored person. */
+async function getLinkedCaregiverOpenIds(
+  monitoredOpenId: string | null
+): Promise<string[]> {
+  if (!monitoredOpenId) return [];
+  const caregivers = await getActiveCaregiversForMonitored(monitoredOpenId);
+  return caregivers.map((c) => c.caregiverOpenId);
+}
 
-  return {
-    channel: null,
-    error: "No configured channel available (WhatsApp, Email, or SMS)",
-  };
+/**
+ * Deliver an in-app push alert to every device of the given caregivers.
+ * Returns the number of pushes Expo accepted.
+ *
+ * Runs independently of the WhatsApp escalation: a monitored person may have a
+ * linked caregiver but no emergency contacts (or vice-versa), and each channel
+ * must reach its own recipients.
+ */
+async function sendPushToCaregivers(
+  caregiverOpenIds: string[],
+  title: string,
+  body: string,
+  data: Record<string, unknown>
+): Promise<number> {
+  if (caregiverOpenIds.length === 0) return 0;
+  const tokens = await getPushTokensForOpenIds(caregiverOpenIds);
+  if (tokens.length === 0) return 0;
+  return sendExpoPush(tokens.map((t) => t.token), { title, body, data });
 }
 
 /**
@@ -246,10 +250,13 @@ export async function runMonitoringJob(): Promise<void> {
       }
 
       const contacts = (appUser.emergencyContacts as any[]) || [];
+      const caregiverOpenIds = await getLinkedCaregiverOpenIds(appUser.openId);
 
-      if (contacts.length === 0) {
+      // Two independent recipient sets: WhatsApp reaches emergency contacts,
+      // push reaches linked caregivers. Skip only when neither has anyone.
+      if (contacts.length === 0 && caregiverOpenIds.length === 0) {
         console.log(
-          `[Monitor] Device ${device.deviceId}: no contacts configured, skipping`
+          `[Monitor] Device ${device.deviceId}: no contacts or caregivers, skipping`
         );
         continue;
       }
@@ -266,6 +273,7 @@ export async function runMonitoringJob(): Promise<void> {
       // Claim the warning slot BEFORE sending. A concurrent run that reads
       // warningHistory after this insert will see the row and skip its own send,
       // closing the TOCTOU window to a DB round-trip rather than the entire send loop.
+      // The claim dedups both channels (WhatsApp + push) for this level.
       const claimId = await claimWarning({
         deviceId: device.deviceId,
         level: warningLevel,
@@ -279,52 +287,47 @@ export async function runMonitoringJob(): Promise<void> {
         offlineHours,
         locationUrl
       );
-      const emailSubject = buildEmailSubject(appUser.userName || "", warningLevel);
 
       console.log(
         `[Monitor] Sending level ${warningLevel} warning for device ${device.deviceId} (${offlineHours}h offline)`
       );
-      console.log(
-        `[Monitor] Available channels: WhatsApp=${isWhatsAppApiConfigured()}, Email=${isEmailConfigured()}, SMS=${isSmsConfigured()}`
-      );
+      console.log(`[Monitor] WhatsApp configured: ${isWhatsAppApiConfigured()}`);
 
       let totalSent = 0;
       let totalFailed = 0;
-      const channelSummary: Record<string, number> = { whatsapp: 0, email: 0, sms: 0, failed: 0 };
 
       for (const contact of contacts) {
-        const result = await sendWithFallback(
-          {
-            name: contact.name,
-            phone: contact.phone,
-            email: contact.email,
-            whatsapp: contact.whatsapp,
-          },
-          message,
-          emailSubject
+        const result = await sendToContact(
+          { name: contact.name, phone: contact.phone, whatsapp: contact.whatsapp },
+          message
         );
 
-        if (result.channel) {
+        if (result.sent) {
           totalSent++;
-          channelSummary[result.channel] = (channelSummary[result.channel] || 0) + 1;
         } else {
           totalFailed++;
-          channelSummary.failed++;
-          console.warn(
-            `[Monitor] ❌ All channels failed for ${contact.name}: ${result.error}`
-          );
+          console.warn(`[Monitor] ❌ Could not reach ${contact.name}: ${result.error}`);
         }
 
         // Small delay between contacts
         await new Promise((r) => setTimeout(r, 500));
       }
 
+      // In-app push to linked caregivers (real-time companion to WhatsApp).
+      const pushTitle = buildWarningPushTitle(warningLevel);
+      const pushBody = buildWarningPushBody(appUser.userName || "", offlineHours);
+      const pushed = await sendPushToCaregivers(caregiverOpenIds, pushTitle, pushBody, {
+        type: "monitoring_warning",
+        level: warningLevel,
+        url: "/(caregiver-tabs)/alerts",
+      });
+
       if (claimId !== null) {
         await updateWarningResult(claimId, totalSent, !!locationUrl);
       }
 
       console.log(
-        `[Monitor] Warning sent: ${totalSent} contacts reached (WhatsApp: ${channelSummary.whatsapp}, Email: ${channelSummary.email}, SMS: ${channelSummary.sms}), ${totalFailed} failed`
+        `[Monitor] Warning sent: ${totalSent} contacts reached via WhatsApp, ${totalFailed} failed; ${pushed} caregiver push(es) delivered`
       );
     }
 
@@ -344,8 +347,9 @@ export async function runMonitoringJob(): Promise<void> {
       }
 
       const contacts = (appUser.emergencyContacts as any[]) || [];
-      if (contacts.length === 0) {
-        console.log(`[Monitor] Step 3: no contacts for device ${event.deviceId}, skipping`);
+      const caregiverOpenIds = await getLinkedCaregiverOpenIds(appUser.openId);
+      if (contacts.length === 0 && caregiverOpenIds.length === 0) {
+        console.log(`[Monitor] Step 3: no contacts or caregivers for device ${event.deviceId}, skipping`);
         await markEventWarningSent(event.id);
         continue;
       }
@@ -360,23 +364,28 @@ export async function runMonitoringJob(): Promise<void> {
         `${name} não respondeu ao check-in de saúde previsto para ${scheduledStr}.\n\n` +
         `Por favor, entre em contato para verificar se está tudo bem.\n\n` +
         `- Enviado automaticamente pelo Vigora Saúde`;
-      const emailSubject = `⚠️ Check-in não respondido: ${name} - Vigora Saúde`;
 
       console.log(`[Monitor] Step 3: escalating check-in for device ${event.deviceId}`);
 
       let totalSent = 0;
       for (const contact of contacts) {
-        const result = await sendWithFallback(
-          { name: contact.name, phone: contact.phone, email: contact.email, whatsapp: contact.whatsapp },
-          message,
-          emailSubject
+        const result = await sendToContact(
+          { name: contact.name, phone: contact.phone, whatsapp: contact.whatsapp },
+          message
         );
-        if (result.channel) totalSent++;
+        if (result.sent) totalSent++;
         await new Promise((r) => setTimeout(r, 500));
       }
 
+      const pushed = await sendPushToCaregivers(
+        caregiverOpenIds,
+        "⚠️ Check-in não respondido — Vigora Saúde",
+        `${name} não respondeu ao check-in das ${scheduledStr}. Toque para ver os detalhes.`,
+        { type: "missed_checkin", url: "/(caregiver-tabs)/alerts" }
+      );
+
       await markEventWarningSent(event.id);
-      console.log(`[Monitor] Step 3: escalated check-in event ${event.id}, ${totalSent} contacts reached`);
+      console.log(`[Monitor] Step 3: escalated check-in event ${event.id}, ${totalSent} contacts reached, ${pushed} caregiver push(es) delivered`);
     }
 
     console.log(`[Monitor] Job completed successfully`);
