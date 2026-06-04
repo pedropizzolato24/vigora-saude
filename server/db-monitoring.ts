@@ -6,6 +6,7 @@
  */
 import { and, eq, gte, inArray, isNull, lt, lte, or } from "drizzle-orm";
 import { getDb } from "./db";
+import { pickPendingEvent } from "./_core/pick-pending-event";
 import {
   alarmEvents,
   appUsers,
@@ -266,8 +267,11 @@ export async function updateAlarmEventStatusByAlarmId(
   const db = await getDb();
   if (!db) return;
 
-  // Find the most recent pending event for this alarm
-  const rows = await db
+  // Resolve the pending event whose scheduledAt is closest to the reference
+  // time (clients send "now"). With check-in this picks today's event over
+  // tomorrow's; the old query had no ORDER BY and could resolve an arbitrary
+  // pending event — marking tomorrow's check-in done and suppressing its alert.
+  const pending = await db
     .select()
     .from(alarmEvents)
     .where(
@@ -276,10 +280,10 @@ export async function updateAlarmEventStatusByAlarmId(
         eq(alarmEvents.alarmId, alarmId),
         eq(alarmEvents.status, "pending")
       )
-    )
-    .limit(1);
+    );
 
-  if (rows.length === 0) return;
+  const target = pickPendingEvent(pending, scheduledAt);
+  if (!target) return;
 
   // When the client confirms a missed event it has already escalated client-side.
   // Set warningSent=true so Step 3 of the monitoring job doesn't double-escalate.
@@ -288,7 +292,7 @@ export async function updateAlarmEventStatusByAlarmId(
   await db
     .update(alarmEvents)
     .set({ status, resolvedAt: new Date(), warningSent })
-    .where(eq(alarmEvents.id, rows[0].id));
+    .where(eq(alarmEvents.id, target.id));
 }
 
 /**
