@@ -1,5 +1,5 @@
 // tests/checkin-service.test.ts
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock native modules that checkin-service.ts imports at the top level.
 // The pure functions under test (computeTimeoutDate, formatCountdown) don't
@@ -12,6 +12,7 @@ vi.mock('expo-notifications', () => ({
   SchedulableTriggerInputTypes: { DAILY: 'daily', DATE: 'date' },
   scheduleNotificationAsync: vi.fn(),
   cancelScheduledNotificationAsync: vi.fn(),
+  getAllScheduledNotificationsAsync: vi.fn(async () => []),
 }));
 
 vi.mock('@react-native-async-storage/async-storage', () => ({
@@ -30,7 +31,9 @@ vi.mock('../lib/monitoring-service', () => ({
   createPendingAlarmEvent: vi.fn(),
 }));
 
-import { computeTimeoutDate, computeNextTimeoutDate, formatCountdown } from '../lib/checkin-service';
+import { computeTimeoutDate, computeNextTimeoutDate, formatCountdown, scheduleCheckin } from '../lib/checkin-service';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
 
 describe('computeTimeoutDate', () => {
   it('adiciona window minutes ao horário do check-in', () => {
@@ -107,5 +110,72 @@ describe('formatCountdown', () => {
 
   it('formata minutos completos', () => {
     expect(formatCountdown(1800)).toBe('30:00');
+  });
+});
+
+describe('scheduleCheckin — não re-arma o timeout de hoje após resposta', () => {
+  // Regressão do bug: app fechado → tap no prompt → confirma → 30min depois
+  // dispara "não respondido". Causa: scheduleCheckin (rodado no startup pelo
+  // CheckinInitializer) re-armava o timeout de hoje, clobberando o cancelamento
+  // feito por markCheckinResponded.
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    (Notifications.getAllScheduledNotificationsAsync as any).mockResolvedValue([]);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** Args dos agendamentos com trigger DATE (o timeout one-shot). */
+  function dateTriggerArgs() {
+    return (Notifications.scheduleNotificationAsync as any).mock.calls
+      .map((c: any[]) => c[0])
+      .filter((arg: any) => arg.trigger?.type === 'date');
+  }
+
+  it('arma o timeout para AMANHÃ se o check-in de hoje já foi respondido', async () => {
+    // Agora 09:05; check-in 09:00 (+30 = 09:30 hoje, ainda no futuro).
+    vi.setSystemTime(new Date('2026-05-25T09:05:00'));
+    (AsyncStorage.getItem as any).mockImplementation(async (key: string) =>
+      key === 'vigora_checkin_responded_date' ? '2026-05-25' : null
+    );
+
+    await scheduleCheckin('09:00', 30);
+
+    const dateCalls = dateTriggerArgs();
+    expect(dateCalls).toHaveLength(1);
+    const when: Date = dateCalls[0].trigger.date;
+    expect(when.getDate()).toBe(26); // amanhã, não hoje
+    expect(when.getHours()).toBe(9);
+    expect(when.getMinutes()).toBe(30);
+  });
+
+  it('arma o timeout para HOJE quando ainda não respondeu hoje', async () => {
+    vi.setSystemTime(new Date('2026-05-25T09:05:00'));
+    (AsyncStorage.getItem as any).mockResolvedValue(null);
+
+    await scheduleCheckin('09:00', 30);
+
+    const dateCalls = dateTriggerArgs();
+    expect(dateCalls).toHaveLength(1);
+    const when: Date = dateCalls[0].trigger.date;
+    expect(when.getDate()).toBe(25); // hoje
+    expect(when.getHours()).toBe(9);
+    expect(when.getMinutes()).toBe(30);
+  });
+
+  it('arma o timeout para HOJE se a resposta foi de um dia anterior', async () => {
+    vi.setSystemTime(new Date('2026-05-25T09:05:00'));
+    (AsyncStorage.getItem as any).mockImplementation(async (key: string) =>
+      key === 'vigora_checkin_responded_date' ? '2026-05-24' : null
+    );
+
+    await scheduleCheckin('09:00', 30);
+
+    const dateCalls = dateTriggerArgs();
+    expect(dateCalls).toHaveLength(1);
+    const when: Date = dateCalls[0].trigger.date;
+    expect(when.getDate()).toBe(25); // hoje — resposta de ontem não conta
   });
 });
