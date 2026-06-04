@@ -35,10 +35,10 @@ export default function CheckinResponseScreen() {
           <Pressable
             onPress={() => router.replace('/(tabs)')}
             style={({ pressed }) => [styles.button, { opacity: pressed ? 0.85 : 1 }]}
-            accessibilityLabel="Entendido, fechar tela de confirmação"
+            accessibilityLabel="Até amanhã, fechar tela de confirmação"
             accessibilityRole="button"
           >
-            <Text style={styles.buttonText}>Entendido</Text>
+            <Text style={styles.buttonText}>Até amanhã</Text>
           </Pressable>
         </View>
 

@@ -7,8 +7,15 @@
  * 1. scheduleCheckin() agenda duas notificações:
  *    - Prompt diário recorrente (DAILY trigger) → abre /checkin-response
  *    - Timeout one-shot (DATE trigger, checkinTime + windowMinutes) → escalona se não respondido
- * 2. Usuário toca "Estou Bem" → markCheckinResponded() cancela o timeout e reagenda para amanhã
+ * 2. Usuário toca "Estou Bem" → markCheckinResponded() cancela o timeout de hoje
+ *    e reagenda o timeout para AMANHÃ (hoje já está satisfeito).
  * 3. Se não responder → notificação de timeout dispara; _layout.tsx a intercepta e escalona
+ *
+ * Invariantes:
+ * - No máximo UM prompt e UM timeout agendados por vez.
+ * - Todas as operações de agendamento rodam serializadas (withLock) para que
+ *   cancelar-e-recriar seja atômico. Sem isso, chamadas concorrentes
+ *   (settings.tsx + CheckinInitializer) duplicam/triplicam as notificações.
  *
  * IDs de notificação persistidos em AsyncStorage:
  *   vigora_checkin_prompt_id  — ID do prompt diário
@@ -52,12 +59,47 @@ export function computeTimeoutDate(
 }
 
 /**
+ * Calcula o timeout do PRÓXIMO check-in, usado após o usuário responder.
+ *
+ * markCheckinResponded só roda depois do prompt de hoje ter disparado
+ * (todo chamador tem now >= checkinTime), então o check-in de hoje já está
+ * satisfeito. O próximo timeout é sempre o de AMANHÃ: amanhã no horário do
+ * check-in + a janela. Calcular o dia seguinte diretamente evita o bug de
+ * "hoje + janela ainda no futuro" — que rearmava um timeout para hoje e
+ * disparava "check-in não respondido" poucos minutos após a confirmação.
+ */
+export function computeNextTimeoutDate(
+  checkinTime: string,
+  windowMinutes: number,
+  now: Date = new Date()
+): Date {
+  const [h, m] = checkinTime.split(':').map(Number);
+  const base = new Date(now);
+  base.setDate(base.getDate() + 1);
+  base.setHours(h, m, 0, 0);
+  return new Date(base.getTime() + windowMinutes * 60000);
+}
+
+/**
  * Formata segundos restantes em "MM:SS" para o countdown.
  */
 export function formatCountdown(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+// ---------------------------------------------------------------------------
+// Serialização — torna cancelar-e-recriar atômico entre chamadas concorrentes.
+// ---------------------------------------------------------------------------
+
+let opChain: Promise<unknown> = Promise.resolve();
+
+/** Enfileira fn para rodar após a operação anterior, evitando races de agendamento. */
+function withLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = opChain.then(fn, fn);
+  opChain = run.catch(() => {});
+  return run;
 }
 
 // ---------------------------------------------------------------------------
@@ -68,14 +110,20 @@ export function formatCountdown(totalSeconds: number): string {
  * Agenda (ou reagenda) o check-in diário.
  * Cancela qualquer agendamento anterior antes de criar os novos.
  */
-export async function scheduleCheckin(
+export function scheduleCheckin(
   checkinTime: string,
   windowMinutes: number
 ): Promise<void> {
-  if (Platform.OS === 'web') return;
+  if (Platform.OS === 'web') return Promise.resolve();
+  return withLock(() => scheduleCheckinInternal(checkinTime, windowMinutes));
+}
 
+async function scheduleCheckinInternal(
+  checkinTime: string,
+  windowMinutes: number
+): Promise<void> {
   try {
-    await cancelCheckin();
+    await cancelCheckinInternal();
 
     const [hours, minutes] = checkinTime.split(':').map(Number);
 
@@ -102,7 +150,11 @@ export async function scheduleCheckin(
     await AsyncStorage.setItem(PROMPT_ID_KEY, promptId);
 
     // 2. Timeout one-shot para hoje (ou amanhã se já passou)
-    await scheduleTimeoutNotification(checkinTime, windowMinutes);
+    await scheduleTimeoutNotification(
+      checkinTime,
+      windowMinutes,
+      computeTimeoutDate(checkinTime, windowMinutes)
+    );
   } catch (error) {
     console.error('[Checkin] scheduleCheckin failed:', error);
   }
@@ -113,56 +165,69 @@ export async function scheduleCheckin(
  * Varre todas as notificações agendadas para garantir que não sobram órfãos
  * de sessões anteriores mesmo que o ID no AsyncStorage esteja desatualizado.
  */
-export async function cancelCheckin(): Promise<void> {
-  if (Platform.OS === 'web') return;
+export function cancelCheckin(): Promise<void> {
+  if (Platform.OS === 'web') return Promise.resolve();
+  return withLock(() => cancelCheckinInternal());
+}
 
-  const [scheduled, promptId, timeoutId] = await Promise.all([
-    Notifications.getAllScheduledNotificationsAsync(),
-    AsyncStorage.getItem(PROMPT_ID_KEY),
-    AsyncStorage.getItem(TIMEOUT_ID_KEY),
-  ]);
+async function cancelCheckinInternal(): Promise<void> {
+  try {
+    const [scheduled, promptId, timeoutId] = await Promise.all([
+      Notifications.getAllScheduledNotificationsAsync(),
+      AsyncStorage.getItem(PROMPT_ID_KEY),
+      AsyncStorage.getItem(TIMEOUT_ID_KEY),
+    ]);
 
-  const idsToCancel = new Set<string>();
-  if (promptId) idsToCancel.add(promptId);
-  if (timeoutId) idsToCancel.add(timeoutId);
-  for (const n of scheduled) {
-    const type = n.content.data?.type;
-    if (type === 'checkin_prompt' || type === 'checkin_timeout') {
-      idsToCancel.add(n.identifier);
+    const idsToCancel = new Set<string>();
+    if (promptId) idsToCancel.add(promptId);
+    if (timeoutId) idsToCancel.add(timeoutId);
+    for (const n of scheduled) {
+      const type = n.content.data?.type;
+      if (type === 'checkin_prompt' || type === 'checkin_timeout') {
+        idsToCancel.add(n.identifier);
+      }
     }
-  }
 
-  await Promise.all([
-    ...[...idsToCancel].map(id =>
-      Notifications.cancelScheduledNotificationAsync(id).catch(() => {})
-    ),
-    AsyncStorage.multiRemove([PROMPT_ID_KEY, TIMEOUT_ID_KEY]),
-  ]);
+    await Promise.all([
+      ...[...idsToCancel].map(id =>
+        Notifications.cancelScheduledNotificationAsync(id).catch(() => {})
+      ),
+      AsyncStorage.multiRemove([PROMPT_ID_KEY, TIMEOUT_ID_KEY]),
+    ]);
+  } catch (error) {
+    console.error('[Checkin] cancelCheckin failed:', error);
+  }
 }
 
 /**
  * Marca o check-in como respondido:
- * - Cancela o timeout de hoje
- * - Reagenda o timeout para amanhã
+ * - Cancela TODOS os timeouts pendentes (mantém o prompt diário)
+ * - Reagenda o timeout para AMANHÃ (hoje já está satisfeito)
  *
  * Chamar quando o usuário tocar "Estou Bem".
  */
-export async function markCheckinResponded(
+export function markCheckinResponded(
   checkinTime: string,
   windowMinutes: number
 ): Promise<void> {
-  if (Platform.OS === 'web') return;
+  if (Platform.OS === 'web') return Promise.resolve();
+  return withLock(() => markCheckinRespondedInternal(checkinTime, windowMinutes));
+}
 
+async function markCheckinRespondedInternal(
+  checkinTime: string,
+  windowMinutes: number
+): Promise<void> {
   try {
-    // Cancela o timeout de hoje
-    const timeoutId = await AsyncStorage.getItem(TIMEOUT_ID_KEY);
-    if (timeoutId) {
-      await Notifications.cancelScheduledNotificationAsync(timeoutId).catch(() => {});
-      await AsyncStorage.removeItem(TIMEOUT_ID_KEY);
-    }
+    // Cancela qualquer timeout de hoje (incluindo órfãos), mantendo o prompt diário.
+    await cancelTimeoutNotifications();
 
-    // Reagenda o timeout para amanhã (o prompt diário continua ativo)
-    await scheduleTimeoutNotification(checkinTime, windowMinutes);
+    // Reagenda o timeout para amanhã — o check-in de hoje já foi confirmado.
+    await scheduleTimeoutNotification(
+      checkinTime,
+      windowMinutes,
+      computeNextTimeoutDate(checkinTime, windowMinutes)
+    );
   } catch (error) {
     console.error('[Checkin] markCheckinResponded failed:', error);
   }
@@ -194,14 +259,41 @@ export async function createNextCheckinEvent(
 }
 
 /**
- * Interno: agenda a notificação de timeout one-shot.
+ * Interno: cancela apenas as notificações de timeout (mantém o prompt diário).
+ * Varre todas as agendadas para limpar órfãos além do ID persistido.
+ */
+async function cancelTimeoutNotifications(): Promise<void> {
+  const [scheduled, timeoutId] = await Promise.all([
+    Notifications.getAllScheduledNotificationsAsync(),
+    AsyncStorage.getItem(TIMEOUT_ID_KEY),
+  ]);
+
+  const idsToCancel = new Set<string>();
+  if (timeoutId) idsToCancel.add(timeoutId);
+  for (const n of scheduled) {
+    if (n.content.data?.type === 'checkin_timeout') {
+      idsToCancel.add(n.identifier);
+    }
+  }
+
+  await Promise.all([
+    ...[...idsToCancel].map(id =>
+      Notifications.cancelScheduledNotificationAsync(id).catch(() => {})
+    ),
+    AsyncStorage.removeItem(TIMEOUT_ID_KEY),
+  ]);
+}
+
+/**
+ * Interno: agenda a notificação de timeout one-shot na data informada.
+ * Não cancela nada — o chamador é responsável por garantir o invariante
+ * de um único timeout (cancelCheckinInternal / cancelTimeoutNotifications).
  */
 async function scheduleTimeoutNotification(
   checkinTime: string,
-  windowMinutes: number
+  windowMinutes: number,
+  when: Date
 ): Promise<void> {
-  const timeoutDate = computeTimeoutDate(checkinTime, windowMinutes);
-
   const timeoutId = await Notifications.scheduleNotificationAsync({
     content: {
       title: '⚠️ Check-in não respondido',
@@ -215,7 +307,7 @@ async function scheduleTimeoutNotification(
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
-      date: timeoutDate,
+      date: when,
       channelId: CHECKIN_CHANNEL_ID,
     } as any,
   });

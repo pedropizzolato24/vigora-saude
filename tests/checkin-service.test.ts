@@ -30,7 +30,7 @@ vi.mock('../lib/monitoring-service', () => ({
   createPendingAlarmEvent: vi.fn(),
 }));
 
-import { computeTimeoutDate, formatCountdown } from '../lib/checkin-service';
+import { computeTimeoutDate, computeNextTimeoutDate, formatCountdown } from '../lib/checkin-service';
 
 describe('computeTimeoutDate', () => {
   it('adiciona window minutes ao horário do check-in', () => {
@@ -66,6 +66,34 @@ describe('computeTimeoutDate', () => {
     expect(result.getHours()).toBe(0);
     expect(result.getMinutes()).toBe(15);
     expect(result.getDate()).toBe(26);
+  });
+});
+
+describe('computeNextTimeoutDate', () => {
+  it('arma o timeout para o dia seguinte, nunca para hoje', () => {
+    // Check-in 15:30, respondido às 15:35 → próximo timeout AMANHÃ 16:00.
+    // (Bug: a versão antiga retornava hoje 16:00 e disparava 30min após confirmar.)
+    const now = new Date('2026-05-25T15:35:00');
+    const result = computeNextTimeoutDate('15:30', 30, now);
+    expect(result.getDate()).toBe(26);
+    expect(result.getHours()).toBe(16);
+    expect(result.getMinutes()).toBe(0);
+  });
+
+  it('é sempre estritamente no futuro em relação a now', () => {
+    const now = new Date('2026-05-25T15:35:00');
+    const result = computeNextTimeoutDate('15:30', 30, now);
+    expect(result.getTime()).toBeGreaterThan(now.getTime());
+  });
+
+  it('trata check-in perto da meia-noite (23:45 + 30min)', () => {
+    // Respondido às 23:50; próximo check-in amanhã 23:45 → deadline no dia
+    // seguinte às 00:15. A versão com "sameDay" falharia aqui.
+    const now = new Date('2026-05-25T23:50:00');
+    const result = computeNextTimeoutDate('23:45', 30, now);
+    expect(result.getHours()).toBe(0);
+    expect(result.getMinutes()).toBe(15);
+    expect(result.getDate()).toBe(27);
   });
 });
 
