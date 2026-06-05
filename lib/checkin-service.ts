@@ -20,6 +20,9 @@
  * IDs de notificação persistidos em AsyncStorage:
  *   vigora_checkin_prompt_id  — ID do prompt diário
  *   vigora_checkin_timeout_id — ID do timeout one-shot
+ *   vigora_checkin_responded_date — data (YYYY-MM-DD local) do último check-in
+ *                                   respondido; impede scheduleCheckin de re-armar
+ *                                   o timeout de hoje no startup após a confirmação.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
@@ -29,6 +32,15 @@ import { createPendingAlarmEvent } from './monitoring-service';
 
 const PROMPT_ID_KEY = 'vigora_checkin_prompt_id';
 const TIMEOUT_ID_KEY = 'vigora_checkin_timeout_id';
+const RESPONDED_DATE_KEY = 'vigora_checkin_responded_date';
+
+/** Data local no formato YYYY-MM-DD (não UTC — alinha com o dia do usuário). */
+function localDateKey(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 // ---------------------------------------------------------------------------
 // Funções puras (testáveis sem mocks)
@@ -149,12 +161,16 @@ async function scheduleCheckinInternal(
     });
     await AsyncStorage.setItem(PROMPT_ID_KEY, promptId);
 
-    // 2. Timeout one-shot para hoje (ou amanhã se já passou)
-    await scheduleTimeoutNotification(
-      checkinTime,
-      windowMinutes,
-      computeTimeoutDate(checkinTime, windowMinutes)
-    );
+    // 2. Timeout one-shot. Se o check-in de HOJE já foi respondido, arma para
+    //    AMANHÃ — senão, este scheduleCheckin (chamado em todo startup pelo
+    //    CheckinInitializer) re-armaria o timeout de hoje logo após o usuário
+    //    confirmar via notificação no cold-start, disparando "não respondido"
+    //    poucos minutos depois.
+    const respondedDate = await AsyncStorage.getItem(RESPONDED_DATE_KEY);
+    const timeoutDate = respondedDate === localDateKey()
+      ? computeNextTimeoutDate(checkinTime, windowMinutes)
+      : computeTimeoutDate(checkinTime, windowMinutes);
+    await scheduleTimeoutNotification(checkinTime, windowMinutes, timeoutDate);
   } catch (error) {
     console.error('[Checkin] scheduleCheckin failed:', error);
   }
@@ -228,6 +244,10 @@ async function markCheckinRespondedInternal(
       windowMinutes,
       computeNextTimeoutDate(checkinTime, windowMinutes)
     );
+
+    // Marca hoje como satisfeito para que scheduleCheckin (startup) não re-arme
+    // o timeout de hoje. Cobre confirmação e timeout (ambos passam por aqui).
+    await AsyncStorage.setItem(RESPONDED_DATE_KEY, localDateKey());
   } catch (error) {
     console.error('[Checkin] markCheckinResponded failed:', error);
   }
