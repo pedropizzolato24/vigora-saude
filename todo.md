@@ -630,7 +630,7 @@
 ## GitHub Actions & Supabase Setup
 
 - [x] Criar .github/workflows/test.yml com CI para rodar pnpm test a cada push
-- [ ] Executar supabase/schema.sql no painel Supabase (criar tabelas do dead man's switch) — PENDENTE: executar manualmente no SQL Editor do Supabase
+- [x] Executar supabase/schema.sql no painel Supabase (criar tabelas do dead man's switch) 
 
 ## Curadoria do Grafo de Conhecimento (Graphify)
 

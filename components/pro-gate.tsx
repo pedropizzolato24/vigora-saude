@@ -24,17 +24,8 @@ import { useColors } from "@/hooks/use-colors";
 import { useFontSize } from "@/lib/font-size-context";
 
 // --- Limites do Plano Gratuito ------------------------------------------------
-
-export const FREE_LIMITS = {
-  /** Máximo de contatos de emergência no plano gratuito */
-  CONTACTS: 3,
-  /** Máximo de alarmes no plano gratuito */
-  ALARMS: 5,
-  /** Exportação PDF disponível apenas no Pro */
-  PDF_EXPORT: false,
-  /** Monitoramento contínuo disponível apenas no Pro */
-  MONITORING: false,
-} as const;
+// Fonte de verdade em `./pro-limits` (módulo puro, importável em testes).
+export { FREE_LIMITS } from "./pro-limits";
 
 // --- Hook useProFeature -------------------------------------------------------
 
