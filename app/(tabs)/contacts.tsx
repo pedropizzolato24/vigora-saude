@@ -122,7 +122,10 @@ export default function ContactsScreen() {
       );
       setDeviceContacts(withPhone);
       setSearchQuery('');
-      setImportModalVisible(true);
+      // Fecha o modal de novo contato antes de abrir o de importação para evitar
+      // empilhar dois Modals (comportamento indefinido no iOS).
+      setModalVisible(false);
+      setTimeout(() => setImportModalVisible(true), Platform.OS === 'ios' ? 400 : 0);
     } catch (err) {
       showDialog({ title: 'Erro', message: 'Não foi possível acessar os contatos do dispositivo.', variant: 'error', buttons: [{ text: 'OK' }] });
     }

@@ -44,7 +44,7 @@ export function SosStrip({ onPress }: SosStripProps) {
             { color: colors.onEmergency, fontSize: fs.sm },
           ]}
         >
-          Segure 3 segundos para chamar ajuda
+          Toque para chamar ajuda
         </Text>
       </View>
     </Pressable>

@@ -33,6 +33,7 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
           bottom: bottomOffset + insets.bottom + 12,
           backgroundColor: colors.primary,
           shadowColor: colors.primary,
+          borderColor: colors.onPrimary,
         },
         pressed && { opacity: 0.9, transform: [{ scale: 0.95 }] },
       ]}
@@ -52,7 +53,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: '#fff',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
