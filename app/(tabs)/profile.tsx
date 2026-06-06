@@ -189,8 +189,8 @@ export default function ProfileScreen() {
   // --- ACCESSIBILITY MODE --------------------------------------------------
   if (isAccessibilityMode) {
     const a11yProfileFields: { label: string; value: string; onChange: (v: string) => void; placeholder: string; keyboard?: any; maxLength?: number }[] = [
-      { label: 'Nome Completo', value: name, onChange: (v) => { setName(v); markChanged(); }, placeholder: 'Seu nome completo' },
-      { label: 'Data de Nascimento', value: birthDate, onChange: formatBirthDate, placeholder: 'DD/MM/AAAA', keyboard: 'numeric', maxLength: 10 },
+      { label: 'Nome completo', value: name, onChange: (v) => { setName(v); markChanged(); }, placeholder: 'Seu nome completo' },
+      { label: 'Data de nascimento', value: birthDate, onChange: formatBirthDate, placeholder: 'DD/MM/AAAA', keyboard: 'numeric', maxLength: 10 },
       { label: 'Telefone', value: phone, onChange: formatPhone, placeholder: '(11) 99999-9999', keyboard: 'phone-pad' },
     ];
     return (
@@ -242,28 +242,30 @@ export default function ProfileScreen() {
           ))}
           {/* Blood type */}
           <View style={{ gap: 10 }}>
-            <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>Tipo Sanguíneo</Text>
+            <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>Tipo sanguíneo</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
               {BLOOD_TYPES.map((bt) => (
                 <TouchableOpacity
                   key={bt}
                   onPress={() => { setBloodType(bt); markChanged(); }}
-                  style={{ paddingHorizontal: 20, paddingVertical: 14, borderRadius: 14, borderWidth: 3, backgroundColor: bloodType === bt ? ac.emergency : ac.surface, borderColor: bloodType === bt ? ac.emergency : ac.border }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Tipo sanguíneo ${bt}${bloodType === bt ? ', selecionado' : ''}`}
+                  style={{ width: '22%', minHeight: 64, paddingHorizontal: 8, paddingVertical: 14, borderRadius: 14, borderWidth: 3, backgroundColor: bloodType === bt ? ac.emergency : ac.surface, borderColor: bloodType === bt ? ac.emergency : ac.border, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <Text style={{ fontSize: af.md, fontWeight: '900', color: bloodType === bt ? ac.onEmergency : ac.foreground }}>{bt}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           </View>
-          {hasChanges && (
-            <TouchableOpacity
-              onPress={handleSave}
-              style={{ backgroundColor: ac.primary, borderRadius: 20, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, borderWidth: 3, borderColor: ac.primary }}
-            >
-              <MaterialIcons name="save" size={32} color={ac.onPrimary} />
-              <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.onPrimary }}>Salvar Perfil</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            onPress={handleSave}
+            accessibilityRole="button"
+            accessibilityLabel="Salvar perfil"
+            style={{ backgroundColor: ac.success, borderRadius: 20, minHeight: 64, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14 }}
+          >
+            <MaterialIcons name="save" size={32} color={ac.onPrimary} />
+            <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.onPrimary }}>Salvar Perfil</Text>
+          </TouchableOpacity>
         </ScrollView>
       </ScreenContainer>
       <AppDialog {...dialogProps} />
@@ -308,10 +310,10 @@ export default function ProfileScreen() {
 
         {/* Form Section */}
         <View style={[styles.formSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground, fontSize: fs.lg }]}>Informações Pessoais</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground, fontSize: fs.lg }]}>Informações pessoais</Text>
 
           <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.muted }]}>Nome Completo</Text>
+            <Text style={[styles.label, { color: colors.muted }]}>Nome completo</Text>
             <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.background }]}>
               <MaterialIcons name="person" size={20} color={colors.muted} style={styles.inputIcon} />
               <TextInput
@@ -325,7 +327,7 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.muted }]}>Data de Nascimento</Text>
+            <Text style={[styles.label, { color: colors.muted }]}>Data de nascimento</Text>
             <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.background }]}>
               <MaterialIcons name="cake" size={20} color={colors.muted} style={styles.inputIcon} />
               <TextInput
@@ -359,7 +361,7 @@ export default function ProfileScreen() {
 
         {/* Blood Type Section */}
         <View style={[styles.formSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground, fontSize: fs.lg }]}>Tipo Sanguíneo</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground, fontSize: fs.lg }]}>Tipo sanguíneo</Text>
           <View style={styles.bloodTypeGrid}>
             {BLOOD_TYPES.map((type) => (
               <TouchableOpacity
@@ -369,18 +371,20 @@ export default function ProfileScreen() {
                   markChanged();
                   if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Tipo sanguíneo ${type}${bloodType === type ? ', selecionado' : ''}`}
                 style={[
                   styles.bloodTypeBtn,
                   {
-                    backgroundColor: bloodType === type ? colors.primary : colors.background,
-                    borderColor: bloodType === type ? colors.primary : colors.border,
+                    backgroundColor: bloodType === type ? colors.emergency : colors.surface,
+                    borderColor: bloodType === type ? colors.emergency : colors.border,
                   },
                 ]}
               >
                 <Text
                   style={[
                     styles.bloodTypeBtnText,
-                    { color: bloodType === type ? colors.onPrimary : colors.foreground },
+                    { color: bloodType === type ? colors.onEmergency : colors.foreground },
                   ]}
                 >
                   {type}
@@ -393,17 +397,12 @@ export default function ProfileScreen() {
         {/* Save Button */}
         <TouchableOpacity
           onPress={handleSave}
-          style={[
-            styles.saveButton,
-            {
-              backgroundColor: hasChanges ? colors.primary : colors.muted,
-              opacity: hasChanges ? 1 : 0.5,
-            },
-          ]}
-          disabled={!hasChanges}
+          accessibilityRole="button"
+          accessibilityLabel="Salvar perfil"
+          style={[styles.saveButton, { backgroundColor: colors.success }]}
         >
-          <MaterialIcons name="save" size={22} color={colors.onPrimary} />
-          <Text style={[styles.saveButtonText, { color: colors.onPrimary }]}>Salvar Perfil</Text>
+          <MaterialIcons name="save" size={22} color={colors.onSuccess} />
+          <Text style={[styles.saveButtonText, { color: colors.onSuccess }]}>Salvar Perfil</Text>
         </TouchableOpacity>
 
         <View style={{ height: 100 }} />
@@ -490,8 +489,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -516,6 +513,7 @@ const styles = StyleSheet.create({
   },
   bloodTypeBtn: {
     width: '22%' as any,
+    minHeight: 48,
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1.5,
@@ -530,6 +528,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 56,
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 14,
