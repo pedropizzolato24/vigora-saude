@@ -18,6 +18,7 @@ export const themeColors: {
   successLight: { light: string; dark: string };
   warningLight: { light: string; dark: string };
   warningDark: { light: string; dark: string };
+  emergencyDark: { light: string; dark: string };
   errorLight: { light: string; dark: string };
 };
 

@@ -102,8 +102,8 @@ describe("createRateLimit", () => {
       mw(makeReq(), res, next);
     }
     // Blocked
-    const { state: blocked } = makeRes();
-    mw(makeReq(), blocked.res ?? (makeRes().res), next);
+    const { res: blocked } = makeRes();
+    mw(makeReq(), blocked, next);
 
     // Advance > window
     now += 61_000;

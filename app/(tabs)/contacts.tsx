@@ -1,5 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import * as Contacts from 'expo-contacts';
+import * as Speech from 'expo-speech';
 import React, { useState } from 'react';
 import { useAccessibility } from '@/lib/accessibility-context';
 import {
@@ -16,15 +17,30 @@ import {
 } from 'react-native';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { AppToast, useAppToast } from '@/components/app-toast';
+import { WizardStep } from '@/components/wizard-step';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ContactCard } from '@/components/contact-card';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
+import { BrandFonts } from '@/lib/_core/theme';
 import { generateId, useAppContext, type EmergencyContact } from '@/lib/app-context';
 import { useProFeature, FREE_LIMITS, ProLimitBadge } from '@/components/pro-gate';
 import { useProUpsell } from '@/components/pro-upsell-modal';
+
+// ─── Relation options for the 2×3 grid ──────────────────────────────────────
+
+const RELATION_OPTIONS = [
+  { label: 'Mãe', emoji: '👩' },
+  { label: 'Pai', emoji: '👨' },
+  { label: 'Filho(a)', emoji: '🧑' },
+  { label: 'Avó/Avô', emoji: '👵' },
+  { label: 'Cônjuge', emoji: '💑' },
+  { label: 'Outro', emoji: '👤' },
+];
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const EMPTY_FORM: Omit<EmergencyContact, 'id'> = {
   name: '',
@@ -43,6 +59,8 @@ function formatPhone(value: string): string {
   return digits;
 }
 
+// ─── Screen ──────────────────────────────────────────────────────────────────
+
 export default function ContactsScreen() {
   const colors = useColors();
   const fs = useFontSize();
@@ -51,6 +69,7 @@ export default function ContactsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingContact, setEditingContact] = useState<EmergencyContact | null>(null);
   const [form, setForm] = useState<Omit<EmergencyContact, 'id'>>(EMPTY_FORM);
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
   const [deviceContacts, setDeviceContacts] = useState<Contacts.Contact[]>([]);
   const [importModalVisible, setImportModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,6 +78,8 @@ export default function ContactsScreen() {
   const { toastProps, showToast } = useAppToast();
   const { checkLimit } = useProFeature();
   const { showUpsell, UpsellModal } = useProUpsell();
+
+  // ─── Actions ───────────────────────────────────────────────────────────────
 
   const openAddModal = () => {
     if (state.emergencyContacts.length >= FREE_LIMITS.CONTACTS) {
@@ -78,6 +99,7 @@ export default function ContactsScreen() {
     }
     setEditingContact(null);
     setForm(EMPTY_FORM);
+    setWizardStep(1);
     setModalVisible(true);
   };
 
@@ -100,7 +122,10 @@ export default function ContactsScreen() {
       );
       setDeviceContacts(withPhone);
       setSearchQuery('');
-      setImportModalVisible(true);
+      // Fecha o modal de novo contato antes de abrir o de importação para evitar
+      // empilhar dois Modals (comportamento indefinido no iOS).
+      setModalVisible(false);
+      setTimeout(() => setImportModalVisible(true), Platform.OS === 'ios' ? 400 : 0);
     } catch (err) {
       showDialog({ title: 'Erro', message: 'Não foi possível acessar os contatos do dispositivo.', variant: 'error', buttons: [{ text: 'OK' }] });
     }
@@ -111,7 +136,6 @@ export default function ContactsScreen() {
     const cleanPhone = phone.replace(/\D/g, '').slice(-11);
     const formatted = formatPhone(cleanPhone);
 
-    // Check if already exists
     const exists = state.emergencyContacts.some(
       (c) => c.phone.replace(/\D/g, '') === cleanPhone
     );
@@ -172,6 +196,8 @@ export default function ContactsScreen() {
       dispatch({ type: 'UPDATE_CONTACT', payload: { ...form, id: editingContact.id } });
     } else {
       dispatch({ type: 'ADD_CONTACT', payload: { ...form, id: generateId() } });
+      // TTS: only on create, not on edit
+      Speech.speak(`${form.name.trim()} adicionado como contato de emergência`, { language: 'pt-BR' });
     }
     setModalVisible(false);
   };
@@ -197,28 +223,54 @@ export default function ContactsScreen() {
     });
   };
 
-  // --- ACCESSIBILITY MODE --------------------------------------------------
+  // ─── Wizard step navigation ────────────────────────────────────────────────
+
+  const handleWizardNext = () => {
+    if (wizardStep === 1) {
+      setWizardStep(2);
+    } else if (wizardStep === 2) {
+      if (!form.name.trim()) {
+        showDialog({ title: 'Campo obrigatório', message: 'Por favor, informe o nome do contato.', variant: 'warning', buttons: [{ text: 'OK' }] });
+        return;
+      }
+      if (!form.phone.trim()) {
+        showDialog({ title: 'Campo obrigatório', message: 'Por favor, informe o telefone do contato.', variant: 'warning', buttons: [{ text: 'OK' }] });
+        return;
+      }
+      setWizardStep(3);
+    } else {
+      handleSave();
+    }
+  };
+
+  const handleWizardBack = () => {
+    if (wizardStep === 2) setWizardStep(1);
+    else if (wizardStep === 3) setWizardStep(2);
+  };
+
+  // ─── ACCESSIBILITY MODE ────────────────────────────────────────────────────
   if (isAccessibilityMode) {
     return (
       <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
         <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: ac.background }}>
           <View>
-            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Contatos SOS</Text>
+            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Quem te ajuda numa emergência?</Text>
             <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>{state.emergencyContacts.length} contato(s)</Text>
           </View>
           <Pressable
             onPress={openAddModal}
             style={({ pressed }) => [{ backgroundColor: ac.emergency, width: as_.touchTarget, height: as_.touchTarget, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: ac.emergency, opacity: pressed ? 0.8 : 1 }]}
-            accessibilityLabel="Adicionar contato"
+            accessibilityRole="button"
+            accessibilityLabel="Adicionar contato de emergência"
           >
             <MaterialIcons name="add" size={36} color={ac.onEmergency} />
           </Pressable>
         </View>
 
-        <View style={{ margin: 12, padding: 16, backgroundColor: ac.warning + '20', borderRadius: 16, borderWidth: 2, borderColor: ac.warning, flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-          <MaterialIcons name="info" size={28} color={ac.warning} />
-          <Text style={{ flex: 1, fontSize: af.sm, color: ac.warning, fontWeight: '600', lineHeight: af.sm * 1.5 }}>
-            Estes contatos serão avisados quando você apertar o botão SOS.
+        <View style={{ margin: 12, padding: 16, backgroundColor: ac.emergency + '20', borderRadius: 16, borderWidth: 2, borderColor: ac.emergency, flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+          <MaterialIcons name="warning" size={32} color={ac.emergency} />
+          <Text style={{ flex: 1, fontSize: af.md, color: ac.emergency, fontWeight: '700', lineHeight: af.md * 1.5 }}>
+            Estas pessoas serão avisadas pelo WhatsApp se você não responder ao alarme de segurança. Certifique-se que elas concordaram em receber esses alertas.
           </Text>
         </View>
 
@@ -230,6 +282,8 @@ export default function ContactsScreen() {
             <Pressable
               onPress={openAddModal}
               style={({ pressed }) => [{ backgroundColor: ac.emergency, borderRadius: 20, paddingVertical: as_.buttonPadding, paddingHorizontal: 32, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 3, borderColor: ac.emergency, opacity: pressed ? 0.85 : 1 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Adicionar contato de emergência"
             >
               <MaterialIcons name="add" size={32} color={ac.onEmergency} />
               <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.onEmergency }}>Adicionar Contato</Text>
@@ -248,6 +302,8 @@ export default function ContactsScreen() {
                   <Pressable
                     onPress={() => openEditModal(item)}
                     style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 14, borderWidth: 2, borderColor: ac.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: pressed ? ac.primary + '20' : ac.background }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Editar contato ${item.name}`}
                   >
                     <MaterialIcons name="edit" size={24} color={ac.primary} />
                     <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.primary }}>Editar</Text>
@@ -255,6 +311,8 @@ export default function ContactsScreen() {
                   <Pressable
                     onPress={() => handleDelete(item.id)}
                     style={({ pressed }) => [{ flex: 1, paddingVertical: 14, borderRadius: 14, borderWidth: 2, borderColor: ac.emergency, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: pressed ? ac.error + '20' : ac.background }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Excluir contato ${item.name}`}
                   >
                     <MaterialIcons name="delete" size={24} color={ac.emergency} />
                     <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.emergency }}>Excluir</Text>
@@ -267,15 +325,25 @@ export default function ContactsScreen() {
           />
         )}
 
-        {/* Simplified add/edit modal */}
+        {/* Simplified add/edit modal — a11y mode */}
         <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setModalVisible(false)}>
           <View style={{ flex: 1, backgroundColor: ac.background }}>
             <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Pressable onPress={() => setModalVisible(false)} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
+              <Pressable
+                onPress={() => setModalVisible(false)}
+                style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+                accessibilityRole="button"
+                accessibilityLabel="Cancelar"
+              >
                 <Text style={{ fontSize: af.md, color: ac.muted, fontWeight: '600' }}>Cancelar</Text>
               </Pressable>
               <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>{editingContact ? 'Editar Contato' : 'Novo Contato'}</Text>
-              <Pressable onPress={handleSave} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}>
+              <Pressable
+                onPress={handleSave}
+                style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+                accessibilityRole="button"
+                accessibilityLabel="Salvar contato"
+              >
                 <Text style={{ fontSize: af.md, color: ac.primary, fontWeight: '800' }}>Salvar</Text>
               </Pressable>
             </View>
@@ -325,39 +393,30 @@ export default function ContactsScreen() {
     );
   }
 
-  // --- NORMAL MODE --------------------------------------------------
+  // ─── NORMAL MODE ──────────────────────────────────────────────────────────
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
-        <View>
-          <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'] }]}>Contatos SOS</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'], fontFamily: BrandFonts.body }]}>
+            Quem podemos avisar?
+          </Text>
           <Text style={[styles.subtitle, { color: colors.muted, fontSize: fs.sm }]}>
             {state.emergencyContacts.length} contato(s) de emergência
           </Text>
         </View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Pressable
-            onPress={handleImportFromDevice}
-            style={({ pressed }) => [
-              styles.addButton,
-              { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
-            ]}
-            accessibilityLabel="Importar contato do celular"
-          >
-            <MaterialIcons name="contacts" size={22} color={colors.onPrimary} />
-          </Pressable>
-          <Pressable
-            onPress={openAddModal}
-            style={({ pressed }) => [
-              styles.addButton,
-              { backgroundColor: colors.emergency, opacity: pressed ? 0.85 : 1 },
-            ]}
-            accessibilityLabel="Adicionar contato"
-          >
-            <MaterialIcons name="add" size={24} color={colors.onEmergency} />
-          </Pressable>
-        </View>
+        <Pressable
+          onPress={handleImportFromDevice}
+          style={({ pressed }) => [
+            styles.headerIconBtn,
+            { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.75 : 1 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Importar contato da agenda do celular"
+        >
+          <MaterialIcons name="contacts" size={22} color={colors.foreground} />
+        </Pressable>
       </View>
 
       {/* Pro Limit Badge */}
@@ -369,34 +428,25 @@ export default function ContactsScreen() {
         />
       </View>
 
-      {/* Info Banner */}
-      <View style={[styles.infoBanner, { backgroundColor: colors.emergencyLight, borderColor: colors.emergencyLight }]}>
-        <MaterialIcons name="info" size={16} color={colors.emergency} />
-        <Text style={[styles.infoText, { color: colors.foreground }]}>
-          Estes contatos serão notificados quando você acionar o botão SOS.
+      {/* Emergency warning banner — prominent */}
+      <View style={[styles.warningBanner, { backgroundColor: colors.emergencyLight, borderColor: colors.emergency }]}>
+        <MaterialIcons name="warning" size={22} color={colors.emergency} />
+        <Text style={[styles.warningText, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>
+          <Text style={{ fontWeight: '700', color: colors.emergency }}>Atenção: </Text>
+          Estas pessoas serão avisadas pelo WhatsApp se você não responder ao alarme de segurança. Confirme que elas concordaram em receber esses alertas.
         </Text>
       </View>
 
-      {/* List */}
+      {/* Contact list */}
       {state.emergencyContacts.length === 0 ? (
         <View style={styles.emptyState}>
           <MaterialIcons name="people" size={64} color={colors.border} />
-          <Text style={[styles.emptyTitle, { color: colors.foreground, fontSize: fs.lg }]}>
+          <Text style={[styles.emptyTitle, { color: colors.foreground, fontSize: fs.lg, fontFamily: BrandFonts.body }]}>
             Nenhum contato cadastrado
           </Text>
-          <Text style={[styles.emptySubtext, { color: colors.muted }]}>
+          <Text style={[styles.emptySubtext, { color: colors.muted, fontSize: fs.sm }]}>
             Adicione contatos de emergência para que sejam notificados em caso de SOS.
           </Text>
-          <Pressable
-            onPress={openAddModal}
-            style={({ pressed }) => [
-              styles.emptyButton,
-              { backgroundColor: colors.emergency, opacity: pressed ? 0.85 : 1 },
-            ]}
-          >
-            <MaterialIcons name="add" size={20} color={colors.onEmergency} />
-            <Text style={[styles.emptyButtonText, { color: colors.onEmergency }]}>Adicionar Contato</Text>
-          </Pressable>
         </View>
       ) : (
         <FlatList
@@ -409,14 +459,235 @@ export default function ContactsScreen() {
               onDelete={handleDelete}
             />
           )}
+          style={{ flex: 1 }}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
       )}
 
-      {/* Modal */}
+      {/* Add button — full width, min 56dp */}
+      <View style={[styles.addBtnContainer, { borderTopColor: colors.border }]}>
+        <Pressable
+          onPress={openAddModal}
+          style={({ pressed }) => [
+            styles.addBtn,
+            { backgroundColor: colors.emergency, opacity: pressed ? 0.85 : 1 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Adicionar contato de emergência"
+        >
+          <MaterialIcons name="add" size={22} color={colors.onEmergency} />
+          <Text style={[styles.addBtnText, { color: colors.onEmergency, fontSize: fs.md, fontFamily: BrandFonts.body }]}>
+            + Adicionar contato
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* Wizard Modal — new contact */}
       <Modal
-        visible={modalVisible}
+        visible={modalVisible && !editingContact}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={[styles.modal, { backgroundColor: colors.background }]}>
+          {/* Modal Header */}
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
+            <Pressable
+              onPress={() => setModalVisible(false)}
+              style={({ pressed }) => [styles.modalClose, pressed && { opacity: 0.6 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Cancelar"
+            >
+              <Text style={[styles.modalCloseText, { color: colors.muted, fontSize: fs.base }]}>Cancelar</Text>
+            </Pressable>
+            <Text style={[styles.modalTitle, { color: colors.foreground, fontSize: fs.xl, fontFamily: BrandFonts.body }]}>
+              Novo Contato
+            </Text>
+            <View style={styles.modalClose} />
+          </View>
+
+          {/* Wizard Steps */}
+          <View style={styles.wizardContainer}>
+            {wizardStep === 1 && (
+              <WizardStep
+                total={3}
+                current={0}
+                categoryTag="Relação"
+                tagColor={colors.emergency}
+                question="Qual é a relação com você?"
+                onNext={handleWizardNext}
+                nextLabel="Continuar"
+              >
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.wizardStepContent}>
+                  <View style={styles.relationGrid}>
+                    {RELATION_OPTIONS.map((opt) => {
+                      const selected = form.relation === opt.label;
+                      return (
+                        <Pressable
+                          key={opt.label}
+                          onPress={() => {
+                            if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setForm((f) => ({ ...f, relation: opt.label }));
+                          }}
+                          style={[
+                            styles.relationOption,
+                            {
+                              backgroundColor: selected ? colors.emergency : colors.surface,
+                              borderColor: selected ? colors.emergency : colors.border,
+                            },
+                          ]}
+                          accessibilityRole="radio"
+                          accessibilityLabel={opt.label}
+                          accessibilityState={{ selected }}
+                        >
+                          <Text style={styles.relationEmoji}>{opt.emoji}</Text>
+                          <Text style={[styles.relationLabel, { color: selected ? colors.onEmergency : colors.foreground, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
+                            {opt.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  <Text style={[styles.relationHint, { color: colors.muted, fontSize: fs.sm }]}>
+                    Você pode escolher "Outro" para qualquer relação não listada.
+                  </Text>
+                </ScrollView>
+              </WizardStep>
+            )}
+
+            {wizardStep === 2 && (
+              <WizardStep
+                total={3}
+                current={1}
+                categoryTag="Dados"
+                tagColor={colors.emergency}
+                question="Como chamar e como contatar?"
+                onBack={handleWizardBack}
+                onNext={handleWizardNext}
+                nextLabel="Continuar"
+                nextDisabled={!form.name.trim() || !form.phone.trim()}
+              >
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.wizardStepContent}>
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.formLabel, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>Nome completo *</Text>
+                    <TextInput
+                      value={form.name}
+                      onChangeText={(v) => setForm((f) => ({ ...f, name: v }))}
+                      placeholder="Ex: Maria Silva"
+                      placeholderTextColor={colors.muted}
+                      style={[
+                        styles.textInput,
+                        { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base },
+                      ]}
+                      returnKeyType="next"
+                      maxLength={60}
+                      autoFocus
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.formLabel, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>Telefone *</Text>
+                    <TextInput
+                      value={form.phone}
+                      onChangeText={(v) => setForm((f) => ({ ...f, phone: formatPhone(v) }))}
+                      placeholder="(11) 99999-9999"
+                      placeholderTextColor={colors.muted}
+                      keyboardType="phone-pad"
+                      style={[
+                        styles.textInput,
+                        { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base },
+                      ]}
+                      returnKeyType="done"
+                      maxLength={15}
+                    />
+                  </View>
+
+                  {/* Import from device — reuse existing flow */}
+                  <Pressable
+                    onPress={handleImportFromDevice}
+                    style={({ pressed }) => [
+                      styles.importBtn,
+                      { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.75 : 1 },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel="Importar contato da agenda do celular"
+                  >
+                    <MaterialIcons name="contacts" size={20} color={colors.primary} />
+                    <Text style={[styles.importBtnText, { color: colors.primary, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
+                      Importar da agenda
+                    </Text>
+                  </Pressable>
+                </ScrollView>
+              </WizardStep>
+            )}
+
+            {wizardStep === 3 && (
+              <WizardStep
+                total={3}
+                current={2}
+                categoryTag="Alertas"
+                tagColor={colors.emergency}
+                question="Como avisar em caso de emergência?"
+                onBack={handleWizardBack}
+                onNext={handleWizardNext}
+                nextLabel="Salvar contato"
+              >
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.wizardStepContent}>
+                  {/* WhatsApp toggle */}
+                  <View style={[styles.toggleRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={styles.toggleLeft}>
+                      <MaterialIcons name="chat" size={22} color={colors.success} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.toggleLabel, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>Notificar via WhatsApp</Text>
+                        <Text style={[styles.toggleSubLabel, { color: colors.muted, fontSize: fs.sm }]}>
+                          Envia mensagem automática ao número cadastrado
+                        </Text>
+                      </View>
+                    </View>
+                    <Switch
+                      value={form.whatsapp}
+                      onValueChange={(v) => setForm((f) => ({ ...f, whatsapp: v }))}
+                      trackColor={{ false: colors.border, true: colors.success }}
+                      thumbColor="#FFFFFF"
+                      accessibilityLabel="Ativar notificação via WhatsApp"
+                    />
+                  </View>
+
+                  {/* Alert preview */}
+                  {form.whatsapp && (
+                    <View style={[styles.previewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                      <View style={[styles.previewHeader, { borderBottomColor: colors.border }]}>
+                        <MaterialIcons name="preview" size={16} color={colors.muted} />
+                        <Text style={[styles.previewHeaderText, { color: colors.muted, fontSize: fs.xs, fontFamily: BrandFonts.body }]}>
+                          PRÉVIA DA MENSAGEM
+                        </Text>
+                      </View>
+                      <Text style={[styles.previewText, { color: colors.foreground, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
+                        🚨 <Text style={{ fontWeight: '700' }}>Alerta Vigora Saúde</Text>{'\n\n'}
+                        {form.name.trim() || '[nome]'}, o usuário do Vigora Saúde não respondeu ao alarme de segurança.{'\n\n'}
+                        Por favor, entre em contato ou verifique se está bem.
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Consent notice */}
+                  <View style={[styles.consentNote, { backgroundColor: colors.warningLight, borderColor: colors.warning }]}>
+                    <MaterialIcons name="info" size={18} color={colors.warningDark} />
+                    <Text style={[styles.consentText, { color: colors.warningDark, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
+                      Confirme que <Text style={{ fontWeight: '700' }}>{form.name.trim() || 'esta pessoa'}</Text> concordou em receber alertas automáticos de emergência.
+                    </Text>
+                  </View>
+                </ScrollView>
+              </WizardStep>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit Modal — flat form (existing behavior preserved) */}
+      <Modal
+        visible={modalVisible && !!editingContact}
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={() => setModalVisible(false)}
@@ -426,23 +697,27 @@ export default function ContactsScreen() {
             <Pressable
               onPress={() => setModalVisible(false)}
               style={({ pressed }) => [styles.modalClose, pressed && { opacity: 0.6 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Cancelar"
             >
-              <Text style={[styles.modalCloseText, { color: colors.muted }]}>Cancelar</Text>
+              <Text style={[styles.modalCloseText, { color: colors.muted, fontSize: fs.base }]}>Cancelar</Text>
             </Pressable>
-            <Text style={[styles.modalTitle, { color: colors.foreground, fontSize: fs.xl }]}>
-              {editingContact ? 'Editar Contato' : 'Novo Contato'}
+            <Text style={[styles.modalTitle, { color: colors.foreground, fontSize: fs.xl, fontFamily: BrandFonts.body }]}>
+              Editar Contato
             </Text>
             <Pressable
               onPress={handleSave}
               style={({ pressed }) => [styles.modalSave, pressed && { opacity: 0.7 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Salvar alterações"
             >
-              <Text style={[styles.modalSaveText, { color: colors.primary }]}>Salvar</Text>
+              <Text style={[styles.modalSaveText, { color: colors.primary, fontSize: fs.base }]}>Salvar</Text>
             </Pressable>
           </View>
 
           <ScrollView contentContainerStyle={styles.modalContent}>
             <View style={styles.formGroup}>
-              <Text style={[styles.formLabel, { color: colors.foreground }]}>Nome completo *</Text>
+              <Text style={[styles.formLabel, { color: colors.foreground, fontSize: fs.base }]}>Nome completo *</Text>
               <TextInput
                 value={form.name}
                 onChangeText={(v) => setForm((f) => ({ ...f, name: v }))}
@@ -450,7 +725,7 @@ export default function ContactsScreen() {
                 placeholderTextColor={colors.muted}
                 style={[
                   styles.textInput,
-                  { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border },
+                  { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base },
                 ]}
                 returnKeyType="next"
                 maxLength={60}
@@ -458,7 +733,7 @@ export default function ContactsScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={[styles.formLabel, { color: colors.foreground }]}>Telefone *</Text>
+              <Text style={[styles.formLabel, { color: colors.foreground, fontSize: fs.base }]}>Telefone *</Text>
               <TextInput
                 value={form.phone}
                 onChangeText={(v) => setForm((f) => ({ ...f, phone: formatPhone(v) }))}
@@ -467,7 +742,7 @@ export default function ContactsScreen() {
                 keyboardType="phone-pad"
                 style={[
                   styles.textInput,
-                  { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border },
+                  { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base },
                 ]}
                 returnKeyType="next"
                 maxLength={15}
@@ -475,7 +750,7 @@ export default function ContactsScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={[styles.formLabel, { color: colors.foreground }]}>Relação</Text>
+              <Text style={[styles.formLabel, { color: colors.foreground, fontSize: fs.base }]}>Relação</Text>
               <TextInput
                 value={form.relation}
                 onChangeText={(v) => setForm((f) => ({ ...f, relation: v }))}
@@ -483,7 +758,7 @@ export default function ContactsScreen() {
                 placeholderTextColor={colors.muted}
                 style={[
                   styles.textInput,
-                  { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border },
+                  { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base },
                 ]}
                 returnKeyType="done"
                 maxLength={40}
@@ -491,11 +766,10 @@ export default function ContactsScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={[styles.formLabel, { color: colors.foreground }]}>E-mail <Text style={{ color: colors.muted, fontWeight: '400', fontSize: 13 }}>(opcional)</Text></Text>
+              <Text style={[styles.formLabel, { color: colors.foreground, fontSize: fs.base }]}>E-mail <Text style={{ color: colors.muted, fontWeight: '400', fontSize: fs.xs }}>(opcional)</Text></Text>
               <TextInput
                 value={form.email ?? ''}
-                onChangeText={(v) => setForm((f) => ({ ...f, email: v.trim() }))
-                }
+                onChangeText={(v) => setForm((f) => ({ ...f, email: v.trim() }))}
                 placeholder="Ex: maria@email.com"
                 placeholderTextColor={colors.muted}
                 keyboardType="email-address"
@@ -503,12 +777,12 @@ export default function ContactsScreen() {
                 autoCorrect={false}
                 style={[
                   styles.textInput,
-                  { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border },
+                  { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base },
                 ]}
                 returnKeyType="next"
                 maxLength={320}
               />
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
+              <Text style={{ fontSize: fs.xs, color: colors.muted, marginTop: 2 }}>
                 Usado como alternativa ao WhatsApp para envio de avisos de emergência.
               </Text>
             </View>
@@ -522,8 +796,8 @@ export default function ContactsScreen() {
               <View style={styles.toggleLeft}>
                 <MaterialIcons name="chat" size={20} color={colors.success} />
                 <View>
-                  <Text style={[styles.toggleLabel, { color: colors.foreground }]}>WhatsApp</Text>
-                  <Text style={[styles.toggleSubLabel, { color: colors.muted }]}>
+                  <Text style={[styles.toggleLabel, { color: colors.foreground, fontSize: fs.base }]}>WhatsApp</Text>
+                  <Text style={[styles.toggleSubLabel, { color: colors.muted, fontSize: fs.sm }]}>
                     Notificar via WhatsApp
                   </Text>
                 </View>
@@ -533,6 +807,7 @@ export default function ContactsScreen() {
                 onValueChange={(v) => setForm((f) => ({ ...f, whatsapp: v }))}
                 trackColor={{ false: colors.border, true: colors.success }}
                 thumbColor="#FFFFFF"
+                accessibilityLabel="Ativar notificação via WhatsApp"
               />
             </View>
           </ScrollView>
@@ -551,10 +826,12 @@ export default function ContactsScreen() {
             <Pressable
               onPress={() => setImportModalVisible(false)}
               style={({ pressed }) => [styles.modalClose, pressed && { opacity: 0.6 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Fechar importação de contatos"
             >
-              <Text style={[styles.modalCloseText, { color: colors.muted }]}>Fechar</Text>
+              <Text style={[styles.modalCloseText, { color: colors.muted, fontSize: fs.base }]}>Fechar</Text>
             </Pressable>
-            <Text style={[styles.modalTitle, { color: colors.foreground, fontSize: fs.xl }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground, fontSize: fs.xl, fontFamily: BrandFonts.body }]}>
               Importar Contato
             </Text>
             <View style={{ minWidth: 70 }} />
@@ -569,11 +846,16 @@ export default function ContactsScreen() {
                 onChangeText={setSearchQuery}
                 placeholder="Buscar contato..."
                 placeholderTextColor={colors.muted}
-                style={[styles.searchInput, { color: colors.foreground }]}
+                style={[styles.searchInput, { color: colors.foreground, fontSize: fs.base }]}
                 returnKeyType="search"
+                accessibilityLabel="Buscar contato na agenda"
               />
               {searchQuery.length > 0 && (
-                <Pressable onPress={() => setSearchQuery('')}>
+                <Pressable
+                  onPress={() => setSearchQuery('')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Limpar busca"
+                >
                   <MaterialIcons name="close" size={18} color={colors.muted} />
                 </Pressable>
               )}
@@ -591,17 +873,19 @@ export default function ContactsScreen() {
                   styles.deviceContactRow,
                   { borderBottomColor: colors.border, opacity: pressed ? 0.7 : 1 },
                 ]}
+                accessibilityRole="button"
+                accessibilityLabel={`Adicionar ${item.name}`}
               >
                 <View style={[styles.deviceContactAvatar, { backgroundColor: colors.primaryLight }]}>
-                  <Text style={[styles.deviceContactInitial, { color: colors.primary }]}>
+                  <Text style={[styles.deviceContactInitial, { color: colors.primary, fontSize: fs.md }]}>
                     {(item.name ?? '?')[0].toUpperCase()}
                   </Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.deviceContactName, { color: colors.foreground }]}>
+                  <Text style={[styles.deviceContactName, { color: colors.foreground, fontSize: fs.base }]}>
                     {item.name}
                   </Text>
-                  <Text style={[styles.deviceContactPhone, { color: colors.muted }]}>
+                  <Text style={[styles.deviceContactPhone, { color: colors.muted, fontSize: fs.sm }]}>
                     {item.phoneNumbers?.[0]?.number ?? 'Sem número'}
                   </Text>
                 </View>
@@ -620,6 +904,7 @@ export default function ContactsScreen() {
           />
         </View>
       </Modal>
+
       <AppDialog {...dialogProps} />
       <AppToast {...toastProps} />
       <UpsellModal />
@@ -627,35 +912,37 @@ export default function ContactsScreen() {
   );
 }
 
+// ─── Styles ──────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
     paddingHorizontal: 20,
     paddingBottom: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  title: { fontSize: 28, fontWeight: '800' },
+  title: { fontSize: 24, fontWeight: '800' },
   subtitle: { fontSize: 14, marginTop: 2 },
-  addButton: {
+  headerIconBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  infoBanner: {
+  warningBanner: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    alignItems: 'flex-start',
+    gap: 10,
     margin: 16,
     marginBottom: 0,
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
   },
-  infoText: { flex: 1, fontSize: 13, lineHeight: 18 },
+  warningText: { flex: 1, lineHeight: 22 },
   listContent: { padding: 16, paddingBottom: 32 },
   emptyState: {
     flex: 1,
@@ -666,16 +953,20 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 20, fontWeight: '700', textAlign: 'center' },
   emptySubtext: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
-  emptyButton: {
+  addBtnContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginTop: 8,
+    borderRadius: 14,
+    minHeight: 56,
   },
-  emptyButtonText: { fontSize: 16, fontWeight: '600' },
+  addBtnText: { fontWeight: '700' },
   modal: { flex: 1 },
   modalHeader: {
     flexDirection: 'row',
@@ -686,20 +977,58 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   modalClose: { padding: 4, minWidth: 70 },
-  modalCloseText: { fontSize: 16 },
-  modalTitle: { fontSize: 17, fontWeight: '600' },
+  modalCloseText: { fontWeight: '500' },
+  modalTitle: { fontWeight: '600' },
   modalSave: { padding: 4, minWidth: 70, alignItems: 'flex-end' },
-  modalSaveText: { fontSize: 16, fontWeight: '600' },
+  modalSaveText: { fontWeight: '600' },
   modalContent: { padding: 20, gap: 20 },
+  wizardContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  wizardStepContent: {
+    gap: 20,
+    paddingBottom: 16,
+  },
+  relationGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  relationOption: {
+    width: '30%',
+    flexGrow: 1,
+    minHeight: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  relationEmoji: { fontSize: 28 },
+  relationLabel: { fontWeight: '600', textAlign: 'center' },
+  relationHint: { textAlign: 'center', marginTop: 4 },
   formGroup: { gap: 8 },
-  formLabel: { fontSize: 15, fontWeight: '600' },
+  formLabel: { fontWeight: '600' },
   textInput: {
     borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    fontSize: 16,
   },
+  importBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  importBtnText: { fontWeight: '600' },
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -708,9 +1037,40 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
   },
-  toggleLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  toggleLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   toggleLabel: { fontSize: 16, fontWeight: '500' },
   toggleSubLabel: { fontSize: 13, marginTop: 1 },
+  previewCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  previewHeaderText: {
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  previewText: {
+    padding: 14,
+    lineHeight: 22,
+  },
+  consentNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  consentText: { flex: 1, lineHeight: 20 },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -722,7 +1082,6 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
     paddingVertical: 0,
   },
   deviceContactRow: {
@@ -740,16 +1099,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deviceContactInitial: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  deviceContactName: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  deviceContactPhone: {
-    fontSize: 14,
-    marginTop: 2,
-  },
+  deviceContactInitial: { fontWeight: '700' },
+  deviceContactName: { fontWeight: '500' },
+  deviceContactPhone: { marginTop: 2 },
 });

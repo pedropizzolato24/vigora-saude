@@ -31,6 +31,9 @@ const themeColors = {
 
   // --- Warning dark (text on warning bg) ---
   warningDark: { light: '#7A5200', dark: '#F5D06E' },
+
+  // --- Emergency dark (sombra 3D do SOS / borda inferior) ---
+  emergencyDark: { light: '#9E0F14', dark: '#9E0F14' },
 };
 
 module.exports = { themeColors };

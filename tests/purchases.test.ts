@@ -120,19 +120,6 @@ vi.mock("react-native", () => ({
   Platform: { OS: "ios" },
 }));
 
-// Mock do pro-gate para evitar imports de componentes React com sintaxe TypeScript avancada
-vi.mock("@/components/pro-gate", () => ({
-  FREE_LIMITS: {
-    CONTACTS: 3,
-    ALARMS: 5,
-    PDF_EXPORT: false,
-    MONITORING: false,
-  },
-  ProGate: () => null,
-  ProBanner: () => null,
-  ProLimitBadge: () => null,
-}));
-
 // --- Imports após mocks -------------------------------------------------------
 
 import Purchases from "react-native-purchases";
@@ -148,7 +135,7 @@ import {
   identifyUser,
   logoutUser,
 } from "@/lib/purchases";
-import { FREE_LIMITS } from "@/components/pro-gate";
+import { FREE_LIMITS } from "@/components/pro-limits";
 
 // --- Testes -------------------------------------------------------------------
 

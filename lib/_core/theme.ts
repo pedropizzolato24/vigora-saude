@@ -46,6 +46,7 @@ type RuntimePalette = SchemePaletteItem & {
   successLight: string;
   warningLight: string;
   warningDark: string;
+  emergencyDark: string;
   errorLight: string;
   accent: string;
 };
@@ -81,6 +82,7 @@ function buildRuntimePalette(scheme: ColorScheme): RuntimePalette {
     successLight: base.successLight,
     warningLight: base.warningLight,
     warningDark: base.warningDark,
+    emergencyDark: base.emergencyDark,
     errorLight: base.errorLight,
     accent: BRAND_ACCENT[scheme],
     accentLight: BRAND_ACCENT_LIGHT[scheme],
