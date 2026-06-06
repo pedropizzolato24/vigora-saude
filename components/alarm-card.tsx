@@ -2,12 +2,13 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useColors } from '@/hooks/use-colors';
+import { useFontSize } from '@/lib/font-size-context';
+import { BrandFonts } from '@/lib/_core/theme';
 import type { Alarm } from '@/lib/app-context';
 
 interface AlarmCardProps {
   alarm: Alarm;
   onEdit: (alarm: Alarm) => void;
-  onDelete: (id: string) => void;
   onToggle: (alarm: Alarm) => void;
   onTest: (alarm: Alarm) => void;
 }
@@ -27,17 +28,22 @@ function formatCustomDays(days: number[] | undefined): string {
   return days.map((d) => DAY_ABBR[d]).join(', ');
 }
 
-export function AlarmCard({ alarm, onEdit, onDelete, onToggle, onTest }: AlarmCardProps) {
+export function AlarmCard({ alarm, onEdit, onToggle, onTest }: AlarmCardProps) {
   const colors = useColors();
+  const fs = useFontSize();
 
   return (
-    <View
-      style={[
+    <Pressable
+      onPress={() => onEdit(alarm)}
+      accessibilityRole="button"
+      accessibilityLabel={`Lembrete ${alarm.time}${alarm.description ? ', ' + alarm.description : ''}. Toque para editar.`}
+      style={({ pressed }) => [
         styles.card,
         {
           backgroundColor: colors.surface,
           borderColor: alarm.enabled ? colors.primary + '30' : colors.border,
           borderLeftColor: alarm.enabled ? colors.primary : colors.border,
+          opacity: pressed ? 0.85 : 1,
         },
       ]}
     >
@@ -55,20 +61,25 @@ export function AlarmCard({ alarm, onEdit, onDelete, onToggle, onTest }: AlarmCa
           <Text
             style={[
               styles.timeText,
-              { color: alarm.enabled ? colors.foreground : colors.muted },
+              {
+                color: alarm.enabled ? colors.foreground : colors.muted,
+                fontFamily: BrandFonts.monoRegular,
+                fontSize: fs.scaled(36),
+                lineHeight: fs.scaled(36) * 1.2,
+              },
             ]}
           >
             {alarm.time}
           </Text>
           <Text
-            style={[styles.descriptionText, { color: colors.foreground }]}
+            style={[styles.descriptionText, { color: colors.foreground, fontSize: fs.base }]}
             numberOfLines={1}
           >
             {alarm.description || 'Sem descrição'}
           </Text>
           <View style={styles.tagsRow}>
             <View style={[styles.tag, { backgroundColor: colors.border }]}>
-              <Text style={[styles.tagText, { color: colors.muted }]}>
+              <Text style={[styles.tagText, { color: colors.muted, fontSize: fs.sm }]}>
                 {alarm.repeat === 'custom'
                   ? formatCustomDays(alarm.customDays)
                   : REPEAT_LABELS[alarm.repeat]}
@@ -87,53 +98,54 @@ export function AlarmCard({ alarm, onEdit, onDelete, onToggle, onTest }: AlarmCa
           </View>
         </View>
 
-        {/* Test button on the right */}
+        {/* Test button — separate pressable so it doesn't trigger onEdit */}
         <Pressable
-          onPress={() => onTest(alarm)}
+          onPress={(e) => { e.stopPropagation?.(); onTest(alarm); }}
           style={({ pressed }) => [
             styles.testBtn,
             { borderColor: colors.success, backgroundColor: colors.background },
             pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] },
           ]}
+          accessibilityRole="button"
           accessibilityLabel="Testar alarme"
         >
           <MaterialIcons name="play-arrow" size={20} color={colors.success} />
-          <Text style={[styles.testBtnText, { color: colors.success }]}>Testar</Text>
+          <Text style={[styles.testBtnText, { color: colors.success, fontSize: fs.sm }]}>Testar</Text>
         </Pressable>
       </View>
 
       {/* Divider */}
       <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-      {/* Bottom section: full-width edit and delete buttons */}
+      {/* Bottom section: enable toggle hint + edit prompt */}
       <View style={styles.actionRow}>
         <Pressable
-          onPress={() => onEdit(alarm)}
+          onPress={(e) => { e.stopPropagation?.(); onToggle(alarm); }}
           style={({ pressed }) => [
-            styles.editBtn,
-            { borderColor: colors.primary + '30', backgroundColor: colors.background },
-            pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] },
+            styles.toggleBtn,
+            { backgroundColor: colors.background, borderColor: colors.border },
+            pressed && { opacity: 0.7 },
           ]}
-          accessibilityLabel="Editar alarme"
+          accessibilityRole="switch"
+          accessibilityLabel={alarm.enabled ? 'Desativar lembrete' : 'Ativar lembrete'}
+          accessibilityState={{ checked: alarm.enabled }}
         >
-          <MaterialIcons name="edit" size={22} color={colors.primary} />
-          <Text style={[styles.editBtnText, { color: colors.primary }]}>Editar</Text>
+          <MaterialIcons
+            name={alarm.enabled ? 'notifications-active' : 'notifications-off'}
+            size={18}
+            color={alarm.enabled ? colors.primary : colors.muted}
+          />
+          <Text style={[styles.toggleBtnText, { color: alarm.enabled ? colors.primary : colors.muted, fontSize: fs.sm }]}>
+            {alarm.enabled ? 'Ativo' : 'Inativo'}
+          </Text>
         </Pressable>
 
-        <Pressable
-          onPress={() => onDelete(alarm.id)}
-          style={({ pressed }) => [
-            styles.deleteBtn,
-            { backgroundColor: colors.error },
-            pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] },
-          ]}
-          accessibilityLabel="Excluir alarme"
-        >
-          <MaterialIcons name="delete" size={22} color={colors.onEmergency} />
-          <Text style={[styles.deleteBtnText, { color: colors.onEmergency }]}>Excluir</Text>
-        </Pressable>
+        <View style={[styles.editHint, { borderColor: colors.border }]}>
+          <MaterialIcons name="edit" size={15} color={colors.muted} />
+          <Text style={[styles.editHintText, { color: colors.muted, fontSize: fs.sm }]}>Toque para editar</Text>
+        </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -163,13 +175,9 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   timeText: {
-    fontSize: 30,
-    fontWeight: '700',
     letterSpacing: 1,
-    lineHeight: 36,
   },
   descriptionText: {
-    fontSize: 14,
     fontWeight: '500',
   },
   tagsRow: {
@@ -187,7 +195,6 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   tagText: {
-    fontSize: 11,
     fontWeight: '500',
   },
   testBtn: {
@@ -199,9 +206,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    minWidth: 72,
+    minHeight: 44,
   },
   testBtnText: {
-    fontSize: 13,
     fontWeight: '700',
   },
   divider: {
@@ -210,32 +218,31 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
-    gap: 0,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
   },
-  editBtn: {
-    flex: 1,
+  toggleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderWidth: 0,
-    borderRightWidth: 1,
-    paddingVertical: 16,
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    minHeight: 36,
   },
-  editBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
+  toggleBtnText: {
+    fontWeight: '600',
   },
-  deleteBtn: {
-    flex: 1,
+  editHint: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
+    gap: 4,
   },
-  deleteBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
+  editHintText: {
+    fontWeight: '400',
   },
 });
