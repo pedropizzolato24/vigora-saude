@@ -10,7 +10,7 @@ interface BigTileProps {
   iconColor: string;
   iconBg: string;
   title: string;
-  subtitle?: string;
+  subtitle: string;
   badge?: string;
   onPress: () => void;
 }

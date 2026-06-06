@@ -8,18 +8,19 @@ import { useColors } from '@/hooks/use-colors';
 
 interface MicFabProps {
   bottomOffset: number;
+  onPress?: () => void;
 }
 
-export function MicFab({ bottomOffset }: MicFabProps) {
+export function MicFab({ bottomOffset, onPress }: MicFabProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
-  const handlePress = () => {
+  const handlePress = onPress ?? (() => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      Speech.speak('Diga o que você precisa', { language: 'pt-BR' });
     }
-    Speech.speak('Diga o que você precisa', { language: 'pt-BR' });
-  };
+  });
 
   return (
     <Pressable
