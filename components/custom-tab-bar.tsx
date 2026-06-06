@@ -5,7 +5,6 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useColors } from '@/hooks/use-colors';
-import { useMenu } from '@/lib/menu-context';
 import { useAppContext } from '@/lib/app-context';
 import { useAccessibility } from '@/lib/accessibility-context';
 
@@ -13,15 +12,13 @@ interface TabItem {
   label: string;
   icon: React.ComponentProps<typeof MaterialIcons>['name'];
   route: string;
-  isMenu?: boolean;
 }
 
 const TABS: TabItem[] = [
-  { label: 'Menu', icon: 'menu', route: '', isMenu: true },
-  { label: 'Alarmes', icon: 'alarm', route: '/(tabs)/alarms' },
   { label: 'Início', icon: 'home', route: '/(tabs)/' },
   { label: 'Saúde', icon: 'favorite', route: '/(tabs)/health' },
-  { label: 'Config', icon: 'settings', route: '/(tabs)/settings' },
+  { label: 'Remédios', icon: 'medication', route: '/(tabs)/alarms' },
+  { label: 'Tudo', icon: 'apps', route: '/(tabs)/tudo' },
 ];
 
 export function CustomTabBar() {
@@ -29,13 +26,12 @@ export function CustomTabBar() {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const { toggleMenu } = useMenu();
   const { state } = useAppContext();
   const { isAccessibilityMode, a11yColors: ac } = useAccessibility();
   const activeAlarmCount = state.alarms.filter((a) => a.enabled).length;
 
   const bottomPadding = Platform.OS === 'web' ? 12 : Math.max(insets.bottom, 8);
-  const tabBarHeight = isAccessibilityMode ? 80 + bottomPadding : 60 + bottomPadding;
+  const tabBarHeight = isAccessibilityMode ? 100 + bottomPadding : 86 + bottomPadding;
 
   const isActive = (route: string) => {
     if (route === '/(tabs)/') return pathname === '/' || pathname === '/index';
@@ -45,10 +41,6 @@ export function CustomTabBar() {
   const handlePress = async (tab: TabItem) => {
     if (Platform.OS !== 'web') {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    if (tab.isMenu) {
-      toggleMenu();
-      return;
     }
     router.push(tab.route as any);
   };
@@ -67,15 +59,15 @@ export function CustomTabBar() {
       ]}
     >
       {TABS.map((tab) => {
-        const active = !tab.isMenu && isActive(tab.route);
+        const active = isActive(tab.route);
         const iconColor = isAccessibilityMode
           ? (active ? ac.primary : ac.muted)
           : (active ? colors.primary : colors.muted);
         const labelColor = isAccessibilityMode
           ? (active ? ac.primary : ac.muted)
           : (active ? colors.primary : colors.muted);
-        const iconSize = isAccessibilityMode ? 32 : 24;
-        const labelSize = isAccessibilityMode ? 13 : 11;
+        const iconSize = isAccessibilityMode ? 34 : 30;
+        const labelSize = isAccessibilityMode ? 15 : 13;
         return (
           <Pressable
             key={tab.label}
@@ -164,7 +156,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '700',
     textAlign: 'center',
   },
   labelActive: {

@@ -3,14 +3,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Platform } from "react-native";
 import { useColors } from "@/hooks/use-colors";
 import { CustomTabBar } from "@/components/custom-tab-bar";
-import { SidebarMenu } from "@/components/sidebar-menu";
+import { MicFab } from "@/components/mic-fab";
 import { View } from "react-native";
 
 export default function TabLayout() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
-  const tabBarHeight = 56 + bottomPadding;
+  const tabBarHeight = 86 + bottomPadding;
 
   return (
     <View style={{ flex: 1 }}>
@@ -37,8 +37,9 @@ export default function TabLayout() {
         <Tabs.Screen name="profile" options={{ title: "Perfil" }} />
         <Tabs.Screen name="help" options={{ title: "Ajuda" }} />
         <Tabs.Screen name="invite-caregiver" options={{ title: "Convidar Cuidador" }} />
+        <Tabs.Screen name="tudo" />
       </Tabs>
-      <SidebarMenu />
+      <MicFab bottomOffset={86} />
     </View>
   );
 }
