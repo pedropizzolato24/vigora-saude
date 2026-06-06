@@ -259,7 +259,7 @@ export default function TudoScreen() {
               </Text>
             )}
             <View style={[styles.planBadge, { backgroundColor: isPro ? colors.primaryLight : colors.border }]}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: isPro ? colors.primary : colors.muted, fontFamily: BrandFonts.body }}>
+              <Text style={{ fontSize: fs.xs, fontWeight: '700', color: isPro ? colors.primary : colors.muted, fontFamily: BrandFonts.body }}>
                 {isPro ? 'Pro' : 'Grátis'}
               </Text>
             </View>
