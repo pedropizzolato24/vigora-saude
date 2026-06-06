@@ -26,6 +26,7 @@ import { MonitoringStatusBadge } from '@/components/monitoring-status-badge';
 import { usePurchases } from '@/hooks/use-purchases';
 import { SosStrip } from '@/components/sos-strip';
 import { BigTile } from '@/components/big-tile';
+import { trpc } from '@/lib/trpc';
 
 export default function DashboardScreen() {
   const colors = useColors();
@@ -43,6 +44,9 @@ export default function DashboardScreen() {
   const [sosActiveVisible, setSosActiveVisible] = React.useState(false);
   const [sosActivatedAt, setSosActivatedAt] = React.useState<number | null>(null);
   const nextAlarm = getNextAlarm(state.alarms);
+
+  const caregiversQuery = trpc.link.getMyCaregivers.useQuery();
+  const caregivers = caregiversQuery.data ?? [];
 
   const activateSOS = React.useCallback(async () => {
     dispatch({ type: 'TRIGGER_SOS' });
@@ -220,6 +224,109 @@ export default function DashboardScreen() {
             </Pressable>
           </View>
 
+          {/* Rede de apoio */}
+          {caregivers.length > 0 ? (
+            <Pressable
+              onPress={() => navigate('/(tabs)/invite-caregiver')}
+              style={({ pressed }) => [{
+                backgroundColor: colors.surface,
+                borderRadius: as_.cardRadius,
+                padding: 20,
+                borderWidth: 1,
+                borderColor: colors.border,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 14,
+                minHeight: 64,
+                opacity: pressed ? 0.85 : 1,
+              }]}
+              accessibilityRole="button"
+              accessibilityLabel={`${caregivers.length} ${caregivers.length === 1 ? 'pessoa te acompanhando' : 'pessoas te acompanhando'}. Toque para ver.`}
+            >
+              <View style={{ flexDirection: 'row' }}>
+                {caregivers.slice(0, 3).map((c, i) => (
+                  <View
+                    key={c.caregiverOpenId}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: colors.primaryLight,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginLeft: i === 0 ? 0 : -10,
+                      borderWidth: 2,
+                      borderColor: colors.surface,
+                    }}
+                  >
+                    <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: af.md, fontWeight: '800', color: colors.primary }}>
+                      {c.caregiverName ? c.caregiverName.charAt(0).toUpperCase() : '?'}
+                    </Text>
+                  </View>
+                ))}
+                {caregivers.length > 3 && (
+                  <View style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    backgroundColor: colors.primaryLight,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginLeft: -10,
+                    borderWidth: 2,
+                    borderColor: colors.surface,
+                  }}>
+                    <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: af.sm, fontWeight: '800', color: colors.primary }}>
+                      +{caregivers.length - 3}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <Text style={{ flex: 1, fontFamily: 'PlusJakartaSans', fontSize: af.lg, fontWeight: '700', color: colors.foreground }}>
+                {caregivers.length === 1 ? '1 pessoa te acompanhando' : `${caregivers.length} pessoas te acompanhando`}
+              </Text>
+              <MaterialIcons name="chevron-right" size={28} color={colors.muted} />
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => navigate('/(tabs)/invite-caregiver')}
+              style={({ pressed }) => [{
+                backgroundColor: colors.surface,
+                borderRadius: as_.cardRadius,
+                padding: 20,
+                borderWidth: 1,
+                borderColor: colors.border,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 14,
+                minHeight: 64,
+                opacity: pressed ? 0.85 : 1,
+              }]}
+              accessibilityRole="button"
+              accessibilityLabel="Convide um familiar para te acompanhar. Toque para convidar."
+            >
+              <View style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: colors.primaryLight,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <MaterialIcons name="person-add" size={26} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: af.lg, fontWeight: '700', color: colors.foreground }}>
+                  Convide um familiar
+                </Text>
+                <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: af.md, color: colors.muted }}>
+                  para te acompanhar
+                </Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={28} color={colors.muted} />
+            </Pressable>
+          )}
+
           {/* Aviso legal */}
           <View style={{
             backgroundColor: colors.warningLight,
@@ -349,6 +456,55 @@ export default function DashboardScreen() {
           </Text>
         </View>
 
+        {/* Rede de apoio */}
+        {caregivers.length > 0 ? (
+          <Pressable
+            onPress={() => navigate('/(tabs)/invite-caregiver')}
+            style={({ pressed }) => [styles.supportNetworkCard, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
+            accessibilityRole="button"
+            accessibilityLabel={`${caregivers.length} ${caregivers.length === 1 ? 'pessoa te acompanhando' : 'pessoas te acompanhando'}. Toque para ver.`}
+          >
+            <View style={styles.avatarRow}>
+              {caregivers.slice(0, 3).map((c, i) => (
+                <View
+                  key={c.caregiverOpenId}
+                  style={[styles.avatarCircle, { backgroundColor: colors.primaryLight, borderColor: colors.surface, marginLeft: i === 0 ? 0 : -10 }]}
+                >
+                  <Text style={[styles.avatarInitial, { color: colors.primary, fontSize: fs.md }]}>
+                    {c.caregiverName ? c.caregiverName.charAt(0).toUpperCase() : '?'}
+                  </Text>
+                </View>
+              ))}
+              {caregivers.length > 3 && (
+                <View style={[styles.avatarCircle, { backgroundColor: colors.primaryLight, borderColor: colors.surface, marginLeft: -10 }]}>
+                  <Text style={[styles.avatarInitial, { color: colors.primary, fontSize: fs.sm }]}>
+                    +{caregivers.length - 3}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.supportNetworkLabel, { color: colors.foreground, fontFamily: 'PlusJakartaSans', fontSize: fs.base }]}>
+              {caregivers.length === 1 ? '1 pessoa te acompanhando' : `${caregivers.length} pessoas te acompanhando`}
+            </Text>
+            <MaterialIcons name="chevron-right" size={22} color={colors.muted} />
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={() => navigate('/(tabs)/invite-caregiver')}
+            style={({ pressed }) => [styles.supportNetworkCard, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Convide um familiar para te acompanhar. Toque para convidar."
+          >
+            <View style={[styles.emptyAvatarCircle, { backgroundColor: colors.primaryLight }]}>
+              <MaterialIcons name="person-add" size={22} color={colors.primary} />
+            </View>
+            <Text style={[styles.supportNetworkLabel, { color: colors.foreground, fontFamily: 'PlusJakartaSans', fontSize: fs.base }]}>
+              Convide um familiar para te acompanhar
+            </Text>
+            <MaterialIcons name="chevron-right" size={22} color={colors.muted} />
+          </Pressable>
+        )}
+
         {/* Aviso legal */}
         <View style={[styles.warningBanner, { backgroundColor: colors.warningLight, borderColor: colors.warning + '40' }]}>
           <MaterialIcons name="info" size={18} color={colors.warningDark} />
@@ -438,5 +594,40 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     lineHeight: 18,
+  },
+  supportNetworkCard: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 48,
+  },
+  avatarRow: {
+    flexDirection: 'row',
+  },
+  avatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+  },
+  avatarInitial: {
+    fontFamily: 'PlusJakartaSans',
+    fontWeight: '800',
+  },
+  emptyAvatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  supportNetworkLabel: {
+    flex: 1,
+    fontWeight: '600',
   },
 });
