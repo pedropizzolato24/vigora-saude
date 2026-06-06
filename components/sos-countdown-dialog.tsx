@@ -32,6 +32,7 @@ import {
 import Svg, { Circle } from 'react-native-svg';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Haptics from 'expo-haptics';
+import * as Speech from 'expo-speech';
 import { useColors } from '@/hooks/use-colors';
 import { useAccessibility } from '@/lib/accessibility-context';
 
@@ -172,6 +173,7 @@ export function SOSCountdownDialog({
           if (Platform.OS !== 'web') {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           }
+          Speech.speak('Avisando suas pessoas e ligando para o SAMU', { language: 'pt-BR' });
           onConfirm();
         }
       });
