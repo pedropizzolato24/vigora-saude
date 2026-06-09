@@ -42,14 +42,28 @@ export function BigTile({
         pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
       ]}
     >
-      <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
-        <MaterialIcons name={icon} size={30} color={iconColor} />
+      <View style={styles.topRow}>
+        <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
+          <MaterialIcons name={icon} size={28} color={iconColor} />
+        </View>
+        {badge ? (
+          <View style={[styles.badge, { backgroundColor: colors.emergency }]}>
+            <Text
+              style={[
+                styles.badgeText,
+                { color: colors.onEmergency, fontSize: fs.xs },
+              ]}
+            >
+              {badge}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.textWrap}>
         <Text
           style={[styles.title, { color: colors.foreground, fontSize: fs.md }]}
-          numberOfLines={1}
+          numberOfLines={2}
         >
           {title}
         </Text>
@@ -62,46 +76,42 @@ export function BigTile({
           </Text>
         ) : null}
       </View>
-
-      {badge ? (
-        <View style={[styles.badge, { backgroundColor: colors.emergency }]}>
-          <Text
-            style={[
-              styles.badgeText,
-              { color: colors.onEmergency, fontSize: fs.xs },
-            ]}
-          >
-            {badge}
-          </Text>
-        </View>
-      ) : null}
     </Pressable>
   );
 }
 
+// Layout vertical (ícone acima do texto): os rótulos têm a largura inteira do
+// tile e podem quebrar em 2 linhas — nada de "Meus re..." truncado.
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 12,
     borderWidth: 2,
     borderRadius: 18,
-    padding: 16,
+    padding: 14,
+    minHeight: 132,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 3,
   },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    alignSelf: 'stretch',
+  },
   iconWrap: {
-    width: 58,
-    height: 58,
-    borderRadius: 16,
+    width: 52,
+    height: 52,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   textWrap: {
-    flex: 1,
-    gap: 3,
+    alignSelf: 'stretch',
+    gap: 2,
   },
   title: {
     fontFamily: BrandFonts.body,

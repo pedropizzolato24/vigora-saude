@@ -376,15 +376,50 @@ export async function getMonitoringStatus(): Promise<{
  * Call this on app startup to detect "not_sent" events retroactively.
  * The server handles this automatically via the monitoring job,
  * but this function updates the local UI state.
+ *
+ * Para evitar o falso "Alarmes Perdidos" em toda abertura do app:
+ *  - só conta eventos das últimas 48h (eventos antigos não são novidade);
+ *  - ignora o check-in diário ('checkin-daily'), que tem fluxo/escalação
+ *    próprios e pode deixar eventos pendentes órfãos no servidor;
+ *  - lembra (AsyncStorage) o evento mais recente já exibido, para que o
+ *    mesmo aviso não reapareça em aberturas seguintes.
  */
+const OFFLINE_ALARMS_SEEN_KEY = "vigora_offline_alarms_seen_until";
+const OFFLINE_ALARMS_WINDOW_MS = 48 * 60 * 60 * 1000;
+const CHECKIN_ALARM_ID = "checkin-daily";
+
 export async function checkOfflineAlarms(
   alarms: Alarm[]
 ): Promise<{
   notSentCount: number;
   missedCount: number;
 }> {
-  const history = await getAlarmHistory(100);
-  const notSentCount = history.filter((e) => e.status === "not_sent").length;
-  const missedCount = history.filter((e) => e.status === "missed").length;
-  return { notSentCount, missedCount };
+  const history = await getAlarmHistory(200);
+
+  const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+  const seenUntilRaw = await AsyncStorage.getItem(OFFLINE_ALARMS_SEEN_KEY).catch(() => null);
+  const seenUntil = seenUntilRaw ? Number(seenUntilRaw) : 0;
+  const windowStart = Date.now() - OFFLINE_ALARMS_WINDOW_MS;
+
+  const isRelevant = (e: any): boolean => {
+    if (e.alarmId === CHECKIN_ALARM_ID) return false;
+    const ts = new Date(e.scheduledAt ?? e.createdAt ?? 0).getTime();
+    if (!Number.isFinite(ts) || ts <= 0) return false;
+    return ts > windowStart && ts > seenUntil;
+  };
+
+  const relevant = history.filter(isRelevant);
+  const notSent = relevant.filter((e) => e.status === "not_sent");
+  const missed = relevant.filter((e) => e.status === "missed");
+
+  // Marca os eventos atuais como vistos para não repetir o aviso amanhã.
+  const newestTs = relevant.reduce((max, e) => {
+    const ts = new Date(e.scheduledAt ?? e.createdAt ?? 0).getTime();
+    return Number.isFinite(ts) && ts > max ? ts : max;
+  }, seenUntil);
+  if (newestTs > seenUntil) {
+    await AsyncStorage.setItem(OFFLINE_ALARMS_SEEN_KEY, String(newestTs)).catch(() => {});
+  }
+
+  return { notSentCount: notSent.length, missedCount: missed.length };
 }

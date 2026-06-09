@@ -5,6 +5,7 @@ const themeColors = {
   accent:     { light: '#C96442', dark: '#D4784A' }, // Terracota
   background: { light: '#F4EFE5', dark: '#0E1417' }, // Creme / Dark
   surface:    { light: '#FFFFFF', dark: '#1A1714' }, // Branco / Warm dark surface
+  bar:        { light: '#EBE2CD', dark: '#151C20' }, // Barras superior/inferior — creme mais escuro puxado pro marrom
   foreground: { light: '#0E1417', dark: '#F4EFE5' }, // Dark / Creme invertido
   muted:      { light: '#5B636A', dark: '#8A9298' }, // Cinza médio
   border:     { light: '#D8D1C2', dark: '#2D2722' }, // Borda quente

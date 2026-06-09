@@ -4,6 +4,7 @@ import React, { useRef, useState } from 'react';
 import { useAccessibility } from '@/lib/accessibility-context';
 import {
   FlatList,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -29,8 +30,7 @@ import { BrandFonts } from '@/lib/_core/theme';
 import { generateId, useAppContext, type Alarm } from '@/lib/app-context';
 import { scheduleFullAlarm, cancelFullAlarm } from '@/lib/alarm-sync';
 import { useRouter } from 'expo-router';
-import { useProFeature, FREE_LIMITS, ProLimitBadge } from '@/components/pro-gate';
-import { useProUpsell } from '@/components/pro-upsell-modal';
+import { MAX_ALARMS } from '@/components/pro-limits';
 
 const REPEAT_OPTIONS: { value: Alarm['repeat']; label: string }[] = [
   { value: 'daily', label: 'Diário' },
@@ -93,8 +93,6 @@ export default function AlarmsScreen() {
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
   const { dialogProps, showDialog } = useAppDialog();
   const { toastProps, showToast } = useAppToast();
-  const { checkLimit } = useProFeature();
-  const { showUpsell, UpsellModal } = useProUpsell();
 
   // Derived hour/minute from form.time for the split picker
   const [timeHour, timeMinute] = form.time.split(':');
@@ -167,25 +165,9 @@ export default function AlarmsScreen() {
   })();
 
   const openAddModal = () => {
-    // Pro users: max 24 alarms; Free users: max FREE_LIMITS.ALARMS
-    const limit = 24; // absolute max
-    if (state.alarms.length >= limit) {
-      showDialog({ title: 'Limite atingido', message: 'Você pode ter no máximo 24 alarmes.', variant: 'warning', buttons: [{ text: 'OK' }] });
-      return;
-    }
-    if (state.alarms.length >= FREE_LIMITS.ALARMS) {
-      showUpsell({
-        icon: 'alarm',
-        title: 'Alarmes Ilimitados',
-        description: `Você atingiu o limite de ${FREE_LIMITS.ALARMS} alarmes no plano gratuito.`,
-        benefit: 'Com o Vigora Pro, crie quantos alarmes de medicação e saúde precisar.',
-        features: [
-          'Alarmes ilimitados',
-          'Contatos de emergência ilimitados',
-          'Exportação PDF da Anamnese',
-          'Monitoramento contínuo de saúde',
-        ],
-      });
+    // Teto técnico do agendador — não é limite de plano.
+    if (state.alarms.length >= MAX_ALARMS) {
+      showDialog({ title: 'Limite atingido', message: `Você pode ter no máximo ${MAX_ALARMS} alarmes.`, variant: 'warning', buttons: [{ text: 'OK' }] });
       return;
     }
     setEditingAlarm(null);
@@ -301,7 +283,7 @@ export default function AlarmsScreen() {
   // --- ACCESSIBILITY MODE --------------------------------------------------
   if (isAccessibilityMode) {
     return (
-      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
+      <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
         {/* Header */}
         <View style={{
           paddingHorizontal: 20,
@@ -312,7 +294,7 @@ export default function AlarmsScreen() {
           flexDirection: 'row',
           justifyContent: 'space-between',
           alignItems: 'center',
-          backgroundColor: ac.background,
+          backgroundColor: ac.bar,
         }}>
           <View>
             <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Remédios</Text>
@@ -432,37 +414,25 @@ export default function AlarmsScreen() {
           onRequestClose={() => setModalVisible(false)}
         >
           <View style={{ flex: 1, backgroundColor: ac.background }}>
+            {/* Título apenas — Cancelar/Salvar ficam na barra inferior */}
             <View style={{
               paddingHorizontal: 20,
               paddingTop: insets.top + 16,
               paddingBottom: 16,
               borderBottomWidth: 2,
               borderBottomColor: ac.border,
-              flexDirection: 'row',
-              justifyContent: 'space-between',
               alignItems: 'center',
+              backgroundColor: ac.bar,
             }}>
-              <Pressable
-                onPress={() => setModalVisible(false)}
-                style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-                accessibilityRole="button"
-                accessibilityLabel="Cancelar"
-              >
-                <Text style={{ fontSize: af.md, color: ac.muted, fontWeight: '600' }}>Cancelar</Text>
-              </Pressable>
               <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>
                 {editingAlarm ? 'Editar Lembrete' : 'Novo Lembrete'}
               </Text>
-              <Pressable
-                onPress={handleSave}
-                style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
-                accessibilityRole="button"
-                accessibilityLabel="Salvar lembrete"
-              >
-                <Text style={{ fontSize: af.md, color: ac.primary, fontWeight: '800' }}>Salvar</Text>
-              </Pressable>
             </View>
-            <ScrollView contentContainerStyle={{ padding: 24, gap: 28 }}>
+            <KeyboardAvoidingView
+              style={{ flex: 1 }}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            >
+            <ScrollView contentContainerStyle={{ padding: 24, gap: 28 }} keyboardShouldPersistTaps="handled">
               {/* Time */}
               <View style={{ gap: 12 }}>
                 <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>Horário</Text>
@@ -633,6 +603,26 @@ export default function AlarmsScreen() {
                 </Pressable>
               )}
             </ScrollView>
+            {/* Barra inferior de ações: Cancelar + Salvar */}
+            <View style={{ flexDirection: 'row', gap: 12, padding: 20, paddingBottom: Math.max(insets.bottom, 20), borderTopWidth: 2, borderTopColor: ac.border, backgroundColor: ac.bar }}>
+              <Pressable
+                onPress={() => setModalVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Cancelar"
+                style={({ pressed }) => [{ flex: 1, minHeight: 64, borderRadius: 16, borderWidth: 3, borderColor: ac.muted, backgroundColor: ac.surface, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.foreground }}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleSave}
+                accessibilityRole="button"
+                accessibilityLabel="Salvar lembrete"
+                style={({ pressed }) => [{ flex: 1.5, minHeight: 64, borderRadius: 16, backgroundColor: ac.success, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.85 : 1 }]}
+              >
+                <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.onPrimary }}>Salvar</Text>
+              </Pressable>
+            </View>
+            </KeyboardAvoidingView>
           </View>
         </Modal>
         <AppDialog {...dialogProps} />
@@ -644,37 +634,33 @@ export default function AlarmsScreen() {
   // --- NORMAL MODE ----------------------------------------------------------
   return (
     <ScreenContainer edges={["left", "right"]}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
+      {/* Header — só título, sem botões (regra do app: nada de ações no topo) */}
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
         <View>
           <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'], fontFamily: BrandFonts.body }]}>Remédios</Text>
           <Text style={[styles.subtitle, { color: colors.muted, fontSize: fs.sm }]}>
             Seus lembretes de medicação
           </Text>
         </View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Pressable
-            onPress={() => setHistoryVisible(true)}
-            style={({ pressed }) => [
-              styles.headerIconBtn,
-              { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.75 : 1 },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Histórico de alarmes"
-          >
-            <MaterialIcons name="history" size={22} color={colors.foreground} />
-          </Pressable>
-        </View>
       </View>
       <AlarmHistorySheet visible={historyVisible} onClose={() => setHistoryVisible(false)} />
 
-      {/* Pro Limit Badge */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-        <ProLimitBadge
-          current={state.alarms.length}
-          limit={FREE_LIMITS.ALARMS}
-          label="alarmes"
-        />
+      {/* Atalho para o histórico — fora da área do título */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
+        <Pressable
+          onPress={() => setHistoryVisible(true)}
+          style={({ pressed }) => [
+            styles.historyLinkBtn,
+            { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.75 : 1 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Histórico de alarmes"
+        >
+          <MaterialIcons name="history" size={18} color={colors.primary} />
+          <Text style={[styles.historyLinkText, { color: colors.primary, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
+            Ver histórico
+          </Text>
+        </Pressable>
       </View>
 
       {/* "Próximo" highlight card */}
@@ -732,7 +718,7 @@ export default function AlarmsScreen() {
       )}
 
       {/* Add button — full width, min 56dp */}
-      <View style={[styles.addBtnContainer, { borderTopColor: colors.border }]}>
+      <View style={[styles.addBtnContainer, { borderTopColor: colors.border, backgroundColor: colors.bar }]}>
         <Pressable
           onPress={openAddModal}
           style={({ pressed }) => [
@@ -757,25 +743,18 @@ export default function AlarmsScreen() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={[styles.modal, { backgroundColor: colors.background }]}>
-          {/* Modal Header */}
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
-            <Pressable
-              onPress={() => setModalVisible(false)}
-              style={({ pressed }) => [styles.modalClose, pressed && { opacity: 0.6 }]}
-              accessibilityRole="button"
-              accessibilityLabel="Cancelar"
-            >
-              <Text style={[styles.modalCloseText, { color: colors.muted, fontSize: fs.base }]}>Cancelar</Text>
-            </Pressable>
+          {/* Modal Header — título apenas; Cancelar fica na barra inferior do wizard */}
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 16 }]}>
             <Text style={[styles.modalTitle, { color: colors.foreground, fontSize: fs.xl, fontFamily: BrandFonts.body }]}>
               {editingAlarm ? 'Editar Lembrete' : 'Novo Lembrete'}
             </Text>
-            {/* Delete button shown in edit mode in header */}
-            <View style={styles.modalClose} />
           </View>
 
           {/* Wizard Steps */}
-          <View style={styles.wizardContainer}>
+          <KeyboardAvoidingView
+            style={styles.wizardContainer}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
             {wizardStep === 1 ? (
               <WizardStep
                 total={2}
@@ -784,6 +763,7 @@ export default function AlarmsScreen() {
                 tagColor={colors.primary}
                 question="Que horas tomar?"
                 onNext={() => setWizardStep(2)}
+                onCancel={() => setModalVisible(false)}
                 nextLabel="Continuar"
               >
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.wizardStepContent}>
@@ -1021,12 +1001,11 @@ export default function AlarmsScreen() {
                 </ScrollView>
               </WizardStep>
             )}
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
       <AppDialog {...dialogProps} />
       <AppToast {...toastProps} />
-      <UpsellModal />
     </ScreenContainer>
   );
 }
@@ -1047,12 +1026,20 @@ const styles = StyleSheet.create({
   subtitle: {
     marginTop: 2,
   },
-  headerIconBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  historyLinkBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    borderWidth: 1.5,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minHeight: 40,
+  },
+  historyLinkText: {
+    fontWeight: '600',
   },
   nextCard: {
     borderWidth: 0,
@@ -1119,19 +1106,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  modalClose: {
-    padding: 4,
-    minWidth: 70,
-  },
-  modalCloseText: {
-    fontWeight: '500',
   },
   modalTitle: {
     fontWeight: '600',

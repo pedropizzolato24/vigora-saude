@@ -141,7 +141,7 @@ export function MonitoringInitializer() {
 
           // Build the dialog message
           const alarmWord = notSentCount === 1 ? "alarme" : "alarmes";
-          let message = `Enquanto seu celular estava desligado ou sem bateria, ${notSentCount} ${alarmWord} não ${notSentCount === 1 ? "foi enviado" : "foram enviados"}.`;
+          let message = `Nas últimas 48 horas, ${notSentCount} ${alarmWord} de remédio não ${notSentCount === 1 ? "tocou" : "tocaram"} — provavelmente o celular estava desligado, sem bateria ou sem conexão.`;
 
           if (recentWarnings.length > 0) {
             const lastWarning = recentWarnings[0];

@@ -125,8 +125,8 @@ export default function LocationScreen() {
   // --- ACCESSIBILITY MODE --------------------------------------------------
   if (isAccessibilityMode) {
     return (
-      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
-        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.background }}>
+      <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar }}>
           <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Localização</Text>
           <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Compartilhe sua posição</Text>
         </View>
@@ -190,7 +190,7 @@ export default function LocationScreen() {
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
         <View>
           <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'] }]}>Localização</Text>
           <Text style={[styles.subtitle, { color: colors.muted, fontSize: fs.sm }]}>

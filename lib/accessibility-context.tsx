@@ -35,6 +35,8 @@ export interface AccessibilityValues {
   // -- Colors (high-contrast palette) --------------------------------------
   a11yColors: {
     background: string;
+    /** Barras superior/inferior — creme mais escuro que o fundo, dá profundidade */
+    bar: string;
     surface: string;
     foreground: string;
     muted: string;
@@ -64,23 +66,26 @@ export interface AccessibilityValues {
 }
 
 // --- High-Contrast Palette ---------------------------------------------------
-// Pure black/white with strong accent colors - maximum readability
+// Segue a linguagem visual atual do app (fundo creme, superfícies brancas,
+// azul da marca) mantendo contraste alto. Ações destrutivas usam vermelho —
+// nunca a mesma cor dos botões comuns.
 
 const A11Y_COLORS: AccessibilityValues['a11yColors'] = {
-  background: '#FFFFFF',
-  surface: '#F0F0F0',
-  foreground: '#000000',
-  muted: '#333333',
-  primary: '#0050AA',
+  background: '#F4EFE5',
+  bar: '#EBE2CD',
+  surface: '#FFFFFF',
+  foreground: '#14181B',
+  muted: '#42494F',
+  primary: '#1A4680',
   onPrimary: '#FFFFFF',
-  border: '#000000',
-  emergency: '#CC0000',
+  border: '#14181B',
+  emergency: '#B5070D',
   onEmergency: '#FFFFFF',
-  success: '#006600',
-  warning: '#885500',
-  error: '#CC0000',
+  success: '#0A6B39',
+  warning: '#7A5200',
+  error: '#B5070D',
   cardBg: '#FFFFFF',
-  cardBorder: '#000000',
+  cardBorder: '#14181B',
 };
 
 // --- Accessibility Font Sizes ------------------------------------------------

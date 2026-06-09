@@ -28,6 +28,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAppContext } from '@/lib/app-context';
 import { buildReportHtml } from '@/lib/health-report-generator';
 import { useColors } from '@/hooks/use-colors';
+import { useAccessibility } from '@/lib/accessibility-context';
 
 interface HealthReportButtonProps {
   /** Estilo compacto (apenas ícone) ou completo (ícone + texto) */
@@ -36,8 +37,17 @@ interface HealthReportButtonProps {
 
 export function HealthReportButton({ compact = false }: HealthReportButtonProps) {
   const { state } = useAppContext();
-  const colors = useColors();
+  const themeColors = useColors();
+  const { isAccessibilityMode, a11yColors: ac, a11yFontSize: af } = useAccessibility();
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // No modo de acessibilidade o botão segue a paleta de alto contraste —
+  // antes ele ficava com o tema normal e destoava do resto da tela.
+  const colors = isAccessibilityMode
+    ? { primary: ac.primary, onPrimary: ac.onPrimary }
+    : { primary: themeColors.primary, onPrimary: themeColors.onPrimary };
+  const labelFontSize = isAccessibilityMode ? af.md : 15;
+  const minHeight = isAccessibilityMode ? 64 : undefined;
 
   const handleGenerateReport = async () => {
     if (isGenerating) return;
@@ -130,6 +140,7 @@ export function HealthReportButton({ compact = false }: HealthReportButtonProps)
         {
           backgroundColor: colors.primary,
           opacity: pressed || isGenerating ? 0.8 : 1,
+          minHeight,
         },
       ]}
       accessibilityLabel="Gerar relatório de saúde em PDF"
@@ -138,12 +149,12 @@ export function HealthReportButton({ compact = false }: HealthReportButtonProps)
       {isGenerating ? (
         <>
           <ActivityIndicator size="small" color={colors.onPrimary} />
-          <Text style={[styles.fullButtonText, { color: colors.onPrimary }]}>Gerando PDF...</Text>
+          <Text style={[styles.fullButtonText, { color: colors.onPrimary, fontSize: labelFontSize }]}>Gerando PDF...</Text>
         </>
       ) : (
         <>
-          <MaterialIcons name="picture-as-pdf" size={20} color={colors.onPrimary} />
-          <Text style={[styles.fullButtonText, { color: colors.onPrimary }]}>Relatório PDF</Text>
+          <MaterialIcons name="picture-as-pdf" size={isAccessibilityMode ? 26 : 20} color={colors.onPrimary} />
+          <Text style={[styles.fullButtonText, { color: colors.onPrimary, fontSize: labelFontSize }]}>Relatório PDF</Text>
         </>
       )}
     </Pressable>
@@ -161,6 +172,7 @@ const styles = StyleSheet.create({
   fullButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
     paddingHorizontal: 20,
     paddingVertical: 12,

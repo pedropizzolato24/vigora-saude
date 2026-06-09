@@ -4,7 +4,7 @@
  * Database query helpers for the server-side alarm monitoring system.
  * Handles: device registration, alarm sync, heartbeat, alarm events, warning log.
  */
-import { and, eq, gte, inArray, isNull, lt, lte, or } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt, lte, or } from "drizzle-orm";
 import { getDb } from "./db";
 import { pickPendingEvent } from "./_core/pick-pending-event";
 import {
@@ -350,11 +350,13 @@ export async function markEventWarningSent(id: number): Promise<void> {
 export async function getAlarmEventHistory(deviceId: string, limit = 50) {
   const db = await getDb();
   if (!db) return [];
+  // Mais recentes primeiro: com ASC + limit, eventos antigos monopolizavam a
+  // janela e os disparos novos nunca apareciam no histórico do app.
   return db
     .select()
     .from(alarmEvents)
     .where(eq(alarmEvents.deviceId, deviceId))
-    .orderBy(alarmEvents.scheduledAt)
+    .orderBy(desc(alarmEvents.scheduledAt))
     .limit(limit);
 }
 

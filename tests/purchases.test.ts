@@ -154,20 +154,22 @@ describe("PRODUCT_IDS", () => {
 });
 
 describe("FREE_LIMITS", () => {
-  it("deve limitar contatos a 3 no plano gratuito", () => {
-    expect(FREE_LIMITS.CONTACTS).toBe(3);
+  // Política atual: experiência completa para todos (trial de 14 dias sem
+  // bloqueio de recursos). Nenhum recurso é restrito por plano.
+  it("não deve limitar contatos por plano", () => {
+    expect(FREE_LIMITS.CONTACTS).toBe(Infinity);
   });
 
-  it("deve limitar alarmes a 5 no plano gratuito", () => {
-    expect(FREE_LIMITS.ALARMS).toBe(5);
+  it("não deve limitar alarmes por plano", () => {
+    expect(FREE_LIMITS.ALARMS).toBe(Infinity);
   });
 
-  it("deve bloquear exportação PDF no plano gratuito", () => {
-    expect(FREE_LIMITS.PDF_EXPORT).toBe(false);
+  it("deve liberar exportação PDF para todos", () => {
+    expect(FREE_LIMITS.PDF_EXPORT).toBe(true);
   });
 
-  it("deve bloquear monitoramento contínuo no plano gratuito", () => {
-    expect(FREE_LIMITS.MONITORING).toBe(false);
+  it("deve liberar monitoramento contínuo para todos", () => {
+    expect(FREE_LIMITS.MONITORING).toBe(true);
   });
 });
 
@@ -504,48 +506,25 @@ describe("Fluxo completo de assinatura", () => {
 });
 
 describe("Limites do plano gratuito - lógica de checkLimit", () => {
-  it("deve permitir adicionar contato quando abaixo do limite (2 de 3)", () => {
-    const current = 2;
+  // Sem restrições por plano: qualquer quantidade passa pelo checkLimit.
+  it("deve permitir adicionar contatos sem limite de plano", () => {
+    const current = 100;
     const limit = FREE_LIMITS.CONTACTS;
-    // Simula a lógica do checkLimit para usuário gratuito
     const canAdd = current < limit;
     expect(canAdd).toBe(true);
   });
 
-  it("deve bloquear adição de contato quando no limite (3 de 3)", () => {
-    const current = 3;
-    const limit = FREE_LIMITS.CONTACTS;
-    const canAdd = current < limit;
-    expect(canAdd).toBe(false);
-  });
-
-  it("deve permitir adicionar alarme quando abaixo do limite (4 de 5)", () => {
-    const current = 4;
+  it("deve permitir adicionar alarmes sem limite de plano", () => {
+    const current = 50;
     const limit = FREE_LIMITS.ALARMS;
     const canAdd = current < limit;
     expect(canAdd).toBe(true);
   });
 
-  it("deve bloquear adição de alarme quando no limite (5 de 5)", () => {
-    const current = 5;
-    const limit = FREE_LIMITS.ALARMS;
-    const canAdd = current < limit;
-    expect(canAdd).toBe(false);
-  });
-
-  it("usuário Pro não deve ter limite de contatos", () => {
-    // Para usuário Pro, checkLimit sempre retorna true independente do número
+  it("usuário Pro também não tem limites", () => {
     const isPro = true;
     const current = 100;
     const limit = FREE_LIMITS.CONTACTS;
-    const canAdd = isPro || current < limit;
-    expect(canAdd).toBe(true);
-  });
-
-  it("usuário Pro não deve ter limite de alarmes", () => {
-    const isPro = true;
-    const current = 50;
-    const limit = FREE_LIMITS.ALARMS;
     const canAdd = isPro || current < limit;
     expect(canAdd).toBe(true);
   });

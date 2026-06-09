@@ -19,7 +19,7 @@ A infraestrutura é **100% própria**: o backend roda em Node.js auto-hospedado 
 | Backend | Node.js + Express + tRPC v11 + MySQL + Drizzle ORM (hospedado no Railway) |
 | Autenticação | Google OAuth direto (`expo-auth-session`, PKCE) + sessão JWT própria |
 | API | `https://api.vigorasaude.com` |
-| Monetização | RevenueCat SDK v10 — Lifetime, Anual, Mensal + trial de 7 dias |
+| Monetização | RevenueCat SDK v10 — Lifetime, Anual, Mensal + trial de 14 dias (experiência completa, sem bloqueio de recursos) |
 | Testes Automatizados | Suíte com Vitest (auth, segurança, monitoramento, push, RevenueCat) |
 | Telas | 10 abas + 5 telas de fluxo (onboarding, login, registro, callback, alarme) + 2 modais |
 | Repositório | [github.com/pedropizzolato24/vigora-saude](https://github.com/pedropizzolato24/vigora-saude) |
@@ -75,12 +75,12 @@ Todos os dados do app são respaldados na conta Google do usuário, permitindo r
 - **Notificações Nativas:** no Android os alarmes disparam via AlarmManager nativo (`expo-alarm-module`); no iOS/Web via `expo-notifications`.
 - **Full-Screen Alarm:** tela cheia com contador regressivo e botão de confirmação.
 - **Escalação Automática:** se não confirmado, o servidor avisa os contatos de emergência por WhatsApp (com localização GPS) e envia push em tempo real aos cuidadores vinculados.
-- **Limite Gratuito:** 5 alarmes no plano gratuito; ilimitados no Vigora Pro.
+- **Limite:** teto técnico de 24 alarmes simultâneos (limite do agendador, igual para todos os planos).
 
 ### 3. Saúde (Métricas)
 
 - **Tipos:** pressão arterial, frequência cardíaca, glicemia, peso, temperatura, oxigenação (SpO2).
-- **Histórico:** últimas entradas no plano gratuito; histórico completo no Pro.
+- **Histórico:** completo para todos os usuários.
 - **Persistência:** local (AsyncStorage) com backup na conta do usuário.
 
 ### 4. Contatos de Emergência
@@ -88,12 +88,12 @@ Todos os dados do app são respaldados na conta Google do usuário, permitindo r
 - **CRUD de Contatos:** nome, telefone, relação, email e toggle WhatsApp.
 - **Importação da Agenda:** via `expo-contacts` com validação de duplicatas.
 - **Monitoramento:** contatos são registrados no servidor para uso pelo dead man's switch.
-- **Limite Gratuito:** 3 contatos; ilimitados no Vigora Pro.
+- **Limite:** sem limite por plano.
 
 ### 5. Anamnese (Ficha Médica)
 
 - **Campos:** nome, data de nascimento, gênero, alergias, medicações, doenças crônicas, número SUS, plano de saúde e operadora.
-- **Exportação PDF:** PDF profissional com logo e QR code (exclusivo Vigora Pro).
+- **Exportação PDF:** PDF profissional com logo e QR code, disponível para todos.
 - **Compartilhamento:** via `expo-sharing` (WhatsApp, email, etc.).
 
 ### 6. Configurações
@@ -108,18 +108,7 @@ Todos os dados do app são respaldados na conta Google do usuário, permitindo r
 
 ## Modelo de Monetização (RevenueCat)
 
-Modelo freemium com assinatura gerenciada pelo RevenueCat SDK v10.
-
-### Plano Gratuito vs. Vigora Pro
-
-| Recurso | Gratuito | Vigora Pro |
-|---|---|---|
-| Contatos de emergência | 3 | Ilimitados |
-| Alarmes de medicação | 5 | Ilimitados |
-| Histórico de métricas | Limitado | Completo |
-| Exportação PDF da Anamnese | Bloqueado | Liberado |
-| Monitoramento contínuo | Bloqueado | Liberado |
-| Suporte | Padrão | Prioritário |
+Assinatura gerenciada pelo RevenueCat SDK v10. **O app não bloqueia recursos por plano**: todos os usuários têm a experiência completa (contatos e alarmes ilimitados, PDF, monitoramento contínuo). A conversão acontece via trial + banners de assinatura, não via restrição de funcionalidades.
 
 ### Opções de Assinatura
 
@@ -129,13 +118,9 @@ Modelo freemium com assinatura gerenciada pelo RevenueCat SDK v10.
 | Yearly | 1 ano | R$ 29,90/ano |
 | Monthly | 1 mês | R$ 4,90/mês |
 
-### Trial de 7 Dias
+### Trial de 14 Dias
 
-Novos usuários recebem trial de 7 dias do Vigora Pro. Durante o trial, `isTrialActive` e `trialDaysLeft` são expostos pelo `PurchasesContext` e o **TrialBanner** aparece no Dashboard; após expirar, o **ExpiredBanner** convoca a assinatura.
-
-### Upsell Contextual
-
-Ao tentar usar um recurso bloqueado, o `ProUpsellModal` aparece com benefícios Pro e atalho para o paywall nativo.
+Novos usuários recebem trial de 14 dias com a experiência completa do app. Durante o trial, `isTrialActive` e `trialDaysLeft` são expostos pelo `PurchasesContext` e o **TrialBanner** aparece nas telas Tudo e Configurações; após expirar, o **ExpiredBanner** convoca a assinatura. Para assinantes, nenhum banner é exibido.
 
 ---
 

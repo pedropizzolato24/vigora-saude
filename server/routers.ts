@@ -253,6 +253,12 @@ export const appRouter = router({
           userName: z.string().max(255).optional(),
           missedAlarmCount: z.number().min(1).max(1000),
           locationUrl: z.string().max(500).optional(),
+          /**
+           * Tipo do alerta: escalação de alarme perdido (padrão) ou SOS —
+           * o usuário acionou o botão de pânico e os CONTATOS devem ser
+           * avisados de que ELE precisa de ajuda.
+           */
+          alertType: z.enum(["missed_alarm", "sos"]).optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -324,13 +330,23 @@ export const appRouter = router({
 
         // Build the emergency message
         const userName = input.userName || "O usuário";
-        let message =
-          `⚠️ ALERTA VIGORA SAÚDE ⚠️\n\n` +
-          `${userName} não respondeu a ${input.missedAlarmCount} alarme(s) consecutivo(s) de medicamento.\n` +
-          `Por favor, entre em contato urgentemente para verificar se está tudo bem.`;
-
-        if (input.locationUrl) {
-          message += `\n\n📍 Última localização conhecida:\n${input.locationUrl}`;
+        let message: string;
+        if (input.alertType === "sos") {
+          message =
+            `🆘 SOS — VIGORA SAÚDE 🆘\n\n` +
+            `${userName} acionou o botão de EMERGÊNCIA e precisa de ajuda AGORA.\n` +
+            `Por favor, entre em contato imediatamente ou vá até a pessoa.`;
+          if (input.locationUrl) {
+            message += `\n\n📍 Localização atual:\n${input.locationUrl}`;
+          }
+        } else {
+          message =
+            `⚠️ ALERTA VIGORA SAÚDE ⚠️\n\n` +
+            `${userName} não respondeu a ${input.missedAlarmCount} alarme(s) consecutivo(s) de medicamento.\n` +
+            `Por favor, entre em contato urgentemente para verificar se está tudo bem.`;
+          if (input.locationUrl) {
+            message += `\n\n📍 Última localização conhecida:\n${input.locationUrl}`;
+          }
         }
 
         message += `\n\n- Enviado automaticamente pelo Vigora Saúde`;
