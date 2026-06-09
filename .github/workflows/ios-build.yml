@@ -1,0 +1,263 @@
+name: Build iOS IPA
+
+# Espelho iOS do workflow "Build Android APK" (eas-build.yml):
+# prebuild (CNG) → bundle JS com as EXPO_PUBLIC_* → build nativo → artifact.
+#
+# Tipos de build:
+#   unsigned — NÃO requer conta Apple. Gera um .ipa sem assinatura, instalável
+#              via sideload (AltStore/Sideloadly, que re-assinam com Apple ID
+#              gratuito) ou re-assinável depois. Equivalente ao APK de debug
+#              para distribuir a testadores.
+#   signed   — .ipa assinado com certificado de distribuição. Requer os secrets:
+#                IOS_DIST_CERT_BASE64            (.p12 de distribuição em base64)
+#                IOS_DIST_CERT_PASSWORD          (senha do .p12)
+#                IOS_PROVISIONING_PROFILE_BASE64 (.mobileprovision em base64,
+#                                                 Ad Hoc ou App Store, para
+#                                                 com.vigora.saude)
+#                IOS_TEAM_ID                     (Team ID da conta Apple)
+#
+# Secret opcional: EXPO_PUBLIC_REVENUECAT_IOS_API_KEY — chave RevenueCat da
+# App Store (appl_...). O RevenueCat usa chaves separadas por loja; sem este
+# secret o build cai no EXPO_PUBLIC_REVENUECAT_API_KEY (hoje, a chave goog_
+# do Android), e as compras não funcionarão no iOS.
+#
+# Nota: runners macOS consomem 10× os minutos de runners Linux no GitHub.
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Tipo de build'
+        required: true
+        default: 'unsigned'
+        type: choice
+        options:
+          - unsigned
+          - signed
+      export_method:
+        description: 'Método de exportação (apenas para build assinado)'
+        required: false
+        default: 'ad-hoc'
+        type: choice
+        options:
+          - ad-hoc
+          - app-store
+
+jobs:
+  build:
+    name: Build iOS IPA
+    # RN 0.81 / Expo SDK 54 exigem Xcode 16.1+ — padrão da imagem macos-15.
+    runs-on: macos-15
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        run: npm install -g pnpm@9.12.0
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verificar secrets de assinatura (signed)
+        if: ${{ github.event.inputs.build_type == 'signed' }}
+        run: |
+          missing=0
+          [ -n "$IOS_DIST_CERT_BASE64" ] || { echo "::error::Secret IOS_DIST_CERT_BASE64 ausente"; missing=1; }
+          [ -n "$IOS_DIST_CERT_PASSWORD" ] || { echo "::error::Secret IOS_DIST_CERT_PASSWORD ausente"; missing=1; }
+          [ -n "$IOS_PROVISIONING_PROFILE_BASE64" ] || { echo "::error::Secret IOS_PROVISIONING_PROFILE_BASE64 ausente"; missing=1; }
+          [ -n "$IOS_TEAM_ID" ] || { echo "::error::Secret IOS_TEAM_ID ausente"; missing=1; }
+          exit $missing
+        env:
+          IOS_DIST_CERT_BASE64: ${{ secrets.IOS_DIST_CERT_BASE64 }}
+          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+
+      - name: Expo Prebuild (gera projeto iOS nativo)
+        run: npx expo prebuild --platform ios --non-interactive --no-install
+        env:
+          EXPO_PUBLIC_REVENUECAT_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY || secrets.EXPO_PUBLIC_REVENUECAT_API_KEY }}
+          EXPO_PUBLIC_API_BASE_URL: ${{ secrets.EXPO_PUBLIC_API_BASE_URL }}
+          # Universal Links nativos (associatedDomains applinks:<host>) — lido em app.config.ts
+          EXPO_PUBLIC_LINK_HOST: app.vigorasaude.com
+          EXPO_PUBLIC_LINK_BASE_URL: https://app.vigorasaude.com
+
+      - name: Install CocoaPods
+        run: npx pod-install ios
+
+      - name: Localizar workspace e scheme
+        run: |
+          WORKSPACE=$(find ios -maxdepth 1 -name "*.xcworkspace" -print -quit)
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          echo "WORKSPACE=$WORKSPACE" >> "$GITHUB_ENV"
+          echo "SCHEME=$SCHEME" >> "$GITHUB_ENV"
+          echo "Workspace: $WORKSPACE — Scheme: $SCHEME"
+
+      # ─── Assinatura (apenas build signed) ──────────────────────────────────
+      - name: Importar certificado e provisioning profile
+        if: ${{ github.event.inputs.build_type == 'signed' }}
+        run: |
+          CERT_PATH="$RUNNER_TEMP/dist.p12"
+          PP_PATH="$RUNNER_TEMP/profile.mobileprovision"
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASSWORD=$(uuidgen)
+
+          echo -n "$IOS_DIST_CERT_BASE64" | base64 --decode -o "$CERT_PATH"
+          echo -n "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode -o "$PP_PATH"
+
+          # Keychain efêmero só para este job
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$IOS_DIST_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH" login.keychain-db
+
+          # Instala o provisioning profile e expõe nome/UUID para os passos seguintes
+          security cms -D -i "$PP_PATH" > "$RUNNER_TEMP/profile.plist"
+          PROFILE_UUID=$(plutil -extract UUID raw "$RUNNER_TEMP/profile.plist")
+          PROFILE_NAME=$(plutil -extract Name raw "$RUNNER_TEMP/profile.plist")
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$PROFILE_UUID".mobileprovision
+          echo "PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
+          echo "Profile instalado: $PROFILE_NAME ($PROFILE_UUID)"
+        env:
+          IOS_DIST_CERT_BASE64: ${{ secrets.IOS_DIST_CERT_BASE64 }}
+          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+
+      # ─── Build sem assinatura ──────────────────────────────────────────────
+      # O JS é bundlado DENTRO do xcodebuild (build phase "Bundle React Native
+      # code and images" roda expo export:embed) — então as EXPO_PUBLIC_*
+      # precisam existir AQUI, como no passo do Gradle no workflow Android.
+      - name: Build (unsigned, configuração Release)
+        if: ${{ github.event.inputs.build_type == 'unsigned' }}
+        run: |
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+        env:
+          EXPO_PUBLIC_REVENUECAT_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY || secrets.EXPO_PUBLIC_REVENUECAT_API_KEY }}
+          EXPO_PUBLIC_API_BASE_URL: ${{ secrets.EXPO_PUBLIC_API_BASE_URL }}
+          # Client IDs OAuth Google (públicos, embutidos no bundle JS).
+          # No iOS o client usado em runtime é o IOS (atrelado ao bundle id,
+          # não à assinatura); o Android fica aqui só por completude do bundle.
+          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: 39705729598-iv01adn3g5di03k6ukp9n02mri393s6n.apps.googleusercontent.com
+          EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: 39705729598-0q57pbi4hmfd231rkbld2ftgh9eqcidg.apps.googleusercontent.com
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: 39705729598-q49ldjevjp58hg9tvre49tphuo076s08.apps.googleusercontent.com
+          EXPO_PUBLIC_LINK_HOST: app.vigorasaude.com
+          EXPO_PUBLIC_LINK_BASE_URL: https://app.vigorasaude.com
+
+      - name: Empacotar IPA (unsigned)
+        if: ${{ github.event.inputs.build_type == 'unsigned' }}
+        run: |
+          APP_PATH=$(find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name "*.app" -print -quit)
+          [ -n "$APP_PATH" ] || { echo "::error::Nenhum .app gerado pelo xcodebuild"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/ipa/Payload" build
+          cp -R "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/"
+          (cd "$RUNNER_TEMP/ipa" && zip -qry "$GITHUB_WORKSPACE/build/vigora-ios-unsigned.ipa" Payload)
+          echo "IPA_PATH=build/vigora-ios-unsigned.ipa" >> "$GITHUB_ENV"
+
+      # ─── Build assinado ────────────────────────────────────────────────────
+      - name: Archive (signed, configuração Release)
+        if: ${{ github.event.inputs.build_type == 'signed' }}
+        run: |
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/VigoraSaude.xcarchive" \
+            archive \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="$IOS_TEAM_ID" \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME"
+        env:
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+          EXPO_PUBLIC_REVENUECAT_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY || secrets.EXPO_PUBLIC_REVENUECAT_API_KEY }}
+          EXPO_PUBLIC_API_BASE_URL: ${{ secrets.EXPO_PUBLIC_API_BASE_URL }}
+          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: 39705729598-iv01adn3g5di03k6ukp9n02mri393s6n.apps.googleusercontent.com
+          EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: 39705729598-0q57pbi4hmfd231rkbld2ftgh9eqcidg.apps.googleusercontent.com
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: 39705729598-q49ldjevjp58hg9tvre49tphuo076s08.apps.googleusercontent.com
+          EXPO_PUBLIC_LINK_HOST: app.vigorasaude.com
+          EXPO_PUBLIC_LINK_BASE_URL: https://app.vigorasaude.com
+
+      - name: Exportar IPA (signed)
+        if: ${{ github.event.inputs.build_type == 'signed' }}
+        run: |
+          # Bundle id fixo do app — ver app.config.ts (iosBundleId)
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>${{ github.event.inputs.export_method }}</string>
+            <key>teamID</key>
+            <string>$IOS_TEAM_ID</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.vigora.saude</key>
+              <string>$PROFILE_NAME</string>
+            </dict>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>compileBitcode</key>
+            <false/>
+          </dict>
+          </plist>
+          EOF
+
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/VigoraSaude.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+
+          IPA_SRC=$(find "$RUNNER_TEMP/export" -maxdepth 1 -name "*.ipa" -print -quit)
+          [ -n "$IPA_SRC" ] || { echo "::error::Nenhum .ipa exportado"; exit 1; }
+          mkdir -p build
+          cp "$IPA_SRC" build/vigora-ios-signed.ipa
+          echo "IPA_PATH=build/vigora-ios-signed.ipa" >> "$GITHUB_ENV"
+        env:
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+
+      # ─── Verificação e artifact (ambos os tipos) ───────────────────────────
+      - name: Verify client_id no bundle do IPA
+        run: |
+          unzip -p "$IPA_PATH" 'Payload/*.app/main.jsbundle' \
+            | grep -aq "39705729598" \
+            || { echo "::error::Client ID Google ausente no bundle do IPA"; exit 1; }
+          echo "OK: client_id presente no bundle do IPA"
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: vigora-ios-${{ github.event.inputs.build_type }}-${{ github.run_number }}
+          path: ${{ env.IPA_PATH }}
+          retention-days: 7
+
+      # ─── Limpeza (sempre, para não vazar material de assinatura) ──────────
+      - name: Limpar keychain e provisioning profile
+        if: ${{ always() && github.event.inputs.build_type == 'signed' }}
+        run: |
+          security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" 2>/dev/null || true
+          rm -rf ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision || true
