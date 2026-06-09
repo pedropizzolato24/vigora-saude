@@ -81,8 +81,10 @@ jobs:
           IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
 
       - name: Expo Prebuild (gera projeto iOS nativo)
-        run: npx expo prebuild --platform ios --non-interactive --no-install
+        # CI=1 substitui o antigo --non-interactive (não suportado pelo CLI atual)
+        run: npx expo prebuild --platform ios --no-install
         env:
+          CI: '1'
           EXPO_PUBLIC_REVENUECAT_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY || secrets.EXPO_PUBLIC_REVENUECAT_API_KEY }}
           EXPO_PUBLIC_API_BASE_URL: ${{ secrets.EXPO_PUBLIC_API_BASE_URL }}
           # Universal Links nativos (associatedDomains applinks:<host>) — lido em app.config.ts
