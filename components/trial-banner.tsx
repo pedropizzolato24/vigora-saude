@@ -3,7 +3,7 @@
  *
  * Banners de trial e expiração do Vigora Saúde Pro.
  *
- * - TrialBanner: exibido durante os 7 dias de trial gratuito
+ * - TrialBanner: exibido durante os 14 dias de trial gratuito
  * - ExpiredBanner: exibido após o trial expirar (sem assinatura ativa)
  *
  * Ambos redirecionam para o paywall ao serem tocados.
@@ -18,7 +18,7 @@ import { useColors } from "@/hooks/use-colors";
 // --- TrialBanner --------------------------------------------------------------
 
 /**
- * Exibido durante o trial gratuito de 7 dias.
+ * Exibido durante o trial gratuito de 14 dias.
  * Mostra quantos dias restam e convida o usuário a assinar.
  */
 export function TrialBanner() {
@@ -57,7 +57,7 @@ export function TrialBanner() {
 // --- ExpiredBanner ------------------------------------------------------------
 
 /**
- * Exibido após o trial de 7 dias expirar, sem assinatura ativa.
+ * Exibido após o trial de 14 dias expirar, sem assinatura ativa.
  * Urgência visual (vermelho) para converter o usuário.
  */
 export function ExpiredBanner() {

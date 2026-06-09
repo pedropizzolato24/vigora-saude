@@ -1,7 +1,9 @@
 import * as Haptics from 'expo-haptics';
+import * as Speech from 'expo-speech';
 import React, { useEffect, useState } from 'react';
 import { useAccessibility } from '@/lib/accessibility-context';
 import {
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -11,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useRouter } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
 import { WizardStep } from '@/components/wizard-step';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,8 +23,6 @@ import { BrandFonts } from '@/lib/_core/theme';
 import { useAppContext, type AnamnesesData } from '@/lib/app-context';
 import { exportAnamnesisToPDF } from '@/lib/pdf-utils-v2';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
-import { useProFeature } from '@/components/pro-gate';
-import { useProUpsell } from '@/components/pro-upsell-modal';
 
 const GENDER_OPTIONS: { value: AnamnesesData['gender']; label: string }[] = [
   { value: 'M', label: 'Masculino' },
@@ -45,13 +46,12 @@ export default function AnamnesisScreen() {
   const colors = useColors();
   const fs = useFontSize();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { state, dispatch } = useAppContext();
   const [form, setForm] = useState<AnamnesesData>(state.anamnesis ?? EMPTY_FORM);
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
   const { dialogProps, showDialog } = useAppDialog();
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
-  const { isPro } = useProFeature();
-  const { showUpsell, UpsellModal } = useProUpsell();
 
   useEffect(() => {
     if (state.anamnesis) {
@@ -63,41 +63,45 @@ export default function AnamnesisScreen() {
     setForm((f) => ({ ...f, [key]: value }));
   };
 
-  const handleSave = () => {
+  // Ao concluir (ou cancelar) o wizard, volta para a tela de onde o usuário
+  // veio — ficar parado no último passo confundia a navegação.
+  const leaveWizard = () => {
+    setWizardStep(1);
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/tudo' as any);
+    }
+  };
+
+  const handleSave = (): boolean => {
     if (!form.fullName.trim()) {
       showDialog({ title: 'Campo obrigatório', message: 'Por favor, informe seu nome completo.', variant: 'warning', buttons: [{ text: 'OK' }] });
-      return;
+      return false;
     }
     if (!form.birthDate.trim()) {
       showDialog({ title: 'Campo obrigatório', message: 'Por favor, informe sua data de nascimento.', variant: 'warning', buttons: [{ text: 'OK' }] });
-      return;
+      return false;
     }
 
     dispatch({ type: 'SET_ANAMNESIS', payload: form });
 
     if (Platform.OS !== 'web') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Speech.speak('Histórico médico salvo', { language: 'pt-BR' });
     }
-
-    showDialog({ title: 'Salvo!', message: 'Seu histórico médico foi salvo com sucesso.', variant: 'info', buttons: [{ text: 'OK' }] });
+    return true;
   };
 
-  const handleExport = async () => {
-    if (!isPro) {
-      showUpsell({
-        icon: 'picture-as-pdf',
-        title: 'Exportação PDF',
-        description: 'A exportação da ficha médica em PDF é exclusiva do plano Vigora Pro.',
-        benefit: 'Compartilhe sua ficha completa com médicos e hospitais em formato PDF profissional.',
-        features: [
-          'Exportação PDF da Anamnese',
-          'Compartilhamento por WhatsApp e e-mail',
-          'Contatos de emergência ilimitados',
-          'Alarmes ilimitados',
-        ],
-      });
-      return;
+  const handleWizardSave = () => {
+    if (handleSave()) {
+      leaveWizard();
     }
+  };
+
+  // Exportação em PDF liberada para todos — a experiência completa não é
+  // restringida por plano.
+  const handleExport = async () => {
     try {
       if (Platform.OS !== 'web') {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -123,7 +127,7 @@ export default function AnamnesisScreen() {
     } else if (wizardStep === 2) {
       setWizardStep(3);
     } else {
-      handleSave();
+      handleWizardSave();
     }
   };
 
@@ -143,12 +147,13 @@ export default function AnamnesisScreen() {
     ];
     return (
       <>
-      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
-        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.background }}>
+      <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar }}>
           <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Histórico médico</Text>
           <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Histórico médico pessoal</Text>
         </View>
-        <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {a11yFields.map((field) => (
             <View key={field.key} style={{ gap: 10 }}>
               <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>{field.label}</Text>
@@ -177,17 +182,28 @@ export default function AnamnesisScreen() {
               />
             </View>
           ))}
+          {/* Exportar PDF — liberado para todos */}
+          <Pressable
+            onPress={handleExport}
+            accessibilityRole="button"
+            accessibilityLabel="Exportar histórico médico em PDF"
+            style={({ pressed }) => [{ backgroundColor: ac.surface, borderRadius: 20, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, borderWidth: 3, borderColor: ac.primary, opacity: pressed ? 0.85 : 1 }]}
+          >
+            <MaterialIcons name="picture-as-pdf" size={32} color={ac.primary} />
+            <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.primary }}>Exportar PDF</Text>
+          </Pressable>
           {/* Save button */}
           <Pressable
-            onPress={handleSave}
+            onPress={handleWizardSave}
             accessibilityRole="button"
             accessibilityLabel="Salvar histórico médico"
-            style={({ pressed }) => [{ backgroundColor: ac.primary, borderRadius: 20, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, borderWidth: 3, borderColor: ac.primary, opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [{ backgroundColor: ac.success, borderRadius: 20, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, borderWidth: 3, borderColor: ac.success, opacity: pressed ? 0.85 : 1 }]}
           >
             <MaterialIcons name="save" size={32} color={ac.onPrimary} />
             <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.onPrimary }}>Salvar</Text>
           </Pressable>
         </ScrollView>
+        </KeyboardAvoidingView>
       </ScreenContainer>
       <AppDialog {...dialogProps} />
       </>
@@ -197,8 +213,8 @@ export default function AnamnesisScreen() {
   // --- NORMAL MODE --------------------------------------------------
   return (
     <ScreenContainer edges={['left', 'right']}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
+      {/* Header — só título; exportação fica no último passo do wizard */}
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'], fontFamily: BrandFonts.body }]}>
             Histórico médico
@@ -207,22 +223,13 @@ export default function AnamnesisScreen() {
             Suas informações de saúde
           </Text>
         </View>
-        <Pressable
-          onPress={handleExport}
-          style={({ pressed }) => [
-            styles.headerIconBtn,
-            { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.75 : 1 },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Exportar histórico médico em PDF"
-        >
-          <MaterialIcons name="share" size={22} color={colors.primary} />
-          <MaterialIcons name="star" size={11} color={colors.warning} style={styles.proStarIcon} />
-        </Pressable>
       </View>
 
       {/* Wizard container */}
-      <View style={styles.wizardContainer}>
+      <KeyboardAvoidingView
+        style={styles.wizardContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
         {/* Step 1 — Você */}
         {wizardStep === 1 && (
           <WizardStep
@@ -232,6 +239,7 @@ export default function AnamnesisScreen() {
             tagColor={colors.primary}
             question="Informações pessoais"
             onNext={handleWizardNext}
+            onCancel={leaveWizard}
             nextLabel="Continuar"
             nextDisabled={!form.fullName.trim() || !form.birthDate.trim()}
           >
@@ -440,6 +448,22 @@ export default function AnamnesisScreen() {
                 />
               </View>
 
+              {/* Exportar PDF — liberado para todos */}
+              <Pressable
+                onPress={handleExport}
+                style={({ pressed }) => [
+                  styles.exportBtn,
+                  { backgroundColor: colors.surface, borderColor: colors.primary, opacity: pressed ? 0.8 : 1 },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Exportar histórico médico em PDF"
+              >
+                <MaterialIcons name="picture-as-pdf" size={20} color={colors.primary} />
+                <Text style={[styles.exportBtnText, { color: colors.primary, fontSize: fs.base, fontFamily: BrandFonts.body }]}>
+                  Exportar ficha em PDF
+                </Text>
+              </Pressable>
+
               {/* Privacy Note */}
               <View style={[styles.privacyNote, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <MaterialIcons name="lock" size={16} color={colors.muted} />
@@ -450,10 +474,9 @@ export default function AnamnesisScreen() {
             </ScrollView>
           </WizardStep>
         )}
-      </View>
+      </KeyboardAvoidingView>
 
       <AppDialog {...dialogProps} />
-      <UpsellModal />
     </ScreenContainer>
   );
 }
@@ -469,18 +492,17 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 24, fontWeight: '800' },
   subtitle: { fontSize: 14, marginTop: 2 },
-  headerIconBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  exportBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    minHeight: 52,
+    paddingHorizontal: 16,
   },
-  proStarIcon: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-  },
+  exportBtnText: { fontWeight: '700' },
   wizardContainer: {
     flex: 1,
     padding: 20,

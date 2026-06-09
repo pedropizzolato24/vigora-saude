@@ -235,8 +235,8 @@ export default function HelpScreen() {
     // In accessibility mode, show a flat list of all FAQ items without nested collapsibles
     // Group by section but keep everything expanded for easier reading
     return (
-      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
-        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: ac.background }}>
+      <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: ac.bar }}>
           <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground, flex: 1 }}>Ajuda e FAQ</Text>
           <MaterialIcons name="help-outline" size={32} color={ac.primary} />
         </View>
@@ -285,7 +285,7 @@ export default function HelpScreen() {
   // --- NORMAL MODE --------------------------------------------------
   return (
     <ScreenContainer edges={['left', 'right']}>
-      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
         <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: fs['2xl'] }]}>Ajuda e FAQ</Text>
         <MaterialIcons name="help-outline" size={26} color={colors.primary} />
       </View>

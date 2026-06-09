@@ -6,10 +6,12 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  KeyboardAvoidingView,
   Platform,
   Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -22,6 +24,7 @@ import { useAccessibility } from '@/lib/accessibility-context';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { trpc } from '@/lib/trpc';
 import * as Auth from '@/lib/_core/auth';
+import { useAuth } from '@/hooks/use-auth';
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -44,9 +47,35 @@ export default function ProfileScreen() {
   const [bloodType, setBloodType] = useState('');
   const [phone, setPhone] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(state.profile.photoUri);
-  const [hasChanges, setHasChanges] = useState(false);
+  // O "Salvar" do cabeçalho foi removido (nenhum botão na área do título);
+  // o controle de mudanças continua para o reset pós-salvar.
+  const [, setHasChanges] = useState(false);
   const { dialogProps, showDialog } = useAppDialog();
   const updateProfile = trpc.auth.updateProfile.useMutation();
+  const router = useRouter();
+  const { logout } = useAuth({ autoFetch: false });
+
+  const handleLogout = () => {
+    showDialog({
+      title: 'Sair da conta',
+      message: 'Você vai precisar entrar novamente com o Google para usar o app. Seus dados continuam salvos na sua conta.',
+      variant: 'confirm',
+      buttons: [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sair',
+          style: 'destructive',
+          onPress: async () => {
+            if (Platform.OS !== 'web') {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            }
+            await logout();
+            router.replace('/login');
+          },
+        },
+      ],
+    });
+  };
 
   // Initial load: prefer server-synced values from registration; fall back to
   // the legacy local-only AppContext profile for older installs that pre-date
@@ -195,19 +224,13 @@ export default function ProfileScreen() {
     ];
     return (
       <>
-      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
-        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: ac.background }}>
+      <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
+        {/* Título apenas — salvar fica no botão grande no fim da tela */}
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar }}>
           <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Meu Perfil</Text>
-          {hasChanges && (
-            <TouchableOpacity
-              onPress={handleSave}
-              style={{ backgroundColor: ac.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14, borderWidth: 2, borderColor: ac.primary }}
-            >
-              <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.onPrimary }}>Salvar</Text>
-            </TouchableOpacity>
-          )}
         </View>
-        <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {/* Avatar */}
           <View style={{ alignItems: 'center', gap: 12 }}>
             <TouchableOpacity onPress={handlePhotoOptions} style={{ position: 'relative' }}>
@@ -266,7 +289,18 @@ export default function ProfileScreen() {
             <MaterialIcons name="save" size={32} color={ac.onPrimary} />
             <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.onPrimary }}>Salvar Perfil</Text>
           </TouchableOpacity>
+          {/* Logout — destrutivo, em vermelho (distinto dos botões comuns) */}
+          <TouchableOpacity
+            onPress={handleLogout}
+            accessibilityRole="button"
+            accessibilityLabel="Sair da conta"
+            style={{ backgroundColor: ac.background, borderRadius: 20, minHeight: 64, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, borderWidth: 3, borderColor: ac.emergency }}
+          >
+            <MaterialIcons name="logout" size={32} color={ac.emergency} />
+            <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.emergency }}>Sair da Conta</Text>
+          </TouchableOpacity>
         </ScrollView>
+        </KeyboardAvoidingView>
       </ScreenContainer>
       <AppDialog {...dialogProps} />
       </>
@@ -276,19 +310,13 @@ export default function ProfileScreen() {
   // --- NORMAL MODE --------------------------------------------------
   return (
     <ScreenContainer edges={['left', 'right']}>
-      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
+      {/* Título apenas — salvar fica no botão grande no fim da tela */}
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
         <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: fs['2xl'] }]}>Meu Perfil</Text>
-        {hasChanges && (
-          <TouchableOpacity
-            onPress={handleSave}
-            style={[styles.saveHeaderBtn, { backgroundColor: colors.primary }]}
-          >
-            <Text style={[styles.saveHeaderBtnText, { color: colors.onPrimary }]}>Salvar</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Avatar Section */}
         <View style={styles.avatarSection}>
           <TouchableOpacity onPress={handlePhotoOptions} style={styles.avatarContainer}>
@@ -405,8 +433,20 @@ export default function ProfileScreen() {
           <Text style={[styles.saveButtonText, { color: colors.onSuccess }]}>Salvar Perfil</Text>
         </TouchableOpacity>
 
+        {/* Logout — destrutivo, contorno vermelho */}
+        <TouchableOpacity
+          onPress={handleLogout}
+          accessibilityRole="button"
+          accessibilityLabel="Sair da conta"
+          style={[styles.logoutButton, { borderColor: colors.error, backgroundColor: colors.surface }]}
+        >
+          <MaterialIcons name="logout" size={22} color={colors.error} />
+          <Text style={[styles.saveButtonText, { color: colors.error }]}>Sair da Conta</Text>
+        </TouchableOpacity>
+
         <View style={{ height: 100 }} />
       </ScrollView>
+      </KeyboardAvoidingView>
       <AppDialog {...dialogProps} />
     </ScreenContainer>
   );
@@ -414,9 +454,6 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 20,
     paddingBottom: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -424,15 +461,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',
-  },
-  saveHeaderBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  saveHeaderBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
   },
   scrollContent: {
     padding: 20,
@@ -534,6 +562,18 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     gap: 8,
     marginTop: 8,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 56,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    gap: 8,
+    marginTop: 12,
+    borderWidth: 1.5,
   },
   saveButtonText: {
     fontSize: 17,

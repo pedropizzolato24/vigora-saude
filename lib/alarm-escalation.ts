@@ -139,7 +139,8 @@ async function tryServerApiEscalation(
   contacts: EmergencyContact[],
   userName: string | undefined,
   missedCount: number,
-  locationUrl?: string
+  locationUrl?: string,
+  alertType: 'missed_alarm' | 'sos' = 'missed_alarm'
 ): Promise<{ sent: number; failed: number; configured: boolean }> {
   try {
     // Dynamic imports to avoid circular dependencies
@@ -198,6 +199,7 @@ async function tryServerApiEscalation(
           userName,
           missedAlarmCount: missedCount,
           locationUrl,
+          alertType,
         },
       }),
     });
@@ -310,6 +312,98 @@ export async function escalateAlarmToContacts(
   };
 
   console.log(`[Escalation] Complete: method=${method}, total sent=${result.totalSent}`);
+  return result;
+}
+
+/**
+ * Build the SOS message text — the USER pressed the panic button and the
+ * CONTACTS must be told that the user needs help (never the other way around).
+ */
+function buildSOSMessage(userName: string | undefined, locationUrl?: string): string {
+  const name = userName?.trim() || 'O usuário do Vigora Saúde';
+  const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  let message =
+    `🆘 SOS — VIGORA SAÚDE 🆘\n\n` +
+    `${name} acionou o botão de EMERGÊNCIA às ${timestamp} e precisa de ajuda AGORA.\n` +
+    `Por favor, entre em contato imediatamente ou vá até a pessoa.`;
+
+  if (locationUrl) {
+    message += `\n\n📍 Localização atual:\n${locationUrl}`;
+  }
+
+  return message;
+}
+
+/**
+ * SOS escalation: alerts the user's emergency CONTACTS that the USER needs help.
+ *
+ * Diferente da escalação de alarme (deep link primeiro), o SOS tenta o canal
+ * AUTOMÁTICO primeiro (servidor / WhatsApp Business) — quem apertou SOS pode
+ * não conseguir tocar "Enviar" em cada conversa do WhatsApp. O deep link fica
+ * como fallback quando o servidor não está configurado/disponível.
+ */
+export async function escalateSOSToContacts(
+  contacts: EmergencyContact[],
+  userName?: string
+): Promise<EscalationResult> {
+  const whatsappContacts = contacts.filter((c) => c.whatsapp);
+
+  if (whatsappContacts.length === 0) {
+    console.log('[SOS] No WhatsApp contacts available');
+    return {
+      method: 'none',
+      deepLinkSent: 0,
+      deepLinkFailed: 0,
+      serverApiSent: 0,
+      serverApiFailed: 0,
+      totalSent: 0,
+      totalFailed: contacts.length,
+    };
+  }
+
+  const location = (await getUserLocation()) || undefined;
+  const locationUrl = location
+    ? generateMapsLink(location.latitude, location.longitude)
+    : undefined;
+
+  // Step 1: automatic server send (Business API) — no user interaction needed
+  console.log('[SOS] Step 1: Trying server API (automatic)...');
+  const serverApiResult = await tryServerApiEscalation(
+    whatsappContacts,
+    userName,
+    1,
+    locationUrl,
+    'sos'
+  );
+
+  // Step 2: deep link fallback when the server couldn't deliver
+  let deepLinkResult = { sent: 0, failed: 0 };
+  if (serverApiResult.sent === 0) {
+    console.log('[SOS] Step 2: Server unavailable, falling back to deep link...');
+    const message = buildSOSMessage(userName, locationUrl);
+    deepLinkResult = await tryDeepLinkEscalation(whatsappContacts, message);
+  }
+
+  let method: EscalationResult['method'] = 'none';
+  if (serverApiResult.sent > 0 && deepLinkResult.sent > 0) method = 'both';
+  else if (serverApiResult.sent > 0) method = 'server_api';
+  else if (deepLinkResult.sent > 0) method = 'deeplink';
+
+  const result: EscalationResult = {
+    method,
+    deepLinkSent: deepLinkResult.sent,
+    deepLinkFailed: deepLinkResult.failed,
+    serverApiSent: serverApiResult.sent,
+    serverApiFailed: serverApiResult.failed,
+    totalSent: serverApiResult.sent + deepLinkResult.sent,
+    totalFailed: Math.min(
+      serverApiResult.failed,
+      deepLinkResult.sent > 0 || serverApiResult.sent > 0 ? deepLinkResult.failed : whatsappContacts.length
+    ),
+  };
+
+  console.log(`[SOS] Complete: method=${method}, total sent=${result.totalSent}`);
   return result;
 }
 

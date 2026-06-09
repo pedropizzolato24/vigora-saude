@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { useAccessibility } from '@/lib/accessibility-context';
 import {
   FlatList,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -26,8 +27,6 @@ import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { BrandFonts } from '@/lib/_core/theme';
 import { generateId, useAppContext, type EmergencyContact } from '@/lib/app-context';
-import { useProFeature, FREE_LIMITS, ProLimitBadge } from '@/components/pro-gate';
-import { useProUpsell } from '@/components/pro-upsell-modal';
 
 // ─── Relation options for the 2×3 grid ──────────────────────────────────────
 
@@ -76,27 +75,10 @@ export default function ContactsScreen() {
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
   const { dialogProps, showDialog } = useAppDialog();
   const { toastProps, showToast } = useAppToast();
-  const { checkLimit } = useProFeature();
-  const { showUpsell, UpsellModal } = useProUpsell();
 
   // ─── Actions ───────────────────────────────────────────────────────────────
 
   const openAddModal = () => {
-    if (state.emergencyContacts.length >= FREE_LIMITS.CONTACTS) {
-      showUpsell({
-        icon: 'people',
-        title: 'Contatos Ilimitados',
-        description: `Você atingiu o limite de ${FREE_LIMITS.CONTACTS} contatos no plano gratuito.`,
-        benefit: 'Com o Vigora Pro, adicione quantos contatos de emergência precisar - sem restrições.',
-        features: [
-          'Contatos de emergência ilimitados',
-          'Importação ilimitada da agenda',
-          'Alarmes ilimitados',
-          'Exportação PDF da Anamnese',
-        ],
-      });
-      return;
-    }
     setEditingContact(null);
     setForm(EMPTY_FORM);
     setWizardStep(1);
@@ -251,8 +233,8 @@ export default function ContactsScreen() {
   // ─── ACCESSIBILITY MODE ────────────────────────────────────────────────────
   if (isAccessibilityMode) {
     return (
-      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
-        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: ac.background }}>
+      <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: ac.bar }}>
           <View>
             <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Quem te ajuda numa emergência?</Text>
             <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>{state.emergencyContacts.length} contato(s)</Text>
@@ -328,63 +310,75 @@ export default function ContactsScreen() {
         {/* Simplified add/edit modal — a11y mode */}
         <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setModalVisible(false)}>
           <View style={{ flex: 1, backgroundColor: ac.background }}>
-            <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Pressable
-                onPress={() => setModalVisible(false)}
-                style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-                accessibilityRole="button"
-                accessibilityLabel="Cancelar"
-              >
-                <Text style={{ fontSize: af.md, color: ac.muted, fontWeight: '600' }}>Cancelar</Text>
-              </Pressable>
+            {/* Título apenas — ações ficam na barra inferior */}
+            <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, alignItems: 'center', backgroundColor: ac.bar }}>
               <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>{editingContact ? 'Editar Contato' : 'Novo Contato'}</Text>
-              <Pressable
-                onPress={handleSave}
-                style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
-                accessibilityRole="button"
-                accessibilityLabel="Salvar contato"
-              >
-                <Text style={{ fontSize: af.md, color: ac.primary, fontWeight: '800' }}>Salvar</Text>
-              </Pressable>
             </View>
-            <ScrollView contentContainerStyle={{ padding: 24, gap: 24 }}>
-              {[{ label: 'Nome', key: 'name' as const, placeholder: 'Ex: Maria Silva', keyboard: 'default' as const }, { label: 'Telefone', key: 'phone' as const, placeholder: 'Ex: (11) 99999-9999', keyboard: 'phone-pad' as const }].map((field) => (
-                <View key={field.key} style={{ gap: 10 }}>
-                  <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>{field.label}</Text>
+            <KeyboardAvoidingView
+              style={{ flex: 1 }}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            >
+              <ScrollView
+                contentContainerStyle={{ padding: 24, gap: 24 }}
+                keyboardShouldPersistTaps="handled"
+              >
+                {[{ label: 'Nome', key: 'name' as const, placeholder: 'Ex: Maria Silva', keyboard: 'default' as const }, { label: 'Telefone', key: 'phone' as const, placeholder: 'Ex: (11) 99999-9999', keyboard: 'phone-pad' as const }].map((field) => (
+                  <View key={field.key} style={{ gap: 10 }}>
+                    <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>{field.label}</Text>
+                    <TextInput
+                      value={form[field.key]}
+                      onChangeText={(v) => {
+                        if (field.key === 'phone') {
+                          setForm((f) => ({ ...f, phone: formatPhone(v) }));
+                        } else {
+                          setForm((f) => ({ ...f, [field.key]: v }));
+                        }
+                      }}
+                      placeholder={field.placeholder}
+                      placeholderTextColor={ac.muted}
+                      keyboardType={field.keyboard}
+                      style={{ backgroundColor: ac.surface, color: ac.foreground, borderColor: ac.border, borderWidth: 2, borderRadius: 16, padding: 18, fontSize: af.md, fontWeight: '500' }}
+                      returnKeyType="done"
+                    />
+                  </View>
+                ))}
+                <View style={{ gap: 10 }}>
+                  <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>E-mail <Text style={{ fontSize: af.sm, color: ac.muted, fontWeight: '400' }}>(opcional)</Text></Text>
                   <TextInput
-                    value={form[field.key]}
-                    onChangeText={(v) => {
-                      if (field.key === 'phone') {
-                        setForm((f) => ({ ...f, phone: formatPhone(v) }));
-                      } else {
-                        setForm((f) => ({ ...f, [field.key]: v }));
-                      }
-                    }}
-                    placeholder={field.placeholder}
+                    value={form.email ?? ''}
+                    onChangeText={(v) => setForm((f) => ({ ...f, email: v.trim() }))}
+                    placeholder="Ex: maria@email.com"
                     placeholderTextColor={ac.muted}
-                    keyboardType={field.keyboard}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
                     style={{ backgroundColor: ac.surface, color: ac.foreground, borderColor: ac.border, borderWidth: 2, borderRadius: 16, padding: 18, fontSize: af.md, fontWeight: '500' }}
                     returnKeyType="done"
+                    maxLength={320}
                   />
+                  <Text style={{ fontSize: af.sm, color: ac.muted }}>Usado se o WhatsApp não funcionar.</Text>
                 </View>
-              ))}
-              <View style={{ gap: 10 }}>
-                <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>E-mail <Text style={{ fontSize: af.sm, color: ac.muted, fontWeight: '400' }}>(opcional)</Text></Text>
-                <TextInput
-                  value={form.email ?? ''}
-                  onChangeText={(v) => setForm((f) => ({ ...f, email: v.trim() }))}
-                  placeholder="Ex: maria@email.com"
-                  placeholderTextColor={ac.muted}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  style={{ backgroundColor: ac.surface, color: ac.foreground, borderColor: ac.border, borderWidth: 2, borderRadius: 16, padding: 18, fontSize: af.md, fontWeight: '500' }}
-                  returnKeyType="done"
-                  maxLength={320}
-                />
-                <Text style={{ fontSize: af.sm, color: ac.muted }}>Usado se o WhatsApp não funcionar.</Text>
+              </ScrollView>
+              {/* Barra inferior de ações: Cancelar + Salvar */}
+              <View style={{ flexDirection: 'row', gap: 12, padding: 20, paddingBottom: Math.max(insets.bottom, 20), borderTopWidth: 2, borderTopColor: ac.border, backgroundColor: ac.bar }}>
+                <Pressable
+                  onPress={() => setModalVisible(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancelar"
+                  style={({ pressed }) => [{ flex: 1, minHeight: 64, borderRadius: 16, borderWidth: 3, borderColor: ac.muted, backgroundColor: ac.surface, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.foreground }}>Cancelar</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleSave}
+                  accessibilityRole="button"
+                  accessibilityLabel="Salvar contato"
+                  style={({ pressed }) => [{ flex: 1.5, minHeight: 64, borderRadius: 16, backgroundColor: ac.success, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.85 : 1 }]}
+                >
+                  <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.onPrimary }}>Salvar</Text>
+                </Pressable>
               </View>
-            </ScrollView>
+            </KeyboardAvoidingView>
           </View>
         </Modal>
         <AppDialog {...dialogProps} />
@@ -396,8 +390,8 @@ export default function ContactsScreen() {
   // ─── NORMAL MODE ──────────────────────────────────────────────────────────
   return (
     <ScreenContainer edges={["left", "right"]}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
+      {/* Header — só título, sem botões (ações ficam no corpo/rodapé) */}
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'], fontFamily: BrandFonts.body }]}>
             Quem podemos avisar?
@@ -406,26 +400,6 @@ export default function ContactsScreen() {
             {state.emergencyContacts.length} contato(s) de emergência
           </Text>
         </View>
-        <Pressable
-          onPress={handleImportFromDevice}
-          style={({ pressed }) => [
-            styles.headerIconBtn,
-            { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.75 : 1 },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Importar contato da agenda do celular"
-        >
-          <MaterialIcons name="contacts" size={22} color={colors.foreground} />
-        </Pressable>
-      </View>
-
-      {/* Pro Limit Badge */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-        <ProLimitBadge
-          current={state.emergencyContacts.length}
-          limit={FREE_LIMITS.CONTACTS}
-          label="contatos"
-        />
       </View>
 
       {/* Emergency warning banner — prominent */}
@@ -465,8 +439,8 @@ export default function ContactsScreen() {
         />
       )}
 
-      {/* Add button — full width, min 56dp */}
-      <View style={[styles.addBtnContainer, { borderTopColor: colors.border }]}>
+      {/* Add + import — full width, min 56dp */}
+      <View style={[styles.addBtnContainer, { borderTopColor: colors.border, backgroundColor: colors.bar }]}>
         <Pressable
           onPress={openAddModal}
           style={({ pressed }) => [
@@ -478,7 +452,21 @@ export default function ContactsScreen() {
         >
           <MaterialIcons name="add" size={22} color={colors.onEmergency} />
           <Text style={[styles.addBtnText, { color: colors.onEmergency, fontSize: fs.md, fontFamily: BrandFonts.body }]}>
-            + Adicionar contato
+            Adicionar contato
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={handleImportFromDevice}
+          style={({ pressed }) => [
+            styles.importListBtn,
+            { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.75 : 1 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Importar contato da agenda do celular"
+        >
+          <MaterialIcons name="contacts" size={18} color={colors.primary} />
+          <Text style={[styles.importListBtnText, { color: colors.primary, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
+            Importar da agenda
           </Text>
         </Pressable>
       </View>
@@ -491,24 +479,18 @@ export default function ContactsScreen() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={[styles.modal, { backgroundColor: colors.background }]}>
-          {/* Modal Header */}
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
-            <Pressable
-              onPress={() => setModalVisible(false)}
-              style={({ pressed }) => [styles.modalClose, pressed && { opacity: 0.6 }]}
-              accessibilityRole="button"
-              accessibilityLabel="Cancelar"
-            >
-              <Text style={[styles.modalCloseText, { color: colors.muted, fontSize: fs.base }]}>Cancelar</Text>
-            </Pressable>
+          {/* Modal Header — título apenas; Cancelar fica na barra inferior do wizard */}
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 16 }]}>
             <Text style={[styles.modalTitle, { color: colors.foreground, fontSize: fs.xl, fontFamily: BrandFonts.body }]}>
               Novo Contato
             </Text>
-            <View style={styles.modalClose} />
           </View>
 
           {/* Wizard Steps */}
-          <View style={styles.wizardContainer}>
+          <KeyboardAvoidingView
+            style={styles.wizardContainer}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
             {wizardStep === 1 && (
               <WizardStep
                 total={3}
@@ -517,6 +499,7 @@ export default function ContactsScreen() {
                 tagColor={colors.emergency}
                 question="Qual é a relação com você?"
                 onNext={handleWizardNext}
+                onCancel={() => setModalVisible(false)}
                 nextLabel="Continuar"
               >
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.wizardStepContent}>
@@ -681,7 +664,7 @@ export default function ContactsScreen() {
                 </ScrollView>
               </WizardStep>
             )}
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
@@ -693,29 +676,18 @@ export default function ContactsScreen() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={[styles.modal, { backgroundColor: colors.background }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
-            <Pressable
-              onPress={() => setModalVisible(false)}
-              style={({ pressed }) => [styles.modalClose, pressed && { opacity: 0.6 }]}
-              accessibilityRole="button"
-              accessibilityLabel="Cancelar"
-            >
-              <Text style={[styles.modalCloseText, { color: colors.muted, fontSize: fs.base }]}>Cancelar</Text>
-            </Pressable>
+          {/* Título apenas — Cancelar/Salvar ficam na barra inferior */}
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 16 }]}>
             <Text style={[styles.modalTitle, { color: colors.foreground, fontSize: fs.xl, fontFamily: BrandFonts.body }]}>
               Editar Contato
             </Text>
-            <Pressable
-              onPress={handleSave}
-              style={({ pressed }) => [styles.modalSave, pressed && { opacity: 0.7 }]}
-              accessibilityRole="button"
-              accessibilityLabel="Salvar alterações"
-            >
-              <Text style={[styles.modalSaveText, { color: colors.primary, fontSize: fs.base }]}>Salvar</Text>
-            </Pressable>
           </View>
 
-          <ScrollView contentContainerStyle={styles.modalContent}>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+          <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
             <View style={styles.formGroup}>
               <Text style={[styles.formLabel, { color: colors.foreground, fontSize: fs.base }]}>Nome completo *</Text>
               <TextInput
@@ -811,6 +783,41 @@ export default function ContactsScreen() {
               />
             </View>
           </ScrollView>
+
+          {/* Barra inferior de ações: Cancelar + Salvar */}
+          <View style={[styles.modalActionBar, { borderTopColor: colors.border, backgroundColor: colors.bar, paddingBottom: Math.max(insets.bottom, 16) }]}>
+            <Pressable
+              onPress={() => setModalVisible(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Cancelar edição"
+              style={({ pressed }) => [
+                styles.modalActionBtn,
+                styles.modalActionGhost,
+                { borderColor: colors.muted, backgroundColor: colors.surface },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <Text style={[styles.modalActionText, { color: colors.foreground, fontSize: fs.md, fontFamily: BrandFonts.body }]}>
+                Cancelar
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={handleSave}
+              accessibilityRole="button"
+              accessibilityLabel="Salvar alterações"
+              style={({ pressed }) => [
+                styles.modalActionBtn,
+                styles.modalActionPrimary,
+                { backgroundColor: colors.success },
+                pressed && { opacity: 0.9 },
+              ]}
+            >
+              <Text style={[styles.modalActionText, { color: colors.onSuccess, fontSize: fs.md, fontFamily: BrandFonts.body }]}>
+                Salvar
+              </Text>
+            </Pressable>
+          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
@@ -822,19 +829,11 @@ export default function ContactsScreen() {
         onRequestClose={() => setImportModalVisible(false)}
       >
         <View style={[styles.modal, { backgroundColor: colors.background }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
-            <Pressable
-              onPress={() => setImportModalVisible(false)}
-              style={({ pressed }) => [styles.modalClose, pressed && { opacity: 0.6 }]}
-              accessibilityRole="button"
-              accessibilityLabel="Fechar importação de contatos"
-            >
-              <Text style={[styles.modalCloseText, { color: colors.muted, fontSize: fs.base }]}>Fechar</Text>
-            </Pressable>
+          {/* Título apenas — Fechar fica na barra inferior */}
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 16 }]}>
             <Text style={[styles.modalTitle, { color: colors.foreground, fontSize: fs.xl, fontFamily: BrandFonts.body }]}>
               Importar Contato
             </Text>
-            <View style={{ minWidth: 70 }} />
           </View>
 
           {/* Search Bar */}
@@ -902,12 +901,30 @@ export default function ContactsScreen() {
               </View>
             }
           />
+
+          {/* Fechar — barra inferior */}
+          <View style={[styles.modalActionBar, { borderTopColor: colors.border, backgroundColor: colors.bar, paddingBottom: Math.max(insets.bottom, 16) }]}>
+            <Pressable
+              onPress={() => setImportModalVisible(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Fechar importação de contatos"
+              style={({ pressed }) => [
+                styles.modalActionBtn,
+                styles.modalActionGhost,
+                { borderColor: colors.muted, backgroundColor: colors.surface },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <Text style={[styles.modalActionText, { color: colors.foreground, fontSize: fs.md, fontFamily: BrandFonts.body }]}>
+                Fechar
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </Modal>
 
       <AppDialog {...dialogProps} />
       <AppToast {...toastProps} />
-      <UpsellModal />
     </ScreenContainer>
   );
 }
@@ -925,13 +942,6 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 24, fontWeight: '800' },
   subtitle: { fontSize: 14, marginTop: 2 },
-  headerIconBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   warningBanner: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -957,6 +967,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 8,
   },
   addBtn: {
     flexDirection: 'row',
@@ -967,21 +978,47 @@ const styles = StyleSheet.create({
     minHeight: 56,
   },
   addBtnText: { fontWeight: '700' },
-  modal: { flex: 1 },
-  modalHeader: {
+  importListBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    minHeight: 48,
+  },
+  importListBtnText: { fontWeight: '600' },
+  modal: { flex: 1 },
+  modalHeader: {
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingBottom: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  modalClose: { padding: 4, minWidth: 70 },
-  modalCloseText: { fontWeight: '500' },
   modalTitle: { fontWeight: '600' },
-  modalSave: { padding: 4, minWidth: 70, alignItems: 'flex-end' },
-  modalSaveText: { fontWeight: '600' },
   modalContent: { padding: 20, gap: 20 },
+  modalActionBar: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  modalActionBtn: {
+    minHeight: 56,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  modalActionGhost: {
+    flex: 1,
+    borderWidth: 2,
+  },
+  modalActionPrimary: {
+    flex: 1.5,
+  },
+  modalActionText: { fontWeight: '800' },
   wizardContainer: {
     flex: 1,
     padding: 20,

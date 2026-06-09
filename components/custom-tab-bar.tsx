@@ -52,9 +52,10 @@ export function CustomTabBar() {
         {
           height: tabBarHeight,
           paddingBottom: bottomPadding,
-          backgroundColor: isAccessibilityMode ? ac.background : colors.background,
+          backgroundColor: isAccessibilityMode ? ac.bar : colors.bar,
           borderTopColor: isAccessibilityMode ? ac.border : colors.border,
           borderTopWidth: isAccessibilityMode ? 2 : 0.5,
+          shadowColor: '#000000',
         },
       ]}
     >
@@ -133,6 +134,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 0.5,
     paddingTop: 6,
     alignItems: 'flex-start',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 12,
   },
   tab: {
     flex: 1,

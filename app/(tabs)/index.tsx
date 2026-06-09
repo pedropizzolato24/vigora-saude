@@ -26,6 +26,7 @@ import { MonitoringStatusBadge } from '@/components/monitoring-status-badge';
 import { usePurchases } from '@/hooks/use-purchases';
 import { SosStrip } from '@/components/sos-strip';
 import { BigTile } from '@/components/big-tile';
+import { escalateSOSToContacts } from '@/lib/alarm-escalation';
 import { trpc } from '@/lib/trpc';
 
 export default function DashboardScreen() {
@@ -50,23 +51,30 @@ export default function DashboardScreen() {
 
   const activateSOS = React.useCallback(async () => {
     dispatch({ type: 'TRIGGER_SOS' });
-    for (const contact of state.emergencyContacts) {
-      await sendNotification(
-        'EMERGÊNCIA SOS',
-        `${contact.name} precisa de ajuda urgente!`,
-        { type: 'sos', contactId: contact.id }
-      );
-    }
-    if (state.emergencyContacts.length === 0) {
-      await sendNotification(
-        'EMERGÊNCIA SOS ATIVADO',
-        'SOS ativado. Cadastre contatos de emergência para notificá-los.',
-        { type: 'sos' }
-      );
-    }
     setSosActivatedAt(Date.now());
     setSosActiveVisible(true);
-  }, [state.emergencyContacts, dispatch, sendNotification]);
+
+    if (state.emergencyContacts.length === 0) {
+      await sendNotification(
+        'SOS ativado',
+        'Nenhum contato de emergência cadastrado. Adicione contatos para que eles sejam avisados.',
+        { type: 'sos' }
+      );
+      return;
+    }
+
+    // Avisa os CONTATOS (WhatsApp via servidor, com fallback de deep link) de
+    // que o USUÁRIO precisa de ajuda. A notificação local é só a confirmação
+    // para o próprio usuário — nunca o alerta em si.
+    escalateSOSToContacts(state.emergencyContacts, state.profile.name).catch((err) =>
+      console.error('[SOS] Escalation failed:', err)
+    );
+    await sendNotification(
+      'SOS ativado',
+      'Seus contatos de emergência estão sendo avisados de que você precisa de ajuda.',
+      { type: 'sos' }
+    );
+  }, [state.emergencyContacts, state.profile.name, dispatch, sendNotification]);
 
   const handleSOS = () => {
     if (Platform.OS !== 'web') {
@@ -89,7 +97,7 @@ export default function DashboardScreen() {
     const as_ = a11ySpacing;
 
     return (
-      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
+      <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: a11yColors.background }}>
         <ScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 20 }}
           showsVerticalScrollIndicator={false}

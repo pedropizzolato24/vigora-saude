@@ -2,6 +2,7 @@ import * as Haptics from 'expo-haptics';
 import { startCountdownNotification, stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
+  KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
@@ -25,10 +26,7 @@ import { useThemeContext } from '@/lib/theme-provider';
 import { useFontSize } from '@/lib/font-size-context';
 import { useAccessibility } from '@/lib/accessibility-context';
 import { MonitoringStatusPanel } from '@/components/monitoring-status-panel';
-import { usePurchases } from '@/hooks/use-purchases';
-import { useRouter } from 'expo-router';
-import { ProGate, ProBanner } from '@/components/pro-gate';
-import { useProUpsell } from '@/components/pro-upsell-modal';
+import { TrialBanner, ExpiredBanner } from '@/components/trial-banner';
 import { scheduleCheckin, cancelCheckin } from '@/lib/checkin-service';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
@@ -175,9 +173,6 @@ export default function SettingsScreen() {
   const fs = useFontSize();
   const { settings } = state;
   const { dialogProps, showDialog } = useAppDialog();
-  const { isPro } = usePurchases();
-  const router = useRouter();
-  const { showUpsell, UpsellModal } = useProUpsell();
 
   const [countdownTestActive, setCountdownTestActive] = useState(false);
   const [countdownTestSecondsLeft, setCountdownTestSecondsLeft] = useState(10);
@@ -391,8 +386,8 @@ export default function SettingsScreen() {
   // --- ACCESSIBILITY MODE --------------------------------------------------
   if (isAccessibilityMode) {
     return (
-      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
-        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.background }}>
+      <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar }}>
           <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Configurações</Text>
         </View>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
@@ -652,12 +647,13 @@ export default function SettingsScreen() {
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
         <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: fs['2xl'] }]}>Configurações</Text>
         <Text style={[styles.headerSubtitle, { color: colors.muted, fontSize: fs.sm }]}>Personalize sua experiência</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
         {/* ═══ ACCESSIBILITY TOGGLE (always at top, outside any group) ═══ */}
         <Pressable
@@ -723,34 +719,8 @@ export default function SettingsScreen() {
         </Pressable>
 
         {/* ═══ STATUS DO MONITORAMENTO (abaixo de Acessibilidade) ═══ */}
-        <ProGate
-          fallback={
-            <Pressable
-              onPress={() => showUpsell({
-                icon: 'monitor-heart',
-                title: 'Monitoramento Contínuo',
-                description: 'O monitoramento contínuo de saúde é exclusivo do plano Vigora Pro.',
-                benefit: 'Receba alertas automáticos quando seus alarmes não forem respondidos e mantenha sua saúde sempre monitorada.',
-                features: [
-                  'Monitoramento contínuo de saúde',
-                  'Alertas automáticos de alarmes perdidos',
-                  'Contatos de emergência ilimitados',
-                  'Exportação PDF da Anamnese',
-                ],
-              })}
-              style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
-            >
-              <ProBanner
-                title="Monitoramento Contínuo"
-                description="Receba alertas automáticos quando seus alarmes não forem respondidos. Exclusivo para assinantes Pro."
-                icon="monitor-heart"
-                variant="card"
-              />
-            </Pressable>
-          }
-        >
-          <MonitoringStatusPanel accessible={false} />
-        </ProGate>
+        {/* Liberado para todos — a experiência completa não é restrita por plano. */}
+        <MonitoringStatusPanel accessible={false} />
 
         {/* ═══ SECTION 1: Notificações e Alarmes ═══ */}
         <CollapsibleSection
@@ -1461,39 +1431,9 @@ export default function SettingsScreen() {
           </View>
         </CollapsibleSection>
 
-        {/* ═══ SECTION 6: Vigora Pro ═══ */}
-        <View style={[styles.proCard, { backgroundColor: isPro ? colors.success + '18' : colors.primary + '12', borderColor: isPro ? colors.success + '55' : colors.primary + '44' }]}>
-          <View style={styles.proCardHeader}>
-            <View style={[styles.proIconBadge, { backgroundColor: isPro ? colors.success + '22' : colors.primary + '22' }]}>
-              <MaterialIcons name={isPro ? 'verified' : 'star'} size={24} color={isPro ? colors.success : colors.primary} />
-            </View>
-            <View style={styles.proCardInfo}>
-              <Text style={[styles.proCardTitle, { color: colors.foreground, fontSize: fs.base }]}>
-                {isPro ? 'Vigora Saúde Pro ✓' : 'Vigora Saúde Pro'}
-              </Text>
-              <Text style={[styles.proCardSubtitle, { color: colors.muted, fontSize: fs.sm }]}>
-                {isPro ? 'Assinatura ativa - todos os recursos desbloqueados' : 'Desbloqueie todos os recursos premium'}
-              </Text>
-            </View>
-          </View>
-          {isPro ? (
-            <Pressable
-              onPress={() => router.push('/(modal)/customer-center')}
-              style={({ pressed }) => [styles.proButton, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <Text style={[styles.proButtonText, { color: colors.foreground, fontSize: fs.sm }]}>Gerenciar assinatura</Text>
-              <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={() => router.push('/(modal)/paywall')}
-              style={({ pressed }) => [styles.proButton, { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <MaterialIcons name="star" size={16} color={colors.onPrimary} />
-              <Text style={[styles.proButtonText, { color: colors.onPrimary, fontSize: fs.sm }]}>Assinar Vigora Pro</Text>
-            </Pressable>
-          )}
-        </View>
+        {/* ═══ Trial / assinatura: nada é exibido para quem já paga ═══ */}
+        <TrialBanner />
+        <ExpiredBanner />
 
         {/* ═══ Footer: Sobre e Legal ═══ */}
         <View style={styles.footerSection}>
@@ -1543,8 +1483,8 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
       <AppDialog {...dialogProps} />
-      <UpsellModal />
     </ScreenContainer>
   );
 }
@@ -1814,47 +1754,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: 'center',
     lineHeight: 16,
-  },
-  proCard: {
-    borderRadius: 16,
-    borderWidth: 1.5,
-    padding: 16,
-    gap: 12,
-  },
-  proCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  proIconBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  proCardInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  proCardTitle: {
-    fontWeight: '700',
-  },
-  proCardSubtitle: {
-    lineHeight: 18,
-  },
-  proButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  proButtonText: {
-    fontWeight: '600',
   },
 });

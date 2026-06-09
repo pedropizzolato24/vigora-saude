@@ -10,6 +10,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenContainer } from '@/components/screen-container';
+import { TrialBanner, ExpiredBanner } from '@/components/trial-banner';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { useAccessibility } from '@/lib/accessibility-context';
@@ -26,58 +27,50 @@ interface TileConfig {
   icon: React.ComponentProps<typeof MaterialIcons>['name'];
   colorToken: 'emergency' | 'success' | 'primary' | 'muted' | 'warning';
   route: string;
+  /** Tile achatado que ocupa a linha inteira (2 colunas) */
+  wide?: boolean;
 }
 
+// "Meu Perfil" não tem tile: o card de identidade no topo leva ao perfil.
 const TILES: TileConfig[] = [
   { label: 'Contatos de Emergência', icon: 'people', colorToken: 'emergency', route: '/(tabs)/contacts' },
   { label: 'Ambulância', icon: 'local-hospital', colorToken: 'emergency', route: '/(tabs)/ambulance' },
   { label: 'Localização', icon: 'location-on', colorToken: 'success', route: '/(tabs)/location' },
   { label: 'Histórico Médico', icon: 'description', colorToken: 'primary', route: '/(tabs)/anamnesis' },
-  { label: 'Meu Perfil', icon: 'person', colorToken: 'primary', route: '/(tabs)/profile' },
-  { label: 'Configurações', icon: 'settings', colorToken: 'muted', route: '/(tabs)/settings' },
-  { label: 'Ajuda', icon: 'help-outline', colorToken: 'muted', route: '/(tabs)/help' },
   { label: 'Convidar Cuidador', icon: 'person-add', colorToken: 'warning', route: '/(tabs)/invite-caregiver' },
+  { label: 'Configurações', icon: 'settings', colorToken: 'muted', route: '/(tabs)/settings' },
+  { label: 'Ajuda', icon: 'help-outline', colorToken: 'muted', route: '/(tabs)/help', wide: true },
 ];
 
 // ---------------------------------------------------------------------------
-// TudoTile — vertical grid tile
+// TudoTile — vertical grid tile (or wide flat tile)
 // ---------------------------------------------------------------------------
+
+interface TilePalette {
+  surface: string;
+  border: string;
+  label: string;
+  iconColor: string;
+  iconBg: string;
+}
 
 interface TudoTileProps {
   tile: TileConfig;
+  palette: TilePalette;
   onPress: () => void;
   isAccessibilityMode: boolean;
 }
 
-function TudoTile({ tile, onPress, isAccessibilityMode }: TudoTileProps) {
-  const colors = useColors();
+function TudoTile({ tile, palette, onPress, isAccessibilityMode }: TudoTileProps) {
   const fs = useFontSize();
+  const { a11yFontSize: af } = useAccessibility();
 
-  // Map colorToken to icon color and container bg
-  const iconColor = (() => {
-    switch (tile.colorToken) {
-      case 'emergency': return colors.emergency;
-      case 'success': return colors.success;
-      case 'primary': return colors.primary;
-      case 'muted': return colors.muted;
-      case 'warning': return colors.warning;
-    }
-  })();
-
-  const iconBg = (() => {
-    switch (tile.colorToken) {
-      case 'emergency': return colors.emergencyLight;
-      case 'success': return colors.successLight;
-      case 'primary': return colors.primaryLight;
-      case 'muted': return colors.border;
-      case 'warning': return colors.warningLight;
-    }
-  })();
-
-  const minHeight = isAccessibilityMode ? 130 : 110;
+  const minHeight = tile.wide
+    ? (isAccessibilityMode ? 84 : 68)
+    : (isAccessibilityMode ? 130 : 110);
   const iconContainerSize = isAccessibilityMode ? 56 : 46;
   const iconSize = isAccessibilityMode ? 30 : 24;
-  const labelSize = isAccessibilityMode ? fs.md : fs.sm;
+  const labelSize = isAccessibilityMode ? af.md : fs.sm;
 
   return (
     <Pressable
@@ -86,9 +79,11 @@ function TudoTile({ tile, onPress, isAccessibilityMode }: TudoTileProps) {
       accessibilityLabel={tile.label}
       style={({ pressed }) => [
         styles.tile,
+        tile.wide && styles.tileWide,
         {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
+          backgroundColor: palette.surface,
+          borderColor: palette.border,
+          borderWidth: isAccessibilityMode ? 2 : 2,
           minHeight,
           opacity: pressed ? 0.75 : 1,
         },
@@ -98,20 +93,21 @@ function TudoTile({ tile, onPress, isAccessibilityMode }: TudoTileProps) {
         style={[
           styles.iconContainer,
           {
-            backgroundColor: iconBg,
+            backgroundColor: palette.iconBg,
             width: iconContainerSize,
             height: iconContainerSize,
             borderRadius: 12,
           },
         ]}
       >
-        <MaterialIcons name={tile.icon} size={iconSize} color={iconColor} />
+        <MaterialIcons name={tile.icon} size={iconSize} color={palette.iconColor} />
       </View>
       <Text
         style={[
           styles.tileLabel,
+          tile.wide && styles.tileLabelWide,
           {
-            color: colors.foreground,
+            color: palette.label,
             fontSize: labelSize,
             fontFamily: BrandFonts.body,
           },
@@ -120,6 +116,9 @@ function TudoTile({ tile, onPress, isAccessibilityMode }: TudoTileProps) {
       >
         {tile.label}
       </Text>
+      {tile.wide ? (
+        <MaterialIcons name="chevron-right" size={24} color={palette.iconColor} />
+      ) : null}
     </Pressable>
   );
 }
@@ -137,14 +136,65 @@ export default function TudoScreen() {
   const { isPro } = usePurchases();
   const { isAccessibilityMode, a11yColors: ac, a11yFontSize: af } = useAccessibility();
 
+  const hasProfileName = !!state.profile.name;
   const profileName = state.profile.name || 'Configurar Perfil';
   const profilePhone = state.profile.phone || '';
   const initial = profileName.charAt(0).toUpperCase();
 
+  const goToProfile = () => router.push('/(tabs)/profile' as any);
+
+  // Paleta dos tiles: no modo acessível tudo vem de a11yColors — antes os
+  // tiles usavam o tema normal e ficavam "fora" do modo de acessibilidade.
+  const tilePalette = (tile: TileConfig): TilePalette => {
+    if (isAccessibilityMode) {
+      const iconColor = (() => {
+        switch (tile.colorToken) {
+          case 'emergency': return ac.emergency;
+          case 'success': return ac.success;
+          case 'primary': return ac.primary;
+          case 'muted': return ac.muted;
+          case 'warning': return ac.warning;
+        }
+      })();
+      return {
+        surface: ac.surface,
+        border: ac.border,
+        label: ac.foreground,
+        iconColor,
+        iconBg: iconColor + '18',
+      };
+    }
+    const iconColor = (() => {
+      switch (tile.colorToken) {
+        case 'emergency': return colors.emergency;
+        case 'success': return colors.success;
+        case 'primary': return colors.primary;
+        case 'muted': return colors.muted;
+        case 'warning': return colors.warning;
+      }
+    })();
+    const iconBg = (() => {
+      switch (tile.colorToken) {
+        case 'emergency': return colors.emergencyLight;
+        case 'success': return colors.successLight;
+        case 'primary': return colors.primaryLight;
+        case 'muted': return colors.border;
+        case 'warning': return colors.warningLight;
+      }
+    })();
+    return {
+      surface: colors.surface,
+      border: colors.border,
+      label: colors.foreground,
+      iconColor,
+      iconBg,
+    };
+  };
+
   // --- ACCESSIBILITY MODE ---------------------------------------------------
   if (isAccessibilityMode) {
     return (
-      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
+      <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
         <View
           style={{
             paddingHorizontal: 20,
@@ -152,7 +202,7 @@ export default function TudoScreen() {
             paddingBottom: 16,
             borderBottomWidth: 2,
             borderBottomColor: ac.border,
-            backgroundColor: ac.background,
+            backgroundColor: ac.bar,
           }}
         >
           <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground, fontFamily: BrandFonts.body }}>
@@ -164,15 +214,19 @@ export default function TudoScreen() {
           contentContainerStyle={{ padding: 20, paddingBottom: 48, gap: 20 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Identity card — a11y */}
-          <View
-            style={[
+          {/* Identity card — a11y (clicável: leva ao Meu Perfil) */}
+          <Pressable
+            onPress={goToProfile}
+            accessibilityRole="button"
+            accessibilityLabel={hasProfileName ? 'Abrir Meu Perfil' : 'Configurar perfil'}
+            style={({ pressed }) => [
               styles.identityCard,
               {
                 backgroundColor: ac.surface,
                 borderColor: ac.border,
                 borderWidth: 2,
                 gap: 10,
+                opacity: pressed ? 0.8 : 1,
               },
             ]}
           >
@@ -188,18 +242,12 @@ export default function TudoScreen() {
                   {profilePhone}
                 </Text>
               )}
-              <View
-                style={[
-                  styles.planBadge,
-                  { backgroundColor: isPro ? ac.primary + '20' : ac.border, marginTop: 6 },
-                ]}
-              >
-                <Text style={{ fontSize: af.xs ?? 12, fontWeight: '700', color: isPro ? ac.primary : ac.muted, fontFamily: BrandFonts.body }}>
-                  {isPro ? 'Pro' : 'Grátis'}
-                </Text>
-              </View>
+              <Text style={{ fontSize: af.sm, color: ac.primary, marginTop: 6, fontWeight: '700', fontFamily: BrandFonts.body }}>
+                {hasProfileName ? 'Toque para ver seu perfil' : 'Toque para completar seu perfil'}
+              </Text>
             </View>
-          </View>
+            <MaterialIcons name="chevron-right" size={32} color={ac.muted} />
+          </Pressable>
 
           {/* Section label */}
           <Text style={{ fontSize: af.sm, color: ac.muted, fontWeight: '600', fontFamily: BrandFonts.body, textTransform: 'uppercase', letterSpacing: 0.5 }}>
@@ -212,11 +260,16 @@ export default function TudoScreen() {
               <TudoTile
                 key={tile.route}
                 tile={tile}
+                palette={tilePalette(tile)}
                 isAccessibilityMode
                 onPress={() => router.push(tile.route as any)}
               />
             ))}
           </View>
+
+          {/* Trial / assinatura: nada é exibido para quem já paga */}
+          <TrialBanner />
+          <ExpiredBanner />
         </ScrollView>
       </ScreenContainer>
     );
@@ -226,7 +279,7 @@ export default function TudoScreen() {
   return (
     <ScreenContainer edges={['left', 'right']}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
         <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: fs['2xl'], fontFamily: BrandFonts.body }]}>
           Tudo
         </Text>
@@ -236,8 +289,16 @@ export default function TudoScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 48 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Identity card */}
-        <View style={[styles.identityCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        {/* Identity card — clicável: leva ao Meu Perfil */}
+        <Pressable
+          onPress={goToProfile}
+          accessibilityRole="button"
+          accessibilityLabel={hasProfileName ? 'Abrir Meu Perfil' : 'Configurar perfil'}
+          style={({ pressed }) => [
+            styles.identityCard,
+            { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.8 : 1 },
+          ]}
+        >
           <View style={[styles.avatarCircle, { backgroundColor: colors.primaryLight }]}>
             <Text style={{ fontSize: fs['2xl'], fontWeight: '900', color: colors.primary, fontFamily: BrandFonts.body }}>
               {initial}
@@ -258,30 +319,41 @@ export default function TudoScreen() {
                 {profilePhone}
               </Text>
             )}
-            <View style={[styles.planBadge, { backgroundColor: isPro ? colors.primaryLight : colors.border }]}>
-              <Text style={{ fontSize: fs.xs, fontWeight: '700', color: isPro ? colors.primary : colors.muted, fontFamily: BrandFonts.body }}>
-                {isPro ? 'Pro' : 'Grátis'}
+            <Text style={{ fontSize: fs.xs, color: colors.primary, marginTop: 6, fontWeight: '700', fontFamily: BrandFonts.body }}>
+              {hasProfileName ? 'Toque para ver seu perfil' : 'Toque para completar seu perfil'}
+            </Text>
+          </View>
+          {isPro && (
+            <View style={[styles.planBadge, { backgroundColor: colors.primaryLight }]}>
+              <Text style={{ fontSize: fs.xs, fontWeight: '700', color: colors.primary, fontFamily: BrandFonts.body }}>
+                Pro
               </Text>
             </View>
-          </View>
-        </View>
+          )}
+          <MaterialIcons name="chevron-right" size={26} color={colors.muted} />
+        </Pressable>
 
         {/* Section label */}
         <Text style={[styles.sectionLabel, { color: colors.muted, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
           Tudo do app
         </Text>
 
-        {/* 2-column grid */}
+        {/* 2-column grid + tile "Ajuda" achatado de largura dupla no final */}
         <View style={styles.grid}>
           {TILES.map((tile) => (
             <TudoTile
               key={tile.route}
               tile={tile}
+              palette={tilePalette(tile)}
               isAccessibilityMode={false}
               onPress={() => router.push(tile.route as any)}
             />
           ))}
         </View>
+
+        {/* Trial / assinatura: nada é exibido para quem já paga */}
+        <TrialBanner />
+        <ExpiredBanner />
       </ScrollView>
     </ScreenContainer>
   );
@@ -332,11 +404,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   planBadge: {
-    alignSelf: 'flex-start',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    marginTop: 6,
   },
   // Section label
   sectionLabel: {
@@ -361,6 +431,14 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 10,
   },
+  // "Ajuda": linha inteira, achatado, conteúdo horizontal
+  tileWide: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 10,
+  },
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -368,5 +446,8 @@ const styles = StyleSheet.create({
   tileLabel: {
     fontWeight: '700',
     lineHeight: 18,
+  },
+  tileLabelWide: {
+    flex: 1,
   },
 });

@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useColors } from "@/hooks/use-colors";
+import { useAccessibility } from "@/lib/accessibility-context";
 import { useMonitoringStatus } from "@/hooks/use-monitoring-status";
 import { getApiBaseUrl } from "@/constants/oauth";
 
@@ -77,7 +78,23 @@ function DiagnosticButton({ accessible, colors, fs }: { accessible: boolean; col
 }
 
 export function MonitoringStatusPanel({ accessible = false }: Props) {
-  const colors = useColors();
+  const themeColors = useColors();
+  const { isAccessibilityMode, a11yColors: ac } = useAccessibility();
+  // No modo de acessibilidade o painel adota a paleta de alto contraste —
+  // antes ele permanecia com o tema normal e destoava do resto da tela.
+  const colors = isAccessibilityMode
+    ? {
+        ...themeColors,
+        surface: ac.surface,
+        border: ac.border,
+        foreground: ac.foreground,
+        muted: ac.muted,
+        primary: ac.primary,
+        success: ac.success,
+        warning: ac.warning,
+        error: ac.error,
+      }
+    : themeColors;
   const { status, loading, error, refresh: loadStatus, checkInLabel, isRecent } = useMonitoringStatus();
 
   const totalEvents =

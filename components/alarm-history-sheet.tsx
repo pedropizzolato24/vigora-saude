@@ -142,14 +142,11 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
       onRequestClose={onClose}
     >
       <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: insets.bottom }]}>
-        {/* Header */}
-        <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: Math.max(insets.top, 16) }]}>
+        {/* Header — só título; Fechar fica na barra inferior */}
+        <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: Math.max(insets.top, 16) }]}>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>
             Histórico de Alarmes
           </Text>
-          <Pressable onPress={onClose} style={styles.closeBtn}>
-            <MaterialIcons name="close" size={24} color={colors.muted} />
-          </Pressable>
         </View>
 
         {/* Summary cards */}
@@ -276,6 +273,22 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
             <View style={{ height: 32 }} />
           </ScrollView>
         )}
+
+        {/* Fechar — barra inferior */}
+        <View style={[styles.footerBar, { borderTopColor: colors.border, backgroundColor: colors.bar }]}>
+          <Pressable
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Fechar histórico"
+            style={({ pressed }) => [
+              styles.closeFooterBtn,
+              { borderColor: colors.muted, backgroundColor: colors.surface },
+              pressed && { opacity: 0.8 },
+            ]}
+          >
+            <Text style={[styles.closeFooterText, { color: colors.foreground }]}>Fechar</Text>
+          </Pressable>
+        </View>
       </View>
     </Modal>
   );
@@ -286,9 +299,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -297,8 +308,21 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
-  closeBtn: {
-    padding: 4,
+  footerBar: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  closeFooterBtn: {
+    minHeight: 54,
+    borderRadius: 14,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeFooterText: {
+    fontSize: 16,
+    fontWeight: '800',
   },
   summaryRow: {
     flexDirection: 'row',

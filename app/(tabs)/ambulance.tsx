@@ -124,9 +124,9 @@ export default function AmbulanceScreen() {
     ];
     return (
       <>
-      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
-        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.background }}>
-          <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Ambuância</Text>
+      <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar }}>
+          <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Ambulância</Text>
           <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Acione atendimento de emergência</Text>
         </View>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }} showsVerticalScrollIndicator={false}>
@@ -197,7 +197,7 @@ export default function AmbulanceScreen() {
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
         <View>
           <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'] }]}>Ambulância</Text>
           <Text style={[styles.subtitle, { color: colors.muted, fontSize: fs.sm }]}>

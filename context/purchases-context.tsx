@@ -52,7 +52,7 @@ export interface PurchasesContextValue {
   isRestoring: boolean;
   /** Último erro ocorrido */
   error: string | null;
-  /** Trial gratuito de 7 dias ativo */
+  /** Trial gratuito de 14 dias ativo */
   isTrialActive: boolean;
   /** Dias restantes do trial (0 se expirado ou já assinante) */
   trialDaysLeft: number;
@@ -65,6 +65,9 @@ export interface PurchasesContextValue {
 }
 
 // --- Criação do Contexto ------------------------------------------------------
+
+/** Duração do free trial com experiência completa, em dias. */
+export const TRIAL_DAYS = 14;
 
 export const PurchasesContext = createContext<PurchasesContextValue | null>(null);
 
@@ -196,19 +199,21 @@ export function PurchasesProvider({ children }: PurchasesProviderProps) {
     }
   }, []);
 
-  // -- Trial de 7 dias -----------------------------------------------------
+  // -- Trial de 14 dias ------------------------------------------------------
 
   const isPro = hasProAccess(customerInfo);
 
-  // Calcula trial: considera os 7 primeiros dias após o primeiro acesso
+  // Calcula trial: considera os TRIAL_DAYS primeiros dias após o primeiro acesso.
+  // Durante o trial o usuário tem a experiência completa do app — nenhum
+  // recurso é bloqueado (ver components/pro-limits.ts).
   const firstSeenDate = customerInfo?.firstSeen
     ? new Date(customerInfo.firstSeen)
     : null;
   const daysSinceInstall = firstSeenDate
     ? Math.floor((Date.now() - firstSeenDate.getTime()) / (1000 * 60 * 60 * 24))
     : 0;
-  const isTrialActive = !isPro && daysSinceInstall < 7;
-  const trialDaysLeft = isTrialActive ? 7 - daysSinceInstall : 0;
+  const isTrialActive = !isPro && daysSinceInstall < TRIAL_DAYS;
+  const trialDaysLeft = isTrialActive ? TRIAL_DAYS - daysSinceInstall : 0;
 
   // -- Valor do Contexto -----------------------------------------------------
 

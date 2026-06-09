@@ -13,6 +13,13 @@ interface WizardStepProps {
   children: React.ReactNode;
   onNext: () => void;
   onBack?: () => void;
+  /**
+   * Fecha/cancela o wizard. Exibido como botão "Cancelar" na barra inferior
+   * quando não há passo anterior (onBack ausente), para que sair do fluxo
+   * seja tão visível quanto avançar.
+   */
+  onCancel?: () => void;
+  cancelLabel?: string;
   nextLabel?: string;
   nextDisabled?: boolean;
 }
@@ -26,6 +33,8 @@ export function WizardStep({
   children,
   onNext,
   onBack,
+  onCancel,
+  cancelLabel,
   nextLabel,
   nextDisabled,
 }: WizardStepProps) {
@@ -33,6 +42,11 @@ export function WizardStep({
   const fs = useFontSize();
   const accent = tagColor ?? colors.primary;
   const primaryLabel = nextLabel ?? 'Continuar';
+  const secondaryAction = onBack ?? onCancel;
+  const secondaryLabel = onBack ? 'Voltar' : (cancelLabel ?? 'Cancelar');
+  const secondaryA11yLabel = onBack
+    ? 'Voltar para a pergunta anterior'
+    : (cancelLabel ?? 'Cancelar e fechar');
 
   return (
     <View style={styles.container}>
@@ -75,15 +89,15 @@ export function WizardStep({
 
       {/* Buttons */}
       <View style={styles.buttonRow}>
-        {onBack ? (
+        {secondaryAction ? (
           <Pressable
-            onPress={onBack}
+            onPress={secondaryAction}
             accessibilityRole="button"
-            accessibilityLabel="Voltar para a pergunta anterior"
+            accessibilityLabel={secondaryA11yLabel}
             style={({ pressed }) => [
               styles.button,
               styles.ghostButton,
-              { borderColor: colors.border },
+              { borderColor: colors.muted, backgroundColor: colors.surface },
               pressed && { opacity: 0.8 },
             ]}
           >
@@ -93,7 +107,7 @@ export function WizardStep({
                 { color: colors.foreground, fontSize: fs.md },
               ]}
             >
-              Voltar
+              {secondaryLabel}
             </Text>
           </Pressable>
         ) : null}
@@ -173,6 +187,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     borderWidth: 0,
+    flex: 1.5,
   },
   buttonText: {
     fontFamily: BrandFonts.body,

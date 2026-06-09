@@ -4,6 +4,7 @@ import { useAccessibility } from '@/lib/accessibility-context';
 import { HealthReportButton } from '@/components/health-report-button';
 import {
   FlatList,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -258,8 +259,8 @@ export default function HealthScreen() {
   // --- ACCESSIBILITY MODE ---------------------------------------------------
   if (isAccessibilityMode) {
     return (
-      <ScreenContainer edges={['left', 'right']} containerClassName="bg-white">
-        {/* A11y Header */}
+      <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
+        {/* A11y Header — só título; ações ficam no corpo da tela */}
         <View
           style={{
             paddingHorizontal: 20,
@@ -267,41 +268,15 @@ export default function HealthScreen() {
             paddingBottom: 16,
             borderBottomWidth: 2,
             borderBottomColor: ac.border,
-            backgroundColor: ac.background,
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            backgroundColor: ac.bar,
           }}
         >
-          <View>
-            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground, fontFamily: BrandFonts.body }}>
-              Como você está?
-            </Text>
-            <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4, fontFamily: BrandFonts.body }}>
-              {state.healthMetrics.length} registro(s)
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-            <HealthReportButton compact />
-            <Pressable
-              onPress={() => openWizard()}
-              accessibilityRole="button"
-              accessibilityLabel="Adicionar medição de saúde"
-              style={({ pressed }) => [
-                {
-                  backgroundColor: ac.primary,
-                  width: as_.touchTarget,
-                  height: as_.touchTarget,
-                  borderRadius: 20,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: pressed ? 0.8 : 1,
-                },
-              ]}
-            >
-              <MaterialIcons name="add" size={36} color={ac.onPrimary} />
-            </Pressable>
-          </View>
+          <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground, fontFamily: BrandFonts.body }}>
+            Como você está?
+          </Text>
+          <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4, fontFamily: BrandFonts.body }}>
+            {state.healthMetrics.length} registro(s)
+          </Text>
         </View>
 
         {/* A11y BigMetricRows */}
@@ -378,6 +353,9 @@ export default function HealthScreen() {
               </View>
             );
           })}
+
+          {/* Relatório PDF — botão de largura total, fora do cabeçalho */}
+          <HealthReportButton />
         </ScrollView>
 
         {/* A11y History */}
@@ -460,6 +438,7 @@ export default function HealthScreen() {
           onRequestClose={() => setWizardVisible(false)}
         >
           <View style={{ flex: 1, backgroundColor: ac.background }}>
+            {/* Título apenas — ações ficam na barra inferior */}
             <View
               style={{
                 paddingHorizontal: 20,
@@ -467,41 +446,20 @@ export default function HealthScreen() {
                 paddingBottom: 16,
                 borderBottomWidth: 2,
                 borderBottomColor: ac.border,
-                flexDirection: 'row',
-                justifyContent: 'space-between',
                 alignItems: 'center',
+                backgroundColor: ac.bar,
               }}
             >
-              <Pressable
-                onPress={() => (wizardStep === 1 ? setWizardStep(0) : setWizardVisible(false))}
-                accessibilityRole="button"
-                accessibilityLabel={wizardStep === 1 ? 'Voltar' : 'Cancelar'}
-                style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, minHeight: 64, justifyContent: 'center' as const }]}
-              >
-                <Text style={{ fontSize: af.md, color: ac.muted, fontWeight: '600', fontFamily: BrandFonts.body }}>
-                  {wizardStep === 1 ? 'Voltar' : 'Cancelar'}
-                </Text>
-              </Pressable>
               <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground, fontFamily: BrandFonts.body }}>
                 Nova Medição
               </Text>
-              {wizardStep === 1 ? (
-                <Pressable
-                  onPress={handleSave}
-                  accessibilityRole="button"
-                  accessibilityLabel="Salvar medição"
-                  style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, minHeight: 64, justifyContent: 'center' as const }]}
-                >
-                  <Text style={{ fontSize: af.md, color: ac.primary, fontWeight: '800', fontFamily: BrandFonts.body }}>
-                    Salvar
-                  </Text>
-                </Pressable>
-              ) : (
-                <View style={{ minWidth: 70 }} />
-              )}
             </View>
 
-            <ScrollView contentContainerStyle={{ padding: 24, gap: 28 }}>
+            <KeyboardAvoidingView
+              style={{ flex: 1 }}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            >
+            <ScrollView contentContainerStyle={{ padding: 24, gap: 28 }} keyboardShouldPersistTaps="handled">
               {wizardStep === 0 ? (
                 <View style={{ gap: 12 }}>
                   <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground, fontFamily: BrandFonts.body }}>
@@ -575,6 +533,33 @@ export default function HealthScreen() {
                 </View>
               )}
             </ScrollView>
+
+            {/* Barra inferior de ações */}
+            <View style={{ flexDirection: 'row', gap: 12, padding: 20, paddingBottom: Math.max(insets.bottom, 20), borderTopWidth: 2, borderTopColor: ac.border, backgroundColor: ac.bar }}>
+              <Pressable
+                onPress={() => (wizardStep === 1 ? setWizardStep(0) : setWizardVisible(false))}
+                accessibilityRole="button"
+                accessibilityLabel={wizardStep === 1 ? 'Voltar' : 'Cancelar'}
+                style={({ pressed }) => [{ flex: 1, minHeight: 64, borderRadius: 16, borderWidth: 3, borderColor: ac.muted, backgroundColor: ac.surface, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.foreground, fontFamily: BrandFonts.body }}>
+                  {wizardStep === 1 ? 'Voltar' : 'Cancelar'}
+                </Text>
+              </Pressable>
+              {wizardStep === 1 && (
+                <Pressable
+                  onPress={handleSave}
+                  accessibilityRole="button"
+                  accessibilityLabel="Salvar medição"
+                  style={({ pressed }) => [{ flex: 1.5, minHeight: 64, borderRadius: 16, backgroundColor: ac.success, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.85 : 1 }]}
+                >
+                  <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.onPrimary, fontFamily: BrandFonts.body }}>
+                    Salvar
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+            </KeyboardAvoidingView>
           </View>
         </Modal>
 
@@ -587,8 +572,8 @@ export default function HealthScreen() {
   // --- NORMAL MODE -----------------------------------------------------------
   return (
     <ScreenContainer edges={['left', 'right']}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 12 }]}>
+      {/* Header — só título, sem botões (ações ficam no corpo da tela) */}
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
         <View>
           <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'], fontFamily: BrandFonts.body }]}>
             Como você está?
@@ -596,20 +581,6 @@ export default function HealthScreen() {
           <Text style={[styles.subtitle, { color: colors.muted, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
             {state.healthMetrics.length} registro(s)
           </Text>
-        </View>
-        <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-          <HealthReportButton compact />
-          <Pressable
-            onPress={() => openWizard()}
-            accessibilityRole="button"
-            accessibilityLabel="Adicionar medição de saúde"
-            style={({ pressed }) => [
-              styles.addButton,
-              { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
-            ]}
-          >
-            <MaterialIcons name="add" size={24} color={colors.onPrimary} />
-          </Pressable>
         </View>
       </View>
 
@@ -629,6 +600,9 @@ export default function HealthScreen() {
             />
           );
         })}
+
+        {/* Relatório PDF — botão de largura total, fora do cabeçalho */}
+        <HealthReportButton />
       </View>
 
       {/* History list */}
@@ -667,24 +641,18 @@ export default function HealthScreen() {
         onRequestClose={() => setWizardVisible(false)}
       >
         <View style={[styles.modal, { backgroundColor: colors.background }]}>
-          {/* Modal header */}
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
-            <Pressable
-              onPress={() => setWizardVisible(false)}
-              accessibilityRole="button"
-              accessibilityLabel="Fechar"
-              style={({ pressed }) => [styles.modalClose, pressed && { opacity: 0.6 }]}
-            >
-              <Text style={[styles.modalCloseText, { color: colors.muted, fontFamily: BrandFonts.body }]}>Fechar</Text>
-            </Pressable>
+          {/* Modal header — título apenas; Cancelar fica na barra inferior do wizard */}
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 16 }]}>
             <Text style={[styles.modalTitle, { color: colors.foreground, fontSize: fs.xl, fontFamily: BrandFonts.body }]}>
               Nova Medição
             </Text>
-            <View style={styles.modalClose} />
           </View>
 
           {/* WizardStep */}
-          <View style={styles.wizardContainer}>
+          <KeyboardAvoidingView
+            style={styles.wizardContainer}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
             {wizardStep === 0 ? (
               <WizardStep
                 total={2}
@@ -693,6 +661,7 @@ export default function HealthScreen() {
                 tagColor={colors.primary}
                 question="O que você quer anotar?"
                 onNext={() => setWizardStep(1)}
+                onCancel={() => setWizardVisible(false)}
                 nextLabel="Continuar"
                 nextDisabled={false}
               >
@@ -778,7 +747,7 @@ export default function HealthScreen() {
                 </View>
               </WizardStep>
             )}
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
@@ -804,13 +773,6 @@ const styles = StyleSheet.create({
   },
   title: { fontWeight: '800' },
   subtitle: { marginTop: 2 },
-  addButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   // BigMetricRows
   bigRowsContainer: {
     paddingHorizontal: 16,
@@ -899,15 +861,11 @@ const styles = StyleSheet.create({
   // Wizard Modal
   modal: { flex: 1 },
   modalHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  modalClose: { padding: 4, minWidth: 70 },
-  modalCloseText: { fontSize: 16 },
   modalTitle: { fontWeight: '600' },
   wizardContainer: {
     flex: 1,
