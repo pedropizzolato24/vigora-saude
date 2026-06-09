@@ -94,6 +94,8 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    "expo-font",
+    "expo-web-browser",
     [
       'react-native-android-widget',
       {
