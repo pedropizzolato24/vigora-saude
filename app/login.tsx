@@ -13,6 +13,7 @@ import AntDesign from "@expo/vector-icons/AntDesign";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
+import { makeRedirectUri } from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/use-colors";
@@ -54,6 +55,11 @@ export default function LoginScreen() {
     iosClientId: GOOGLE_IOS_CLIENT_ID,
     webClientId: GOOGLE_WEB_CLIENT_ID,
     scopes: ["openid", "email", "profile"],
+    // Por padrão o provider usa o bundle id EM RUNTIME (Application.applicationId),
+    // mas sideload com Apple ID gratuito renomeia o bundle (com.vigora.saude.<teamId>)
+    // e o Google rejeita com redirect_uri_mismatch. Fixamos no bundle id registrado
+    // no client OAuth; em builds assinados normais o valor é idêntico ao padrão.
+    redirectUri: makeRedirectUri({ native: "com.vigora.saude:/oauthredirect" }),
   });
 
   useEffect(() => {
