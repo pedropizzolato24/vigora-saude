@@ -7,6 +7,9 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { corsMiddleware } from "./cors";
 import { registerAuthRoutes } from "./oauth";
 import { registerGoogleAuthRoute } from "../google-auth";
+import { registerAppleAuthRoute } from "../apple-auth";
+import { registerEmailAuthRoutes, isEmailServiceConfigured } from "../email-auth";
+import { registerPhoneAuthRoutes, isPhoneLoginConfigured } from "../phone-auth";
 import { createRateLimit } from "./rate-limit";
 import { securityHeadersMiddleware } from "./security-headers";
 import { appRouter } from "../routers";
@@ -35,6 +38,12 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+
+  // Railway termina TLS num único proxy à frente do app. Confiar só nesse hop
+  // faz req.ip refletir o IP real do cliente (e não o do proxy), reforçando os
+  // rate limits por IP. A defesa principal contra bombing é o throttle por
+  // destino (db-auth.canSendCode), independente de IP.
+  app.set("trust proxy", 1);
 
   // Security headers (HSTS, X-Frame-Options, CSP, ...) on every response.
   app.use(securityHeadersMiddleware);
@@ -101,11 +110,27 @@ async function startServer() {
       .send(renderInviteLanding({ token: String(req.params.token ?? ""), iosUrl, androidUrl }));
   });
 
-  // Auth endpoints — /api/auth/google verifies the Google id_token and emits
-  // the session JWT; the rest are session lifecycle (me / logout / cookie sync).
+  // Auth endpoints — cada provedor (google/apple/email/phone) verifica a
+  // credencial e emite o JWT de sessão; o resto é ciclo de vida da sessão
+  // (me / logout / cookie sync). Rotas sensíveis têm limites próprios além
+  // deste envelope.
   app.use("/api/auth", createRateLimit({ max: 30, windowMs: 60_000 }));
   registerAuthRoutes(app);
   registerGoogleAuthRoute(app);
+  registerAppleAuthRoute(app);
+  registerEmailAuthRoutes(app);
+  registerPhoneAuthRoutes(app);
+
+  // Quais métodos de login estão habilitados neste deploy — o app esconde
+  // botões de métodos sem a infraestrutura configurada (Resend / template OTP).
+  app.get("/api/auth/methods", (_req, res) => {
+    res.json({
+      google: true,
+      apple: true,
+      email: isEmailServiceConfigured(),
+      phone: isPhoneLoginConfigured(),
+    });
+  });
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });

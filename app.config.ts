@@ -33,6 +33,10 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
+    // Sign in with Apple — obrigatório pela diretriz 4.8 da App Store quando o
+    // app oferece login social de terceiros (Google). Gera o entitlement
+    // com.apple.developer.applesignin (requer capability no App ID).
+    usesAppleSignIn: true,
     ...(linkHost ? { associatedDomains: [`applinks:${linkHost}`] } : {}),
     "infoPlist": {
       "ITSAppUsesNonExemptEncryption": false
@@ -96,6 +100,7 @@ const config: ExpoConfig = {
     "expo-router",
     "expo-font",
     "expo-web-browser",
+    "expo-apple-authentication",
     [
       'react-native-android-widget',
       {

@@ -26,6 +26,12 @@ export const users = mysqlTable("users", {
   /** OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
+  /**
+   * Verified e-mail, the canonical account-linking key (same e-mail = same
+   * account). Unique so a concurrent first-login race can't create two
+   * accounts for one e-mail — MySQL allows multiple NULLs, so phone-only and
+   * Apple "hide my email" accounts (no e-mail) are unaffected.
+   */
   email: varchar("email", { length: 320 }),
   /** User-provided phone number, collected during registration. */
   phone: varchar("phone", { length: 32 }),
@@ -44,7 +50,7 @@ export const users = mysqlTable("users", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
-});
+}, (t) => [unique("users_email_uq").on(t.email)]);
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -293,3 +299,70 @@ export const pushTokens = mysqlTable(
 
 export type PushToken = typeof pushTokens.$inferSelect;
 export type InsertPushToken = typeof pushTokens.$inferInsert;
+
+// -----------------------------------------------------------------------------
+// Auth Identities - multiple login methods linked to one canonical account
+// -----------------------------------------------------------------------------
+
+/**
+ * One row per (provider, subject) credential. Several identities can point at
+ * the same canonical account (`openId`), which is what keeps "same verified
+ * e-mail = same account" true across Google, Apple and e-mail+password logins.
+ *
+ * `subject` is the provider's stable identifier: the OAuth `sub` for
+ * google/apple, the normalized (lowercased) e-mail for `email`, the
+ * digits-only E.164 number for `phone`.
+ *
+ * Legacy note: accounts created before this table exist only in `users`
+ * (openId = `google:<sub>`); the resolver backfills their identity row on the
+ * next login.
+ */
+export const authIdentities = mysqlTable(
+  "auth_identities",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    provider: mysqlEnum("provider", ["google", "apple", "email", "phone"]).notNull(),
+    subject: varchar("subject", { length: 320 }).notNull(),
+    /** Canonical account this credential signs into (users.openId). */
+    openId: varchar("openId", { length: 64 }).notNull(),
+    /** scrypt hash (`scrypt:N:r:p:salt:hash`). Only set for provider = 'email'. */
+    passwordHash: varchar("passwordHash", { length: 255 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => [
+    unique("auth_identities_provider_subject_uq").on(t.provider, t.subject),
+    index("auth_identities_openid_idx").on(t.openId),
+  ]
+);
+
+export type AuthIdentity = typeof authIdentities.$inferSelect;
+export type InsertAuthIdentity = typeof authIdentities.$inferInsert;
+
+/**
+ * Short-lived 6-digit codes for e-mail verification, password reset and phone
+ * OTP. One active code per (purpose, target) — requesting a new code replaces
+ * the previous one. `codeHash` is sha256(`${target}:${code}`); `attempts`
+ * caps brute-force at the row level (on top of the per-IP rate limit).
+ *
+ * For `purpose = 'signup'` the payload carries the pending account data
+ * ({ passwordHash, name }) so nothing is created before the e-mail is proven.
+ */
+export const authCodes = mysqlTable(
+  "auth_codes",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    purpose: mysqlEnum("purpose", ["signup", "reset", "phone"]).notNull(),
+    /** Normalized e-mail or digits-only phone the code was sent to. */
+    target: varchar("target", { length: 320 }).notNull(),
+    codeHash: varchar("codeHash", { length: 64 }).notNull(),
+    payload: json("payload").$type<Record<string, unknown> | null>(),
+    attempts: int("attempts").notNull().default(0),
+    expiresAt: timestamp("expiresAt").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [unique("auth_codes_purpose_target_uq").on(t.purpose, t.target)]
+);
+
+export type AuthCode = typeof authCodes.$inferSelect;
+export type InsertAuthCode = typeof authCodes.$inferInsert;

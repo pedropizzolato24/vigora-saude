@@ -5,6 +5,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  useColorScheme,
   View,
 } from "react-native";
 import Svg, { Circle } from "react-native-svg";
@@ -13,12 +14,15 @@ import AntDesign from "@expo/vector-icons/AntDesign";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { makeRedirectUri } from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/use-colors";
 import { useAppContext } from "@/lib/app-context";
 import { finishGoogleLogin, persistOAuthPkce } from "@/lib/google-signin";
+import { isAppleCancel, signInWithApple } from "@/lib/apple-signin";
+import { fetchAuthMethods, type AuthMethods } from "@/lib/phone-signin";
 import {
   GOOGLE_ANDROID_CLIENT_ID,
   GOOGLE_IOS_CLIENT_ID,
@@ -47,8 +51,29 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { reconcileFromCloud } = useAppContext();
+  const scheme = useColorScheme();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Sign in with Apple só existe em iOS com a capability ativa (builds
+  // assinados de verdade); em sideload/Android o botão simplesmente não rende.
+  const [appleAvailable, setAppleAvailable] = useState(false);
+  // E-mail e telefone dependem de infraestrutura no servidor (Resend /
+  // template OTP do WhatsApp) — o app esconde o que não está configurado.
+  const [methods, setMethods] = useState<AuthMethods>({
+    google: true,
+    apple: true,
+    email: false,
+    phone: false,
+  });
+
+  useEffect(() => {
+    if (Platform.OS === "ios") {
+      AppleAuthentication.isAvailableAsync()
+        .then(setAppleAvailable)
+        .catch(() => setAppleAvailable(false));
+    }
+    fetchAuthMethods().then(setMethods);
+  }, []);
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: GOOGLE_ANDROID_CLIENT_ID,
@@ -110,6 +135,26 @@ export default function LoginScreen() {
     }
   };
 
+  const handleAppleLogin = async () => {
+    if (loading) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setLoading(true);
+    setError(null);
+    try {
+      await signInWithApple(router, reconcileFromCloud);
+    } catch (err) {
+      if (!isAppleCancel(err)) {
+        console.error("[Login] Apple auth failed:", err);
+        setError(
+          err instanceof Error && err.message
+            ? err.message
+            : "Não foi possível entrar com a Apple. Tente novamente."
+        );
+      }
+      setLoading(false);
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Área superior — marca */}
@@ -164,6 +209,24 @@ export default function LoginScreen() {
           </View>
         ) : null}
 
+        {/* Sign in with Apple — primeiro no iOS (diretriz 4.8 / HIG: o botão
+            nativo da Apple com proeminência igual ou maior que os demais) */}
+        {Platform.OS === "ios" && appleAvailable ? (
+          <AppleAuthentication.AppleAuthenticationButton
+            buttonType={
+              AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
+            }
+            buttonStyle={
+              scheme === "dark"
+                ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+            }
+            cornerRadius={14}
+            style={styles.appleButton}
+            onPress={handleAppleLogin}
+          />
+        ) : null}
+
         {/* Botão Google — FadeInView com delay após os value props */}
         {/* Emil: login é raro, entrada suave na ação é ok */}
         <Pressable
@@ -189,6 +252,55 @@ export default function LoginScreen() {
             </>
           )}
         </Pressable>
+
+        {/* Alternativas sem conta Google/Apple — visíveis só quando o servidor
+            tem a infraestrutura (Resend / template OTP) configurada */}
+        {methods.email || methods.phone ? (
+          <View style={styles.altRow}>
+            {methods.email ? (
+              <Pressable
+                onPress={() => router.push("/email-login")}
+                disabled={loading}
+                style={({ pressed }) => [
+                  styles.altButton,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: colors.surface,
+                    opacity: pressed || loading ? 0.75 : 1,
+                  },
+                ]}
+                accessibilityLabel="Entrar com e-mail e senha"
+                accessibilityRole="button"
+              >
+                <AntDesign name="mail" size={18} color={colors.primary} />
+                <Text style={[styles.altButtonText, { color: colors.primary }]}>
+                  E-mail
+                </Text>
+              </Pressable>
+            ) : null}
+            {methods.phone ? (
+              <Pressable
+                onPress={() => router.push("/phone-login")}
+                disabled={loading}
+                style={({ pressed }) => [
+                  styles.altButton,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: colors.surface,
+                    opacity: pressed || loading ? 0.75 : 1,
+                  },
+                ]}
+                accessibilityLabel="Entrar com telefone"
+                accessibilityRole="button"
+              >
+                <AntDesign name="phone" size={18} color={colors.primary} />
+                <Text style={[styles.altButtonText, { color: colors.primary }]}>
+                  Telefone
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
 
         <Text style={[styles.privacyNote, { color: colors.muted }]}>
           Ao entrar, você concorda com os Termos de Uso e Política de Privacidade.
@@ -262,6 +374,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  appleButton: {
+    height: 54,
+    width: "100%",
+  },
   googleButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -269,6 +385,26 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 16,
     borderRadius: 14,
+  },
+  altRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  altButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    minHeight: 52,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+  },
+  altButtonText: {
+    fontFamily: "PlusJakartaSans",
+    fontSize: 16,
+    fontWeight: "600",
   },
   googleButtonText: {
     fontFamily: "PlusJakartaSans",
