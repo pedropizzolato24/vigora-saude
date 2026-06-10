@@ -1,12 +1,12 @@
-# Vigora Saúde — Assistente Pessoal de Saúde e Segurança
+# Vigora — Assistente Pessoal de Saúde e Segurança
 
-**Vigora Saúde** é um aplicativo móvel nativo para iOS e Android que funciona como assistente pessoal de saúde e segurança, especialmente projetado para idosos e pessoas com condições de saúde crônicas. O app monitora a saúde do usuário, gerencia medicações através de alarmes inteligentes, facilita o acesso rápido a serviços de emergência e mantém contatos de emergência sempre à mão.
+**Vigora** é um aplicativo móvel nativo para iOS e Android que funciona como assistente pessoal de saúde e segurança, especialmente projetado para idosos e pessoas com condições de saúde crônicas. O app monitora a saúde do usuário, gerencia medicações através de alarmes inteligentes, facilita o acesso rápido a serviços de emergência e mantém contatos de emergência sempre à mão.
 
 ---
 
 ## Visão Geral
 
-O Vigora Saúde foi desenvolvido com **Expo SDK 54** (React Native 0.81) e oferece uma experiência mobile-first otimizada para usuários com diferentes níveis de literacia digital. O app combina funcionalidades de saúde, segurança e comunicação em uma interface intuitiva com suporte a modo claro/escuro, ajuste de tamanho de fonte e modo de acessibilidade.
+O Vigora foi desenvolvido com **Expo SDK 54** (React Native 0.81) e oferece uma experiência mobile-first otimizada para usuários com diferentes níveis de literacia digital. O app combina funcionalidades de saúde, segurança e comunicação em uma interface intuitiva com suporte a modo claro/escuro, ajuste de tamanho de fonte e modo de acessibilidade.
 
 A infraestrutura é **100% própria**: o backend roda em Node.js auto-hospedado no Railway, a autenticação usa **OAuth direto com o Google** (`expo-auth-session`, PKCE) com sessão JWT própria, e os dados do usuário são respaldados na própria conta para sobreviver a uma reinstalação.
 
@@ -302,7 +302,7 @@ O bundle injeta as variáveis `EXPO_PUBLIC_*` em tempo de build via GitHub Secre
 
 ## Conformidade e Segurança
 
-Os dados do usuário ficam no dispositivo (AsyncStorage) e são respaldados na infraestrutura própria do Vigora Saúde (servidor Node + MySQL no Railway), sempre escopados ao usuário autenticado pelo `openId`. O backup na nuvem (anamnese, contatos, alarmes, configurações e métricas) existe para permitir recuperação após reinstalar o app, e o acesso é protegido por sessão JWT.
+Os dados do usuário ficam no dispositivo (AsyncStorage) e são respaldados na infraestrutura própria do Vigora (servidor Node + MySQL no Railway), sempre escopados ao usuário autenticado pelo `openId`. O backup na nuvem (anamnese, contatos, alarmes, configurações e métricas) existe para permitir recuperação após reinstalar o app, e o acesso é protegido por sessão JWT.
 
 Boas práticas de segurança aplicadas: sessões JWT com revogação (`jti`), autorização por propriedade de dispositivo no monitoramento (previne enumeração de `deviceId`), rate limiting nos alertas de emergência, allowlist de CORS e cabeçalhos de segurança. A conformidade com a **LGPD** é apoiada por consentimento explícito para localização e contatos e minimização de dados.
 
@@ -323,6 +323,6 @@ Boas práticas de segurança aplicadas: sessões JWT com revogação (`jti`), au
 - **Repositório:** [github.com/pedropizzolato24/vigora-saude](https://github.com/pedropizzolato24/vigora-saude)
 - **Versão:** 1.0.0
 - **Última Atualização:** Maio de 2026
-- **Licença:** Proprietária (Vigora Saúde)
+- **Licença:** Proprietária (Vigora)
 
 > **Aviso:** Este aplicativo não substitui consulta médica profissional. Em caso de emergência, ligue para o SAMU (192) ou Bombeiros (193).

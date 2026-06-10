@@ -1,6 +1,6 @@
-# Guia de Build, Publicação e Paywall — Vigora Saúde
+# Guia de Build, Publicação e Paywall — Vigora
 
-Este documento cobre os dois processos principais para lançar o Vigora Saúde nas lojas e configurar o Paywall visual no RevenueCat.
+Este documento cobre os dois processos principais para lançar o Vigora nas lojas e configurar o Paywall visual no RevenueCat.
 
 ---
 
@@ -106,7 +106,7 @@ eas submit --profile production --platform all
 
 1. Acesse [app.revenuecat.com](https://app.revenuecat.com)
 2. Faça login ou crie uma conta gratuita
-3. Crie um novo projeto chamado **Vigora Saúde**
+3. Crie um novo projeto chamado **Vigora**
 
 ---
 
@@ -116,13 +116,13 @@ No projeto criado, clique em **+ New App**:
 
 **Para iOS:**
 - Platform: **App Store**
-- App Name: `Vigora Saúde`
+- App Name: `Vigora`
 - Bundle ID: `com.vigora.saude`
 - Copie a **Public API Key** gerada
 
 **Para Android:**
 - Platform: **Google Play**
-- App Name: `Vigora Saúde`
+- App Name: `Vigora`
 - Package Name: `com.vigora.saude`
 - Copie a **Public API Key** gerada
 
@@ -247,7 +247,7 @@ eas build:list
 
 | Campo | Valor |
 |---|---|
-| App Name | Vigora Saúde |
+| App Name | Vigora |
 | Bundle ID / Package | `com.vigora.saude` |
 | URL Scheme (deep link) | `vigora://` |
 | Versão atual | 1.0.0 |

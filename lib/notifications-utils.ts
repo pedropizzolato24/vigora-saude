@@ -69,7 +69,7 @@ export async function setupNotificationChannels(): Promise<void> {
   // Default channel for non-alarm notifications
   await Notifications.setNotificationChannelAsync(DEFAULT_CHANNEL_ID, {
     name: 'Notificações Gerais',
-    description: 'Notificações gerais do Vigora Saúde.',
+    description: 'Notificações gerais do Vigora.',
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250],
     enableVibrate: true,

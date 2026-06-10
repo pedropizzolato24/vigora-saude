@@ -1,6 +1,6 @@
 /**
  * components/pro-limits.ts
- * Política de acesso do Vigora Saúde.
+ * Política de acesso do Vigora.
  *
  * O app NÃO restringe recursos por plano: durante o free trial (e fora dele)
  * o usuário tem a experiência completa — contatos e alarmes ilimitados,

@@ -1,4 +1,4 @@
-# Vigora Saúde — Product Context
+# Vigora — Product Context
 
 ## Product Purpose
 

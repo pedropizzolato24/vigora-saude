@@ -49,7 +49,7 @@ const SLIDES: OnboardingSlide[] = [
     icon: 'favorite',
     iconColor: '#FFFFFF',
     iconBg: '#1E4D8C',
-    title: 'Bem-vindo ao Vigora Saúde',
+    title: 'Bem-vindo ao Vigora',
     description:
       'Seu assistente pessoal de saúde e segurança. Monitore sua saúde, configure alarmes de medicamentos e tenha acesso rápido a serviços de emergência.',
   },
@@ -101,7 +101,7 @@ const SLIDES: OnboardingSlide[] = [
     iconBg: '#0891B2',
     title: 'Permissão de Localização',
     description:
-      'Para enviar sua localização em emergências, o Vigora Saúde precisa de acesso à sua localização. Toque em "Permitir" para continuar.',
+      'Para enviar sua localização em emergências, o Vigora precisa de acesso à sua localização. Toque em "Permitir" para continuar.',
   },
   {
     id: '7',

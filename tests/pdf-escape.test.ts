@@ -116,7 +116,7 @@ describe("buildReportHtml — XSS prevention", () => {
     // Sanity: the report shell is still there
     expect(html).toMatch(/<!DOCTYPE html>/);
     expect(html).toMatch(/<html lang="pt-BR">/);
-    expect(html).toMatch(/Vigora Saúde/);
+    expect(html).toMatch(/Vigora/);
     // And the name is escaped (no unescaped <Silva>)
     expect(html).not.toMatch(/<Silva>/);
     expect(html).toMatch(/Maria &lt;Silva&gt;/);

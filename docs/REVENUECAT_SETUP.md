@@ -1,12 +1,12 @@
-# Guia de Configuração do RevenueCat — Vigora Saúde
+# Guia de Configuração do RevenueCat — Vigora
 
-Este documento descreve o passo a passo completo para configurar os produtos de assinatura do Vigora Saúde no painel RevenueCat, na App Store Connect (iOS) e no Google Play Console (Android).
+Este documento descreve o passo a passo completo para configurar os produtos de assinatura do Vigora no painel RevenueCat, na App Store Connect (iOS) e no Google Play Console (Android).
 
 ---
 
 ## 1. Visão Geral da Arquitetura
 
-O Vigora Saúde utiliza o RevenueCat como camada de abstração para gerenciar assinaturas em iOS e Android. A integração funciona da seguinte forma:
+O Vigora utiliza o RevenueCat como camada de abstração para gerenciar assinaturas em iOS e Android. A integração funciona da seguinte forma:
 
 | Camada | Responsabilidade |
 |---|---|
@@ -84,7 +84,7 @@ Acesse [app.revenuecat.com](https://app.revenuecat.com).
 
 ### 4.1 Criar o App
 
-1. Clique em **+ New Project** → nomeie como `Vigora Saúde`
+1. Clique em **+ New Project** → nomeie como `Vigora`
 2. Adicione dois apps: **iOS** e **Android**
 
 | Plataforma | Campo | Valor |
@@ -132,7 +132,7 @@ Acesse [app.revenuecat.com](https://app.revenuecat.com).
 
 1. Acesse **Paywalls** → **+ New Paywall**
 2. Selecione o template desejado (recomendado: **Blaze** para 3 planos)
-3. Personalize com as cores do Vigora Saúde:
+3. Personalize com as cores do Vigora:
    - Primary: `#0a7ea4`
    - Background: `#ffffff`
 4. Vincule ao offering `default`

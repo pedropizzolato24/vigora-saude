@@ -647,8 +647,8 @@ export default function ContactsScreen() {
                         </Text>
                       </View>
                       <Text style={[styles.previewText, { color: colors.foreground, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
-                        🚨 <Text style={{ fontWeight: '700' }}>Alerta Vigora Saúde</Text>{'\n\n'}
-                        {form.name.trim() || '[nome]'}, o usuário do Vigora Saúde não respondeu ao alarme de segurança.{'\n\n'}
+                        🚨 <Text style={{ fontWeight: '700' }}>Alerta Vigora</Text>{'\n\n'}
+                        {form.name.trim() || '[nome]'}, o usuário do Vigora não respondeu ao alarme de segurança.{'\n\n'}
                         Por favor, entre em contato ou verifique se está bem.
                       </Text>
                     </View>

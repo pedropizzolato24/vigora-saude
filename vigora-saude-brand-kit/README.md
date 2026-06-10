@@ -1,4 +1,4 @@
-# Vigora Saúde — Brand Kit
+# Vigora — Brand Kit
 
 **Tagline:** Perto de você. Sempre.
 **Version:** 1.0 — May 2026
@@ -14,7 +14,7 @@ vigora-saude-brand-kit/
 ├── README.md                    This file
 ├── logo/
 │   ├── symbol/                  Crescent moon mark — 3 color variants
-│   ├── wordmark/                "Vigora Saúde" type treatment — 2 color variants
+│   ├── wordmark/                "Vigora" type treatment — 2 color variants
 │   └── lockup/
 │       ├── horizontal/          Symbol + wordmark side by side — 2 variants
 │       └── stacked/             Symbol above wordmark — 2 variants
@@ -160,5 +160,5 @@ When in doubt, the PDF is the source of truth for visual decisions.
 
 ## Questions & Updates
 
-Brand maintained by the Vigora Saúde product team.
+Brand maintained by the Vigora product team.
 For brand questions: design@vigora.com.br (placeholder — update with real contact)

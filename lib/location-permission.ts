@@ -1,7 +1,7 @@
 /**
  * location-permission.ts
  *
- * Manages location permission requests for the Vigora Saúde app.
+ * Manages location permission requests for the Vigora app.
  *
  * Two levels of permission:
  * 1. Foreground ("Enquanto usa o app") - required for SOS when app is open

@@ -634,7 +634,7 @@ export default function SettingsScreen() {
 
           {/* Version info */}
           <View style={{ alignItems: 'center', gap: 4, paddingTop: 8 }}>
-            <Text style={{ fontSize: af.sm, color: ac.muted, fontWeight: '600' }}>Vigora Saúde - Versão 1.0.0</Text>
+            <Text style={{ fontSize: af.sm, color: ac.muted, fontWeight: '600' }}>Vigora - Versão 1.0.0</Text>
             <Text style={{ fontSize: af.sm, color: ac.muted }}>Dados armazenados localmente no dispositivo.</Text>
           </View>
         </ScrollView>
@@ -1341,7 +1341,7 @@ export default function SettingsScreen() {
                 <Text style={[styles.fontPreviewLabel, { color: colors.muted }]}>Pré-visualização</Text>
               </View>
               <Text style={{ fontSize: fs['2xl'], fontWeight: '800', color: colors.foreground, marginBottom: 2 }}>
-                Vigora Saúde
+                Vigora
               </Text>
               <Text style={{ fontSize: fs.base, color: colors.foreground, lineHeight: fs.scaled(22) }}>
                 Seu assistente pessoal de saúde e segurança.
@@ -1443,14 +1443,14 @@ export default function SettingsScreen() {
               <MaterialIcons name="favorite" size={20} color={colors.emergency} />
             </View>
             <View>
-              <Text style={[styles.footerAppName, { color: colors.foreground }]}>Vigora Saúde</Text>
+              <Text style={[styles.footerAppName, { color: colors.foreground }]}>Vigora</Text>
               <Text style={[styles.footerVersion, { color: colors.muted }]}>Versão 1.0.0</Text>
             </View>
           </View>
           <View style={styles.footerLinks}>
             <Pressable
               onPress={() =>
-                showDialog({ title: 'Termos de Serviço', message: 'Vigora Saúde - Termos de Serviço\n\nEste aplicativo é fornecido para fins informativos. Não substitui atendimento médico profissional.', variant: 'info', buttons: [{ text: 'OK' }] })
+                showDialog({ title: 'Termos de Serviço', message: 'Vigora - Termos de Serviço\n\nEste aplicativo é fornecido para fins informativos. Não substitui atendimento médico profissional.', variant: 'info', buttons: [{ text: 'OK' }] })
               }
               style={({ pressed }) => [pressed && { opacity: 0.6 }]}
             >
@@ -1459,7 +1459,7 @@ export default function SettingsScreen() {
             <Text style={[styles.footerDot, { color: colors.muted }]}>·</Text>
             <Pressable
               onPress={() =>
-                showDialog({ title: 'Política de Privacidade', message: 'Vigora Saúde - Política de Privacidade\n\nTodos os seus dados são armazenados localmente neste dispositivo. Nenhum dado é enviado para servidores externos.', variant: 'info', buttons: [{ text: 'OK' }] })
+                showDialog({ title: 'Política de Privacidade', message: 'Vigora - Política de Privacidade\n\nTodos os seus dados são armazenados localmente neste dispositivo. Nenhum dado é enviado para servidores externos.', variant: 'info', buttons: [{ text: 'OK' }] })
               }
               style={({ pressed }) => [pressed && { opacity: 0.6 }]}
             >
@@ -1479,7 +1479,7 @@ export default function SettingsScreen() {
             Dados armazenados localmente no dispositivo.
           </Text>
           <Text style={[styles.footerCopyright, { color: colors.muted }]}>
-            © 2026 Vigora Saúde. Todos os direitos reservados.
+            © 2026 Vigora. Todos os direitos reservados.
           </Text>
         </View>
       </ScrollView>

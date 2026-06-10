@@ -81,7 +81,7 @@ class ExpoAlarmCountdownModule(private val reactContext: ReactApplicationContext
             val notification = buildNotification(
                 context,
                 title,
-                "Toque para abrir o Vigora Saúde",
+                "Toque para abrir o Vigora",
                 ongoing = false
             )
             notificationManager.notify(ALARM_NOTIFICATION_ID, notification)

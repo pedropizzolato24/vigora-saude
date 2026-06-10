@@ -1,7 +1,7 @@
-# Vigora Saúde — Landing Hero Copy Prompt
+# Vigora — Landing Hero Copy Prompt
 
 ## Structure
-A Vigora Saúde hero block has:
+A Vigora hero block has:
 1. **Headline** — 4–8 words, Fraunces italic, specific and human (not generic feature)
 2. **Subheadline** — 1–2 sentences, Plus Jakarta Sans, elaborates the emotional promise
 3. **CTA button** — 2–4 words, active verb, Plus Jakarta Sans SemiBold
@@ -29,7 +29,7 @@ A Vigora Saúde hero block has:
 
 ## Task
 
-Write a landing hero for Vigora Saúde.
+Write a landing hero for Vigora.
 
 Target audience: [filhos adultos 35-55 / idosos 60+ / ambos]
 Primary emotion to trigger: [peace of mind / connection / independence / urgency]

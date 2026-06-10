@@ -1,7 +1,7 @@
 /**
  * components/trial-banner.tsx
  *
- * Banners de trial e expiração do Vigora Saúde Pro.
+ * Banners de trial e expiração do Vigora Pro.
  *
  * - TrialBanner: exibido durante os 14 dias de trial gratuito
  * - ExpiredBanner: exibido após o trial expirar (sem assinatura ativa)

@@ -114,7 +114,7 @@ export async function generateAnamnesisPDF(anamnesis: AnamnesesData): Promise<st
           </div>
 
           <div class="footer">
-            <p>Documento gerado automaticamente pelo aplicativo Vigora Saúde</p>
+            <p>Documento gerado automaticamente pelo aplicativo Vigora</p>
             <p>Data: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
           </div>
         </body>

@@ -65,27 +65,27 @@ function buildWarningMessage(
   offlineHours: number,
   locationUrl?: string
 ): string {
-  const name = userName || "O usuário do Vigora Saúde";
+  const name = userName || "O usuário do Vigora";
   const duration = formatOfflineDuration(offlineHours);
 
   let header: string;
   let body: string;
 
   if (level === 1) {
-    header = "⚠️ AVISO - Vigora Saúde";
+    header = "⚠️ AVISO - Vigora";
     body =
       `${name} está sem atividade no aplicativo há aproximadamente ${duration}.\n\n` +
       `Os alarmes de medicamento/saúde não estão sendo confirmados. ` +
       `Isso pode indicar que o celular está desligado, sem bateria ou sem conexão.\n\n` +
       `Recomendamos entrar em contato para verificar se está tudo bem.`;
   } else if (level === 2) {
-    header = "⚠️⚠️ ATENÇÃO - Vigora Saúde";
+    header = "⚠️⚠️ ATENÇÃO - Vigora";
     body =
       `${name} está sem atividade há aproximadamente ${duration}.\n\n` +
       `Múltiplos alarmes de saúde não foram confirmados. ` +
       `Por favor, tente entrar em contato com urgência.`;
   } else {
-    header = "🚨 ALERTA SÉRIO - Vigora Saúde";
+    header = "🚨 ALERTA SÉRIO - Vigora";
     body =
       `${name} está sem atividade há mais de ${duration}.\n\n` +
       `Todos os alarmes de saúde do período ficaram sem resposta. ` +
@@ -99,15 +99,15 @@ function buildWarningMessage(
     message += `\n\n📍 Última localização registrada:\n${locationUrl}`;
   }
 
-  message += `\n\n- Enviado automaticamente pelo Vigora Saúde`;
+  message += `\n\n- Enviado automaticamente pelo Vigora`;
   return message;
 }
 
 /** Short push title for an offline warning, by escalation level. */
 function buildWarningPushTitle(level: number): string {
-  if (level === 1) return "⚠️ Aviso — Vigora Saúde";
-  if (level === 2) return "⚠️ Atenção — Vigora Saúde";
-  return "🚨 Alerta sério — Vigora Saúde";
+  if (level === 1) return "⚠️ Aviso — Vigora";
+  if (level === 2) return "⚠️ Atenção — Vigora";
+  return "🚨 Alerta sério — Vigora";
 }
 
 /** Short push body summarizing the offline duration. */
@@ -354,16 +354,16 @@ export async function runMonitoringJob(): Promise<void> {
         continue;
       }
 
-      const name = appUser.userName || "O usuário do Vigora Saúde";
+      const name = appUser.userName || "O usuário do Vigora";
       const scheduledStr = event.scheduledAt.toLocaleTimeString("pt-BR", {
         hour: "2-digit",
         minute: "2-digit",
       });
       const message =
-        `⚠️ CHECK-IN NÃO RESPONDIDO - Vigora Saúde\n\n` +
+        `⚠️ CHECK-IN NÃO RESPONDIDO - Vigora\n\n` +
         `${name} não respondeu ao check-in de saúde previsto para ${scheduledStr}.\n\n` +
         `Por favor, entre em contato para verificar se está tudo bem.\n\n` +
-        `- Enviado automaticamente pelo Vigora Saúde`;
+        `- Enviado automaticamente pelo Vigora`;
 
       console.log(`[Monitor] Step 3: escalating check-in for device ${event.deviceId}`);
 
@@ -379,7 +379,7 @@ export async function runMonitoringJob(): Promise<void> {
 
       const pushed = await sendPushToCaregivers(
         caregiverOpenIds,
-        "⚠️ Check-in não respondido — Vigora Saúde",
+        "⚠️ Check-in não respondido — Vigora",
         `${name} não respondeu ao check-in das ${scheduledStr}. Toque para ver os detalhes.`,
         { type: "missed_checkin", url: "/(caregiver-tabs)/alerts" }
       );

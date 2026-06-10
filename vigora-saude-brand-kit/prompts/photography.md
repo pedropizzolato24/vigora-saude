@@ -1,4 +1,4 @@
-# Vigora Saúde — Photography Generation Prompt
+# Vigora — Photography Generation Prompt
 
 ## Master Prompt Template
 

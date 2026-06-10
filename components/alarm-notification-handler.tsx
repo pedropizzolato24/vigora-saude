@@ -122,7 +122,7 @@ function showEscalationAlert(result: EscalationResult) {
       body = `Mensagens WhatsApp abertas para ${result.deepLinkSent} contato(s) de emergência.\n\nAs mensagens foram abertas no seu WhatsApp pessoal. Confirme o envio de cada uma.`;
       break;
     case 'server_api':
-      body = `Mensagens enviadas automaticamente para ${result.serverApiSent} contato(s) de emergência via WhatsApp Business.\n\nAs mensagens foram enviadas do número do Vigora Saúde.`;
+      body = `Mensagens enviadas automaticamente para ${result.serverApiSent} contato(s) de emergência via WhatsApp Business.\n\nAs mensagens foram enviadas do número do Vigora.`;
       break;
     case 'both':
       body = `Escalação híbrida:\n* ${result.deepLinkSent} contato(s) via seu WhatsApp pessoal\n* ${result.serverApiSent} contato(s) via WhatsApp Business (automático)`;

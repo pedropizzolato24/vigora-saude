@@ -299,7 +299,7 @@ export default function HelpScreen() {
               Como podemos ajudar?
             </Text>
             <Text style={[styles.welcomeSubtitle, { color: colors.foreground, fontSize: fs.sm }]}>
-              Encontre respostas para as dúvidas mais comuns sobre o Vigora Saúde.
+              Encontre respostas para as dúvidas mais comuns sobre o Vigora.
             </Text>
           </View>
         </View>

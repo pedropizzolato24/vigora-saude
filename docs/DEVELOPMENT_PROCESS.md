@@ -1,6 +1,6 @@
-# Processo de Desenvolvimento — Vigora Saúde
+# Processo de Desenvolvimento — Vigora
 
-Este documento descreve o processo de desenvolvimento do Vigora Saúde, incluindo decisões arquiteturais, desafios enfrentados, soluções implementadas e lições aprendidas. **Este arquivo deve ser atualizado a cada sprint ou mudança significativa no projeto.**
+Este documento descreve o processo de desenvolvimento do Vigora, incluindo decisões arquiteturais, desafios enfrentados, soluções implementadas e lições aprendidas. **Este arquivo deve ser atualizado a cada sprint ou mudança significativa no projeto.**
 
 ---
 
@@ -501,4 +501,4 @@ export default defineConfig({
 
 ## Conclusão
 
-O desenvolvimento do Vigora Saúde evoluiu de um MVP básico de alarmes para um ecossistema completo com autenticação de conta, cloud backup, dead man's switch, monetização e suporte a dois perfis de usuário (monitorado e cuidador). As principais lições — documentar decisões, testar cedo, usar env vars, implementar fallbacks graceful e extrair lógica testável — serão aplicadas em todos os desenvolvimentos futuros do projeto.
+O desenvolvimento do Vigora evoluiu de um MVP básico de alarmes para um ecossistema completo com autenticação de conta, cloud backup, dead man's switch, monetização e suporte a dois perfis de usuário (monitorado e cuidador). As principais lições — documentar decisões, testar cedo, usar env vars, implementar fallbacks graceful e extrair lógica testável — serão aplicadas em todos os desenvolvimentos futuros do projeto.

@@ -103,7 +103,7 @@ export default function LocationScreen() {
       if (Platform.OS === 'web') {
         await Linking.openURL(mapsUrl);
       } else {
-        await Share.share({ message, title: 'Minha Localização - Vigora Saúde' });
+        await Share.share({ message, title: 'Minha Localização - Vigora' });
         // Add to history
         setHistory((prev) => [record, ...prev].slice(0, 10));
       }

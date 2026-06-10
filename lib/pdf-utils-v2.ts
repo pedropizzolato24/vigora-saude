@@ -78,7 +78,7 @@ function generateAnamnesisPDF(anamnesis: AnamnesesData): string {
       </head>
       <body>
         <div class="header">
-          <h1>Ficha Médica - Vigora Saúde</h1>
+          <h1>Ficha Médica - Vigora</h1>
           <p>Documento gerado em ${new Date().toLocaleDateString('pt-BR')}</p>
         </div>
 
@@ -138,7 +138,7 @@ function generateAnamnesisPDF(anamnesis: AnamnesesData): string {
 
         <div class="footer">
           <p>Este documento é confidencial e destina-se apenas ao uso médico.</p>
-          <p>Vigora Saúde © 2026</p>
+          <p>Vigora © 2026</p>
         </div>
       </body>
     </html>

@@ -127,7 +127,7 @@ function MetricRow({ icon, label, value, statusColor, timeAgo }: MetricRowProps)
  *
  * Layout:
  * ┌---------------------------------┐
- * │  ❤️  Vigora Saúde               │
+ * │  ❤️  Vigora                     │
  * │  Saúde                          │
  * │  ● ♥ Freq. Cardíaca  72 bpm 2h │
  * │  ● 🩸 Pressão        118 mmHg 1d│
@@ -167,7 +167,7 @@ export function HealthWidget({ heartRate, bloodPressure, glucose }: HealthWidget
           }}
         />
         <TextWidget
-          text="Vigora Saúde"
+          text="Vigora"
           style={{
             fontSize: 12,
             fontWeight: 'bold',

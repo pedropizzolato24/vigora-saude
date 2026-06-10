@@ -1,4 +1,4 @@
-# Vigora Saúde — Fonts
+# Vigora — Fonts
 
 ## License
 

@@ -499,7 +499,7 @@ export function buildReportHtml(data: ReportData): string {
     <div class="brand">
       <div class="brand-icon">❤️</div>
       <div>
-        <div class="brand-name">Vigora Saúde</div>
+        <div class="brand-name">Vigora</div>
         <div class="brand-tagline">Seu assistente pessoal de saúde</div>
       </div>
     </div>
@@ -547,10 +547,10 @@ export function buildReportHtml(data: ReportData): string {
   <!-- Rodapé -->
   <div class="report-footer">
     <div class="footer-disclaimer">
-      ⚠️ Este relatório é gerado automaticamente pelo app Vigora Saúde e tem caráter informativo.
+      ⚠️ Este relatório é gerado automaticamente pelo app Vigora e tem caráter informativo.
       Não substitui consulta médica profissional. Compartilhe com seu médico para avaliação clínica.
     </div>
-    <div>Vigora Saúde · ${reportDate}</div>
+    <div>Vigora · ${reportDate}</div>
   </div>
 </body>
 </html>`;

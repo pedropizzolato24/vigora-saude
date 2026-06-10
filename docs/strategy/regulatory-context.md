@@ -1,4 +1,4 @@
-# Regulatory and compliance launch readiness for Vigora Saúde
+# Regulatory and compliance launch readiness for Vigora
 
 **Bottom line: Vigora can launch on App Store and Google Play without ANVISA registration, but LGPD compliance is materially heavier than the "small operator" regime allows.** ANVISA's own Q&A explicitly excludes medication reminders, manual health logging, medical record storage, and communication/SOS features from software-as-medical-device (SaMD) classification [anvisa](https://www.gov.br/anvisa/pt-br/assuntos/noticias-anvisa/2022/software-como-dispositivo-medico-perguntas-e-respostas/perguntas-respostas-rdc-657-de-2022-v1-01-09-2022.pdf). However, because Vigora processes health data on elderly users, it falls into ANPD's "high-risk" treatment category — which strips out the simplified small-operator regime, makes DPO/Encarregado designation mandatory under Art. 41 LGPD, and requires a public privacy policy, formal incident response, and full record of processing activities [in.gov](https://www.in.gov.br/en/web/dou/-/resolucao-cd/anpd-n-2-de-27-de-janeiro-de-2022-376562019). Marketing language must avoid clinical efficacy claims (CONAR), but CFM does not apply to a non-physician app. The dead man's switch is regulatorily fine in Brazil and has live precedents on both app stores (Snug Safety, My SOS Family). The realistic pre-launch blockers are LGPD documentation, store-submission metadata, and likely registering a CNPJ to avoid friction with Google Play's tightening health-app verification.
 
@@ -67,7 +67,7 @@ Outsourced "DPO-as-a-service" runs **R$2,500–R$6,500/month** in Brazil [svxcon
 Art. 11, I LGPD requires explicit, specific, **highlighted** consent for sensitive data. The consent flow can't bundle health data into a generic "I accept terms" checkbox — it must be a separate, visually distinct affirmation that names health data specifically [juristas](https://juristas.com.br/modelos-de-documentos/modelo-termo-de-consentimento-para-o-tratamento-de-dados-pessoais-e-dados-pessoais-sensiveis-lgpd-aplicativo-de-saude-healthtech/).
 
 Concrete pattern:
-> ☐ Autorizo a Vigora Saúde a tratar **meus dados pessoais sensíveis de saúde** (medicações, pressão arterial, glicemia, documentos médicos) para as finalidades de: lembretes de medicação, registro de indicadores, armazenamento de prontuário e alertas de emergência aos contatos por mim designados.
+> ☐ Autorizo a Vigora a tratar **meus dados pessoais sensíveis de saúde** (medicações, pressão arterial, glicemia, documentos médicos) para as finalidades de: lembretes de medicação, registro de indicadores, armazenamento de prontuário e alertas de emergência aos contatos por mim designados.
 
 ### Elderly user accessibility obligations
 
@@ -196,7 +196,7 @@ CONAR enforcement examples are real but extreme — a July 2025 decision ordered
 
 Drawing from Diário da Saúde [diariodasaude](https://www.diariodasaude.com.br/disclaimer.php), GREA [grea](https://grea.org.br/disclaimer-medico/), and Medisafe's Brazilian terms , the established pattern is:
 
-> *Vigora Saúde é um aplicativo informativo para monitoramento de saúde e não substitui o diagnóstico, tratamento ou acompanhamento profissional médico. O usuário é responsável por consultar um médico sobre qualquer questão de saúde. Vigora não é um serviço de emergência — em caso de emergência médica, ligue 192 (SAMU) ou 193 (Bombeiros). Alertas automáticos podem falhar; não confie exclusivamente neste aplicativo em situações de risco.*
+> *Vigora é um aplicativo informativo para monitoramento de saúde e não substitui o diagnóstico, tratamento ou acompanhamento profissional médico. O usuário é responsável por consultar um médico sobre qualquer questão de saúde. Vigora não é um serviço de emergência — em caso de emergência médica, ligue 192 (SAMU) ou 193 (Bombeiros). Alertas automáticos podem falhar; não confie exclusivamente neste aplicativo em situações de risco.*
 
 This disclaimer should appear (a) at first launch, (b) in the privacy policy, (c) in the App Store / Play Store description, and (d) accessible from in-app settings.
 

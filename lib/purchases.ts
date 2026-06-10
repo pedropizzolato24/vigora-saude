@@ -1,6 +1,6 @@
 /**
  * lib/purchases.ts
- * Serviço principal do RevenueCat para o Vigora Saúde.
+ * Serviço principal do RevenueCat para o Vigora.
  *
  * Responsabilidades:
  * - Inicialização do SDK com a API key correta por plataforma

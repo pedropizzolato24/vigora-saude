@@ -1,6 +1,6 @@
 /**
  * context/purchases-context.tsx
- * Contexto global de assinatura do RevenueCat para o Vigora Saúde.
+ * Contexto global de assinatura do RevenueCat para o Vigora.
  *
  * Fornece:
  * - isPro: boolean - se o usuário tem acesso ao "Vigora Saúde Pro"

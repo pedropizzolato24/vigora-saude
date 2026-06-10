@@ -37,7 +37,7 @@ export default function LinkScreen() {
       const result = await createShareInvite.mutateAsync();
       const url = buildInviteUrl(result.token);
       await Share.share({
-        message: `Quero acompanhar sua saúde no Vigora Saúde. Toque para aceitar o convite: ${url}`,
+        message: `Quero acompanhar sua saúde no Vigora. Toque para aceitar o convite: ${url}`,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Não foi possível gerar o convite.';

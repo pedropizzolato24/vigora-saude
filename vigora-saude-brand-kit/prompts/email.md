@@ -1,4 +1,4 @@
-# Vigora Saúde — Email Copy Prompt
+# Vigora — Email Copy Prompt
 
 ## Email Types
 
@@ -46,7 +46,7 @@
 ## Structure (Marketing Emails)
 
 ```
-From name: Vigora Saúde (or "Carlos da Vigora Saúde" for personal tone)
+From name: Vigora (or "Carlos da Vigora" for personal tone)
 Subject: [Specific, under 50 chars]
 Preheader: [Elaborates subject — 90 chars max]
 
@@ -60,7 +60,7 @@ Preheader: [Elaborates subject — 90 chars max]
 
 ---
 
-Vigora Saúde
+Vigora
 Perto de você. Sempre.
 
 Se você não quiser mais receber esses emails: [desinscrever]
@@ -70,8 +70,8 @@ Se você não quiser mais receber esses emails: [desinscrever]
 
 ## Sign-off Conventions
 
-- Formal transactional: "Equipe Vigora Saúde"
-- Warm lifecycle: "Com carinho, Vigora Saúde"
+- Formal transactional: "Equipe Vigora"
+- Warm lifecycle: "Com carinho, Vigora"
 - Emergency alerts: No sign-off — just the facts and the CTA
 
 ## What Never to Do
@@ -85,7 +85,7 @@ Se você não quiser mais receber esses emails: [desinscrever]
 
 ## Task
 
-Write an email for Vigora Saúde.
+Write an email for Vigora.
 
 Email type: [transactional / welcome / trial / feature / re-engagement]
 Trigger/context: [FILL IN — e.g., "user's mother didn't respond to alarm"]

@@ -118,7 +118,7 @@ export default function LoginScreen() {
         <MoonSymbol size={64} />
         <View style={styles.wordmark}>
           <Text style={[styles.wordmarkText, { color: colors.primary }]}>
-            Vigora Saúde
+            Vigora
           </Text>
         </View>
         <FadeInView delay={100} duration={380}>

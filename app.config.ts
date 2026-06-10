@@ -4,7 +4,7 @@ import type { ExpoConfig } from "expo/config";
 import type { WithAndroidWidgetsParams } from 'react-native-android-widget';
 
 const env = {
-  appName: "Vigora Saúde",
+  appName: "Vigora",
   appSlug: "vigora-saude",
   logoUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663569609351/2NcFSGrjcrdoYA2iMiwXwr/vigora-icon-new-miARvjxqHnMmn9xV9ybs5e.png",
   scheme: "vigora",
@@ -141,15 +141,15 @@ const config: ExpoConfig = {
     [
       "expo-contacts",
       {
-        contactsPermission: "Permitir que o Vigora Saúde acesse seus contatos para importar contatos de emergência."
+        contactsPermission: "Permitir que o Vigora acesse seus contatos para importar contatos de emergência."
       }
     ],
     [
       "expo-location",
       {
-        locationAlwaysAndWhenInUsePermission: "Permitir que o Vigora Saúde acesse sua localização para compartilhar em emergências.",
-        locationAlwaysPermission: "Permitir que o Vigora Saúde acesse sua localização mesmo em segundo plano, para enviar sua posição em emergências.",
-        locationWhenInUsePermission: "Permitir que o Vigora Saúde acesse sua localização para compartilhar em emergências.",
+        locationAlwaysAndWhenInUsePermission: "Permitir que o Vigora acesse sua localização para compartilhar em emergências.",
+        locationAlwaysPermission: "Permitir que o Vigora acesse sua localização mesmo em segundo plano, para enviar sua posição em emergências.",
+        locationWhenInUsePermission: "Permitir que o Vigora acesse sua localização para compartilhar em emergências.",
         isAndroidBackgroundLocationEnabled: true,
         isAndroidForegroundServiceEnabled: true
       }

@@ -8,7 +8,7 @@ Pod::Spec.new do |s|
   s.summary      = package["description"]
   s.homepage     = "https://github.com/vigora-saude/expo-alarm-countdown"
   s.license      = "MIT"
-  s.authors      = { "Vigora Saúde" => "dev@vigora.app" }
+  s.authors      = { "Vigora" => "dev@vigora.app" }
   s.platforms    = { :ios => "13.0" }
   s.source       = { :path => "." }
   s.source_files = "ios/**/*.{h,m,mm,swift}"

@@ -19,7 +19,7 @@ interface NextAlarmWidgetProps {
  *
  * Layout:
  * ┌---------------------------------┐
- * │  💊  Vigora Saúde               │
+ * │  💊  Vigora                     │
  * │  Próximo alarme                 │
  * │  08:30                          │
  * │  Metformina                     │
@@ -62,7 +62,7 @@ export function NextAlarmWidget({ alarmTime, alarmName, hasAlarm, isRinging = fa
           }}
         />
         <TextWidget
-          text="Vigora Saúde"
+          text="Vigora"
           style={{
             fontSize: 12,
             fontWeight: 'bold',
