@@ -48,7 +48,7 @@ export function renderInviteLanding(opts: {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Convite — Vigora Saúde</title>
+<title>Convite — Vigora</title>
 <style>
   :root { color-scheme: light; }
   * { box-sizing: border-box; }
@@ -76,13 +76,13 @@ export function renderInviteLanding(opts: {
 <body>
   <main class="card">
     <div class="logo">${LOGO_SVG}</div>
-    <h1>Alguém quer acompanhar a sua saúde no Vigora Saúde</h1>
+    <h1>Alguém quer acompanhar a sua saúde no Vigora</h1>
     <p>Instale o aplicativo e abra este convite no seu celular para aceitar. É grátis e leva menos de um minuto.</p>
     ${iosButton}
     ${androidButton}
     ${openButton}
     <p class="foot">
-      Vigora Saúde é um app de monitoramento e tranquilidade para a família. Não substitui
+      Vigora é um app de monitoramento e tranquilidade para a família. Não substitui
       acompanhamento médico. Em emergências, ligue 192 (SAMU).
     </p>
   </main>

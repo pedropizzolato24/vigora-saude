@@ -95,6 +95,84 @@ export async function sendWhatsAppMessage(
 }
 
 /**
+ * Send a login OTP via an approved WhatsApp *authentication template*.
+ *
+ * Business-initiated messages outside the 24h service window MUST use a
+ * pre-approved template — plain text (sendWhatsAppMessage) won't deliver.
+ * Create an "authentication" category template in Meta Business Manager
+ * (with the copy-code button) and set WHATSAPP_OTP_TEMPLATE_NAME to its name.
+ *
+ * @param to - Digits-only phone with country code (e.g. "5551999998888")
+ * @param code - The 6-digit OTP (fills the template's body + button params)
+ */
+export async function sendWhatsAppAuthCode(
+  to: string,
+  code: string
+): Promise<WhatsAppSendResult> {
+  const templateName = process.env.WHATSAPP_OTP_TEMPLATE_NAME ?? "";
+  if (!isWhatsAppApiConfigured() || !templateName) {
+    return {
+      success: false,
+      error:
+        "WhatsApp OTP not configured. Set WHATSAPP_API_TOKEN, WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_OTP_TEMPLATE_NAME.",
+    };
+  }
+
+  try {
+    const response = await fetch(
+      `${WHATSAPP_API_BASE}/${ENV.whatsappPhoneNumberId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${ENV.whatsappApiToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to,
+          type: "template",
+          template: {
+            name: templateName,
+            // Precisa casar com o idioma em que o template foi APROVADO no Meta.
+            language: { code: process.env.WHATSAPP_OTP_TEMPLATE_LANG ?? "pt_BR" },
+            components: [
+              {
+                type: "body",
+                parameters: [{ type: "text", text: code }],
+              },
+              {
+                type: "button",
+                sub_type: "url",
+                index: "0",
+                parameters: [{ type: "text", text: code }],
+              },
+            ],
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMsg =
+        (errorData as any)?.error?.message ||
+        `HTTP ${response.status}: ${response.statusText}`;
+      // Não logamos o número (dado pessoal) — só o motivo da falha.
+      console.error(`[WhatsApp API] Failed to send OTP:`, errorMsg);
+      return { success: false, error: errorMsg };
+    }
+
+    const data = (await response.json()) as any;
+    return { success: true, messageId: data?.messages?.[0]?.id };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[WhatsApp API] Network error sending OTP:`, errorMsg);
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
  * Send emergency alert to multiple contacts via WhatsApp Business API.
  *
  * @param contacts - Array of { phone, name } objects

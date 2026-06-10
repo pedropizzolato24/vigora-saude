@@ -1,4 +1,4 @@
-# Vigora Saúde — Design System
+# Vigora — Design System
 
 ## Color Strategy: Committed
 

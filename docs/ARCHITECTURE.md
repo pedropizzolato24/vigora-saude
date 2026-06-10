@@ -1,12 +1,12 @@
-# Arquitetura Técnica — Vigora Saúde
+# Arquitetura Técnica — Vigora
 
-Este documento descreve a arquitetura técnica, stack de tecnologias, padrões de design e decisões arquiteturais do Vigora Saúde. **Este arquivo deve ser atualizado sempre que houver mudanças significativas na arquitetura, dependências ou padrões do projeto.**
+Este documento descreve a arquitetura técnica, stack de tecnologias, padrões de design e decisões arquiteturais do Vigora. **Este arquivo deve ser atualizado sempre que houver mudanças significativas na arquitetura, dependências ou padrões do projeto.**
 
 ---
 
 ## Visão Geral da Arquitetura
 
-O Vigora Saúde segue uma arquitetura **mobile-first com um backend próprio único**: o servidor Node.js + tRPC hospedado no Railway cuida de autenticação, cloud backup, dead man's switch e envio de alertas. A aplicação funciona completamente offline, com sincronização opcional para o backend quando o usuário está autenticado.
+O Vigora segue uma arquitetura **mobile-first com um backend próprio único**: o servidor Node.js + tRPC hospedado no Railway cuida de autenticação, cloud backup, dead man's switch e envio de alertas. A aplicação funciona completamente offline, com sincronização opcional para o backend quando o usuário está autenticado.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -528,4 +528,4 @@ Dados de saúde (métricas, anamnese) são armazenados no **AsyncStorage local**
 
 ## Conclusão
 
-A arquitetura do Vigora Saúde foi projetada para ser **simples, resiliente e segura**. O uso de Expo, Context API e AsyncStorage permite funcionamento completo offline. A autenticação por conta (OAuth + JWT) habilita cloud backup automático, permitindo que o usuário reinstale o app e recupere todos os dados. O backend único no Railway concentra o dead man's switch (job em processo), os alertas por WhatsApp e o push aos cuidadores. O RevenueCat gerencia toda a complexidade de monetização cross-platform. O sistema de dois tipos de usuário (`monitored` / `caregiver`) com layouts completamente distintos cobre o caso de uso de monitoramento remoto de pessoas dependentes.
+A arquitetura do Vigora foi projetada para ser **simples, resiliente e segura**. O uso de Expo, Context API e AsyncStorage permite funcionamento completo offline. A autenticação por conta (OAuth + JWT) habilita cloud backup automático, permitindo que o usuário reinstale o app e recupere todos os dados. O backend único no Railway concentra o dead man's switch (job em processo), os alertas por WhatsApp e o push aos cuidadores. O RevenueCat gerencia toda a complexidade de monetização cross-platform. O sistema de dois tipos de usuário (`monitored` / `caregiver`) com layouts completamente distintos cobre o caso de uso de monitoramento remoto de pessoas dependentes.

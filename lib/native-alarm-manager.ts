@@ -87,7 +87,7 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
     // Passo 1.2: usar texto estático descritivo na notificação nativa.
     // NÃO usar countdown dinâmico aqui - é impossível sem Foreground Service.
     // O countdown é exibido apenas quando o app está em foreground (alarm-ring screen).
-    const title = '⏰ Vigora Saúde - Alarme de Medicamento';
+    const title = '⏰ Vigora - Alarme de Medicamento';
     const body = alarm.description
       ? `${alarm.description} - Toque para confirmar que tomou o medicamento`
       : 'Toque aqui para confirmar que tomou o medicamento';

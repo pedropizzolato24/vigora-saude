@@ -349,7 +349,7 @@ export const appRouter = router({
           }
         }
 
-        message += `\n\n- Enviado automaticamente pelo Vigora Saúde`;
+        message += `\n\n- Enviado automaticamente pelo Vigora`;
 
         const result = await sendEmergencyAlerts(input.contacts, message);
 

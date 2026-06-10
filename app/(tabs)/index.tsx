@@ -106,7 +106,7 @@ export default function DashboardScreen() {
           <View style={{ paddingTop: insets.top + 12, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>
-                Vigora Saúde
+                Vigora
               </Text>
               {state.profile.name ? (
                 <Text style={{ fontSize: af.md, color: ac.muted, marginTop: 4 }}>
@@ -390,7 +390,7 @@ export default function DashboardScreen() {
               </Text>
             )}
             <Text style={[styles.appName, { color: colors.primary, fontFamily: 'Fraunces-Italic', fontStyle: 'italic', fontSize: fs.scaled(28) }]}>
-              {state.profile.name || 'Vigora Saúde'}
+              {state.profile.name || 'Vigora'}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

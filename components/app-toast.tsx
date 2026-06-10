@@ -1,5 +1,5 @@
 /**
- * AppToast - Snackbar/Toast personalizado do Vigora Saúde
+ * AppToast - Snackbar/Toast personalizado do Vigora
  *
  * Para confirmações rápidas que não precisam interromper o fluxo do usuário.
  * Aparece na parte inferior da tela, some automaticamente após alguns segundos.

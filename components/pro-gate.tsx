@@ -1,6 +1,6 @@
 /**
  * components/pro-gate.tsx
- * Componentes para controle de acesso a recursos premium do Vigora Saúde Pro.
+ * Componentes para controle de acesso a recursos premium do Vigora Pro.
  *
  * Exporta:
  * - ProGate: bloqueia renderização de filhos se não for Pro

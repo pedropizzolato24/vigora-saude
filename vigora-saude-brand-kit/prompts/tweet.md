@@ -1,4 +1,4 @@
-# Vigora Saúde — Tweet / Social Post Prompt
+# Vigora — Tweet / Social Post Prompt
 
 ## Voice Rules
 - Max 280 characters
@@ -25,13 +25,13 @@
 
 **Brand/positioning:**
 > Se ela não responder ao alarme, sua família é avisada. Automático.
-> Nenhum app no Brasil faz isso. Vigora Saúde faz.
+> Nenhum app no Brasil faz isso. Vigora faz.
 
 ---
 
 ## Task
 
-Write a tweet for Vigora Saúde about: [FILL IN TOPIC]
+Write a tweet for Vigora about: [FILL IN TOPIC]
 
 Voice: [cuidador / monitorado / brand]
 Tone: [informational / emotional / product feature / milestone]

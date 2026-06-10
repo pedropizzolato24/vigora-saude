@@ -4,7 +4,7 @@ import type { ExpoConfig } from "expo/config";
 import type { WithAndroidWidgetsParams } from 'react-native-android-widget';
 
 const env = {
-  appName: "Vigora Saúde",
+  appName: "Vigora",
   appSlug: "vigora-saude",
   logoUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663569609351/2NcFSGrjcrdoYA2iMiwXwr/vigora-icon-new-miARvjxqHnMmn9xV9ybs5e.png",
   scheme: "vigora",
@@ -17,6 +17,14 @@ const env = {
 // to the domain serving /.well-known/{apple-app-site-association,assetlinks.json}.
 // When unset, only the custom scheme (vigora://) deep links are registered.
 const linkHost = process.env.EXPO_PUBLIC_LINK_HOST?.trim() || undefined;
+
+// Sign in with Apple exige conta Apple Developer paga (a capability/entitlement
+// não é provisionável com Apple ID gratuito). Mantemos DESLIGADO por padrão
+// para que builds de dev (sideload re-assinado com conta grátis) não levem o
+// entitlement com.apple.developer.applesignin — que faria a re-assinatura
+// falhar/ser removida. Ligue (EXPO_PUBLIC_APPLE_SIGNIN_ENABLED=true) só no
+// build de produção, quando a conta paga já tiver a capability ativa.
+const appleSignIn = process.env.EXPO_PUBLIC_APPLE_SIGNIN_ENABLED === "true";
 
 const config: ExpoConfig = {
   name: env.appName,
@@ -33,6 +41,11 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
+    // Sign in with Apple — obrigatório pela diretriz 4.8 da App Store quando o
+    // app oferece login social de terceiros (Google). Gera o entitlement
+    // com.apple.developer.applesignin (requer capability no App ID + conta paga).
+    // Só é ligado em produção via EXPO_PUBLIC_APPLE_SIGNIN_ENABLED=true.
+    ...(appleSignIn ? { usesAppleSignIn: true } : {}),
     ...(linkHost ? { associatedDomains: [`applinks:${linkHost}`] } : {}),
     "infoPlist": {
       "ITSAppUsesNonExemptEncryption": false
@@ -94,6 +107,11 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    "expo-font",
+    "expo-web-browser",
+    // Plugin do Apple Sign In só entra quando habilitado (mesma razão do
+    // usesAppleSignIn acima) — evita o entitlement em builds de dev.
+    ...(appleSignIn ? ["expo-apple-authentication"] : []),
     [
       'react-native-android-widget',
       {
@@ -139,15 +157,15 @@ const config: ExpoConfig = {
     [
       "expo-contacts",
       {
-        contactsPermission: "Permitir que o Vigora Saúde acesse seus contatos para importar contatos de emergência."
+        contactsPermission: "Permitir que o Vigora acesse seus contatos para importar contatos de emergência."
       }
     ],
     [
       "expo-location",
       {
-        locationAlwaysAndWhenInUsePermission: "Permitir que o Vigora Saúde acesse sua localização para compartilhar em emergências.",
-        locationAlwaysPermission: "Permitir que o Vigora Saúde acesse sua localização mesmo em segundo plano, para enviar sua posição em emergências.",
-        locationWhenInUsePermission: "Permitir que o Vigora Saúde acesse sua localização para compartilhar em emergências.",
+        locationAlwaysAndWhenInUsePermission: "Permitir que o Vigora acesse sua localização para compartilhar em emergências.",
+        locationAlwaysPermission: "Permitir que o Vigora acesse sua localização mesmo em segundo plano, para enviar sua posição em emergências.",
+        locationWhenInUsePermission: "Permitir que o Vigora acesse sua localização para compartilhar em emergências.",
         isAndroidBackgroundLocationEnabled: true,
         isAndroidForegroundServiceEnabled: true
       }

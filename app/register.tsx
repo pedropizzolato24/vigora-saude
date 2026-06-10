@@ -14,10 +14,12 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColors } from '@/hooks/use-colors';
 import * as Auth from '@/lib/_core/auth';
 import { trpc } from '@/lib/trpc';
 import { clearPendingInvite, getPendingInvite } from '@/lib/pending-invite';
+import { getNextRoute } from '@/lib/auth-session';
 
 type UserType = 'caregiver' | 'monitored';
 
@@ -111,7 +113,15 @@ export default function RegisterScreen() {
         return;
       }
 
-      router.replace('/(tabs)');
+      // Roteia pelo tipo de conta: cuidador vai para o fluxo de cuidador (não
+      // para o layout do monitorado). Antes ia sempre para /(tabs), o que
+      // mandava cuidadores recém-cadastrados para a tela errada.
+      const caregiverOnboardingDone = await AsyncStorage.getItem(
+        'vigora_caregiver_onboarding_completed',
+      );
+      router.replace(
+        getNextRoute(updated.userType, caregiverOnboardingDone === 'true'),
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao salvar cadastro.';
       setError(message);

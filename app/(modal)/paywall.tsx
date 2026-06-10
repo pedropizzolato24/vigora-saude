@@ -1,6 +1,6 @@
 /**
  * app/(modal)/paywall.tsx
- * Tela modal de assinatura do Vigora Saúde Pro.
+ * Tela modal de assinatura do Vigora Pro.
  *
  * Apresenta o paywall configurado no painel RevenueCat.
  * Suporta dois modos:
@@ -158,7 +158,7 @@ export default function PaywallScreen() {
           </Text>
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: titleSize }]}>
-          Vigora Saúde Pro
+          Vigora Pro
         </Text>
         <View style={styles.closeButton} />
       </View>

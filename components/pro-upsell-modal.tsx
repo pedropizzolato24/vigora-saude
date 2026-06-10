@@ -1,6 +1,6 @@
 /**
  * components/pro-upsell-modal.tsx
- * Modal de upsell contextual para recursos premium do Vigora Saúde Pro.
+ * Modal de upsell contextual para recursos premium do Vigora Pro.
  *
  * Exibe um bottom sheet animado com:
  * - Ícone e badge do recurso bloqueado

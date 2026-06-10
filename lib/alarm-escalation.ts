@@ -320,7 +320,7 @@ export async function escalateAlarmToContacts(
  * CONTACTS must be told that the user needs help (never the other way around).
  */
 function buildSOSMessage(userName: string | undefined, locationUrl?: string): string {
-  const name = userName?.trim() || 'O usuário do Vigora Saúde';
+  const name = userName?.trim() || 'O usuário do Vigora';
   const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   let message =

@@ -1,8 +1,8 @@
-# Vigora Saúde — Error, Empty & Loading State Copy Prompt
+# Vigora — Error, Empty & Loading State Copy Prompt
 
 ## Philosophy
 
-Vigora Saúde never sounds robotic in failure states. The brand handles errors the way a trusted friend would: specific about what happened, honest about why, clear about what to do next. No hollow apologies. No generic "Algo deu errado."
+Vigora never sounds robotic in failure states. The brand handles errors the way a trusted friend would: specific about what happened, honest about why, clear about what to do next. No hollow apologies. No generic "Algo deu errado."
 
 The error state is a moment of trust — get it right.
 
@@ -85,7 +85,7 @@ The error state is a moment of trust — get it right.
 
 ## Task
 
-Write copy for a Vigora Saúde UI state.
+Write copy for a Vigora UI state.
 
 State type: [error / empty / loading / offline / pro-gate / sync-failed]
 Context: [FILL IN — e.g., "emergency contact notification failed to send"]

@@ -1,8 +1,8 @@
-# Vigora Saúde — TODO
+# Vigora — TODO
 
 ## Setup & Configuration
 
-- [x] Update theme.config.js with Vigora Saúde brand colors
+- [x] Update theme.config.js with Vigora brand colors
 - [x] Install expo-location dependency
 - [x] Create lib/app-context.tsx (global state + AsyncStorage)
 - [x] Create lib/notifications-context.tsx

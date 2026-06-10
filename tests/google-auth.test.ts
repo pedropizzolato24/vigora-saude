@@ -3,6 +3,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mocks declared BEFORE importing the module under test
 vi.mock("../server/db", () => ({
+  // Sem banco, resolveAccount (db-auth) degrada para o openId legado
+  // `google:<sub>` — o formato que estas asserções cobrem.
+  getDb: vi.fn().mockResolvedValue(null),
   upsertUser: vi.fn().mockResolvedValue(undefined),
   getUserByOpenId: vi.fn().mockResolvedValue({
     id: 1,
@@ -30,11 +33,13 @@ vi.mock("../server/_core/sdk", () => ({
 import { handleGoogleAuth, verifyGoogleIdToken } from "../server/google-auth";
 import { upsertUser } from "../server/db";
 
+// aud precisa ser um client id conhecido do Vigora (verifyGoogleIdToken o valida).
 const MOCK_TOKEN_INFO = {
   sub: "abc123",
   email: "test@example.com",
+  email_verified: "true",
   name: "Test User",
-  aud: "web-client-id.apps.googleusercontent.com",
+  aud: "39705729598-q49ldjevjp58hg9tvre49tphuo076s08.apps.googleusercontent.com",
   iss: "accounts.google.com",
   exp: String(Math.floor(Date.now() / 1000) + 3600),
 };
@@ -65,6 +70,23 @@ describe("verifyGoogleIdToken", () => {
     );
 
     await expect(verifyGoogleIdToken("bad-token")).rejects.toThrow(
+      "INVALID_TOKEN"
+    );
+  });
+
+  it("lança INVALID_TOKEN quando o aud não é um client id do Vigora", async () => {
+    // Token Google legítimo, mas emitido para OUTRO app (replay attack).
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          ...MOCK_TOKEN_INFO,
+          aud: "999-evil.apps.googleusercontent.com",
+        }),
+        { status: 200 }
+      )
+    );
+
+    await expect(verifyGoogleIdToken("replayed-token")).rejects.toThrow(
       "INVALID_TOKEN"
     );
   });

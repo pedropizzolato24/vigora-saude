@@ -64,6 +64,13 @@
       "when": 1780430433035,
       "tag": "0008_exotic_kat_farrell",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1781103531696,
+      "tag": "0009_dark_tarot",
+      "breakpoints": true
     }
   ]
 }

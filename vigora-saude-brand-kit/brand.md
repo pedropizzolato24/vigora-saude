@@ -1,4 +1,4 @@
-# Vigora Saúde — Brand Spec
+# Vigora — Brand Spec
 *Machine-readable. Paste this into any AI conversation for on-brand work.*
 
 ---
@@ -7,7 +7,7 @@
 
 | Attribute | Value |
 |---|---|
-| Name | Vigora Saúde |
+| Name | Vigora |
 | Tagline | "Perto de você. Sempre." |
 | Primary color | Azul profundo `#1E4D8C` |
 | Background | Creme `#F4EFE5` |
@@ -58,7 +58,7 @@ Filho adulto. Trabalha, tem filhos pequenos. A culpa de não estar presente é c
 
 ## História da Marca (Brand Story)
 
-Vigora Saúde nasceu de uma conversa de madrugada. Um filho ligou para a mãe às 23h e ela não atendeu. Ligou de novo. Nada. Doze minutos de pânico antes de ela retornar a ligação — havia dormido cedo com o celular no silencioso. Doze minutos que pareceram uma hora. Essa sensação — a angústia da incerteza, a culpa da distância, o alívio que chega tarde demais — é o que o Vigora Saúde foi construído para eliminar.
+Vigora nasceu de uma conversa de madrugada. Um filho ligou para a mãe às 23h e ela não atendeu. Ligou de novo. Nada. Doze minutos de pânico antes de ela retornar a ligação — havia dormido cedo com o celular no silencioso. Doze minutos que pareceram uma hora. Essa sensação — a angústia da incerteza, a culpa da distância, o alívio que chega tarde demais — é o que o Vigora foi construído para eliminar.
 
 O app não é uma câmera. Não é um rastreador. É um pacto silencioso entre quem cuida e quem é cuidado: "Se eu não responder, você vai saber. E eu sei disso, e isso me dá paz também." Porque a tranquilidade não é só do filho. É da mãe que sabe que, se algo acontecer, alguém vai chegar.
 
@@ -66,7 +66,7 @@ O app não é uma câmera. Não é um rastreador. É um pacto silencioso entre q
 
 ## Sistema de Voz Dual
 
-O Vigora Saúde tem dois modos de voz distintos, determinados pelo tipo de usuário.
+O Vigora tem dois modos de voz distintos, determinados pelo tipo de usuário.
 
 ### Voz Cuidador — Confiante, Discreta, Precisa
 
@@ -104,7 +104,7 @@ O Vigora Saúde tem dois modos de voz distintos, determinados pelo tipo de usuá
 
 | Contexto | Exemplo correto | Exemplo errado |
 |---|---|---|
-| Boas-vindas | "Bom dia, Maria! Suas filhas estão de olho em você hoje." | "Olá, usuário! Bem-vindo ao Vigora Saúde." |
+| Boas-vindas | "Bom dia, Maria! Suas filhas estão de olho em você hoje." | "Olá, usuário! Bem-vindo ao Vigora." |
 | Lembrete | "Maria, hora da pressão. Você ainda tem 2 alarmes restantes hoje." | "Lembrete de métrica programado." |
 | Confirmação | "Pronto, Maria. Seu filho Carlos foi avisado." | "Contato de emergência notificado com sucesso." |
 | Erro | "Não conseguimos enviar agora. Sua família será avisada assim que a conexão voltar." | "Erro ao notificar contatos. Tente novamente." |
@@ -173,7 +173,7 @@ Label (9px Plus Jakarta Sans 600 uppercase) — Categorizações
 ## Especificação de Logo
 
 ### Wordmark
-"Vigora Saúde" em Fraunces italic 700, tracking -1px. O acento no "ú" é parte da identidade — nunca omitir.
+"Vigora" em Fraunces italic 700, tracking -1px.
 
 ### Símbolo — Lua Crescente
 Duas circunferências sobrepostas criam a lua. A lua aponta para cima e para a direita (otimismo, vigília). Estrelas opcionais como pontos de luz muito pequenos.

@@ -184,7 +184,7 @@ export function SidebarMenu() {
         {/* Footer */}
         <View style={styles.sidebarFooter}>
           <Text style={[styles.footerText, { color: isAccessibilityMode ? ac.muted : colors.muted }, isAccessibilityMode && { fontSize: 15 }]}>
-            Vigora Saúde v1.0.0
+            Vigora v1.0.0
           </Text>
           <Text style={[styles.footerSubtext, { color: isAccessibilityMode ? ac.muted : colors.muted }, isAccessibilityMode && { fontSize: 14 }]}>
             Sua saúde, sempre protegida

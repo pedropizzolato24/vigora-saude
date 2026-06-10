@@ -275,6 +275,8 @@ export default function RootLayout() {
             />
             <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
             <Stack.Screen name="login" options={{ gestureEnabled: false }} />
+            <Stack.Screen name="email-login" />
+            <Stack.Screen name="phone-login" />
             <Stack.Screen name="register" options={{ gestureEnabled: false }} />
             <Stack.Screen name="(caregiver-tabs)" />
             <Stack.Screen name="caregiver-onboarding" options={{ gestureEnabled: false }} />

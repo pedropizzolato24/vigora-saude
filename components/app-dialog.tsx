@@ -1,5 +1,5 @@
 /**
- * AppDialog - Modal personalizado do Vigora Saúde
+ * AppDialog - Modal personalizado do Vigora
  *
  * Substitui Alert.alert() nativo com visual consistente com o tema do app.
  * Suporta modo claro/escuro automaticamente via useColors().
