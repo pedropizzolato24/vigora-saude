@@ -24,6 +24,7 @@ import { finishGoogleLogin, persistOAuthPkce } from "@/lib/google-signin";
 import { isAppleCancel, signInWithApple } from "@/lib/apple-signin";
 import { fetchAuthMethods, type AuthMethods } from "@/lib/phone-signin";
 import {
+  APPLE_SIGNIN_ENABLED,
   GOOGLE_ANDROID_CLIENT_ID,
   GOOGLE_IOS_CLIENT_ID,
   GOOGLE_WEB_CLIENT_ID,
@@ -67,7 +68,9 @@ export default function LoginScreen() {
   });
 
   useEffect(() => {
-    if (Platform.OS === "ios") {
+    // Só checa disponibilidade do Apple quando o build foi gerado com a
+    // capability (conta paga). Sem o flag, nem o native module foi incluído.
+    if (Platform.OS === "ios" && APPLE_SIGNIN_ENABLED) {
       AppleAuthentication.isAvailableAsync()
         .then(setAppleAvailable)
         .catch(() => setAppleAvailable(false));
@@ -211,7 +214,7 @@ export default function LoginScreen() {
 
         {/* Sign in with Apple — primeiro no iOS (diretriz 4.8 / HIG: o botão
             nativo da Apple com proeminência igual ou maior que os demais) */}
-        {Platform.OS === "ios" && appleAvailable ? (
+        {Platform.OS === "ios" && APPLE_SIGNIN_ENABLED && appleAvailable ? (
           <AppleAuthentication.AppleAuthenticationButton
             buttonType={
               AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN

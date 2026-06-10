@@ -44,3 +44,10 @@ export const GOOGLE_IOS_CLIENT_ID =
   process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "";
 export const GOOGLE_WEB_CLIENT_ID =
   process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "";
+
+// Sign in with Apple só é exibido quando o build foi gerado com a capability
+// (conta Apple Developer paga). Espelha o flag de app.config.ts — sem ele, o
+// botão fica oculto mesmo em iOS, evitando um login que falharia sem o
+// entitlement. Ligar junto com EXPO_PUBLIC_APPLE_SIGNIN_ENABLED no build de prod.
+export const APPLE_SIGNIN_ENABLED =
+  process.env.EXPO_PUBLIC_APPLE_SIGNIN_ENABLED === "true";

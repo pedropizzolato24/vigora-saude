@@ -18,6 +18,14 @@ const env = {
 // When unset, only the custom scheme (vigora://) deep links are registered.
 const linkHost = process.env.EXPO_PUBLIC_LINK_HOST?.trim() || undefined;
 
+// Sign in with Apple exige conta Apple Developer paga (a capability/entitlement
+// não é provisionável com Apple ID gratuito). Mantemos DESLIGADO por padrão
+// para que builds de dev (sideload re-assinado com conta grátis) não levem o
+// entitlement com.apple.developer.applesignin — que faria a re-assinatura
+// falhar/ser removida. Ligue (EXPO_PUBLIC_APPLE_SIGNIN_ENABLED=true) só no
+// build de produção, quando a conta paga já tiver a capability ativa.
+const appleSignIn = process.env.EXPO_PUBLIC_APPLE_SIGNIN_ENABLED === "true";
+
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
@@ -35,8 +43,9 @@ const config: ExpoConfig = {
     bundleIdentifier: env.iosBundleId,
     // Sign in with Apple — obrigatório pela diretriz 4.8 da App Store quando o
     // app oferece login social de terceiros (Google). Gera o entitlement
-    // com.apple.developer.applesignin (requer capability no App ID).
-    usesAppleSignIn: true,
+    // com.apple.developer.applesignin (requer capability no App ID + conta paga).
+    // Só é ligado em produção via EXPO_PUBLIC_APPLE_SIGNIN_ENABLED=true.
+    ...(appleSignIn ? { usesAppleSignIn: true } : {}),
     ...(linkHost ? { associatedDomains: [`applinks:${linkHost}`] } : {}),
     "infoPlist": {
       "ITSAppUsesNonExemptEncryption": false
@@ -100,7 +109,9 @@ const config: ExpoConfig = {
     "expo-router",
     "expo-font",
     "expo-web-browser",
-    "expo-apple-authentication",
+    // Plugin do Apple Sign In só entra quando habilitado (mesma razão do
+    // usesAppleSignIn acima) — evita o entitlement em builds de dev.
+    ...(appleSignIn ? ["expo-apple-authentication"] : []),
     [
       'react-native-android-widget',
       {

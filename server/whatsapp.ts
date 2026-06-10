@@ -134,7 +134,8 @@ export async function sendWhatsAppAuthCode(
           type: "template",
           template: {
             name: templateName,
-            language: { code: "pt_BR" },
+            // Precisa casar com o idioma em que o template foi APROVADO no Meta.
+            language: { code: process.env.WHATSAPP_OTP_TEMPLATE_LANG ?? "pt_BR" },
             components: [
               {
                 type: "body",
