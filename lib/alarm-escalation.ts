@@ -111,12 +111,13 @@ async function tryDeepLinkEscalation(
       if (canOpen) {
         await Linking.openURL(url);
         sent++;
-        console.log(`[Escalation] Deep link opened for ${contact.name}`);
+        // No PII in logs: contact name/phone are personal data (LGPD).
+        console.log(`[Escalation] Deep link opened for a contact`);
         // Delay between contacts to allow user to send each message
         await new Promise((r) => setTimeout(r, 2000));
       } else {
         failed++;
-        console.log(`[Escalation] Cannot open WhatsApp for ${contact.name}`);
+        console.log(`[Escalation] Cannot open WhatsApp for a contact`);
       }
     } catch {
       failed++;

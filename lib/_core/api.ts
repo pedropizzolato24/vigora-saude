@@ -98,10 +98,10 @@ export async function exchangeOAuthCode(
 
   // Convert app_session_id to sessionToken for compatibility
   const sessionToken = result.app_session_id;
+  // Never log token material (not even a prefix).
   console.log("[API] OAuth exchange result:", {
     hasSessionToken: !!sessionToken,
     hasUser: !!result.user,
-    sessionToken: sessionToken ? `${sessionToken.substring(0, 50)}...` : null,
   });
 
   return {

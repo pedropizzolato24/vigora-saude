@@ -28,10 +28,7 @@ export async function getSessionToken(): Promise<string | null> {
     // Use SecureStore for native
     console.log("[Auth] Getting session token...");
     const token = await SecureStore.getItemAsync(SESSION_TOKEN_KEY);
-    console.log(
-      "[Auth] Session token retrieved from SecureStore:",
-      token ? `present (${token.substring(0, 20)}...)` : "missing",
-    );
+    console.log("[Auth] Session token", token ? "present" : "missing");
     return token;
   } catch (error) {
     console.error("[Auth] Failed to get session token:", error);
