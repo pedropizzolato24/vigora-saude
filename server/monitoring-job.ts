@@ -23,6 +23,7 @@ import {
   getMissedCheckinEvents,
   getWarningHistory,
   markEventWarningSent,
+  purgeStaleData,
   releaseWarning,
   updateAlarmEventStatus,
   updateWarningResult,
@@ -487,4 +488,18 @@ export function startMonitoringScheduler(): void {
   setInterval(() => {
     runMonitoringJob().catch(console.error);
   }, INTERVAL_MS);
+
+  // Data retention purge (LGPD minimization): daily, plus once on startup.
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const runPurge = () =>
+    purgeStaleData()
+      .then((r) =>
+        console.log(
+          `[Monitor] Retention purge: ${r.alarmEvents} alarm events, ${r.warningLog} warnings, ${r.locationsCleared} stale locations cleared`
+        )
+      )
+      .catch((e) => console.error("[Monitor] Retention purge failed:", e));
+  runPurge();
+  const purgeTimer = setInterval(runPurge, DAY_MS);
+  if (typeof purgeTimer.unref === "function") purgeTimer.unref();
 }

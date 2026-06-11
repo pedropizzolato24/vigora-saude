@@ -444,3 +444,51 @@ export async function getWarningHistory(deviceId: string, limit = 20) {
     .orderBy(warningLog.sentAt)
     .limit(limit);
 }
+
+// --- Data retention / purge --------------------------------------------------
+// LGPD minimization (Art. 6, III / Art. 15-16): behavioral and location data
+// must not be kept indefinitely. Conservative defaults, tunable via env without
+// a redeploy. Location (most sensitive) is dropped sooner than alarm history.
+
+function retentionDays(envKey: string, fallback: number): number {
+  const raw = process.env[envKey];
+  if (raw) {
+    const n = Number(raw);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return fallback;
+}
+
+/**
+ * Delete behavioral/location data older than the retention window. Idempotent
+ * and safe to run on a daily cadence. Returns affected-row counts for logging.
+ */
+export async function purgeStaleData(now: number = Date.now()): Promise<{
+  alarmEvents: number;
+  warningLog: number;
+  locationsCleared: number;
+}> {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+
+  const dayMs = 24 * 60 * 60 * 1000;
+  const eventsCutoff = new Date(now - retentionDays("RETENTION_EVENTS_DAYS", 180) * dayMs);
+  const locationCutoff = new Date(now - retentionDays("RETENTION_LOCATION_DAYS", 30) * dayMs);
+
+  const affected = (r: unknown): number =>
+    (r as Array<{ affectedRows?: number }>)?.[0]?.affectedRows ?? 0;
+
+  const ev = await db.delete(alarmEvents).where(lt(alarmEvents.createdAt, eventsCutoff));
+  const wl = await db.delete(warningLog).where(lt(warningLog.sentAt, eventsCutoff));
+  // Stale GPS: blank the location fields rather than deleting the device row.
+  const loc = await db
+    .update(appUsers)
+    .set({ lastLocation: null, lastLocationAt: null })
+    .where(lt(appUsers.lastLocationAt, locationCutoff));
+
+  return {
+    alarmEvents: affected(ev),
+    warningLog: affected(wl),
+    locationsCleared: affected(loc),
+  };
+}
