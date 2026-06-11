@@ -51,6 +51,9 @@ export async function sendWhatsAppMessage(
   // Ensure phone number is in correct format (digits only, with country code)
   const cleanPhone = to.replace(/\D/g, "");
   const fullPhone = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
+  // Masked for logs — recipient phone numbers are PII (LGPD). Keep only the
+  // last 4 digits for debugging, matching the anti-PII stance of the OTP path.
+  const maskedPhone = fullPhone.replace(/\d(?=\d{4})/g, "*");
 
   try {
     const response = await fetch(
@@ -79,17 +82,17 @@ export async function sendWhatsAppMessage(
       const errorMsg =
         (errorData as any)?.error?.message ||
         `HTTP ${response.status}: ${response.statusText}`;
-      console.error(`[WhatsApp API] Failed to send to ${fullPhone}:`, errorMsg);
+      console.error(`[WhatsApp API] Failed to send to ${maskedPhone}:`, errorMsg);
       return { success: false, error: errorMsg };
     }
 
     const data = (await response.json()) as any;
     const messageId = data?.messages?.[0]?.id;
-    console.log(`[WhatsApp API] Message sent to ${fullPhone}, ID: ${messageId}`);
+    console.log(`[WhatsApp API] Message sent to ${maskedPhone}, ID: ${messageId}`);
     return { success: true, messageId };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error(`[WhatsApp API] Network error sending to ${fullPhone}:`, errorMsg);
+    console.error(`[WhatsApp API] Network error sending to ${maskedPhone}:`, errorMsg);
     return { success: false, error: errorMsg };
   }
 }

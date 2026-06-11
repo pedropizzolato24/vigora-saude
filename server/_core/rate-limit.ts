@@ -12,8 +12,9 @@ import type { NextFunction, Request, Response } from "express";
  * open. Each tRPC endpoint deserves a cap.
  *
  * The keyFn defaults to clientIp(req), but callers can pass their own
- * (e.g., per-user limits using ctx.user.openId). Headers `X-Forwarded-
- * For` are honored if the proxy chain is trusted.
+ * (e.g., per-user limits using ctx.user.openId). clientIp relies on
+ * `req.ip` (Express + `trust proxy`), never the raw X-Forwarded-For
+ * header, so the key cannot be spoofed by the client.
  */
 
 export interface RateLimitOptions {
@@ -35,12 +36,15 @@ interface Bucket {
 }
 
 export function clientIp(req: Request): string {
-  // Honor X-Forwarded-For only if the platform sets it (trusted proxy).
-  // If you deploy behind an untrusted proxy you must `app.set("trust proxy", ...)`.
-  const xff = req.headers["x-forwarded-for"];
-  if (typeof xff === "string" && xff.length > 0) {
-    return xff.split(",")[0].trim();
-  }
+  // Trust `req.ip`, which Express derives honoring `app.set("trust proxy", 1)`
+  // (see _core/index.ts): it returns the address of the hop immediately before
+  // our single trusted proxy — the real client — and is NOT spoofable by a
+  // client-supplied X-Forwarded-For.
+  //
+  // We must NOT parse the raw `X-Forwarded-For` header here: its leftmost entry
+  // is fully attacker-controlled, so trusting it would let anyone rotate the
+  // header to mint a fresh rate-limit bucket per request, defeating the IP
+  // brute-force / DoS caps on /api/auth and the OTP routes.
   return req.ip ?? req.socket?.remoteAddress ?? "unknown";
 }
 

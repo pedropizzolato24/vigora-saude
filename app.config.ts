@@ -161,6 +161,12 @@ const config: ExpoConfig = {
       }
     ],
     [
+      "expo-local-authentication",
+      {
+        faceIDPermission: "Permitir que o Vigora use o Face ID para desbloquear o aplicativo."
+      }
+    ],
+    [
       "expo-location",
       {
         locationAlwaysAndWhenInUsePermission: "Permitir que o Vigora acesse sua localização para compartilhar em emergências.",

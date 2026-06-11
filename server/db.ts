@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2";
 import { InsertUser, InsertUserData, userData, users } from "../drizzle/schema";
@@ -36,6 +36,23 @@ export async function getDb() {
     }
   }
   return _db;
+}
+
+/**
+ * Lightweight DB liveness check for /api/health. Returns true only if a real
+ * query round-trips. A health endpoint that can't see the DB must report
+ * unhealthy so an external monitor catches a Railway/MySQL outage that would
+ * silently disarm the dead man's switch.
+ */
+export async function checkDatabase(): Promise<boolean> {
+  try {
+    const db = await getDb();
+    if (!db) return false;
+    await db.execute(sql`SELECT 1`);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {

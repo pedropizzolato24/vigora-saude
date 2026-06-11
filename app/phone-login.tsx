@@ -8,8 +8,6 @@
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,6 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import AntDesign from "@expo/vector-icons/AntDesign";
+import { FormKeyboardView } from "@/components/form-keyboard-view";
 import { useColors } from "@/hooks/use-colors";
 import { useAppContext } from "@/lib/app-context";
 import { phoneRequestCode, phoneVerifyCode } from "@/lib/phone-signin";
@@ -90,9 +89,8 @@ export default function PhoneLoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
+    <FormKeyboardView
       style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
         contentContainerStyle={[
@@ -220,7 +218,7 @@ export default function PhoneLoginScreen() {
           </Pressable>
         ) : null}
       </ScrollView>
-    </KeyboardAvoidingView>
+    </FormKeyboardView>
   );
 }
 

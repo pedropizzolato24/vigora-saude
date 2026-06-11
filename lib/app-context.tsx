@@ -27,6 +27,12 @@ export interface EmergencyContact {
   relation: string;
   whatsapp: boolean;
   email?: string; // Optional email for fallback notifications
+  /**
+   * ANATEL opt-in: did this contact agree to receive automatic alerts?
+   * The automatic dead man's switch skips contacts where this is explicitly
+   * false; legacy contacts (undefined) are grandfathered as consented.
+   */
+  consentToAlerts?: boolean;
 }
 
 export interface AnamnesesData {
@@ -69,6 +75,12 @@ export interface AppSettings {
   checkinTime: string;
   /** Minutos que o usuário tem para responder antes de escalonar */
   checkinWindowMinutes: number;
+  /**
+   * Consentimento destacado para tratar dados sensíveis de saúde (LGPD Art. 11).
+   * epoch-ms de quando foi concedido, ou null se ainda não consentiu. As telas
+   * de saúde (anamnese, métricas) não coletam dados enquanto for null.
+   */
+  healthConsentAt: number | null;
 }
 
 export interface UserProfile {
@@ -149,6 +161,7 @@ const initialState: AppState = {
     checkinEnabled: false,
     checkinTime: '09:00',
     checkinWindowMinutes: 30,
+    healthConsentAt: null,
   },
   ads: [],
   missedAlarmCount: 0,

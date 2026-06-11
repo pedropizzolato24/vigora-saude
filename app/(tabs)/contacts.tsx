@@ -5,7 +5,6 @@ import React, { useState } from 'react';
 import { useAccessibility } from '@/lib/accessibility-context';
 import {
   FlatList,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -18,6 +17,7 @@ import {
 } from 'react-native';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { AppToast, useAppToast } from '@/components/app-toast';
+import { FormKeyboardView } from '@/components/form-keyboard-view';
 import { WizardStep } from '@/components/wizard-step';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
@@ -47,6 +47,7 @@ const EMPTY_FORM: Omit<EmergencyContact, 'id'> = {
   relation: '',
   whatsapp: false,
   email: '',
+  consentToAlerts: false,
 };
 
 function formatPhone(value: string): string {
@@ -156,6 +157,9 @@ export default function ContactsScreen() {
       relation: contact.relation,
       whatsapp: contact.whatsapp,
       email: contact.email ?? '',
+      // Grandfather: contacts saved before opt-in existed (undefined) show as
+      // consented, so editing them doesn't silently disable their alerts.
+      consentToAlerts: contact.consentToAlerts ?? true,
     });
     setModalVisible(true);
   };
@@ -314,9 +318,8 @@ export default function ContactsScreen() {
             <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, alignItems: 'center', backgroundColor: ac.bar }}>
               <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>{editingContact ? 'Editar Contato' : 'Novo Contato'}</Text>
             </View>
-            <KeyboardAvoidingView
+            <FormKeyboardView
               style={{ flex: 1 }}
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
               <ScrollView
                 contentContainerStyle={{ padding: 24, gap: 24 }}
@@ -358,6 +361,41 @@ export default function ContactsScreen() {
                   />
                   <Text style={{ fontSize: af.sm, color: ac.muted }}>Usado se o WhatsApp não funcionar.</Text>
                 </View>
+                {/* Avisar por WhatsApp + consentimento (ANATEL) — também no Modo Acessível */}
+                <View style={{ gap: 12 }}>
+                  <Pressable
+                    onPress={() => setForm((f) => ({ ...f, whatsapp: !f.whatsapp }))}
+                    accessibilityRole="switch"
+                    accessibilityState={{ checked: form.whatsapp }}
+                    accessibilityLabel="Avisar este contato pelo WhatsApp"
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 64, backgroundColor: ac.surface, borderColor: ac.border, borderWidth: 2, borderRadius: 16, padding: 16 }}
+                  >
+                    <MaterialIcons name="chat" size={28} color={ac.success} />
+                    <Text style={{ flex: 1, fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Avisar pelo WhatsApp</Text>
+                    <Switch
+                      value={form.whatsapp}
+                      onValueChange={(v) => setForm((f) => ({ ...f, whatsapp: v }))}
+                      trackColor={{ false: ac.border, true: ac.success }}
+                      thumbColor="#FFFFFF"
+                    />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setForm((f) => ({ ...f, consentToAlerts: !(f.consentToAlerts ?? false) }))}
+                    accessibilityRole="switch"
+                    accessibilityState={{ checked: form.consentToAlerts ?? false }}
+                    accessibilityLabel="Confirmar que este contato concordou em receber alertas automáticos"
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 64, backgroundColor: ac.surface, borderColor: ac.border, borderWidth: 2, borderRadius: 16, padding: 16 }}
+                  >
+                    <MaterialIcons name="verified-user" size={28} color={ac.foreground} />
+                    <Text style={{ flex: 1, fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Esta pessoa concordou em receber alertas</Text>
+                    <Switch
+                      value={form.consentToAlerts ?? false}
+                      onValueChange={(v) => setForm((f) => ({ ...f, consentToAlerts: v }))}
+                      trackColor={{ false: ac.border, true: ac.success }}
+                      thumbColor="#FFFFFF"
+                    />
+                  </Pressable>
+                </View>
               </ScrollView>
               {/* Barra inferior de ações: Cancelar + Salvar */}
               <View style={{ flexDirection: 'row', gap: 12, padding: 20, paddingBottom: Math.max(insets.bottom, 20), borderTopWidth: 2, borderTopColor: ac.border, backgroundColor: ac.bar }}>
@@ -378,7 +416,7 @@ export default function ContactsScreen() {
                   <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.onPrimary }}>Salvar</Text>
                 </Pressable>
               </View>
-            </KeyboardAvoidingView>
+            </FormKeyboardView>
           </View>
         </Modal>
         <AppDialog {...dialogProps} />
@@ -487,9 +525,8 @@ export default function ContactsScreen() {
           </View>
 
           {/* Wizard Steps */}
-          <KeyboardAvoidingView
+          <FormKeyboardView
             style={styles.wizardContainer}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
             {wizardStep === 1 && (
               <WizardStep
@@ -654,17 +691,29 @@ export default function ContactsScreen() {
                     </View>
                   )}
 
-                  {/* Consent notice */}
-                  <View style={[styles.consentNote, { backgroundColor: colors.warningLight, borderColor: colors.warning }]}>
-                    <MaterialIcons name="info" size={18} color={colors.warningDark} />
-                    <Text style={[styles.consentText, { color: colors.warningDark, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
-                      Confirme que <Text style={{ fontWeight: '700' }}>{form.name.trim() || 'esta pessoa'}</Text> concordou em receber alertas automáticos de emergência.
-                    </Text>
+                  {/* Consent opt-in (ANATEL) — agora REGISTRADO, não só um aviso */}
+                  <View style={[styles.toggleRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={styles.toggleLeft}>
+                      <MaterialIcons name="verified-user" size={22} color={colors.warningDark} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.toggleLabel, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>Esta pessoa concordou</Text>
+                        <Text style={[styles.toggleSubLabel, { color: colors.muted, fontSize: fs.sm }]}>
+                          Confirmo que {form.name.trim() || 'esta pessoa'} aceitou receber alertas automáticos de emergência.
+                        </Text>
+                      </View>
+                    </View>
+                    <Switch
+                      value={form.consentToAlerts ?? false}
+                      onValueChange={(v) => setForm((f) => ({ ...f, consentToAlerts: v }))}
+                      trackColor={{ false: colors.border, true: colors.success }}
+                      thumbColor="#FFFFFF"
+                      accessibilityLabel="Confirmar que o contato concordou em receber alertas automáticos"
+                    />
                   </View>
                 </ScrollView>
               </WizardStep>
             )}
-          </KeyboardAvoidingView>
+          </FormKeyboardView>
         </View>
       </Modal>
 
@@ -683,9 +732,8 @@ export default function ContactsScreen() {
             </Text>
           </View>
 
-          <KeyboardAvoidingView
+          <FormKeyboardView
             style={{ flex: 1 }}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
           <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
             <View style={styles.formGroup}>
@@ -782,6 +830,31 @@ export default function ContactsScreen() {
                 accessibilityLabel="Ativar notificação via WhatsApp"
               />
             </View>
+
+            {/* Consentimento do contato (ANATEL) — registrado */}
+            <View
+              style={[
+                styles.toggleRow,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <View style={styles.toggleLeft}>
+                <MaterialIcons name="verified-user" size={20} color={colors.warningDark} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.toggleLabel, { color: colors.foreground, fontSize: fs.base }]}>Concordou em receber alertas</Text>
+                  <Text style={[styles.toggleSubLabel, { color: colors.muted, fontSize: fs.sm }]}>
+                    Confirmo que esta pessoa aceitou receber alertas automáticos.
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={form.consentToAlerts ?? false}
+                onValueChange={(v) => setForm((f) => ({ ...f, consentToAlerts: v }))}
+                trackColor={{ false: colors.border, true: colors.success }}
+                thumbColor="#FFFFFF"
+                accessibilityLabel="Confirmar que o contato concordou em receber alertas automáticos"
+              />
+            </View>
           </ScrollView>
 
           {/* Barra inferior de ações: Cancelar + Salvar */}
@@ -817,7 +890,7 @@ export default function ContactsScreen() {
               </Text>
             </Pressable>
           </View>
-          </KeyboardAvoidingView>
+          </FormKeyboardView>
         </View>
       </Modal>
 
@@ -1099,15 +1172,6 @@ const styles = StyleSheet.create({
     padding: 14,
     lineHeight: 22,
   },
-  consentNote: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  consentText: { flex: 1, lineHeight: 20 },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -48,14 +48,8 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
     });
 
     console.log("[API] Response status:", response.status, response.statusText);
-    const responseHeaders = Object.fromEntries(response.headers.entries());
-    console.log("[API] Response headers:", responseHeaders);
-
-    // Check if Set-Cookie header is present (cookies are automatically handled in React Native)
-    const setCookie = response.headers.get("Set-Cookie");
-    if (setCookie) {
-      console.log("[API] Set-Cookie header received:", setCookie);
-    }
+    // Do NOT log response headers or Set-Cookie: the web session cookie carries
+    // the session JWT, which must never reach logs / crash reporters.
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -104,10 +98,10 @@ export async function exchangeOAuthCode(
 
   // Convert app_session_id to sessionToken for compatibility
   const sessionToken = result.app_session_id;
+  // Never log token material (not even a prefix).
   console.log("[API] OAuth exchange result:", {
     hasSessionToken: !!sessionToken,
     hasUser: !!result.user,
-    sessionToken: sessionToken ? `${sessionToken.substring(0, 50)}...` : null,
   });
 
   return {

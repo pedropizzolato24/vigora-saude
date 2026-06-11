@@ -4,7 +4,6 @@ import { useAccessibility } from '@/lib/accessibility-context';
 import { HealthReportButton } from '@/components/health-report-button';
 import {
   FlatList,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -16,8 +15,10 @@ import {
 } from 'react-native';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { AppToast, useAppToast } from '@/components/app-toast';
+import { FormKeyboardView } from '@/components/form-keyboard-view';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
+import { HealthConsentGate } from '@/components/health-consent-gate';
 import { WizardStep } from '@/components/wizard-step';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
@@ -256,6 +257,17 @@ export default function HealthScreen() {
     );
   };
 
+  // LGPD Art. 11: não coletar dados sensíveis de saúde sem consentimento
+  // destacado. Quem JÁ tem dados (instalações antigas) é mantido (grandfather).
+  const hasHealthData = !!state.anamnesis || (state.healthMetrics?.length ?? 0) > 0;
+  if (!state.settings.healthConsentAt && !hasHealthData) {
+    return (
+      <ScreenContainer edges={['left', 'right']}>
+        <HealthConsentGate>{null}</HealthConsentGate>
+      </ScreenContainer>
+    );
+  }
+
   // --- ACCESSIBILITY MODE ---------------------------------------------------
   if (isAccessibilityMode) {
     return (
@@ -455,9 +467,8 @@ export default function HealthScreen() {
               </Text>
             </View>
 
-            <KeyboardAvoidingView
+            <FormKeyboardView
               style={{ flex: 1 }}
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
             <ScrollView contentContainerStyle={{ padding: 24, gap: 28 }} keyboardShouldPersistTaps="handled">
               {wizardStep === 0 ? (
@@ -559,7 +570,7 @@ export default function HealthScreen() {
                 </Pressable>
               )}
             </View>
-            </KeyboardAvoidingView>
+            </FormKeyboardView>
           </View>
         </Modal>
 
@@ -649,9 +660,8 @@ export default function HealthScreen() {
           </View>
 
           {/* WizardStep */}
-          <KeyboardAvoidingView
+          <FormKeyboardView
             style={styles.wizardContainer}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
             {wizardStep === 0 ? (
               <WizardStep
@@ -747,7 +757,7 @@ export default function HealthScreen() {
                 </View>
               </WizardStep>
             )}
-          </KeyboardAvoidingView>
+          </FormKeyboardView>
         </View>
       </Modal>
 

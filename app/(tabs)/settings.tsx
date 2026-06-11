@@ -2,7 +2,6 @@ import * as Haptics from 'expo-haptics';
 import { startCountdownNotification, stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
-  KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
@@ -14,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
+import { FormKeyboardView } from '@/components/form-keyboard-view';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import * as Location from 'expo-location';
@@ -25,12 +25,19 @@ import { useAppContext } from '@/lib/app-context';
 import { useThemeContext } from '@/lib/theme-provider';
 import { useFontSize } from '@/lib/font-size-context';
 import { useAccessibility } from '@/lib/accessibility-context';
+import { useAppLock } from '@/lib/app-lock-context';
+import { useDeleteAccount } from '@/hooks/use-delete-account';
+import { useRouter } from 'expo-router';
 import { MonitoringStatusPanel } from '@/components/monitoring-status-panel';
 import { TrialBanner, ExpiredBanner } from '@/components/trial-banner';
 import { scheduleCheckin, cancelCheckin } from '@/lib/checkin-service';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
+
+// Contato do Encarregado/DPO publicado na Política de Privacidade (LGPD Art. 41 §1).
+// TODO(LANÇAMENTO): trocar pelo e-mail REAL do Encarregado antes de publicar nas lojas.
+const DPO_EMAIL = 'privacidade@vigora.com.br';
 
 // Timer duration options
 const TIMER_DURATIONS: { value: 15 | 30 | 45 | 60; label: string; sublabel: string }[] = [
@@ -173,6 +180,9 @@ export default function SettingsScreen() {
   const fs = useFontSize();
   const { settings } = state;
   const { dialogProps, showDialog } = useAppDialog();
+  const router = useRouter();
+  const appLock = useAppLock();
+  const { runDeleteAccount, isDeleting } = useDeleteAccount(() => dispatch({ type: 'CLEAR_ALL_DATA' }));
 
   const [countdownTestActive, setCountdownTestActive] = useState(false);
   const [countdownTestSecondsLeft, setCountdownTestSecondsLeft] = useState(10);
@@ -354,6 +364,50 @@ export default function SettingsScreen() {
         },
       ],
     });
+  };
+
+  // Exclusão definitiva da conta (LGPD Art. 18, VI): apaga TODOS os dados do
+  // servidor, não só os locais. Irreversível, por isso confirmação forte.
+  const handleDeleteAccount = () => {
+    if (isDeleting) return;
+    showDialog({
+      title: 'Excluir minha conta',
+      message:
+        'Esta ação é PERMANENTE. Apaga sua conta e todos os seus dados dos nossos servidores — perfil, anamnese, histórico de saúde, contatos, alarmes e vínculos com cuidadores. Não há como desfazer.',
+      variant: 'confirm',
+      buttons: [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir conta',
+          style: 'destructive',
+          onPress: async () => {
+            if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            try {
+              await runDeleteAccount();
+            } catch {
+              showDialog({
+                title: 'Não foi possível excluir',
+                message:
+                  'Houve um erro ao excluir sua conta no servidor. Seus dados não foram apagados. Tente novamente em instantes; se persistir, verifique sua conexão.',
+                variant: 'error',
+                buttons: [{ text: 'OK' }],
+              });
+            }
+          },
+        },
+      ],
+    });
+  };
+
+  // Ativar abre o fluxo de criar PIN; desativar exige confirmar o PIN atual.
+  // O toggle reflete appLock.enabled, então abandonar o fluxo não muda nada.
+  const handleToggleAppLock = (value: boolean) => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (value) {
+      router.push('/app-lock-setup');
+    } else {
+      router.push({ pathname: '/app-lock-setup', params: { mode: 'disable' } });
+    }
   };
 
   const fontSizeLabels = { small: 'Pequeno', medium: 'Médio', large: 'Grande' };
@@ -598,6 +652,31 @@ export default function SettingsScreen() {
             </View>
           </View>
 
+          {/* Bloqueio do app - Accessibility */}
+          {Platform.OS !== 'web' && (
+            <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 16 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Bloquear app ao sair</Text>
+                  <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Pedir PIN ao abrir o app</Text>
+                </View>
+                <Switch value={appLock.enabled} onValueChange={handleToggleAppLock} trackColor={{ false: ac.border, true: ac.primary }} thumbColor="#FFFFFF" />
+              </View>
+              {appLock.enabled && appLock.biometricAvailable && (
+                <>
+                  <View style={{ height: 2, backgroundColor: ac.border }} />
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Usar biometria</Text>
+                      <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Digital ou rosto em vez do PIN</Text>
+                    </View>
+                    <Switch value={appLock.biometricEnabled} onValueChange={(v) => appLock.setBiometricEnabled(v)} trackColor={{ false: ac.border, true: ac.primary }} thumbColor="#FFFFFF" />
+                  </View>
+                </>
+              )}
+            </View>
+          )}
+
           {/* Location Permission Status - Accessibility */}
           <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 12 }}>
             <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Permissão de Localização</Text>
@@ -632,10 +711,41 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
+          {/* Excluir minha conta (LGPD Art. 18 VI) — paridade no Modo Acessível */}
+          <View style={{ gap: 8, paddingTop: 8 }}>
+            <Pressable
+              onPress={handleDeleteAccount}
+              disabled={isDeleting}
+              accessibilityRole="button"
+              accessibilityLabel="Excluir minha conta e todos os dados do servidor"
+              style={({ pressed }) => [{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+                minHeight: 64,
+                borderRadius: 16,
+                borderWidth: 3,
+                borderColor: ac.error,
+                backgroundColor: ac.surface,
+                paddingHorizontal: 16,
+                opacity: isDeleting ? 0.6 : pressed ? 0.7 : 1,
+              }]}
+            >
+              <MaterialIcons name="no-accounts" size={26} color={ac.error} />
+              <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.error }}>
+                {isDeleting ? 'Excluindo...' : 'Excluir minha conta'}
+              </Text>
+            </Pressable>
+            <Text style={{ fontSize: af.sm, color: ac.muted, textAlign: 'center' }}>
+              Apaga sua conta e todos os dados dos nossos servidores. Permanente (LGPD).
+            </Text>
+          </View>
+
           {/* Version info */}
           <View style={{ alignItems: 'center', gap: 4, paddingTop: 8 }}>
             <Text style={{ fontSize: af.sm, color: ac.muted, fontWeight: '600' }}>Vigora - Versão 1.0.0</Text>
-            <Text style={{ fontSize: af.sm, color: ac.muted }}>Dados armazenados localmente no dispositivo.</Text>
+            <Text style={{ fontSize: af.sm, color: ac.muted }}>Seus dados ficam no aparelho e em backup seguro na sua conta.</Text>
           </View>
         </ScrollView>
         <AppDialog {...dialogProps} />
@@ -652,7 +762,7 @@ export default function SettingsScreen() {
         <Text style={[styles.headerSubtitle, { color: colors.muted, fontSize: fs.sm }]}>Personalize sua experiência</Text>
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <FormKeyboardView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
         {/* ═══ ACCESSIBILITY TOGGLE (always at top, outside any group) ═══ */}
@@ -1118,6 +1228,31 @@ export default function SettingsScreen() {
           colors={colors}
           defaultOpen={false}
         >
+          {/* Bloqueio do app — só nativo (SecureStore/biometria não existem na web) */}
+          {Platform.OS !== 'web' && (
+            <>
+              <SettingToggle
+                label="Bloquear app ao sair"
+                sublabel="Pedir PIN ou biometria ao abrir o app"
+                value={appLock.enabled}
+                onValueChange={handleToggleAppLock}
+                colors={colors}
+              />
+              <Divider colors={colors} />
+              {appLock.enabled && appLock.biometricAvailable && (
+                <>
+                  <SettingToggle
+                    label="Desbloquear com biometria"
+                    sublabel="Usar digital ou rosto em vez do PIN"
+                    value={appLock.biometricEnabled}
+                    onValueChange={(v) => appLock.setBiometricEnabled(v)}
+                    colors={colors}
+                  />
+                  <Divider colors={colors} />
+                </>
+              )}
+            </>
+          )}
           <SettingToggle
             label="Confirmar SOS"
             sublabel="Pedir confirmação antes de acionar SOS"
@@ -1428,6 +1563,24 @@ export default function SettingsScreen() {
             <Text style={[styles.dangerHint, { color: colors.muted }]}>
               Remove alarmes, contatos, anamnese e histórico de saúde permanentemente.
             </Text>
+            <Pressable
+              onPress={handleDeleteAccount}
+              disabled={isDeleting}
+              accessibilityRole="button"
+              accessibilityLabel="Excluir minha conta e todos os dados do servidor"
+              style={({ pressed }) => [
+                styles.dangerButton,
+                { borderColor: colors.error, marginTop: 12, opacity: isDeleting ? 0.6 : pressed ? 0.8 : 1 },
+              ]}
+            >
+              <MaterialIcons name="no-accounts" size={20} color={colors.error} />
+              <Text style={[styles.dangerButtonText, { color: colors.error }]}>
+                {isDeleting ? 'Excluindo...' : 'Excluir minha conta'}
+              </Text>
+            </Pressable>
+            <Text style={[styles.dangerHint, { color: colors.muted }]}>
+              Apaga sua conta e todos os dados dos nossos servidores (LGPD, Art. 18). Esta ação é permanente.
+            </Text>
           </View>
         </CollapsibleSection>
 
@@ -1450,7 +1603,7 @@ export default function SettingsScreen() {
           <View style={styles.footerLinks}>
             <Pressable
               onPress={() =>
-                showDialog({ title: 'Termos de Serviço', message: 'Vigora - Termos de Serviço\n\nEste aplicativo é fornecido para fins informativos. Não substitui atendimento médico profissional.', variant: 'info', buttons: [{ text: 'OK' }] })
+                showDialog({ title: 'Termos de Serviço', message: 'Vigora — Termos de Serviço\n\nVigora é um aplicativo informativo para monitoramento de saúde e não substitui o diagnóstico, tratamento ou acompanhamento profissional médico. O usuário é responsável por consultar um médico sobre qualquer questão de saúde.\n\nVigora não é um serviço de emergência — em caso de emergência médica, ligue 192 (SAMU) ou 193 (Bombeiros). Alertas automáticos podem falhar; não confie exclusivamente neste aplicativo em situações de risco.', variant: 'info', buttons: [{ text: 'OK' }] })
               }
               style={({ pressed }) => [pressed && { opacity: 0.6 }]}
             >
@@ -1459,7 +1612,7 @@ export default function SettingsScreen() {
             <Text style={[styles.footerDot, { color: colors.muted }]}>·</Text>
             <Pressable
               onPress={() =>
-                showDialog({ title: 'Política de Privacidade', message: 'Vigora - Política de Privacidade\n\nTodos os seus dados são armazenados localmente neste dispositivo. Nenhum dado é enviado para servidores externos.', variant: 'info', buttons: [{ text: 'OK' }] })
+                showDialog({ title: 'Política de Privacidade', message: 'Vigora — Política de Privacidade (resumo)\n\nDados que tratamos:\n• Dados sensíveis de saúde (pressão, glicemia, frequência cardíaca, anamnese, medicamentos, tipo sanguíneo), tratados com seu consentimento destacado.\n• Contatos de emergência, localização (quando ativada) e perfil.\n\nOnde ficam: no seu aparelho e, para backup e para o monitoramento funcionar, em nosso servidor próprio (acesso protegido por autenticação). Nunca vendemos nem usamos seus dados de saúde para publicidade.\n\nCompartilhamos apenas para a função que você pediu: WhatsApp/Meta (alertas aos contatos que você designou), Expo (notificações aos cuidadores) e RevenueCat (assinatura).\n\nSeus direitos (LGPD Art. 18): acessar, corrigir, exportar e excluir. Você pode apagar sua conta e todos os dados do servidor em Configurações › Excluir minha conta.\n\nEncarregado de Dados (DPO): ' + DPO_EMAIL + '. Fale com ele para exercer seus direitos ou tirar dúvidas sobre privacidade.', variant: 'info', buttons: [{ text: 'OK' }] })
               }
               style={({ pressed }) => [pressed && { opacity: 0.6 }]}
             >
@@ -1476,14 +1629,14 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
           <Text style={[styles.footerCopyright, { color: colors.muted }]}>
-            Dados armazenados localmente no dispositivo.
+            Seus dados ficam no aparelho e em backup seguro na sua conta.
           </Text>
           <Text style={[styles.footerCopyright, { color: colors.muted }]}>
             © 2026 Vigora. Todos os direitos reservados.
           </Text>
         </View>
       </ScrollView>
-      </KeyboardAvoidingView>
+      </FormKeyboardView>
       <AppDialog {...dialogProps} />
     </ScreenContainer>
   );

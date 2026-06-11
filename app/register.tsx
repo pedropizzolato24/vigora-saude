@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -15,7 +14,9 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { FormKeyboardView } from '@/components/form-keyboard-view';
 import { useColors } from '@/hooks/use-colors';
+import { useAppContext } from '@/lib/app-context';
 import * as Auth from '@/lib/_core/auth';
 import { trpc } from '@/lib/trpc';
 import { clearPendingInvite, getPendingInvite } from '@/lib/pending-invite';
@@ -51,7 +52,9 @@ export default function RegisterScreen() {
   const [birthDate, setBirthDate] = useState('');
   const [bloodType, setBloodType] = useState<string | null>(null);
   const [userType, setUserType] = useState<UserType | null>(null);
+  const [healthConsent, setHealthConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { dispatch } = useAppContext();
 
   const completeRegistration = trpc.auth.completeRegistration.useMutation();
 
@@ -93,6 +96,12 @@ export default function RegisterScreen() {
         bloodType: bloodType ?? undefined,
       });
 
+      // LGPD Art. 11: record the separate health-data consent if the monitored
+      // user gave it here. If not, the health screens gate on it later.
+      if (userType === 'monitored' && healthConsent) {
+        dispatch({ type: 'UPDATE_SETTINGS', payload: { healthConsentAt: Date.now() } });
+      }
+
       const existing = await Auth.getUserInfo();
       if (existing) {
         await Auth.setUserInfo({
@@ -131,9 +140,8 @@ export default function RegisterScreen() {
   const loading = completeRegistration.isPending;
 
   return (
-    <KeyboardAvoidingView
+    <FormKeyboardView
       style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
         contentContainerStyle={[
@@ -250,6 +258,29 @@ export default function RegisterScreen() {
           </View>
         </View>
 
+        {/* Consentimento destacado de dados de saúde (LGPD Art. 11) — só p/ monitorado */}
+        {userType === 'monitored' && (
+          <Pressable
+            onPress={() => setHealthConsent((v) => !v)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: healthConsent }}
+            accessibilityLabel="Autorizo o tratamento dos meus dados de saúde"
+            style={[
+              styles.consentBox,
+              { backgroundColor: colors.primaryLight, borderColor: healthConsent ? colors.primary : colors.border },
+            ]}
+          >
+            <MaterialIcons
+              name={healthConsent ? 'check-box' : 'check-box-outline-blank'}
+              size={26}
+              color={healthConsent ? colors.primary : colors.muted}
+            />
+            <Text style={[styles.consentBoxText, { color: colors.foreground }]}>
+              Autorizo a Vigora a tratar meus <Text style={{ fontWeight: '700' }}>dados sensíveis de saúde</Text> (medicações, pressão, glicemia, anamnese) para lembretes, registro e alertas de emergência. Posso revogar a qualquer momento. (LGPD Art. 11)
+            </Text>
+          </Pressable>
+        )}
+
         {error && (
           <View style={[styles.errorBox, { backgroundColor: colors.errorLight, borderColor: colors.error }]}>
             <MaterialIcons name="error-outline" size={18} color={colors.error} />
@@ -275,7 +306,7 @@ export default function RegisterScreen() {
           )}
         </Pressable>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </FormKeyboardView>
   );
 }
 
@@ -409,6 +440,20 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     lineHeight: 20,
+  },
+  consentBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    width: '100%',
+  },
+  consentBoxText: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 21,
   },
   submit: {
     width: '100%',

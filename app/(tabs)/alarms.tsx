@@ -4,7 +4,6 @@ import React, { useRef, useState } from 'react';
 import { useAccessibility } from '@/lib/accessibility-context';
 import {
   FlatList,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -17,6 +16,7 @@ import {
 } from 'react-native';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { AppToast, useAppToast } from '@/components/app-toast';
+import { FormKeyboardView } from '@/components/form-keyboard-view';
 import { WheelPicker } from '@/components/wheel-picker';
 import { WizardStep } from '@/components/wizard-step';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -428,9 +428,8 @@ export default function AlarmsScreen() {
                 {editingAlarm ? 'Editar Lembrete' : 'Novo Lembrete'}
               </Text>
             </View>
-            <KeyboardAvoidingView
+            <FormKeyboardView
               style={{ flex: 1 }}
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
             <ScrollView contentContainerStyle={{ padding: 24, gap: 28 }} keyboardShouldPersistTaps="handled">
               {/* Time */}
@@ -622,7 +621,7 @@ export default function AlarmsScreen() {
                 <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.onPrimary }}>Salvar</Text>
               </Pressable>
             </View>
-            </KeyboardAvoidingView>
+            </FormKeyboardView>
           </View>
         </Modal>
         <AppDialog {...dialogProps} />
@@ -751,9 +750,8 @@ export default function AlarmsScreen() {
           </View>
 
           {/* Wizard Steps */}
-          <KeyboardAvoidingView
+          <FormKeyboardView
             style={styles.wizardContainer}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
             {wizardStep === 1 ? (
               <WizardStep
@@ -1001,7 +999,7 @@ export default function AlarmsScreen() {
                 </ScrollView>
               </WizardStep>
             )}
-          </KeyboardAvoidingView>
+          </FormKeyboardView>
         </View>
       </Modal>
       <AppDialog {...dialogProps} />

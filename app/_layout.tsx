@@ -15,6 +15,9 @@ import { NotificationsProvider } from "@/lib/notifications-context";
 import { MenuProvider } from '@/lib/menu-context';
 import { FontSizeProvider } from '@/lib/font-size-context';
 import { AccessibilityProvider } from '@/lib/accessibility-context';
+import { AppLockProvider } from '@/lib/app-lock-context';
+import { AppLockGate } from '@/components/app-lock-gate';
+import { UpdateBanner } from '@/components/update-banner';
 import { syncAlarmsOnStartup } from "@/lib/alarm-sync";
 import { setupNotificationChannels, requestNotificationPermissions } from "@/lib/notifications-utils";
 import * as Notifications from 'expo-notifications';
@@ -247,6 +250,7 @@ export default function RootLayout() {
           <OnboardingGate />
           <FontSizeProvider>
           <AccessibilityProvider>
+          <AppLockProvider>
           <MonitoringInitializer />
           <CheckinInitializer />
           <MenuProvider>
@@ -273,6 +277,7 @@ export default function RootLayout() {
                 animation: 'fade',
               }}
             />
+            <Stack.Screen name="app-lock-setup" />
             <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
             <Stack.Screen name="login" options={{ gestureEnabled: false }} />
             <Stack.Screen name="email-login" />
@@ -299,9 +304,16 @@ export default function RootLayout() {
             />
           </Stack>
           <StatusBar style="auto" />
+          {/* Aviso de versão nova na loja — antes do AppLockGate para a tela
+              de bloqueio cobrir o aviso quando o app estiver travado. */}
+          <UpdateBanner />
+          {/* Overlay de bloqueio: precisa ficar depois do Stack para cobrir o
+              conteúdo, e dentro dos providers de tema/fonte/acessibilidade. */}
+          <AppLockGate />
         </QueryClientProvider>
       </trpc.Provider>
           </MenuProvider>
+          </AppLockProvider>
           </AccessibilityProvider>
           </FontSizeProvider>
         </AppProvider>

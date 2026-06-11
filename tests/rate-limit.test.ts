@@ -56,9 +56,11 @@ describe("clientIp", () => {
     expect(clientIp(makeReq("9.9.9.9"))).toBe("9.9.9.9");
   });
 
-  it("honors first X-Forwarded-For entry", () => {
+  it("ignores client-supplied X-Forwarded-For and trusts req.ip (anti-spoofing)", () => {
+    // req.ip is derived by Express via `trust proxy 1`; the raw header is
+    // attacker-controlled. A spoofed XFF must NOT change the rate-limit key.
     expect(clientIp(makeReq("1.1.1.1", "203.0.113.1, 10.0.0.1"))).toBe(
-      "203.0.113.1"
+      "1.1.1.1"
     );
   });
 });

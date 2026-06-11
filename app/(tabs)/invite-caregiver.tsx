@@ -19,6 +19,8 @@ import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { AppToast, useAppToast } from '@/components/app-toast';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
+import { useAccessibility } from '@/lib/accessibility-context';
+import { useFontSize } from '@/lib/font-size-context';
 import { trpc } from '@/lib/trpc';
 
 /** Display form with a dash in the middle: "ABCDEF" -> "ABC-DEF". */
@@ -36,6 +38,8 @@ export default function InviteCaregiverScreen() {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const fs = useFontSize();
+  const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing } = useAccessibility();
   const { dialogProps, showDialog } = useAppDialog();
   const { toastProps, showToast } = useAppToast();
 
@@ -46,6 +50,14 @@ export default function InviteCaregiverScreen() {
   const createInvite = trpc.link.createInvite.useMutation();
   const caregivers = trpc.link.getMyCaregivers.useQuery();
   const revoke = trpc.link.revokeLink.useMutation();
+
+  // Tipografia escalada: preferência de fonte no modo normal, 1.8× no acessível.
+  const sz = (size: number) => (isAccessibilityMode ? af.scaled(size) : fs.scaled(size));
+  // Contraste aumentado no modo acessível.
+  const fg = isAccessibilityMode ? ac.foreground : colors.foreground;
+  const muted = isAccessibilityMode ? ac.muted : colors.muted;
+  const border = isAccessibilityMode ? ac.cardBorder : colors.border;
+  const minTouch = isAccessibilityMode ? a11ySpacing.touchTarget : 56;
 
   // Tick the countdown once per second; clear the code when it expires.
   useEffect(() => {
@@ -101,31 +113,40 @@ export default function InviteCaregiverScreen() {
   const list = caregivers.data ?? [];
 
   return (
-    <ScreenContainer>
+    <ScreenContainer containerStyle={isAccessibilityMode ? { backgroundColor: ac.background } : undefined}>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}>
         <View style={styles.headerRow}>
-          <Pressable onPress={() => router.back()} hitSlop={10} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
-            <MaterialIcons name="arrow-back" size={26} color={colors.foreground} />
+          <Pressable
+            onPress={() => router.back()}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+            style={({ pressed }) => [
+              { opacity: pressed ? 0.6 : 1 },
+              isAccessibilityMode && { minWidth: 60, minHeight: 60, justifyContent: 'center' },
+            ]}
+          >
+            <MaterialIcons name="arrow-back" size={isAccessibilityMode ? 34 : 26} color={fg} />
           </Pressable>
-          <Text style={[styles.title, { color: colors.foreground }]}>Convidar cuidador</Text>
+          <Text style={[styles.title, { color: fg, fontSize: sz(22) }]}>Convidar cuidador</Text>
         </View>
 
-        <Text style={[styles.subtitle, { color: colors.muted }]}>
+        <Text style={[styles.subtitle, { color: muted, fontSize: sz(15), lineHeight: sz(15) * 1.5 }]}>
           Gere um código e mostre (ou leia em voz alta) para a pessoa que vai te acompanhar. Ela digita
           o código — ou escaneia o QR — no app dela. O código vale por 10 minutos e só pode ser usado uma vez.
         </Text>
 
         {/* Code card */}
-        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: border }]}>
           {code ? (
             <>
-              <Text style={[styles.codeLabel, { color: colors.muted }]}>Código de convite</Text>
-              <Text style={[styles.code, { color: expired ? colors.muted : colors.primary }]}>
+              <Text style={[styles.codeLabel, { color: muted, fontSize: sz(13) }]}>Código de convite</Text>
+              <Text style={[styles.code, { color: expired ? muted : colors.primary, fontSize: isAccessibilityMode ? af['4xl'] : fs.scaled(44) }]}>
                 {formatCode(code)}
               </Text>
 
               {expired ? (
-                <Text style={[styles.expiredText, { color: colors.error }]}>
+                <Text style={[styles.expiredText, { color: colors.error, fontSize: sz(15) }]}>
                   Código expirado. Gere um novo.
                 </Text>
               ) : (
@@ -135,7 +156,7 @@ export default function InviteCaregiverScreen() {
                       <QRCode value={code} size={180} backgroundColor="#FFFFFF" color="#000000" />
                     </View>
                   </View>
-                  <Text style={[styles.countdown, { color: colors.muted }]}>
+                  <Text style={[styles.countdown, { color: muted, fontSize: sz(14) }]}>
                     Expira em {formatCountdown(secondsLeft)}
                   </Text>
                 </>
@@ -146,20 +167,20 @@ export default function InviteCaregiverScreen() {
                 disabled={createInvite.isPending}
                 style={({ pressed }) => [
                   styles.secondaryBtn,
-                  { borderColor: colors.primary, opacity: createInvite.isPending ? 0.6 : pressed ? 0.85 : 1 },
+                  { borderColor: colors.primary, minHeight: minTouch, opacity: createInvite.isPending ? 0.6 : pressed ? 0.85 : 1 },
                 ]}
               >
                 {createInvite.isPending ? (
                   <ActivityIndicator color={colors.primary} />
                 ) : (
-                  <Text style={[styles.secondaryBtnText, { color: colors.primary }]}>Gerar novo código</Text>
+                  <Text style={[styles.secondaryBtnText, { color: colors.primary, fontSize: sz(15) }]}>Gerar novo código</Text>
                 )}
               </Pressable>
             </>
           ) : (
             <>
-              <MaterialIcons name="qr-code-2" size={48} color={colors.primary} />
-              <Text style={[styles.cardHint, { color: colors.muted }]}>
+              <MaterialIcons name="qr-code-2" size={isAccessibilityMode ? 64 : 48} color={colors.primary} />
+              <Text style={[styles.cardHint, { color: muted, fontSize: sz(15), lineHeight: sz(15) * 1.5 }]}>
                 Toque abaixo para gerar um código de convite.
               </Text>
               <Pressable
@@ -167,13 +188,13 @@ export default function InviteCaregiverScreen() {
                 disabled={createInvite.isPending}
                 style={({ pressed }) => [
                   styles.primaryBtn,
-                  { backgroundColor: colors.primary, opacity: createInvite.isPending ? 0.6 : pressed ? 0.85 : 1 },
+                  { backgroundColor: colors.primary, minHeight: minTouch, opacity: createInvite.isPending ? 0.6 : pressed ? 0.85 : 1 },
                 ]}
               >
                 {createInvite.isPending ? (
                   <ActivityIndicator color={colors.onPrimary} />
                 ) : (
-                  <Text style={[styles.primaryBtnText, { color: colors.onPrimary }]}>Gerar código de convite</Text>
+                  <Text style={[styles.primaryBtnText, { color: colors.onPrimary, fontSize: sz(16) }]}>Gerar código de convite</Text>
                 )}
               </Pressable>
             </>
@@ -181,12 +202,12 @@ export default function InviteCaregiverScreen() {
         </View>
 
         {/* Quem me acompanha */}
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Quem me acompanha</Text>
+        <Text style={[styles.sectionTitle, { color: fg, fontSize: sz(18) }]}>Quem me acompanha</Text>
         {caregivers.isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 8 }} />
         ) : list.length === 0 ? (
-          <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.emptyText, { color: colors.muted }]}>
+          <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: border }]}>
+            <Text style={[styles.emptyText, { color: muted, fontSize: sz(14), lineHeight: sz(14) * 1.5 }]}>
               Ninguém te acompanha ainda. Gere um código para convidar um cuidador.
             </Text>
           </View>
@@ -194,26 +215,32 @@ export default function InviteCaregiverScreen() {
           list.map((c) => (
             <View
               key={c.caregiverOpenId}
-              style={[styles.caregiverRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              style={[styles.caregiverRow, { backgroundColor: colors.surface, borderColor: border }]}
             >
               <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
                 <MaterialIcons name="person" size={22} color={colors.onPrimary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.caregiverName, { color: colors.foreground }]}>
+                <Text style={[styles.caregiverName, { color: fg, fontSize: sz(16) }]}>
                   {c.caregiverName ?? 'Cuidador'}
                 </Text>
                 {c.relationship ? (
-                  <Text style={[styles.caregiverRel, { color: colors.muted }]}>{c.relationship}</Text>
+                  <Text style={[styles.caregiverRel, { color: muted, fontSize: sz(13) }]}>{c.relationship}</Text>
                 ) : null}
               </View>
               <Pressable
                 onPress={() => confirmRevoke(c.caregiverOpenId, c.caregiverName ?? 'esse cuidador')}
                 hitSlop={8}
-                style={({ pressed }) => [styles.removeBtn, { opacity: pressed ? 0.6 : 1 }]}
+                accessibilityRole="button"
+                accessibilityLabel={`Remover acesso de ${c.caregiverName ?? 'esse cuidador'}`}
+                style={({ pressed }) => [
+                  styles.removeBtn,
+                  isAccessibilityMode && { minHeight: 60, justifyContent: 'center' },
+                  { opacity: pressed ? 0.6 : 1 },
+                ]}
               >
-                <MaterialIcons name="link-off" size={20} color={colors.error} />
-                <Text style={[styles.removeText, { color: colors.error }]}>Remover</Text>
+                <MaterialIcons name="link-off" size={isAccessibilityMode ? 26 : 20} color={colors.error} />
+                <Text style={[styles.removeText, { color: colors.error, fontSize: sz(14) }]}>Remover</Text>
               </Pressable>
             </View>
           ))
@@ -228,27 +255,27 @@ export default function InviteCaregiverScreen() {
 const styles = StyleSheet.create({
   content: { padding: 20, gap: 14 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  title: { fontSize: 22, fontWeight: '800' },
-  subtitle: { fontSize: 15, lineHeight: 22 },
+  title: { fontWeight: '800' },
+  subtitle: {},
   card: { padding: 20, borderRadius: 18, borderWidth: 1, alignItems: 'center', gap: 12 },
-  cardHint: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
-  codeLabel: { fontSize: 13, fontWeight: '600' },
-  code: { fontSize: 44, fontWeight: '900', letterSpacing: 4 },
+  cardHint: { textAlign: 'center' },
+  codeLabel: { fontWeight: '600' },
+  code: { fontWeight: '900', letterSpacing: 4 },
   qrWrap: { alignItems: 'center', marginTop: 4 },
   qrBox: { padding: 12, borderRadius: 12, backgroundColor: '#FFFFFF' },
-  countdown: { fontSize: 14, fontWeight: '600' },
-  expiredText: { fontSize: 15, fontWeight: '700', textAlign: 'center' },
-  primaryBtn: { paddingVertical: 16, paddingHorizontal: 24, borderRadius: 14, alignItems: 'center', minHeight: 56, justifyContent: 'center', alignSelf: 'stretch' },
-  primaryBtnText: { fontSize: 16, fontWeight: '700' },
-  secondaryBtn: { paddingVertical: 14, paddingHorizontal: 24, borderRadius: 14, alignItems: 'center', borderWidth: 1, minHeight: 52, justifyContent: 'center', alignSelf: 'stretch' },
-  secondaryBtnText: { fontSize: 15, fontWeight: '700' },
-  sectionTitle: { fontSize: 18, fontWeight: '800', marginTop: 8 },
+  countdown: { fontWeight: '600' },
+  expiredText: { fontWeight: '700', textAlign: 'center' },
+  primaryBtn: { paddingVertical: 16, paddingHorizontal: 24, borderRadius: 14, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' },
+  primaryBtnText: { fontWeight: '700' },
+  secondaryBtn: { paddingVertical: 14, paddingHorizontal: 24, borderRadius: 14, alignItems: 'center', borderWidth: 1, justifyContent: 'center', alignSelf: 'stretch' },
+  secondaryBtnText: { fontWeight: '700' },
+  sectionTitle: { fontWeight: '800', marginTop: 8 },
   emptyCard: { padding: 16, borderRadius: 14, borderWidth: 1 },
-  emptyText: { fontSize: 14, lineHeight: 20 },
+  emptyText: {},
   caregiverRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, borderWidth: 1 },
   avatar: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  caregiverName: { fontSize: 16, fontWeight: '700' },
-  caregiverRel: { fontSize: 13, marginTop: 2 },
+  caregiverName: { fontWeight: '700' },
+  caregiverRel: { marginTop: 2 },
   removeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 8, paddingHorizontal: 6 },
-  removeText: { fontSize: 14, fontWeight: '700' },
+  removeText: { fontWeight: '700' },
 });

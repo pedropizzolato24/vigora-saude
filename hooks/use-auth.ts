@@ -1,5 +1,6 @@
 import * as Api from "@/lib/_core/api";
 import * as Auth from "@/lib/_core/auth";
+import { clearAppLockStorage } from "@/lib/app-lock-storage";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform } from "react-native";
 
@@ -93,6 +94,9 @@ export function useAuth(options?: UseAuthOptions) {
     } finally {
       await Auth.removeSessionToken();
       await Auth.clearUserInfo();
+      // O bloqueio de app (PIN) pertence à conta logada — não pode sobreviver
+      // para a próxima pessoa que entrar neste aparelho.
+      await clearAppLockStorage();
       setUser(null);
       setError(null);
     }
