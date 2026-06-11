@@ -75,6 +75,12 @@ export interface AppSettings {
   checkinTime: string;
   /** Minutos que o usuário tem para responder antes de escalonar */
   checkinWindowMinutes: number;
+  /**
+   * Consentimento destacado para tratar dados sensíveis de saúde (LGPD Art. 11).
+   * epoch-ms de quando foi concedido, ou null se ainda não consentiu. As telas
+   * de saúde (anamnese, métricas) não coletam dados enquanto for null.
+   */
+  healthConsentAt: number | null;
 }
 
 export interface UserProfile {
@@ -155,6 +161,7 @@ const initialState: AppState = {
     checkinEnabled: false,
     checkinTime: '09:00',
     checkinWindowMinutes: 30,
+    healthConsentAt: null,
   },
   ads: [],
   missedAlarmCount: 0,

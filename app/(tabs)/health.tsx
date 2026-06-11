@@ -18,6 +18,7 @@ import { AppToast, useAppToast } from '@/components/app-toast';
 import { FormKeyboardView } from '@/components/form-keyboard-view';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
+import { HealthConsentGate } from '@/components/health-consent-gate';
 import { WizardStep } from '@/components/wizard-step';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
@@ -255,6 +256,17 @@ export default function HealthScreen() {
       </View>
     );
   };
+
+  // LGPD Art. 11: não coletar dados sensíveis de saúde sem consentimento
+  // destacado. Quem JÁ tem dados (instalações antigas) é mantido (grandfather).
+  const hasHealthData = !!state.anamnesis || (state.healthMetrics?.length ?? 0) > 0;
+  if (!state.settings.healthConsentAt && !hasHealthData) {
+    return (
+      <ScreenContainer edges={['left', 'right']}>
+        <HealthConsentGate>{null}</HealthConsentGate>
+      </ScreenContainer>
+    );
+  }
 
   // --- ACCESSIBILITY MODE ---------------------------------------------------
   if (isAccessibilityMode) {

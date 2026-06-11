@@ -14,6 +14,7 @@ import {
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
+import { HealthConsentGate } from '@/components/health-consent-gate';
 import { WizardStep } from '@/components/wizard-step';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
@@ -135,6 +136,18 @@ export default function AnamnesisScreen() {
     if (wizardStep === 2) setWizardStep(1);
     else if (wizardStep === 3) setWizardStep(2);
   };
+
+  // LGPD Art. 11: não coletar dados sensíveis de saúde sem consentimento
+  // destacado. Quem JÁ tem dados (instalações antigas) é mantido (grandfather)
+  // para não perder acesso aos próprios dados.
+  const hasHealthData = !!state.anamnesis || (state.healthMetrics?.length ?? 0) > 0;
+  if (!state.settings.healthConsentAt && !hasHealthData) {
+    return (
+      <ScreenContainer edges={['left', 'right']}>
+        <HealthConsentGate>{null}</HealthConsentGate>
+      </ScreenContainer>
+    );
+  }
 
   // --- ACCESSIBILITY MODE --------------------------------------------------
   if (isAccessibilityMode) {
