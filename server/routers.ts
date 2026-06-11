@@ -252,7 +252,9 @@ export const appRouter = router({
           ).min(1).max(20),
           userName: z.string().max(255).optional(),
           missedAlarmCount: z.number().min(1).max(1000),
-          locationUrl: z.string().max(500).optional(),
+          // .url() so arbitrary text/phishing can't be injected into the
+          // templated WhatsApp body under the trusted "Vigora" sender.
+          locationUrl: z.string().url().max(500).optional(),
           /**
            * Tipo do alerta: escalação de alarme perdido (padrão) ou SOS —
            * o usuário acionou o botão de pânico e os CONTATOS devem ser

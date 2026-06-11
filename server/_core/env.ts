@@ -18,6 +18,39 @@ export const ENV = {
 };
 
 /**
+ * Fail-closed check for secrets that must never be empty in production.
+ * Without it, JWT_SECRET silently fell back to "" (see `cookieSecret` above
+ * and sdk.ts), so session JWTs would be signed AND verified with an empty
+ * HMAC key — trivial token forgery for any openId. We refuse to boot rather
+ * than run fail-open. Reads `env` live (default process.env) so it can be
+ * unit-tested with a fake environment.
+ */
+export function assertRequiredSecrets(env: NodeJS.ProcessEnv = process.env): void {
+  const isProduction = env.NODE_ENV === "production";
+  const secret = env.JWT_SECRET ?? "";
+  if (!isProduction) {
+    if (secret.length === 0) {
+      console.warn(
+        "[api] AVISO: JWT_SECRET ausente — usando segredo vazio (apenas DEV). " +
+          "Em produção o servidor recusa iniciar sem ele.",
+      );
+    }
+    return;
+  }
+  if (secret.length === 0) {
+    throw new Error(
+      "JWT_SECRET ausente ou vazio em produção. Recusando iniciar para não " +
+        "assinar/verificar sessões com segredo vazio (forja de token trivial).",
+    );
+  }
+  if (secret.length < 32) {
+    console.warn(
+      "[api] AVISO: JWT_SECRET com menos de 32 caracteres; use >=32 (256-bit) para HS256.",
+    );
+  }
+}
+
+/**
  * Returns true if the given origin is allowlisted. In dev (no list set),
  * accepts localhost on any port.
  */

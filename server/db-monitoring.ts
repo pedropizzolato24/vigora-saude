@@ -212,7 +212,10 @@ export async function getLastHeartbeat(deviceId: string) {
 /** Returns all devices that haven't sent a heartbeat in the last `thresholdMinutes` minutes */
 export async function getInactiveDevices(thresholdMinutes: number) {
   const db = await getDb();
-  if (!db) return [];
+  // Fail-closed: a DB outage must NOT look like "0 inactive devices, all good"
+  // — that would silently disarm the dead man's switch. Throw so the job's
+  // catch records the failure and /api/health turns unhealthy.
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
   const cutoff = new Date(Date.now() - thresholdMinutes * 60 * 1000);
   return db
     .select()
@@ -394,6 +397,17 @@ export async function updateWarningResult(
     .update(warningLog)
     .set({ contactsReached, locationIncluded })
     .where(eq(warningLog.id, id));
+}
+
+/**
+ * Delete a warning_log row. Used to release a claim that reached NOBODY, so the
+ * next job run retries the alert in ~5 min instead of letting the failed
+ * attempt occupy the dedup slot for MIN_WARNING_INTERVAL_HOURS.
+ */
+export async function releaseWarning(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(warningLog).where(eq(warningLog.id, id));
 }
 
 export async function recordWarning(data: {

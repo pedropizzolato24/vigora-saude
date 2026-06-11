@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
-import { startMonitoringScheduler } from "../monitoring-job";
+import { startMonitoringScheduler, getMonitoringHealth } from "../monitoring-job";
+import { checkDatabase } from "../db";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
@@ -12,6 +13,7 @@ import { registerEmailAuthRoutes, isEmailServiceConfigured } from "../email-auth
 import { registerPhoneAuthRoutes, isPhoneLoginConfigured } from "../phone-auth";
 import { createRateLimit } from "./rate-limit";
 import { securityHeadersMiddleware } from "./security-headers";
+import { assertRequiredSecrets } from "./env";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { renderInviteLanding } from "../invite-landing";
@@ -36,6 +38,8 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  assertRequiredSecrets();
+
   const app = express();
   const server = createServer(app);
 
@@ -132,8 +136,14 @@ async function startServer() {
     });
   });
 
-  app.get("/api/health", (_req, res) => {
-    res.json({ ok: true, timestamp: Date.now() });
+  // Deep health check: an external uptime monitor can poll this and alert when
+  // the DB is unreachable or the dead man's switch job has been failing/stale.
+  // Returns 503 (not 200) when unhealthy so the monitor actually trips.
+  app.get("/api/health", async (_req, res) => {
+    const monitoringJob = getMonitoringHealth();
+    const db = await checkDatabase();
+    const ok = db && monitoringJob.healthy;
+    res.status(ok ? 200 : 503).json({ ok, db, monitoringJob, timestamp: Date.now() });
   });
 
   // tRPC endpoints: 120 requests/minute/IP. Authenticated calls also
@@ -160,4 +170,9 @@ async function startServer() {
   });
 }
 
-startServer().catch(console.error);
+startServer().catch((err) => {
+  // Refuse to run half-initialized (e.g. missing JWT_SECRET in production):
+  // log and exit non-zero so the platform flags the failed deploy.
+  console.error(err);
+  process.exit(1);
+});

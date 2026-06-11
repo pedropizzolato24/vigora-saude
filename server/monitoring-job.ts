@@ -23,6 +23,7 @@ import {
   getMissedCheckinEvents,
   getWarningHistory,
   markEventWarningSent,
+  releaseWarning,
   updateAlarmEventStatus,
   updateWarningResult,
 } from "./db-monitoring";
@@ -46,6 +47,56 @@ const WARNING_LEVELS = [
 
 // Minimum interval between warnings of the same level (hours)
 const MIN_WARNING_INTERVAL_HOURS = 2;
+
+// --- Job health (dead man's switch self-monitoring) -----------------------
+// The whole escalation depends on this job running. Previously a thrown error
+// was swallowed into console.error with no signal, so a persistently failing
+// job (DB down, etc.) would silently disarm the switch. We track run health
+// here and expose it via /api/health so an external uptime monitor can alert.
+
+// Consecutive failures tolerated before /api/health reports unhealthy.
+const MAX_HEALTHY_FAILURES = 2;
+// No successful run within 3 cycles (15 min) => stale => unhealthy.
+const STALE_MS = 15 * 60 * 1000;
+
+type JobHealthState = {
+  lastRunAt: number;
+  lastSuccessAt: number;
+  consecutiveFailures: number;
+  lastError: string | null;
+};
+
+const jobHealth: JobHealthState = {
+  lastRunAt: 0,
+  lastSuccessAt: 0,
+  consecutiveFailures: 0,
+  lastError: null,
+};
+
+/**
+ * Pure health verdict from a job-health snapshot. Unhealthy when too many
+ * consecutive failures OR when a previously-running job went stale (scheduler
+ * stuck). Returns healthy before the first run so boot-time health checks pass.
+ */
+export function computeMonitoringHealth(state: JobHealthState, now: number) {
+  const stale = state.lastRunAt > 0 && now - state.lastRunAt > STALE_MS;
+  const healthy = state.consecutiveFailures <= MAX_HEALTHY_FAILURES && !stale;
+  return { ...state, stale, healthy };
+}
+
+/** Current monitoring-job health (consumed by /api/health). */
+export function getMonitoringHealth() {
+  return computeMonitoringHealth(jobHealth, Date.now());
+}
+
+/**
+ * A warning that reached NOBODY (no WhatsApp delivered, no caregiver push)
+ * should release its dedup claim so the next run retries, instead of being
+ * recorded as sent and blocking this level for MIN_WARNING_INTERVAL_HOURS.
+ */
+export function shouldRetryWarning(totalSent: number, pushed: number): boolean {
+  return totalSent === 0 && pushed === 0;
+}
 
 function formatOfflineDuration(offlineHours: number): string {
   if (offlineHours < 1) {
@@ -189,6 +240,7 @@ function getWarningLevel(offlineHours: number): number | null {
  */
 export async function runMonitoringJob(): Promise<void> {
   const now = new Date();
+  jobHealth.lastRunAt = now.getTime();
   console.log(`[Monitor] Running monitoring job at ${now.toISOString()}`);
 
   try {
@@ -323,7 +375,17 @@ export async function runMonitoringJob(): Promise<void> {
       });
 
       if (claimId !== null) {
-        await updateWarningResult(claimId, totalSent, !!locationUrl);
+        if (shouldRetryWarning(totalSent, pushed)) {
+          // Reached NOBODY (WhatsApp + push both failed). Release the dedup
+          // claim so the next run (~5 min) retries instead of this level going
+          // silent for MIN_WARNING_INTERVAL_HOURS.
+          await releaseWarning(claimId);
+          console.error(
+            `[Monitor] ⛔ Warning level ${warningLevel} for device ${device.deviceId} reached NOBODY (0 WhatsApp, 0 push) — claim released for retry next run`
+          );
+        } else {
+          await updateWarningResult(claimId, totalSent, !!locationUrl);
+        }
       }
 
       console.log(
@@ -388,9 +450,22 @@ export async function runMonitoringJob(): Promise<void> {
       console.log(`[Monitor] Step 3: escalated check-in event ${event.id}, ${totalSent} contacts reached, ${pushed} caregiver push(es) delivered`);
     }
 
+    jobHealth.lastSuccessAt = Date.now();
+    jobHealth.consecutiveFailures = 0;
+    jobHealth.lastError = null;
     console.log(`[Monitor] Job completed successfully`);
   } catch (error) {
-    console.error("[Monitor] Job failed:", error);
+    jobHealth.consecutiveFailures += 1;
+    jobHealth.lastError = error instanceof Error ? error.message : String(error);
+    console.error(
+      `[Monitor] Job failed (${jobHealth.consecutiveFailures} consecutive):`,
+      error
+    );
+    if (jobHealth.consecutiveFailures > MAX_HEALTHY_FAILURES) {
+      console.error(
+        `[Monitor] 🚨 Dead man's switch job failed ${jobHealth.consecutiveFailures}x in a row — /api/health is now reporting UNHEALTHY. Investigate the monitoring scheduler/DB immediately.`
+      );
+    }
   }
 }
 

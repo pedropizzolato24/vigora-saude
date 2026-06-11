@@ -30,8 +30,10 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# env file
+# env files (ignore all dotenv variants; keep the no-secrets template)
 .env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
@@ -61,6 +63,10 @@ Thumbs.db
 *.tar.gz
 .cache/
 
+# SBOM (generated from the lockfile; produce in CI, don't commit)
+sbom.cdx.json
+*.cdx.json
+
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
 
@@ -71,6 +77,7 @@ Thumbs.db
 .superpowers/
 docs/superpowers/
 graphify-out/
+docs/claude/
 
 # Obsidian
 .obsidian/
