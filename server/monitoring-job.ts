@@ -185,10 +185,12 @@ async function sendToContact(
 
   const result = await sendWhatsAppMessage(contact.phone, message);
   if (result.success) {
-    console.log(`[Monitor] ✅ WhatsApp sent to ${contact.name} (${contact.phone})`);
+    // No PII in logs: contact name/phone are personal data (LGPD). The masked
+    // recipient + message id are already logged by sendWhatsAppMessage.
+    console.log(`[Monitor] ✅ WhatsApp delivered to an emergency contact`);
     return { sent: true };
   }
-  console.warn(`[Monitor] ⚠️ WhatsApp failed for ${contact.name}: ${result.error}`);
+  console.warn(`[Monitor] ⚠️ WhatsApp delivery failed for a contact:`, result.error);
   return { sent: false, error: result.error };
 }
 
@@ -358,7 +360,7 @@ export async function runMonitoringJob(): Promise<void> {
           totalSent++;
         } else {
           totalFailed++;
-          console.warn(`[Monitor] ❌ Could not reach ${contact.name}: ${result.error}`);
+          console.warn(`[Monitor] ❌ Could not reach a contact:`, result.error);
         }
 
         // Small delay between contacts

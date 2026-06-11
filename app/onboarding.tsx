@@ -429,6 +429,11 @@ export default function OnboardingScreen() {
           <Text style={[styles.nextButtonText, { color: colors.onPrimary }]}>{getNextButtonLabel()}</Text>
           <MaterialIcons name="arrow-forward" size={22} color={colors.onPrimary} />
         </Pressable>
+
+        {/* Disclaimer obrigatório no primeiro acesso (regulatório/Apple 1.4.1) */}
+        <Text style={[styles.onboardingDisclaimer, { color: colors.muted }]}>
+          Vigora é informativo e não substitui acompanhamento médico. Em emergência, ligue 192 (SAMU). Alertas automáticos podem falhar.
+        </Text>
       </View>
     </View>
   );
@@ -448,6 +453,13 @@ const styles = StyleSheet.create({
   pageIndicator: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  onboardingDisclaimer: {
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center',
+    marginTop: 12,
+    paddingHorizontal: 8,
   },
   skipButton: {
     width: 60,

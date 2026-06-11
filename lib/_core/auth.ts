@@ -48,7 +48,7 @@ export async function setSessionToken(token: string): Promise<void> {
     }
 
     // Use SecureStore for native
-    console.log("[Auth] Setting session token...", token.substring(0, 20) + "...");
+    console.log("[Auth] Setting session token...");
     await SecureStore.setItemAsync(SESSION_TOKEN_KEY, token);
     console.log("[Auth] Session token stored in SecureStore successfully");
   } catch (error) {
@@ -92,7 +92,9 @@ export async function getUserInfo(): Promise<User | null> {
       return null;
     }
     const user = JSON.parse(info);
-    console.log("[Auth] User info retrieved:", user);
+    // Never log the User object — it carries PII/health data (e-mail, phone,
+    // bloodType, birthDate) that would leak into logcat / crash reporters.
+    console.log("[Auth] User info retrieved");
     return user;
   } catch (error) {
     console.error("[Auth] Failed to get user info:", error);
@@ -102,7 +104,8 @@ export async function getUserInfo(): Promise<User | null> {
 
 export async function setUserInfo(user: User): Promise<void> {
   try {
-    console.log("[Auth] Setting user info...", user);
+    // Never log the User object (PII/health data — see getUserInfo).
+    console.log("[Auth] Setting user info...");
 
     if (Platform.OS === "web") {
       // Use localStorage for web
