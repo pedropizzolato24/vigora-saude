@@ -3,13 +3,14 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View,
+  ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View,
 } from 'react-native';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useAuth } from '@/hooks/use-auth';
 import * as Auth from '@/lib/_core/auth';
+import { useAppLock } from '@/lib/app-lock-context';
 import { useCaregiverContext } from '@/lib/caregiver-context';
 import { trpc } from '@/lib/trpc';
 
@@ -19,6 +20,7 @@ export default function CaregiverSettingsScreen() {
   const { logout } = useAuth();
   const { state, clearLinkedMonitored, updateNotificationPrefs } = useCaregiverContext();
   const { dialogProps, showDialog } = useAppDialog();
+  const appLock = useAppLock();
 
   const updateProfile = trpc.auth.updateProfile.useMutation();
 
@@ -222,6 +224,31 @@ export default function CaregiverSettingsScreen() {
             <Text style={[styles.primaryBtnText, { color: colors.onPrimary }]}>Ver planos</Text>
           </Pressable>
         </Section>
+
+        {/* Segurança — bloqueio de app (só nativo: SecureStore/biometria) */}
+        {Platform.OS !== 'web' && (
+          <Section title="Segurança">
+            <ToggleRow
+              label="Bloquear app ao sair"
+              value={appLock.enabled}
+              onChange={(v) =>
+                v
+                  ? router.push('/app-lock-setup')
+                  : router.push({ pathname: '/app-lock-setup', params: { mode: 'disable' } })
+              }
+            />
+            {appLock.enabled && appLock.biometricAvailable && (
+              <ToggleRow
+                label="Desbloquear com biometria"
+                value={appLock.biometricEnabled}
+                onChange={(v) => appLock.setBiometricEnabled(v)}
+              />
+            )}
+            <Text style={[styles.note, { color: colors.muted }]}>
+              Com o bloqueio ativo, o app pede PIN ou biometria sempre que é aberto.
+            </Text>
+          </Section>
+        )}
 
         {/* Ajuda */}
         <Section title="Ajuda e FAQ">

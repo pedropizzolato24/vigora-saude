@@ -25,6 +25,8 @@ import { useAppContext } from '@/lib/app-context';
 import { useThemeContext } from '@/lib/theme-provider';
 import { useFontSize } from '@/lib/font-size-context';
 import { useAccessibility } from '@/lib/accessibility-context';
+import { useAppLock } from '@/lib/app-lock-context';
+import { useRouter } from 'expo-router';
 import { MonitoringStatusPanel } from '@/components/monitoring-status-panel';
 import { TrialBanner, ExpiredBanner } from '@/components/trial-banner';
 import { scheduleCheckin, cancelCheckin } from '@/lib/checkin-service';
@@ -173,6 +175,8 @@ export default function SettingsScreen() {
   const fs = useFontSize();
   const { settings } = state;
   const { dialogProps, showDialog } = useAppDialog();
+  const router = useRouter();
+  const appLock = useAppLock();
 
   const [countdownTestActive, setCountdownTestActive] = useState(false);
   const [countdownTestSecondsLeft, setCountdownTestSecondsLeft] = useState(10);
@@ -354,6 +358,17 @@ export default function SettingsScreen() {
         },
       ],
     });
+  };
+
+  // Ativar abre o fluxo de criar PIN; desativar exige confirmar o PIN atual.
+  // O toggle reflete appLock.enabled, então abandonar o fluxo não muda nada.
+  const handleToggleAppLock = (value: boolean) => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (value) {
+      router.push('/app-lock-setup');
+    } else {
+      router.push({ pathname: '/app-lock-setup', params: { mode: 'disable' } });
+    }
   };
 
   const fontSizeLabels = { small: 'Pequeno', medium: 'Médio', large: 'Grande' };
@@ -597,6 +612,31 @@ export default function SettingsScreen() {
               <Switch value={settings.sosConfirmation} onValueChange={(v) => updateSetting('sosConfirmation', v)} trackColor={{ false: ac.border, true: ac.emergency }} thumbColor="#FFFFFF" />
             </View>
           </View>
+
+          {/* Bloqueio do app - Accessibility */}
+          {Platform.OS !== 'web' && (
+            <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 16 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Bloquear app ao sair</Text>
+                  <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Pedir PIN ao abrir o app</Text>
+                </View>
+                <Switch value={appLock.enabled} onValueChange={handleToggleAppLock} trackColor={{ false: ac.border, true: ac.primary }} thumbColor="#FFFFFF" />
+              </View>
+              {appLock.enabled && appLock.biometricAvailable && (
+                <>
+                  <View style={{ height: 2, backgroundColor: ac.border }} />
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Usar biometria</Text>
+                      <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Digital ou rosto em vez do PIN</Text>
+                    </View>
+                    <Switch value={appLock.biometricEnabled} onValueChange={(v) => appLock.setBiometricEnabled(v)} trackColor={{ false: ac.border, true: ac.primary }} thumbColor="#FFFFFF" />
+                  </View>
+                </>
+              )}
+            </View>
+          )}
 
           {/* Location Permission Status - Accessibility */}
           <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 12 }}>
@@ -1118,6 +1158,31 @@ export default function SettingsScreen() {
           colors={colors}
           defaultOpen={false}
         >
+          {/* Bloqueio do app — só nativo (SecureStore/biometria não existem na web) */}
+          {Platform.OS !== 'web' && (
+            <>
+              <SettingToggle
+                label="Bloquear app ao sair"
+                sublabel="Pedir PIN ou biometria ao abrir o app"
+                value={appLock.enabled}
+                onValueChange={handleToggleAppLock}
+                colors={colors}
+              />
+              <Divider colors={colors} />
+              {appLock.enabled && appLock.biometricAvailable && (
+                <>
+                  <SettingToggle
+                    label="Desbloquear com biometria"
+                    sublabel="Usar digital ou rosto em vez do PIN"
+                    value={appLock.biometricEnabled}
+                    onValueChange={(v) => appLock.setBiometricEnabled(v)}
+                    colors={colors}
+                  />
+                  <Divider colors={colors} />
+                </>
+              )}
+            </>
+          )}
           <SettingToggle
             label="Confirmar SOS"
             sublabel="Pedir confirmação antes de acionar SOS"
