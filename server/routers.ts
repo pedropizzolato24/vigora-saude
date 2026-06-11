@@ -12,6 +12,7 @@ import { monitoringRouter } from "./routers-monitoring";
 import { linkRouter } from "./routers-links";
 import { pushRouter } from "./routers-push";
 import { getUserByOpenId, getUserData, upsertUser, upsertUserData } from "./db";
+import { deleteAccountData } from "./db-account";
 import type { EmergencyContactRecord } from "../drizzle/schema";
 
 /**
@@ -163,6 +164,40 @@ export const appRouter = router({
       return {
         success: true,
       } as const;
+    }),
+    /**
+     * Permanently deletes the account and ALL its server-side data (LGPD
+     * Art. 18, VI). Irreversible. Deleting the canonical user row invalidates
+     * every outstanding session (authenticateRequest 403s on a missing user);
+     * we also revoke the caller's current token and clear the web cookie.
+     */
+    deleteAccount: protectedProcedure.mutation(async ({ ctx }) => {
+      const result = await deleteAccountData(ctx.user.openId);
+
+      // Belt-and-suspenders: revoke the caller's current token now.
+      try {
+        const authHeader = ctx.req.headers.authorization;
+        let token: string | undefined;
+        if (typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+          token = authHeader.slice("Bearer ".length).trim();
+        }
+        if (!token && ctx.req.headers.cookie) {
+          const cookies = parseCookieHeader(ctx.req.headers.cookie);
+          token = cookies[COOKIE_NAME];
+        }
+        if (token) {
+          const session = await sdk.verifySession(token);
+          if (session?.jti && session.expMs) {
+            revokeJti(session.jti, session.expMs);
+          }
+        }
+      } catch (err) {
+        console.warn("[Auth] deleteAccount revoke step failed:", err);
+      }
+
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      return { success: true, ...result } as const;
     }),
   }),
 
