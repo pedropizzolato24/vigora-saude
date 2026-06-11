@@ -452,8 +452,8 @@ const styles = StyleSheet.create({
   },
   consentBoxText: {
     flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 21,
   },
   submit: {
     width: '100%',

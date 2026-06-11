@@ -361,6 +361,41 @@ export default function ContactsScreen() {
                   />
                   <Text style={{ fontSize: af.sm, color: ac.muted }}>Usado se o WhatsApp não funcionar.</Text>
                 </View>
+                {/* Avisar por WhatsApp + consentimento (ANATEL) — também no Modo Acessível */}
+                <View style={{ gap: 12 }}>
+                  <Pressable
+                    onPress={() => setForm((f) => ({ ...f, whatsapp: !f.whatsapp }))}
+                    accessibilityRole="switch"
+                    accessibilityState={{ checked: form.whatsapp }}
+                    accessibilityLabel="Avisar este contato pelo WhatsApp"
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 64, backgroundColor: ac.surface, borderColor: ac.border, borderWidth: 2, borderRadius: 16, padding: 16 }}
+                  >
+                    <MaterialIcons name="chat" size={28} color={ac.success} />
+                    <Text style={{ flex: 1, fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Avisar pelo WhatsApp</Text>
+                    <Switch
+                      value={form.whatsapp}
+                      onValueChange={(v) => setForm((f) => ({ ...f, whatsapp: v }))}
+                      trackColor={{ false: ac.border, true: ac.success }}
+                      thumbColor="#FFFFFF"
+                    />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setForm((f) => ({ ...f, consentToAlerts: !(f.consentToAlerts ?? false) }))}
+                    accessibilityRole="switch"
+                    accessibilityState={{ checked: form.consentToAlerts ?? false }}
+                    accessibilityLabel="Confirmar que este contato concordou em receber alertas automáticos"
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 64, backgroundColor: ac.surface, borderColor: ac.border, borderWidth: 2, borderRadius: 16, padding: 16 }}
+                  >
+                    <MaterialIcons name="verified-user" size={28} color={ac.foreground} />
+                    <Text style={{ flex: 1, fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Esta pessoa concordou em receber alertas</Text>
+                    <Switch
+                      value={form.consentToAlerts ?? false}
+                      onValueChange={(v) => setForm((f) => ({ ...f, consentToAlerts: v }))}
+                      trackColor={{ false: ac.border, true: ac.success }}
+                      thumbColor="#FFFFFF"
+                    />
+                  </Pressable>
+                </View>
               </ScrollView>
               {/* Barra inferior de ações: Cancelar + Salvar */}
               <View style={{ flexDirection: 'row', gap: 12, padding: 20, paddingBottom: Math.max(insets.bottom, 20), borderTopWidth: 2, borderTopColor: ac.border, backgroundColor: ac.bar }}>

@@ -37,16 +37,24 @@ export async function deleteAccountData(
   // Resolve the account's contacts (to clear any pending auth codes) and its
   // device ids (to clear device-keyed monitoring data) BEFORE the transaction.
   const user = await getUserByOpenId(openId);
-  const deviceRows = await db
-    .select({ deviceId: appUsers.deviceId })
-    .from(appUsers)
-    .where(eq(appUsers.openId, openId));
-  const deviceIds = deviceRows.map((r) => r.deviceId);
-  const codeTargets = [user?.email, user?.phone].filter(
+  // Phone OTP codes are keyed by the digits-only number while users.phone is
+  // stored with a leading '+', so include both to purge a pending phone code.
+  const phoneDigits = user?.phone?.replace(/\D/g, "");
+  const codeTargets = [user?.email, user?.phone, phoneDigits].filter(
     (t): t is string => !!t,
   );
 
+  let deletedDevices = 0;
   await db.transaction(async (tx) => {
+    // Resolve the account's devices INSIDE the transaction so a device claimed
+    // mid-delete can't leave its device-keyed rows orphaned.
+    const deviceRows = await tx
+      .select({ deviceId: appUsers.deviceId })
+      .from(appUsers)
+      .where(eq(appUsers.openId, openId));
+    const deviceIds = deviceRows.map((r) => r.deviceId);
+    deletedDevices = deviceIds.length;
+
     // Device-keyed tables (heartbeat, alarm schedule + event log, warning log).
     if (deviceIds.length > 0) {
       await tx.delete(syncedAlarms).where(inArray(syncedAlarms.deviceId, deviceIds));
@@ -91,5 +99,5 @@ export async function deleteAccountData(
     await tx.delete(users).where(eq(users.openId, openId));
   });
 
-  return { deletedDevices: deviceIds.length };
+  return { deletedDevices };
 }

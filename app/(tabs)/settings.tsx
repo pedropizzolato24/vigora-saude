@@ -711,6 +711,37 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
+          {/* Excluir minha conta (LGPD Art. 18 VI) — paridade no Modo Acessível */}
+          <View style={{ gap: 8, paddingTop: 8 }}>
+            <Pressable
+              onPress={handleDeleteAccount}
+              disabled={isDeleting}
+              accessibilityRole="button"
+              accessibilityLabel="Excluir minha conta e todos os dados do servidor"
+              style={({ pressed }) => [{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+                minHeight: 64,
+                borderRadius: 16,
+                borderWidth: 3,
+                borderColor: ac.error,
+                backgroundColor: ac.surface,
+                paddingHorizontal: 16,
+                opacity: isDeleting ? 0.6 : pressed ? 0.7 : 1,
+              }]}
+            >
+              <MaterialIcons name="no-accounts" size={26} color={ac.error} />
+              <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.error }}>
+                {isDeleting ? 'Excluindo...' : 'Excluir minha conta'}
+              </Text>
+            </Pressable>
+            <Text style={{ fontSize: af.sm, color: ac.muted, textAlign: 'center' }}>
+              Apaga sua conta e todos os dados dos nossos servidores. Permanente (LGPD).
+            </Text>
+          </View>
+
           {/* Version info */}
           <View style={{ alignItems: 'center', gap: 4, paddingTop: 8 }}>
             <Text style={{ fontSize: af.sm, color: ac.muted, fontWeight: '600' }}>Vigora - Versão 1.0.0</Text>
