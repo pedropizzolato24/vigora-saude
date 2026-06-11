@@ -10,11 +10,12 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
-  ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View,
+  ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
+import { FormKeyboardView } from '@/components/form-keyboard-view';
 import { useColors } from '@/hooks/use-colors';
 import { useCaregiverContext } from '@/lib/caregiver-context';
 import { trpc } from '@/lib/trpc';
@@ -88,9 +89,8 @@ export default function LinkScreen() {
 
   if (step === 'details') {
     return (
-      <KeyboardAvoidingView
+      <FormKeyboardView
         style={[styles.container, { backgroundColor: colors.background }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
           contentContainerStyle={[
@@ -151,7 +151,7 @@ export default function LinkScreen() {
           </Pressable>
         </ScrollView>
         <AppDialog {...dialogProps} />
-      </KeyboardAvoidingView>
+      </FormKeyboardView>
     );
   }
 

@@ -69,6 +69,11 @@ export function initializePurchases(appUserId?: string): void {
 
     // Configurar SDK - chave lida de EXPO_PUBLIC_REVENUECAT_API_KEY
     // Configure via painel Manus -> Settings -> Secrets
+    if (!process.env.EXPO_PUBLIC_REVENUECAT_API_KEY) {
+      console.warn(
+        "[Purchases] EXPO_PUBLIC_REVENUECAT_API_KEY ausente — usando chave placeholder; offerings não vão carregar."
+      );
+    }
     if (Platform.OS === "ios" || Platform.OS === "android") {
       Purchases.configure({
         apiKey: REVENUECAT_API_KEY,

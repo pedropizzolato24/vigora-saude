@@ -5,7 +5,6 @@ import React, { useState } from 'react';
 import { useAccessibility } from '@/lib/accessibility-context';
 import {
   FlatList,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -18,6 +17,7 @@ import {
 } from 'react-native';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { AppToast, useAppToast } from '@/components/app-toast';
+import { FormKeyboardView } from '@/components/form-keyboard-view';
 import { WizardStep } from '@/components/wizard-step';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
@@ -314,9 +314,8 @@ export default function ContactsScreen() {
             <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, alignItems: 'center', backgroundColor: ac.bar }}>
               <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>{editingContact ? 'Editar Contato' : 'Novo Contato'}</Text>
             </View>
-            <KeyboardAvoidingView
+            <FormKeyboardView
               style={{ flex: 1 }}
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
               <ScrollView
                 contentContainerStyle={{ padding: 24, gap: 24 }}
@@ -378,7 +377,7 @@ export default function ContactsScreen() {
                   <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.onPrimary }}>Salvar</Text>
                 </Pressable>
               </View>
-            </KeyboardAvoidingView>
+            </FormKeyboardView>
           </View>
         </Modal>
         <AppDialog {...dialogProps} />
@@ -487,9 +486,8 @@ export default function ContactsScreen() {
           </View>
 
           {/* Wizard Steps */}
-          <KeyboardAvoidingView
+          <FormKeyboardView
             style={styles.wizardContainer}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
             {wizardStep === 1 && (
               <WizardStep
@@ -664,7 +662,7 @@ export default function ContactsScreen() {
                 </ScrollView>
               </WizardStep>
             )}
-          </KeyboardAvoidingView>
+          </FormKeyboardView>
         </View>
       </Modal>
 
@@ -683,9 +681,8 @@ export default function ContactsScreen() {
             </Text>
           </View>
 
-          <KeyboardAvoidingView
+          <FormKeyboardView
             style={{ flex: 1 }}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
           <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
             <View style={styles.formGroup}>
@@ -817,7 +814,7 @@ export default function ContactsScreen() {
               </Text>
             </Pressable>
           </View>
-          </KeyboardAvoidingView>
+          </FormKeyboardView>
         </View>
       </Modal>
 

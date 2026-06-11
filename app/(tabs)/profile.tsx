@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  KeyboardAvoidingView,
   Platform,
   Image,
 } from 'react-native';
@@ -17,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 import { ScreenContainer } from '@/components/screen-container';
+import { FormKeyboardView } from '@/components/form-keyboard-view';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { useAppContext } from '@/lib/app-context';
@@ -229,7 +229,7 @@ export default function ProfileScreen() {
         <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar }}>
           <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Meu Perfil</Text>
         </View>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <FormKeyboardView style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {/* Avatar */}
           <View style={{ alignItems: 'center', gap: 12 }}>
@@ -300,7 +300,7 @@ export default function ProfileScreen() {
             <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.emergency }}>Sair da Conta</Text>
           </TouchableOpacity>
         </ScrollView>
-        </KeyboardAvoidingView>
+        </FormKeyboardView>
       </ScreenContainer>
       <AppDialog {...dialogProps} />
       </>
@@ -315,7 +315,7 @@ export default function ProfileScreen() {
         <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: fs['2xl'] }]}>Meu Perfil</Text>
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <FormKeyboardView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Avatar Section */}
         <View style={styles.avatarSection}>
@@ -446,7 +446,7 @@ export default function ProfileScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
-      </KeyboardAvoidingView>
+      </FormKeyboardView>
       <AppDialog {...dialogProps} />
     </ScreenContainer>
   );

@@ -2,7 +2,6 @@ import * as Haptics from 'expo-haptics';
 import { startCountdownNotification, stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
-  KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
@@ -14,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
+import { FormKeyboardView } from '@/components/form-keyboard-view';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import * as Location from 'expo-location';
@@ -652,7 +652,7 @@ export default function SettingsScreen() {
         <Text style={[styles.headerSubtitle, { color: colors.muted, fontSize: fs.sm }]}>Personalize sua experiência</Text>
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <FormKeyboardView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
         {/* ═══ ACCESSIBILITY TOGGLE (always at top, outside any group) ═══ */}
@@ -1483,7 +1483,7 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </ScrollView>
-      </KeyboardAvoidingView>
+      </FormKeyboardView>
       <AppDialog {...dialogProps} />
     </ScreenContainer>
   );

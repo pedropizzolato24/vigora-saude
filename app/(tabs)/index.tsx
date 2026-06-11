@@ -98,24 +98,25 @@ export default function DashboardScreen() {
 
     return (
       <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: a11yColors.background }}>
+        {/* Header fixo — não rola com o conteúdo (não fica atrás da status bar) */}
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 8, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>
+              Vigora
+            </Text>
+            {state.profile.name ? (
+              <Text style={{ fontSize: af.md, color: ac.muted, marginTop: 4 }}>
+                Olá, {state.profile.name}
+              </Text>
+            ) : null}
+          </View>
+          <MonitoringStatusBadge accessible={true} />
+        </View>
         <ScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 20 }}
           showsVerticalScrollIndicator={false}
           style={{ backgroundColor: ac.background }}
         >
-          <View style={{ paddingTop: insets.top + 12, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>
-                Vigora
-              </Text>
-              {state.profile.name ? (
-                <Text style={{ fontSize: af.md, color: ac.muted, marginTop: 4 }}>
-                  Olá, {state.profile.name}
-                </Text>
-              ) : null}
-            </View>
-            <MonitoringStatusBadge accessible={true} />
-          </View>
 
           {/* SOS — modo acessível: botão grande */}
           <PulseView active={!sosPressing} minScale={0.98} maxScale={1.02} duration={1500}>
@@ -373,37 +374,37 @@ export default function DashboardScreen() {
 
   return (
     <ScreenContainer edges={['left', 'right']}>
+      {/* Header fixo — não rola com o conteúdo (não fica atrás da status bar) */}
+      <View style={[styles.header, { paddingTop: insets.top + 12, backgroundColor: colors.bar, borderBottomColor: colors.border }]}>
+        <View style={{ flex: 1 }}>
+          {state.profile.name ? (
+            <Text style={[styles.greeting, { color: colors.muted, fontFamily: 'PlusJakartaSans', fontSize: fs.sm }]}>
+              Bom dia,
+            </Text>
+          ) : (
+            <Text style={[styles.greeting, { color: colors.muted, fontFamily: 'PlusJakartaSans', fontSize: fs.sm }]}>
+              Bem-vindo ao
+            </Text>
+          )}
+          <Text style={[styles.appName, { color: colors.primary, fontFamily: 'Fraunces-Italic', fontStyle: 'italic', fontSize: fs.scaled(28) }]}>
+            {state.profile.name || 'Vigora'}
+          </Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {isPro && (
+            <View style={[styles.proBadge, { backgroundColor: colors.successLight }]}>
+              <MaterialIcons name="verified" size={13} color={colors.success} />
+              <Text style={{ fontFamily: 'PlusJakartaSans', color: colors.success, fontSize: 11, fontWeight: '700' }}>PRO</Text>
+            </View>
+          )}
+          <MonitoringStatusBadge accessible={false} />
+        </View>
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-          <View style={{ flex: 1 }}>
-            {state.profile.name ? (
-              <Text style={[styles.greeting, { color: colors.muted, fontFamily: 'PlusJakartaSans', fontSize: fs.sm }]}>
-                Bom dia,
-              </Text>
-            ) : (
-              <Text style={[styles.greeting, { color: colors.muted, fontFamily: 'PlusJakartaSans', fontSize: fs.sm }]}>
-                Bem-vindo ao
-              </Text>
-            )}
-            <Text style={[styles.appName, { color: colors.primary, fontFamily: 'Fraunces-Italic', fontStyle: 'italic', fontSize: fs.scaled(28) }]}>
-              {state.profile.name || 'Vigora'}
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            {isPro && (
-              <View style={[styles.proBadge, { backgroundColor: colors.successLight }]}>
-                <MaterialIcons name="verified" size={13} color={colors.success} />
-                <Text style={{ fontFamily: 'PlusJakartaSans', color: colors.success, fontSize: 11, fontWeight: '700' }}>PRO</Text>
-              </View>
-            )}
-            <MonitoringStatusBadge accessible={false} />
-          </View>
-        </View>
-
         {/* SOS Strip */}
         <SosStrip onPress={handleSOS} />
 
@@ -550,7 +551,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 20,
     paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   greeting: {
     fontSize: 14,

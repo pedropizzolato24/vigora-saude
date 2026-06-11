@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -15,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { FormKeyboardView } from '@/components/form-keyboard-view';
 import { useColors } from '@/hooks/use-colors';
 import * as Auth from '@/lib/_core/auth';
 import { trpc } from '@/lib/trpc';
@@ -131,9 +131,8 @@ export default function RegisterScreen() {
   const loading = completeRegistration.isPending;
 
   return (
-    <KeyboardAvoidingView
+    <FormKeyboardView
       style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
         contentContainerStyle={[
@@ -275,7 +274,7 @@ export default function RegisterScreen() {
           )}
         </Pressable>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </FormKeyboardView>
   );
 }
 

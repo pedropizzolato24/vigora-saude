@@ -3,7 +3,6 @@ import * as Speech from 'expo-speech';
 import React, { useEffect, useState } from 'react';
 import { useAccessibility } from '@/lib/accessibility-context';
 import {
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -23,6 +22,7 @@ import { BrandFonts } from '@/lib/_core/theme';
 import { useAppContext, type AnamnesesData } from '@/lib/app-context';
 import { exportAnamnesisToPDF } from '@/lib/pdf-utils-v2';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
+import { FormKeyboardView } from '@/components/form-keyboard-view';
 
 const GENDER_OPTIONS: { value: AnamnesesData['gender']; label: string }[] = [
   { value: 'M', label: 'Masculino' },
@@ -152,7 +152,7 @@ export default function AnamnesisScreen() {
           <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Histórico médico</Text>
           <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Histórico médico pessoal</Text>
         </View>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <FormKeyboardView style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {a11yFields.map((field) => (
             <View key={field.key} style={{ gap: 10 }}>
@@ -203,7 +203,7 @@ export default function AnamnesisScreen() {
             <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.onPrimary }}>Salvar</Text>
           </Pressable>
         </ScrollView>
-        </KeyboardAvoidingView>
+        </FormKeyboardView>
       </ScreenContainer>
       <AppDialog {...dialogProps} />
       </>
@@ -226,10 +226,7 @@ export default function AnamnesisScreen() {
       </View>
 
       {/* Wizard container */}
-      <KeyboardAvoidingView
-        style={styles.wizardContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <FormKeyboardView style={styles.wizardContainer}>
         {/* Step 1 — Você */}
         {wizardStep === 1 && (
           <WizardStep
@@ -474,7 +471,7 @@ export default function AnamnesisScreen() {
             </ScrollView>
           </WizardStep>
         )}
-      </KeyboardAvoidingView>
+      </FormKeyboardView>
 
       <AppDialog {...dialogProps} />
     </ScreenContainer>

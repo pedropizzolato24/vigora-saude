@@ -9,7 +9,7 @@
  * - isLoading: boolean - carregando dados iniciais
  * - isRestoring: boolean - restaurando compras
  * - error: string | null - último erro
- * - refresh(): Promise<void> - recarregar dados do servidor
+ * - refresh(): Promise<PurchasesOffering | null> - recarregar dados do servidor
  * - purchasePackage(pkg): Promise<PurchaseResult> - comprar um plano
  * - restorePurchases(): Promise<PurchaseResult> - restaurar compras
  */
@@ -32,6 +32,7 @@ import {
   getCurrentOffering,
   getCustomerInfo,
   hasProAccess,
+  initializePurchases,
   purchasePackage as doPurchasePackage,
   restorePurchases as doRestorePurchases,
   type PurchaseResult,
@@ -56,8 +57,8 @@ export interface PurchasesContextValue {
   isTrialActive: boolean;
   /** Dias restantes do trial (0 se expirado ou já assinante) */
   trialDaysLeft: number;
-  /** Recarregar dados do servidor RevenueCat */
-  refresh: () => Promise<void>;
+  /** Recarregar dados do servidor RevenueCat; retorna a offering carregada (ou null) */
+  refresh: () => Promise<PurchasesOffering | null>;
   /** Comprar um pacote */
   purchasePackage: (pkg: PurchasesPackage) => Promise<PurchaseResult>;
   /** Restaurar compras anteriores */
@@ -88,12 +89,17 @@ export function PurchasesProvider({ children }: PurchasesProviderProps) {
 
   // -- Carregar dados iniciais ------------------------------------------------
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (): Promise<PurchasesOffering | null> => {
     // SDK só funciona em iOS/Android (não em web)
     if (Platform.OS === "web") {
       setIsLoading(false);
-      return;
+      return null;
     }
+
+    // Idempotente — garante que Purchases.configure() rodou antes de qualquer
+    // chamada ao SDK. (O useEffect do RootLayout roda DEPOIS dos effects dos
+    // filhos, então sem isto getOfferings() falharia na primeira carga.)
+    initializePurchases();
 
     try {
       setError(null);
@@ -105,10 +111,12 @@ export function PurchasesProvider({ children }: PurchasesProviderProps) {
 
       setCustomerInfo(info);
       setCurrentOffering(offering);
+      return offering;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao carregar dados de assinatura";
       setError(msg);
       console.error("[PurchasesContext] Erro ao carregar dados:", err);
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -168,10 +176,10 @@ export function PurchasesProvider({ children }: PurchasesProviderProps) {
 
   // -- Refresh manual --------------------------------------------------------
 
-  const refresh = useCallback(async () => {
-    if (Platform.OS === "web") return;
+  const refresh = useCallback(async (): Promise<PurchasesOffering | null> => {
+    if (Platform.OS === "web") return null;
     setIsLoading(true);
-    await loadData();
+    return loadData();
   }, [loadData]);
 
   // -- Compra ----------------------------------------------------------------

@@ -13,8 +13,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,16 +22,21 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
+import { AppDialog, useAppDialog } from "@/components/app-dialog";
 import { usePurchases } from "@/hooks/use-purchases";
 import { useColors } from "@/hooks/use-colors";
 import { useAccessibility } from "@/lib/accessibility-context";
+import { useFontSize } from "@/lib/font-size-context";
+import { BrandFonts } from "@/lib/_core/theme";
 
 export default function PaywallScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useColors();
+  const fs = useFontSize();
   const { isAccessibilityMode: isAccessible } = useAccessibility();
-  const { isPro, currentOffering, isLoading, purchasePackage, restorePurchases, isRestoring } =
+  const { dialogProps, showDialog } = useAppDialog();
+  const { isPro, currentOffering, isLoading, purchasePackage, restorePurchases, isRestoring, refresh } =
     usePurchases();
 
   const [presenting, setPresenting] = useState(false);
@@ -53,41 +56,63 @@ export default function PaywallScreen() {
     setPresenting(true);
 
     try {
-      const result = await RevenueCatUI.presentPaywallIfNeeded({
-        requiredEntitlementIdentifier: "Vigora Saúde Pro",
-      });
+      // Incondicional: o usuário pediu para ver os planos. (A tela já fecha
+      // sozinha quando isPro — o pré-check do "IfNeeded" só gerava um
+      // NOT_PRESENTED silencioso quando o fetch de CustomerInfo falhava.)
+      const result = await RevenueCatUI.presentPaywall();
 
       switch (result) {
         case PAYWALL_RESULT.PURCHASED:
         case PAYWALL_RESULT.RESTORED:
           // Compra ou restauração bem-sucedida
-          Alert.alert(
-            "Bem-vindo ao Vigora Pro! 🎉",
-            "Sua assinatura foi ativada com sucesso. Aproveite todos os recursos premium.",
-            [{ text: "OK", onPress: () => router.back() }]
-          );
+          showDialog({
+            variant: "success",
+            title: "Bem-vindo ao Vigora Pro! 🎉",
+            message: "Sua assinatura foi ativada com sucesso. Aproveite todos os recursos premium.",
+            buttons: [{ text: "OK", onPress: () => router.back() }],
+          });
           break;
         case PAYWALL_RESULT.CANCELLED:
           // Usuário cancelou - não mostrar erro
           break;
         case PAYWALL_RESULT.NOT_PRESENTED:
-          // Já tem acesso - fechar
-          router.back();
-          break;
         case PAYWALL_RESULT.ERROR:
-          Alert.alert(
-            "Erro",
-            "Não foi possível carregar o paywall. Verifique sua conexão e tente novamente."
-          );
+          // Nunca fechar a modal silenciosamente — informar e deixar tentar de novo
+          showDialog({
+            variant: "error",
+            title: "Não foi possível abrir os planos",
+            message: "Verifique sua conexão e tente novamente.",
+            buttons: [{ text: "OK" }],
+          });
           break;
       }
     } catch (error) {
       console.error("[Paywall] Erro ao apresentar paywall:", error);
-      Alert.alert("Erro", "Ocorreu um erro inesperado. Tente novamente.");
+      showDialog({
+        variant: "error",
+        title: "Erro",
+        message: "Ocorreu um erro inesperado. Tente novamente.",
+        buttons: [{ text: "OK" }],
+      });
     } finally {
       setPresenting(false);
     }
-  }, [presenting, router]);
+  }, [presenting, router, showDialog]);
+
+  // -- Recarregar planos (offerings) ------------------------------------------
+
+  const handleLoadPlans = useCallback(async () => {
+    const offering = await refresh();
+    // Se carregou, a lista de planos renderiza no lugar desta seção.
+    if (!offering) {
+      showDialog({
+        variant: "error",
+        title: "Planos indisponíveis",
+        message: "Não foi possível carregar os planos. Verifique sua conexão e tente novamente.",
+        buttons: [{ text: "OK" }],
+      });
+    }
+  }, [refresh, showDialog]);
 
   // -- Restaurar compras -----------------------------------------------------
 
@@ -99,30 +124,38 @@ export default function PaywallScreen() {
         result.customerInfo?.entitlements.active["Vigora Saúde Pro"] !== undefined;
 
       if (hasEntitlement) {
-        Alert.alert(
-          "Compras restauradas! ✅",
-          "Seu acesso ao Vigora Pro foi restaurado com sucesso.",
-          [{ text: "OK", onPress: () => router.back() }]
-        );
+        showDialog({
+          variant: "success",
+          title: "Compras restauradas! ✅",
+          message: "Seu acesso ao Vigora Pro foi restaurado com sucesso.",
+          buttons: [{ text: "OK", onPress: () => router.back() }],
+        });
       } else {
-        Alert.alert(
-          "Nenhuma compra encontrada",
-          "Não encontramos nenhuma assinatura ativa associada a esta conta."
-        );
+        showDialog({
+          variant: "info",
+          title: "Nenhuma compra encontrada",
+          message: "Não encontramos nenhuma assinatura ativa associada a esta conta.",
+          buttons: [{ text: "OK" }],
+        });
       }
     } else {
-      Alert.alert(
-        "Erro ao restaurar",
-        result.error ?? "Não foi possível restaurar suas compras. Tente novamente."
-      );
+      showDialog({
+        variant: "error",
+        title: "Erro ao restaurar",
+        message: result.error ?? "Não foi possível restaurar suas compras. Tente novamente.",
+        buttons: [{ text: "OK" }],
+      });
     }
-  }, [restorePurchases, router]);
+  }, [restorePurchases, router, showDialog]);
 
   // -- Renderização ----------------------------------------------------------
 
   const baseTextSize = isAccessible ? 18 : 15;
   const titleSize = isAccessible ? 26 : 22;
   const subtitleSize = isAccessible ? 17 : 14;
+  // Botões: mínimo 16px (19px no modo acessível) — regras de tipografia do app
+  const buttonTextSize = isAccessible ? 19 : Math.max(fs.md, 16);
+  const buttonMinHeight = isAccessible ? 60 : 56;
 
   if (isLoading) {
     return (
@@ -208,13 +241,19 @@ export default function PaywallScreen() {
                   onPress={async () => {
                     const result = await purchasePackage(pkg);
                     if (result.success) {
-                      Alert.alert(
-                        "Assinatura ativada! 🎉",
-                        "Bem-vindo ao Vigora Pro! Aproveite todos os recursos premium.",
-                        [{ text: "OK", onPress: () => router.back() }]
-                      );
+                      showDialog({
+                        variant: "success",
+                        title: "Assinatura ativada! 🎉",
+                        message: "Bem-vindo ao Vigora Pro! Aproveite todos os recursos premium.",
+                        buttons: [{ text: "OK", onPress: () => router.back() }],
+                      });
                     } else if (!result.userCancelled && result.error) {
-                      Alert.alert("Erro na compra", result.error);
+                      showDialog({
+                        variant: "error",
+                        title: "Erro na compra",
+                        message: result.error,
+                        buttons: [{ text: "OK" }],
+                      });
                     }
                   }}
                   style={({ pressed }) => [
@@ -269,47 +308,49 @@ export default function PaywallScreen() {
             })}
           </View>
         ) : (
-          /* Fallback: botão para abrir paywall nativo */
+          /* Fallback: recarrega as offerings para exibir os planos */
           <View style={styles.nativePaywallSection}>
             <Text style={[styles.noOffering, { color: colors.muted, fontSize: subtitleSize }]}>
               Carregue os planos disponíveis para assinar.
             </Text>
             <Pressable
-              onPress={handlePresentNativePaywall}
+              onPress={handleLoadPlans}
               disabled={presenting}
+              accessibilityRole="button"
+              accessibilityLabel="Ver planos disponíveis"
               style={({ pressed }) => [
                 styles.primaryButton,
-                { backgroundColor: colors.primary, opacity: pressed || presenting ? 0.7 : 1 },
+                { backgroundColor: colors.primary, minHeight: buttonMinHeight, opacity: pressed || presenting ? 0.7 : 1 },
               ]}
             >
-              {presenting ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={[styles.primaryButtonText, { fontSize: baseTextSize }]}>
-                  Ver planos disponíveis
-                </Text>
-              )}
+              <Text style={[styles.primaryButtonText, { color: colors.onPrimary, fontSize: buttonTextSize }]}>
+                Ver planos disponíveis
+              </Text>
             </Pressable>
           </View>
         )}
 
         {/* Botão principal - abre paywall nativo RevenueCat */}
-        <Pressable
-          onPress={handlePresentNativePaywall}
-          disabled={presenting}
-          style={({ pressed }) => [
-            styles.primaryButton,
-            { backgroundColor: colors.primary, opacity: pressed || presenting ? 0.7 : 1 },
-          ]}
-        >
-          {presenting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={[styles.primaryButtonText, { fontSize: baseTextSize }]}>
-              Assinar agora
-            </Text>
-          )}
-        </Pressable>
+        {currentOffering && (
+          <Pressable
+            onPress={handlePresentNativePaywall}
+            disabled={presenting}
+            accessibilityRole="button"
+            accessibilityLabel="Assinar agora"
+            style={({ pressed }) => [
+              styles.primaryButton,
+              { backgroundColor: colors.primary, minHeight: buttonMinHeight, opacity: pressed || presenting ? 0.7 : 1 },
+            ]}
+          >
+            {presenting ? (
+              <ActivityIndicator color={colors.onPrimary} />
+            ) : (
+              <Text style={[styles.primaryButtonText, { color: colors.onPrimary, fontSize: buttonTextSize }]}>
+                Assinar agora
+              </Text>
+            )}
+          </Pressable>
+        )}
 
         {/* Restaurar compras */}
         <Pressable
@@ -332,6 +373,8 @@ export default function PaywallScreen() {
           loja. Ao assinar, você concorda com os Termos de Uso e Política de Privacidade.
         </Text>
       </ScrollView>
+
+      <AppDialog {...dialogProps} />
     </View>
   );
 }
@@ -485,13 +528,15 @@ const styles = StyleSheet.create({
   primaryButton: {
     borderRadius: 16,
     paddingVertical: 16,
+    paddingHorizontal: 24,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 56,
+    alignSelf: "stretch",
   },
   primaryButtonText: {
-    color: "#fff",
+    fontFamily: BrandFonts.body,
     fontWeight: "700",
+    textAlign: "center",
   },
   restoreButton: {
     alignItems: "center",
