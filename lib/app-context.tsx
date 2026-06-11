@@ -27,6 +27,12 @@ export interface EmergencyContact {
   relation: string;
   whatsapp: boolean;
   email?: string; // Optional email for fallback notifications
+  /**
+   * ANATEL opt-in: did this contact agree to receive automatic alerts?
+   * The automatic dead man's switch skips contacts where this is explicitly
+   * false; legacy contacts (undefined) are grandfathered as consented.
+   */
+  consentToAlerts?: boolean;
 }
 
 export interface AnamnesesData {

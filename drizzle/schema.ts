@@ -99,6 +99,13 @@ export interface EmergencyContactRecord {
   whatsapp: boolean;
   /** Optional email address, collected for the contact card (not used for alerts). */
   email?: string;
+  /**
+   * Whether this contact agreed to receive automatic emergency alerts
+   * (ANATEL opt-in). The automatic dead man's switch only messages contacts
+   * where this is not explicitly false; legacy contacts (undefined) are
+   * grandfathered as consented. Manual SOS (user-initiated) is not gated.
+   */
+  consentToAlerts?: boolean;
 }
 
 export const appUsers = mysqlTable("app_users", {

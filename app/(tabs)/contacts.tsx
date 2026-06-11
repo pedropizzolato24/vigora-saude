@@ -47,6 +47,7 @@ const EMPTY_FORM: Omit<EmergencyContact, 'id'> = {
   relation: '',
   whatsapp: false,
   email: '',
+  consentToAlerts: false,
 };
 
 function formatPhone(value: string): string {
@@ -156,6 +157,9 @@ export default function ContactsScreen() {
       relation: contact.relation,
       whatsapp: contact.whatsapp,
       email: contact.email ?? '',
+      // Grandfather: contacts saved before opt-in existed (undefined) show as
+      // consented, so editing them doesn't silently disable their alerts.
+      consentToAlerts: contact.consentToAlerts ?? true,
     });
     setModalVisible(true);
   };
@@ -652,12 +656,24 @@ export default function ContactsScreen() {
                     </View>
                   )}
 
-                  {/* Consent notice */}
-                  <View style={[styles.consentNote, { backgroundColor: colors.warningLight, borderColor: colors.warning }]}>
-                    <MaterialIcons name="info" size={18} color={colors.warningDark} />
-                    <Text style={[styles.consentText, { color: colors.warningDark, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
-                      Confirme que <Text style={{ fontWeight: '700' }}>{form.name.trim() || 'esta pessoa'}</Text> concordou em receber alertas automáticos de emergência.
-                    </Text>
+                  {/* Consent opt-in (ANATEL) — agora REGISTRADO, não só um aviso */}
+                  <View style={[styles.toggleRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={styles.toggleLeft}>
+                      <MaterialIcons name="verified-user" size={22} color={colors.warningDark} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.toggleLabel, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>Esta pessoa concordou</Text>
+                        <Text style={[styles.toggleSubLabel, { color: colors.muted, fontSize: fs.sm }]}>
+                          Confirmo que {form.name.trim() || 'esta pessoa'} aceitou receber alertas automáticos de emergência.
+                        </Text>
+                      </View>
+                    </View>
+                    <Switch
+                      value={form.consentToAlerts ?? false}
+                      onValueChange={(v) => setForm((f) => ({ ...f, consentToAlerts: v }))}
+                      trackColor={{ false: colors.border, true: colors.success }}
+                      thumbColor="#FFFFFF"
+                      accessibilityLabel="Confirmar que o contato concordou em receber alertas automáticos"
+                    />
                   </View>
                 </ScrollView>
               </WizardStep>
@@ -777,6 +793,31 @@ export default function ContactsScreen() {
                 trackColor={{ false: colors.border, true: colors.success }}
                 thumbColor="#FFFFFF"
                 accessibilityLabel="Ativar notificação via WhatsApp"
+              />
+            </View>
+
+            {/* Consentimento do contato (ANATEL) — registrado */}
+            <View
+              style={[
+                styles.toggleRow,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <View style={styles.toggleLeft}>
+                <MaterialIcons name="verified-user" size={20} color={colors.warningDark} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.toggleLabel, { color: colors.foreground, fontSize: fs.base }]}>Concordou em receber alertas</Text>
+                  <Text style={[styles.toggleSubLabel, { color: colors.muted, fontSize: fs.sm }]}>
+                    Confirmo que esta pessoa aceitou receber alertas automáticos.
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={form.consentToAlerts ?? false}
+                onValueChange={(v) => setForm((f) => ({ ...f, consentToAlerts: v }))}
+                trackColor={{ false: colors.border, true: colors.success }}
+                thumbColor="#FFFFFF"
+                accessibilityLabel="Confirmar que o contato concordou em receber alertas automáticos"
               />
             </View>
           </ScrollView>
@@ -1096,15 +1137,6 @@ const styles = StyleSheet.create({
     padding: 14,
     lineHeight: 22,
   },
-  consentNote: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  consentText: { flex: 1, lineHeight: 20 },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',

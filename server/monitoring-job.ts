@@ -304,14 +304,19 @@ export async function runMonitoringJob(): Promise<void> {
         continue;
       }
 
-      const contacts = (appUser.emergencyContacts as any[]) || [];
+      // ANATEL opt-in: the AUTOMATIC switch only messages contacts that
+      // consented. Legacy contacts (undefined) are grandfathered; only an
+      // explicit false is excluded. Manual SOS (routers.ts) is not gated.
+      const contacts = ((appUser.emergencyContacts as any[]) || []).filter(
+        (c) => c.consentToAlerts !== false
+      );
       const caregiverOpenIds = await getLinkedCaregiverOpenIds(appUser.openId);
 
       // Two independent recipient sets: WhatsApp reaches emergency contacts,
       // push reaches linked caregivers. Skip only when neither has anyone.
       if (contacts.length === 0 && caregiverOpenIds.length === 0) {
         console.log(
-          `[Monitor] Device ${device.deviceId}: no contacts or caregivers, skipping`
+          `[Monitor] Device ${device.deviceId}: no consented contacts or caregivers, skipping`
         );
         continue;
       }
@@ -411,10 +416,13 @@ export async function runMonitoringJob(): Promise<void> {
         continue;
       }
 
-      const contacts = (appUser.emergencyContacts as any[]) || [];
+      // ANATEL opt-in: only message contacts that consented (legacy = grandfathered).
+      const contacts = ((appUser.emergencyContacts as any[]) || []).filter(
+        (c) => c.consentToAlerts !== false
+      );
       const caregiverOpenIds = await getLinkedCaregiverOpenIds(appUser.openId);
       if (contacts.length === 0 && caregiverOpenIds.length === 0) {
-        console.log(`[Monitor] Step 3: no contacts or caregivers for device ${event.deviceId}, skipping`);
+        console.log(`[Monitor] Step 3: no consented contacts or caregivers for device ${event.deviceId}, skipping`);
         await markEventWarningSent(event.id);
         continue;
       }
