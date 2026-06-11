@@ -35,6 +35,10 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
 
+// Contato do Encarregado/DPO publicado na Política de Privacidade (LGPD Art. 41 §1).
+// TODO(LANÇAMENTO): trocar pelo e-mail REAL do Encarregado antes de publicar nas lojas.
+const DPO_EMAIL = 'privacidade@vigora.com.br';
+
 // Timer duration options
 const TIMER_DURATIONS: { value: 15 | 30 | 45 | 60; label: string; sublabel: string }[] = [
   { value: 15, label: '15s', sublabel: 'Rápido' },
@@ -1577,7 +1581,7 @@ export default function SettingsScreen() {
             <Text style={[styles.footerDot, { color: colors.muted }]}>·</Text>
             <Pressable
               onPress={() =>
-                showDialog({ title: 'Política de Privacidade', message: 'Vigora — Política de Privacidade (resumo)\n\nDados que tratamos:\n• Dados sensíveis de saúde (pressão, glicemia, frequência cardíaca, anamnese, medicamentos, tipo sanguíneo), tratados com seu consentimento destacado.\n• Contatos de emergência, localização (quando ativada) e perfil.\n\nOnde ficam: no seu aparelho e, para backup e para o monitoramento funcionar, em nosso servidor próprio (acesso protegido por autenticação). Nunca vendemos nem usamos seus dados de saúde para publicidade.\n\nCompartilhamos apenas para a função que você pediu: WhatsApp/Meta (alertas aos contatos que você designou), Expo (notificações aos cuidadores) e RevenueCat (assinatura).\n\nSeus direitos (LGPD Art. 18): acessar, corrigir, exportar e excluir. Você pode apagar sua conta e todos os dados do servidor em Configurações › Excluir minha conta.', variant: 'info', buttons: [{ text: 'OK' }] })
+                showDialog({ title: 'Política de Privacidade', message: 'Vigora — Política de Privacidade (resumo)\n\nDados que tratamos:\n• Dados sensíveis de saúde (pressão, glicemia, frequência cardíaca, anamnese, medicamentos, tipo sanguíneo), tratados com seu consentimento destacado.\n• Contatos de emergência, localização (quando ativada) e perfil.\n\nOnde ficam: no seu aparelho e, para backup e para o monitoramento funcionar, em nosso servidor próprio (acesso protegido por autenticação). Nunca vendemos nem usamos seus dados de saúde para publicidade.\n\nCompartilhamos apenas para a função que você pediu: WhatsApp/Meta (alertas aos contatos que você designou), Expo (notificações aos cuidadores) e RevenueCat (assinatura).\n\nSeus direitos (LGPD Art. 18): acessar, corrigir, exportar e excluir. Você pode apagar sua conta e todos os dados do servidor em Configurações › Excluir minha conta.\n\nEncarregado de Dados (DPO): ' + DPO_EMAIL + '. Fale com ele para exercer seus direitos ou tirar dúvidas sobre privacidade.', variant: 'info', buttons: [{ text: 'OK' }] })
               }
               style={({ pressed }) => [pressed && { opacity: 0.6 }]}
             >
