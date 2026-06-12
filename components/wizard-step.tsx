@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { BrandFonts } from '@/lib/_core/theme';
@@ -40,6 +41,7 @@ export function WizardStep({
 }: WizardStepProps) {
   const colors = useColors();
   const fs = useFontSize();
+  const insets = useSafeAreaInsets();
   const accent = tagColor ?? colors.primary;
   const primaryLabel = nextLabel ?? 'Continuar';
   const secondaryAction = onBack ?? onCancel;
@@ -87,8 +89,10 @@ export function WizardStep({
       {/* Body */}
       <View style={styles.body}>{children}</View>
 
-      {/* Buttons */}
-      <View style={styles.buttonRow}>
+      {/* Buttons — paddingBottom aqui (e não no FormKeyboardView pai): o
+          KeyboardAvoidingView behavior="padding" sobrescreve o paddingBottom
+          do próprio style, zerando-o com o teclado fechado. */}
+      <View style={[styles.buttonRow, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         {secondaryAction ? (
           <Pressable
             onPress={secondaryAction}

@@ -31,6 +31,21 @@ const GENDER_OPTIONS: { value: AnamnesesData['gender']; label: string }[] = [
   { value: 'O', label: 'Outro' },
 ];
 
+function formatBirthDate(input: string): string {
+  const digits = input.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
+// CNS tem 15 dígitos, exibido como 000 0000 0000 0000.
+function formatSusNumber(input: string): string {
+  const digits = input.replace(/\D/g, '').slice(0, 15);
+  return [digits.slice(0, 3), digits.slice(3, 7), digits.slice(7, 11), digits.slice(11)]
+    .filter(Boolean)
+    .join(' ');
+}
+
 const EMPTY_FORM: AnamnesesData = {
   fullName: '',
   birthDate: '',
@@ -151,9 +166,9 @@ export default function AnamnesisScreen() {
 
   // --- ACCESSIBILITY MODE --------------------------------------------------
   if (isAccessibilityMode) {
-    const a11yFields: { label: string; key: keyof AnamnesesData; placeholder: string; multiline?: boolean; keyboard?: any }[] = [
+    const a11yFields: { label: string; key: keyof AnamnesesData; placeholder: string; multiline?: boolean; keyboard?: any; format?: (v: string) => string }[] = [
       { label: 'Nome Completo *', key: 'fullName', placeholder: 'Seu nome completo' },
-      { label: 'Data de Nascimento *', key: 'birthDate', placeholder: 'DD/MM/AAAA', keyboard: 'numbers-and-punctuation' },
+      { label: 'Data de Nascimento *', key: 'birthDate', placeholder: 'DD/MM/AAAA', keyboard: 'numeric', format: formatBirthDate },
       { label: 'Alergias', key: 'allergies', placeholder: 'Ex: Penicilina, Amendoim...', multiline: true },
       { label: 'Medicamentos em uso', key: 'medications', placeholder: 'Ex: Losartana 50mg...', multiline: true },
       { label: 'Doenças crônicas', key: 'diseases', placeholder: 'Ex: Diabetes, Hipertensão...', multiline: true },
@@ -172,7 +187,7 @@ export default function AnamnesisScreen() {
               <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>{field.label}</Text>
               <TextInput
                 value={String(form[field.key] ?? '')}
-                onChangeText={(v) => updateField(field.key, v as any)}
+                onChangeText={(v) => updateField(field.key, (field.format ? field.format(v) : v) as any)}
                 placeholder={field.placeholder}
                 placeholderTextColor={ac.muted}
                 keyboardType={field.keyboard ?? 'default'}
@@ -277,10 +292,10 @@ export default function AnamnesisScreen() {
                 </Text>
                 <TextInput
                   value={form.birthDate}
-                  onChangeText={(v) => updateField('birthDate', v)}
+                  onChangeText={(v) => updateField('birthDate', formatBirthDate(v))}
                   placeholder="DD/MM/AAAA"
                   placeholderTextColor={colors.muted}
-                  keyboardType="numbers-and-punctuation"
+                  keyboardType="numeric"
                   style={[styles.textInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base }]}
                   returnKeyType="done"
                   maxLength={10}
@@ -414,13 +429,13 @@ export default function AnamnesisScreen() {
                 </Text>
                 <TextInput
                   value={form.susNumber}
-                  onChangeText={(v) => updateField('susNumber', v)}
+                  onChangeText={(v) => updateField('susNumber', formatSusNumber(v))}
                   placeholder="000 0000 0000 0000"
                   placeholderTextColor={colors.muted}
                   keyboardType="numeric"
                   style={[styles.textInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base }]}
                   returnKeyType="next"
-                  maxLength={20}
+                  maxLength={18}
                   accessibilityLabel="Número do SUS"
                 />
               </View>
