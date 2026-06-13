@@ -83,6 +83,13 @@ export default function LoginScreen() {
     iosClientId: GOOGLE_IOS_CLIENT_ID,
     webClientId: GOOGLE_WEB_CLIENT_ID,
     scopes: ["openid", "email", "profile"],
+    // O provider troca o authorization code sozinho por padrão (auto-exchange).
+    // No iOS o fluxo "warm" volta como success e finishGoogleLogin troca o code
+    // de novo — code é de uso único, então a 2ª troca falhava com invalid_grant
+    // ("issued to another client"). Desligamos para a troca acontecer só no
+    // nosso fluxo (finishGoogleLogin), com o PKCE/redirect/client por plataforma
+    // já corretos. Android (deep link) e web (ResponseType.Token) não mudam.
+    shouldAutoExchangeCode: false,
     // Por padrão o provider usa o bundle id EM RUNTIME (Application.applicationId),
     // mas sideload com Apple ID gratuito renomeia o bundle (com.vigora.saude.<teamId>)
     // e o Google rejeita com redirect_uri_mismatch. Fixamos no bundle id registrado
