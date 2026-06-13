@@ -71,6 +71,9 @@ function TudoTile({ tile, palette, onPress, isAccessibilityMode }: TudoTileProps
   const iconContainerSize = isAccessibilityMode ? 56 : 46;
   const iconSize = isAccessibilityMode ? 30 : 24;
   const labelSize = isAccessibilityMode ? af.md : fs.sm;
+  // lineHeight precisa acompanhar o fontSize: com lineHeight fixo menor que a
+  // fonte acessível, o Text recorta os descendentes (g, ç) e a 2ª linha.
+  const labelLineHeight = Math.round(labelSize * 1.3);
 
   return (
     <Pressable
@@ -109,6 +112,7 @@ function TudoTile({ tile, palette, onPress, isAccessibilityMode }: TudoTileProps
           {
             color: palette.label,
             fontSize: labelSize,
+            lineHeight: labelLineHeight,
             fontFamily: BrandFonts.body,
           },
         ]}
@@ -445,7 +449,6 @@ const styles = StyleSheet.create({
   },
   tileLabel: {
     fontWeight: '700',
-    lineHeight: 18,
   },
   tileLabelWide: {
     flex: 1,
