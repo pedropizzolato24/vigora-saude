@@ -13,6 +13,9 @@ import { linkRouter } from "./routers-links";
 import { pushRouter } from "./routers-push";
 import { getUserByOpenId, getUserData, upsertUser, upsertUserData } from "./db";
 import { deleteAccountData } from "./db-account";
+import { getActiveCaregiversForMonitored } from "./db-links";
+import { getPushTokensForOpenIds } from "./db-push";
+import { sendExpoPush } from "./push";
 import type { EmergencyContactRecord } from "../drizzle/schema";
 
 /**
@@ -356,11 +359,41 @@ export const appRouter = router({
           });
         }
 
+        // SOS: paridade com o dead man's switch (monitoring-job.ts) — push em
+        // tempo real aos cuidadores vinculados. Canal independente do WhatsApp:
+        // sai mesmo que o WhatsApp Business caia, e nunca pode derrubar o SOS.
+        let caregiverPushes = 0;
+        if (input.alertType === "sos") {
+          try {
+            const caregivers = await getActiveCaregiversForMonitored(
+              ctx.user.openId
+            );
+            const tokens = await getPushTokensForOpenIds(
+              caregivers.map((c) => c.caregiverOpenId)
+            );
+            if (tokens.length > 0) {
+              const name =
+                input.userName?.trim() || "A pessoa que você acompanha";
+              caregiverPushes = await sendExpoPush(
+                tokens.map((t) => t.token),
+                {
+                  title: "🆘 SOS — Vigora",
+                  body: `${name} acionou o botão de emergência e precisa de ajuda agora. Toque para ver os detalhes.`,
+                  data: { type: "sos", url: "/(caregiver-tabs)/alerts" },
+                }
+              );
+            }
+          } catch (err) {
+            console.error("[SOS] Caregiver push failed:", err);
+          }
+        }
+
         if (!isWhatsAppApiConfigured()) {
           return {
-            success: false,
+            success: caregiverPushes > 0,
             sent: 0,
             failed: input.contacts.length,
+            caregiverPushes,
             error: "WhatsApp Business API não configurada. Configure WHATSAPP_API_TOKEN e WHATSAPP_PHONE_NUMBER_ID nas configurações do servidor.",
           };
         }
@@ -391,9 +424,10 @@ export const appRouter = router({
         const result = await sendEmergencyAlerts(input.contacts, message);
 
         return {
-          success: result.sent > 0,
+          success: result.sent > 0 || caregiverPushes > 0,
           sent: result.sent,
           failed: result.failed,
+          caregiverPushes,
           details: result.results.map((r) => ({
             name: r.name,
             success: r.result.success,
