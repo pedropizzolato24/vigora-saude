@@ -102,6 +102,20 @@ export default function RegisterScreen() {
         dispatch({ type: 'UPDATE_SETTINGS', payload: { healthConsentAt: Date.now() } });
       }
 
+      // Hidrata o perfil local (AppContext) — é dele que a home/menu leem o nome.
+      // Sem isto, a home mostrava valores default e o card "Configurar Perfil"
+      // persistia até o usuário salvar o perfil manualmente. Mesmo formato (strings
+      // de exibição mascaradas) que o Salvar de app/(tabs)/profile.tsx produz.
+      dispatch({
+        type: 'UPDATE_PROFILE',
+        payload: {
+          name: name.trim(),
+          phone,
+          birthDate: birthDate.trim(),
+          bloodType: bloodType ?? '',
+        },
+      });
+
       const existing = await Auth.getUserInfo();
       if (existing) {
         await Auth.setUserInfo({
