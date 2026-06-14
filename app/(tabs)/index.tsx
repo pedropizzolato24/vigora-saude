@@ -48,11 +48,19 @@ export default function DashboardScreen() {
 
   const caregiversQuery = trpc.link.getMyCaregivers.useQuery();
   const caregivers = caregiversQuery.data ?? [];
+  const sosAlertCaregivers = trpc.monitoring.sosAlertCaregivers.useMutation();
 
   const activateSOS = React.useCallback(async () => {
     dispatch({ type: 'TRIGGER_SOS' });
     setSosActivatedAt(Date.now());
     setSosActiveVisible(true);
+
+    // Push aos cuidadores vinculados — SEMPRE, independente de haver contatos
+    // de emergência (canal próprio, não passa pelo WhatsApp). Cobre o caso de
+    // quem tem cuidador mas nenhum contato cadastrado.
+    sosAlertCaregivers
+      .mutateAsync({ userName: state.profile.name || undefined })
+      .catch((err) => console.error('[SOS] Caregiver push failed:', err));
 
     if (state.emergencyContacts.length === 0) {
       await sendNotification(
@@ -74,7 +82,7 @@ export default function DashboardScreen() {
       'Seus contatos de emergência estão sendo avisados de que você precisa de ajuda.',
       { type: 'sos' }
     );
-  }, [state.emergencyContacts, state.profile.name, dispatch, sendNotification]);
+  }, [state.emergencyContacts, state.profile.name, dispatch, sendNotification, sosAlertCaregivers]);
 
   const handleSOS = () => {
     if (Platform.OS !== 'web') {
