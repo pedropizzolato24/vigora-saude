@@ -206,7 +206,13 @@ const FAQ_DATA: FAQSection[] = [
   },
 ];
 
-export default function HelpScreen() {
+/**
+ * Tela de Ajuda/FAQ compartilhada. Renderizada como aba dentro do grupo do
+ * monitorado (app/(tabs)/help.tsx, sem onBack) e como rota raiz acessível ao
+ * cuidador (app/help.tsx, com onBack) — assim o cuidador abre a ajuda sem cair
+ * no grupo de abas do monitorado e volta com o botão de voltar.
+ */
+export function HelpScreen({ onBack }: { onBack?: () => void } = {}) {
   const colors = useColors();
   const fs = useFontSize();
   const insets = useSafeAreaInsets();
@@ -237,6 +243,17 @@ export default function HelpScreen() {
     return (
       <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
         <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: ac.bar }}>
+          {onBack ? (
+            <TouchableOpacity
+              onPress={onBack}
+              accessibilityRole="button"
+              accessibilityLabel="Voltar"
+              hitSlop={12}
+              style={{ width: 60, height: 60, alignItems: 'center', justifyContent: 'center', borderRadius: 16, marginLeft: -12 }}
+            >
+              <MaterialIcons name="arrow-back" size={34} color={ac.foreground} />
+            </TouchableOpacity>
+          ) : null}
           <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground, flex: 1 }}>Ajuda e FAQ</Text>
           <MaterialIcons name="help-outline" size={32} color={ac.primary} />
         </View>
@@ -286,7 +303,18 @@ export default function HelpScreen() {
   return (
     <ScreenContainer edges={['left', 'right']}>
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
-        <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: fs['2xl'] }]}>Ajuda e FAQ</Text>
+        {onBack ? (
+          <TouchableOpacity
+            onPress={onBack}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+            hitSlop={12}
+            style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, marginLeft: -10 }}
+          >
+            <MaterialIcons name="arrow-back" size={26} color={colors.foreground} />
+          </TouchableOpacity>
+        ) : null}
+        <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: fs['2xl'], flex: 1 }]}>Ajuda e FAQ</Text>
         <MaterialIcons name="help-outline" size={26} color={colors.primary} />
       </View>
 

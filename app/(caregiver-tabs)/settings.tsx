@@ -291,7 +291,7 @@ export default function CaregiverSettingsScreen() {
         {/* Ajuda */}
         <Section title="Ajuda e FAQ">
           <Pressable
-            onPress={() => router.push('/(tabs)/help')}
+            onPress={() => router.push('/help')}
             style={({ pressed }) => [styles.secondaryBtn, { borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
           >
             <Text style={{ color: colors.foreground, fontWeight: '600' }}>Abrir ajuda</Text>
