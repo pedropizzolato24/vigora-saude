@@ -35,6 +35,31 @@ import {
   updateAlarmEventStatusByAlarmId,
   upsertAppUser,
 } from "./db-monitoring";
+import { getActiveCaregiversForMonitored } from "./db-links";
+import { getPushTokensForOpenIds } from "./db-push";
+import { sendExpoPush } from "./push";
+
+/**
+ * Rate limit por processo/usuário para o push de SOS aos cuidadores.
+ * 5 acionamentos em 60s: cobre um SOS legítimo e bloqueia spam ao cuidador.
+ */
+const SOS_WINDOW_MS = 60_000;
+const SOS_LIMIT = 5;
+const sosRateLimit = new Map<string, number[]>();
+
+function isSosRateLimited(openId: string): boolean {
+  const now = Date.now();
+  const recent = (sosRateLimit.get(openId) ?? []).filter(
+    (ts) => now - ts < SOS_WINDOW_MS
+  );
+  if (recent.length >= SOS_LIMIT) {
+    sosRateLimit.set(openId, recent);
+    return true;
+  }
+  recent.push(now);
+  sosRateLimit.set(openId, recent);
+  return false;
+}
 
 const emergencyContactSchema = z.object({
   id: z.string(),
@@ -287,5 +312,44 @@ export const monitoringRouter = router({
         enabledAlarmCount: alarms.filter((a) => a.enabled).length,
         recentEvents: { respondedCount, missedCount, notSentCount },
       };
+    }),
+
+  /**
+   * SOS: push em tempo real aos cuidadores vinculados quando o monitorado
+   * aciona o botão de emergência. Canal próprio (não WhatsApp) e independente
+   * de haver contatos de emergência — paridade com o dead man's switch
+   * (server/monitoring-job.ts), que já notifica os cuidadores.
+   *
+   * Conformidade: notifica APENAS cuidadores com vínculo ATIVO (aceito no app
+   * deles) e token push registrado; sem dado de saúde no payload; sem 192/193.
+   */
+  sosAlertCaregivers: protectedProcedure
+    .input(z.object({ userName: z.string().max(255).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      if (isSosRateLimited(ctx.user.openId)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Muitos acionamentos de SOS em pouco tempo. Aguarde um minuto.",
+        });
+      }
+
+      const caregivers = await getActiveCaregiversForMonitored(ctx.user.openId);
+      const tokens = await getPushTokensForOpenIds(
+        caregivers.map((c) => c.caregiverOpenId)
+      );
+      if (tokens.length === 0) {
+        return { caregiverPushes: 0 };
+      }
+
+      const name = input.userName?.trim() || "A pessoa que você acompanha";
+      const caregiverPushes = await sendExpoPush(
+        tokens.map((t) => t.token),
+        {
+          title: "🆘 SOS — Vigora",
+          body: `${name} acionou o botão de emergência e precisa de ajuda agora. Toque para ver os detalhes.`,
+          data: { type: "sos", url: "/(caregiver-tabs)/alerts" },
+        }
+      );
+      return { caregiverPushes };
     }),
 });

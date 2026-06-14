@@ -236,17 +236,17 @@ export default function CaregiverSettingsScreen() {
           </Text>
         </Section>
 
-        {/* Aparência — link to monitored settings deep links would be ideal, but
-            those controls live in app/(tabs)/settings.tsx and are tightly coupled
-            there. For the shell, show a hint and a Pressable that takes them to
-            the monitored settings tab (still accessible via deep link). */}
+        {/* Aparência — tela compartilhada no Stack raiz (app/appearance-settings).
+            Antes apontava para /(tabs)/settings, jogando o cuidador no grupo de
+            abas do monitorado sem volta. A tela compartilhada usa router.back()
+            e preserva o fluxo do cuidador. */}
         <Section title="Aparência e acessibilidade">
           <Text style={[styles.note, { color: colors.muted }]}>
             Tema, tamanho de fonte e modo acessibilidade são configurados no app
-            todo. Toque abaixo para abrir os controles existentes.
+            todo. Toque abaixo para abrir os controles.
           </Text>
           <Pressable
-            onPress={() => router.push('/(tabs)/settings')}
+            onPress={() => router.push('/appearance-settings')}
             style={({ pressed }) => [styles.secondaryBtn, { borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
           >
             <Text style={{ color: colors.foreground, fontWeight: '600' }}>Abrir configurações de aparência</Text>
@@ -291,7 +291,7 @@ export default function CaregiverSettingsScreen() {
         {/* Ajuda */}
         <Section title="Ajuda e FAQ">
           <Pressable
-            onPress={() => router.push('/(tabs)/help')}
+            onPress={() => router.push('/help')}
             style={({ pressed }) => [styles.secondaryBtn, { borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
           >
             <Text style={{ color: colors.foreground, fontWeight: '600' }}>Abrir ajuda</Text>

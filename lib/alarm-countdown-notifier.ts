@@ -85,10 +85,14 @@ export function startCountdownNotification(
  */
 export function stopCountdownNotification(alarmId: string, alarmTitle?: string): void {
   const interval = countdownIntervals.get(alarmId);
-  if (interval !== undefined) {
-    clearInterval(interval);
-    countdownIntervals.delete(alarmId);
-  }
+  // Sem countdown ativo para este alarme não há nada a restaurar. Importante:
+  // no Android, clearAlarmNotification POSTA uma notificação (notify), então
+  // chamá-la sem countdown ativo criava uma notificação fantasma — era o que
+  // surgia no logout, quando o cleanup da tela Settings era desmontada.
+  if (interval === undefined) return;
+
+  clearInterval(interval);
+  countdownIntervals.delete(alarmId);
 
   if (NativeCountdown && alarmTitle) {
     try {

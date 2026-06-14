@@ -44,8 +44,10 @@ export const PRODUCT_IDS = {
  * Configure via painel Manus -> Settings -> Secrets.
  * Em produção: use chaves separadas por plataforma (appl_* para iOS, goog_* para Android).
  */
-const REVENUECAT_API_KEY =
-  process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? "test_vRsfCVmxAKkKikyiJxZLkiqYliI";
+// Chave PÚBLICA do SDK, por plataforma: goog_* (Android) / appl_* (iOS).
+// NUNCA usar a secret key sk_* aqui — ela seria embutida no bundle do app.
+// `|| ""` (e não `??`) para que string vazia também caia no guard de baixo.
+const REVENUECAT_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY || "";
 
 // --- Inicialização ------------------------------------------------------------
 
@@ -67,12 +69,14 @@ export function initializePurchases(appUserId?: string): void {
       Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
     }
 
-    // Configurar SDK - chave lida de EXPO_PUBLIC_REVENUECAT_API_KEY
-    // Configure via painel Manus -> Settings -> Secrets
-    if (!process.env.EXPO_PUBLIC_REVENUECAT_API_KEY) {
+    // Não configurar o SDK com chave ausente, vazia ou secreta (sk_*): isso
+    // produzia um erro críptico de "offerings indisponíveis" em runtime. Falha
+    // cedo e com log claro — a chave correta é a pública goog_/appl_.
+    if (!REVENUECAT_API_KEY || REVENUECAT_API_KEY.startsWith("sk_")) {
       console.warn(
-        "[Purchases] EXPO_PUBLIC_REVENUECAT_API_KEY ausente — usando chave placeholder; offerings não vão carregar."
+        "[Purchases] EXPO_PUBLIC_REVENUECAT_API_KEY ausente ou inválida (esperado goog_/appl_) — SDK não configurado; offerings não vão carregar."
       );
+      return;
     }
     if (Platform.OS === "ios" || Platform.OS === "android") {
       Purchases.configure({
