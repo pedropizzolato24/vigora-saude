@@ -561,7 +561,7 @@
 
 ### Opção 2: Configurar Entitlement no painel RevenueCat
 
-- [ ] Fazer login no painel RevenueCat com a chave sk_fK...
+- [ ] Fazer login no painel RevenueCat com a secret key da conta (NÃO commitar a chave)
 - [ ] Criar Entitlement "Vigora Saúde Pro"
 - [ ] Criar produtos lifetime, yearly, monthly
 - [ ] Criar Offering "default" com os 3 pacotes

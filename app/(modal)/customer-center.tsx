@@ -14,26 +14,34 @@
  */
 
 import React, { useCallback, useEffect } from "react";
-import { Alert, Platform, StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import RevenueCatUI from "react-native-purchases-ui";
-import { usePurchases } from "@/hooks/use-purchases";
+import { hasProAccess } from "@/lib/purchases";
+import { AppDialog, useAppDialog } from "@/components/app-dialog";
 
 export default function CustomerCenterScreen() {
   const router = useRouter();
-  const { isPro } = usePurchases();
+  const { dialogProps, showDialog } = useAppDialog();
 
   // -- Apresentar Customer Center nativo ------------------------------------
 
   const presentCustomerCenter = useCallback(async () => {
     if (Platform.OS === "web") {
-      Alert.alert(
-        "Não disponível",
-        "O gerenciamento de assinatura está disponível apenas no app iOS ou Android."
-      );
-      router.back();
+      showDialog({
+        variant: "info",
+        title: "Não disponível",
+        message:
+          "O gerenciamento de assinatura está disponível apenas no app iOS ou Android.",
+        buttons: [{ text: "OK", onPress: () => router.back() }],
+      });
       return;
     }
+
+    // A restauração acontece DENTRO do sheet nativo (renderizado por cima desta
+    // tela), então só registramos o resultado e mostramos o AppDialog DEPOIS que
+    // o sheet fecha — um AppDialog não apareceria por baixo do sheet nativo.
+    let restoredPro = false;
 
     try {
       await RevenueCatUI.presentCustomerCenter({
@@ -48,14 +56,7 @@ export default function CustomerCenterScreen() {
             console.log("[CustomerCenter] Restauração iniciada");
           },
           onRestoreCompleted: ({ customerInfo }) => {
-            const hasPro =
-              customerInfo.entitlements.active["Vigora Saúde Pro"] !== undefined;
-            if (hasPro) {
-              Alert.alert(
-                "Compras restauradas! ✅",
-                "Seu acesso ao Vigora Pro foi restaurado com sucesso."
-              );
-            }
+            restoredPro = hasProAccess(customerInfo);
           },
           onRestoreFailed: ({ error }) => {
             console.error("[CustomerCenter] Restauração falhou:", error);
@@ -75,17 +76,27 @@ export default function CustomerCenterScreen() {
           },
         },
       });
+
+      if (restoredPro) {
+        showDialog({
+          variant: "success",
+          title: "Compras restauradas! ✅",
+          message: "Seu acesso ao Vigora Pro foi restaurado com sucesso.",
+          buttons: [{ text: "OK", onPress: () => router.back() }],
+        });
+      } else {
+        router.back();
+      }
     } catch (error) {
       console.error("[CustomerCenter] Erro ao apresentar:", error);
-      Alert.alert(
-        "Erro",
-        "Não foi possível abrir o gerenciamento de assinatura. Tente novamente."
-      );
-    } finally {
-      // Voltar para a tela anterior após fechar o Customer Center
-      router.back();
+      showDialog({
+        variant: "error",
+        title: "Erro",
+        message: "Não foi possível abrir o gerenciamento de assinatura. Tente novamente.",
+        buttons: [{ text: "OK", onPress: () => router.back() }],
+      });
     }
-  }, [router]);
+  }, [router, showDialog]);
 
   // -- Abrir automaticamente ao montar --------------------------------------
 
@@ -93,8 +104,13 @@ export default function CustomerCenterScreen() {
     presentCustomerCenter();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Tela vazia - o Customer Center é apresentado como sheet nativo
-  return <View style={styles.container} />;
+  // O Customer Center é apresentado como sheet nativo; esta tela só hospeda o
+  // AppDialog de feedback (restauração/erro) que aparece após o sheet fechar.
+  return (
+    <View style={styles.container}>
+      <AppDialog {...dialogProps} />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({

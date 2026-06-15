@@ -12,6 +12,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Auth from "@/lib/_core/auth";
 import { clearPendingInvite, getPendingInvite } from "@/lib/pending-invite";
 import { getApiBaseUrl } from "@/constants/oauth";
+import { identifyUser } from "@/lib/purchases";
 
 const LOGIN_COMPLETED_KEY = "vigora_login_completed";
 const CAREGIVER_ONBOARDING_KEY = "vigora_caregiver_onboarding_completed";
@@ -98,6 +99,15 @@ export async function completeServerLogin(
     loginMethod: result.user.loginMethod,
     lastSignedIn: new Date(result.user.lastSignedIn),
   });
+
+  // Vincula a assinatura (RevenueCat) à conta Vigora pelo id estável do servidor
+  // — nunca e-mail/telefone (PII). Sem isto, o entitlement fica preso ao ID
+  // anônimo do dispositivo e não migra entre aparelhos/logins. Best-effort: não
+  // bloqueia nem falha o login se o SDK de compras não estiver configurado.
+  const rcAppUserId = result.user.id ? String(result.user.id) : result.user.openId;
+  if (rcAppUserId) {
+    void identifyUser(rcAppUserId);
+  }
 
   await AsyncStorage.setItem(LOGIN_COMPLETED_KEY, "true");
   reconcileFromCloud().catch(() => {});

@@ -79,6 +79,17 @@ export function initializePurchases(appUserId?: string): void {
       return;
     }
     if (Platform.OS === "ios" || Platform.OS === "android") {
+      // Chave pública é por LOJA: appl_ (App Store/iOS) e goog_ (Play/Android).
+      // Uma chave da loja errada PASSA no guard acima mas faz getOfferings()
+      // falhar em runtime ("Planos indisponíveis") sem erro claro — então
+      // recusamos cedo, com log, quando o prefixo não casa com a plataforma.
+      const expectedPrefix = Platform.OS === "ios" ? "appl_" : "goog_";
+      if (!REVENUECAT_API_KEY.startsWith(expectedPrefix)) {
+        console.warn(
+          `[Purchases] EXPO_PUBLIC_REVENUECAT_API_KEY com prefixo incompatível com ${Platform.OS} (esperado "${expectedPrefix}") — SDK não configurado; offerings não vão carregar.`
+        );
+        return;
+      }
       Purchases.configure({
         apiKey: REVENUECAT_API_KEY,
         appUserID: appUserId ?? null, // null = ID anônimo gerado pelo RevenueCat
@@ -93,6 +104,11 @@ export function initializePurchases(appUserId?: string): void {
   } catch (error) {
     console.error("[Purchases] Erro ao inicializar RevenueCat:", error);
   }
+}
+
+/** Indica se Purchases.configure() chegou a rodar (chave válida + plataforma). */
+export function isPurchasesConfigured(): boolean {
+  return _initialized;
 }
 
 // --- Informações do Cliente ---------------------------------------------------
@@ -146,6 +162,46 @@ export async function getCurrentOffering(): Promise<PurchasesOffering | null> {
   } catch (error) {
     console.error("[Purchases] Erro ao buscar offerings:", error);
     return null;
+  }
+}
+
+/**
+ * Motivo pelo qual a lista de planos pode não aparecer. Permite à UI diferenciar
+ * um problema de build/chave (não adianta tentar de novo) de uma falha de rede
+ * (vale retentar) ou de configuração no painel/loja.
+ */
+export type OfferingReason =
+  | "ok"
+  | "not-configured" // SDK não configurado: chave ausente/errada — problema de build
+  | "no-offering" // SDK ok, mas nenhum offering marcado "Current" no painel RevenueCat
+  | "empty-packages" // offering existe, mas sem pacotes (produtos não aprovados na loja)
+  | "error"; // falha ao buscar (ex.: rede)
+
+export interface OfferingLoadResult {
+  offering: PurchasesOffering | null;
+  reason: OfferingReason;
+}
+
+/**
+ * Busca o offering atual já classificando o motivo de eventual indisponibilidade.
+ * Diferente de getCurrentOffering(), informa POR QUE não há planos — usado pela
+ * UI para mostrar a mensagem certa e pelo dev para diagnosticar.
+ */
+export async function getOfferingResult(): Promise<OfferingLoadResult> {
+  if (!isPurchasesConfigured()) {
+    return { offering: null, reason: "not-configured" };
+  }
+  try {
+    const offerings = await Purchases.getOfferings();
+    const current = offerings.current ?? null;
+    if (!current) return { offering: null, reason: "no-offering" };
+    if (current.availablePackages.length === 0) {
+      return { offering: current, reason: "empty-packages" };
+    }
+    return { offering: current, reason: "ok" };
+  } catch (error) {
+    console.error("[Purchases] Erro ao buscar offerings:", error);
+    return { offering: null, reason: "error" };
   }
 }
 
