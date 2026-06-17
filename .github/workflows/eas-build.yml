@@ -81,13 +81,18 @@ jobs:
           EXPO_PUBLIC_LINK_HOST: app.vigorasaude.com
           EXPO_PUBLIC_LINK_BASE_URL: https://app.vigorasaude.com
 
-      - name: Verify client_id no bundle do APK (debug)
+      - name: Verify client_id e chave RevenueCat no bundle do APK (debug)
         if: ${{ github.event.inputs.build_type == 'debug' }}
         run: |
-          unzip -p android/app/build/outputs/apk/debug/app-debug.apk assets/index.android.bundle \
-            | grep -q "39705729598" \
+          unzip -p android/app/build/outputs/apk/debug/app-debug.apk assets/index.android.bundle > /tmp/bundle.js || true
+          grep -q "39705729598" /tmp/bundle.js \
             || { echo "::error::Client ID Google ausente no bundle do APK de debug"; exit 1; }
-          echo "OK: client_id presente no bundle do APK de debug"
+          grep -aqE 'goog_[A-Za-z0-9]{10,}' /tmp/bundle.js \
+            || { echo "::error::Chave pública RevenueCat (goog_) ausente no bundle do APK de debug — defina o secret EXPO_PUBLIC_REVENUECAT_API_KEY"; exit 1; }
+          if grep -aqE '"sk_[A-Za-z0-9]{20,}' /tmp/bundle.js; then
+            echo "::error::Secret key sk_ do RevenueCat encontrada no bundle — nunca deve ir ao cliente"; exit 1;
+          fi
+          echo "OK: client_id + chave RevenueCat (goog_) presentes; sem secret sk_ no bundle de debug"
 
       - name: Bundle JavaScript (release)
         if: ${{ github.event.inputs.build_type == 'release' }}
@@ -128,13 +133,18 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
-      - name: Verify client_id no bundle do APK (release)
+      - name: Verify client_id e chave RevenueCat no bundle do APK (release)
         if: ${{ github.event.inputs.build_type == 'release' }}
         run: |
-          unzip -p android/app/build/outputs/apk/release/app-release.apk assets/index.android.bundle \
-            | grep -q "39705729598" \
+          unzip -p android/app/build/outputs/apk/release/app-release.apk assets/index.android.bundle > /tmp/bundle.js || true
+          grep -q "39705729598" /tmp/bundle.js \
             || { echo "::error::Client ID Google ausente no bundle do APK de release"; exit 1; }
-          echo "OK: client_id presente no bundle do APK de release"
+          grep -aqE 'goog_[A-Za-z0-9]{10,}' /tmp/bundle.js \
+            || { echo "::error::Chave pública RevenueCat (goog_) ausente no bundle do APK de release — defina o secret EXPO_PUBLIC_REVENUECAT_API_KEY"; exit 1; }
+          if grep -aqE '"sk_[A-Za-z0-9]{20,}' /tmp/bundle.js; then
+            echo "::error::Secret key sk_ do RevenueCat encontrada no bundle — nunca deve ir ao cliente"; exit 1;
+          fi
+          echo "OK: client_id + chave RevenueCat (goog_) presentes; sem secret sk_ no bundle de release"
 
       - name: Upload Debug APK
         if: ${{ github.event.inputs.build_type == 'debug' }}

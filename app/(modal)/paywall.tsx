@@ -24,6 +24,7 @@ import { useRouter } from "expo-router";
 import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
 import { AppDialog, useAppDialog } from "@/components/app-dialog";
 import { usePurchases } from "@/hooks/use-purchases";
+import { hasProAccess } from "@/lib/purchases";
 import { useColors } from "@/hooks/use-colors";
 import { useAccessibility } from "@/lib/accessibility-context";
 import { useFontSize } from "@/lib/font-size-context";
@@ -102,13 +103,25 @@ export default function PaywallScreen() {
   // -- Recarregar planos (offerings) ------------------------------------------
 
   const handleLoadPlans = useCallback(async () => {
-    const offering = await refresh();
-    // Se carregou, a lista de planos renderiza no lugar desta seção.
-    if (!offering) {
+    const { offering, reason } = await refresh();
+    // Sucesso: a lista de planos renderiza no lugar desta seção.
+    if (offering && offering.availablePackages.length > 0) return;
+
+    // Mensagem conforme a causa. "error" costuma ser rede e vale retentar; os
+    // demais motivos são de build/chave ou de configuração no painel/loja —
+    // tentar de novo não muda nada, então não prometemos isso ao usuário.
+    if (reason === "error") {
+      showDialog({
+        variant: "error",
+        title: "Sem conexão",
+        message: "Não foi possível carregar os planos. Verifique sua conexão e tente novamente.",
+        buttons: [{ text: "OK" }],
+      });
+    } else {
       showDialog({
         variant: "error",
         title: "Planos indisponíveis",
-        message: "Não foi possível carregar os planos. Verifique sua conexão e tente novamente.",
+        message: "Os planos de assinatura estão temporariamente indisponíveis. Tente novamente mais tarde.",
         buttons: [{ text: "OK" }],
       });
     }
@@ -120,8 +133,7 @@ export default function PaywallScreen() {
     const result = await restorePurchases();
 
     if (result.success) {
-      const hasEntitlement =
-        result.customerInfo?.entitlements.active["Vigora Saúde Pro"] !== undefined;
+      const hasEntitlement = hasProAccess(result.customerInfo ?? null);
 
       if (hasEntitlement) {
         showDialog({
@@ -156,6 +168,11 @@ export default function PaywallScreen() {
   // Botões: mínimo 16px (19px no modo acessível) — regras de tipografia do app
   const buttonTextSize = isAccessible ? 19 : Math.max(fs.md, 16);
   const buttonMinHeight = isAccessible ? 60 : 56;
+
+  // Só consideramos que há planos quando o offering existe E traz pacotes. Um
+  // offering sem pacotes (produtos não aprovados na loja) renderizaria uma lista
+  // vazia silenciosa — tratamos como "sem planos" e mostramos o fallback.
+  const hasPlans = !!currentOffering && currentOffering.availablePackages.length > 0;
 
   if (isLoading) {
     return (
@@ -227,7 +244,7 @@ export default function PaywallScreen() {
         </View>
 
         {/* Planos disponíveis */}
-        {currentOffering ? (
+        {hasPlans ? (
           <View style={styles.plansSection}>
             <Text style={[styles.sectionTitle, { color: colors.foreground, fontSize: baseTextSize + 2 }]}>
               Escolha seu plano:
@@ -331,7 +348,7 @@ export default function PaywallScreen() {
         )}
 
         {/* Botão principal - abre paywall nativo RevenueCat */}
-        {currentOffering && (
+        {hasPlans && (
           <Pressable
             onPress={handlePresentNativePaywall}
             disabled={presenting}

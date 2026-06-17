@@ -218,14 +218,14 @@ function MyScreen() {
 
 ## 7. Limites do Plano Gratuito
 
-Os limites estão centralizados em `components/pro-gate.tsx`:
+Centralizados em `components/pro-limits.ts` (re-exportados por `pro-gate.tsx`). O app **não bloqueia recursos por plano** — a monetização é por assinatura após o trial de 14 dias:
 
 ```typescript
 export const FREE_LIMITS = {
-  CONTACTS: 3,    // Máximo de contatos de emergência
-  ALARMS: 5,      // Máximo de alarmes
-  PDF_EXPORT: false,   // Exportação PDF bloqueada
-  MONITORING: false,   // Monitoramento contínuo bloqueado
+  CONTACTS: Infinity,   // sem limite por plano
+  ALARMS: Infinity,     // sem limite por plano (teto técnico MAX_ALARMS = 24, do agendador)
+  PDF_EXPORT: true,     // liberado para todos
+  MONITORING: true,     // liberado para todos
 };
 ```
 

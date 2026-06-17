@@ -243,12 +243,17 @@ jobs:
           IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
 
       # ─── Verificação e artifact (ambos os tipos) ───────────────────────────
-      - name: Verify client_id no bundle do IPA
+      - name: Verify client_id e chave RevenueCat no bundle do IPA
         run: |
-          unzip -p "$IPA_PATH" 'Payload/*.app/main.jsbundle' \
-            | grep -aq "39705729598" \
+          unzip -p "$IPA_PATH" 'Payload/*.app/main.jsbundle' > /tmp/iosbundle.js || true
+          grep -aq "39705729598" /tmp/iosbundle.js \
             || { echo "::error::Client ID Google ausente no bundle do IPA"; exit 1; }
-          echo "OK: client_id presente no bundle do IPA"
+          grep -aqE 'appl_[A-Za-z0-9]{10,}' /tmp/iosbundle.js \
+            || { echo "::error::Chave pública RevenueCat (appl_) ausente no bundle do IPA — defina o secret EXPO_PUBLIC_REVENUECAT_IOS_API_KEY (a chave goog_ do Android NÃO funciona no iOS)"; exit 1; }
+          if grep -aqE '"sk_[A-Za-z0-9]{20,}' /tmp/iosbundle.js; then
+            echo "::error::Secret key sk_ do RevenueCat encontrada no bundle — nunca deve ir ao cliente"; exit 1;
+          fi
+          echo "OK: client_id + chave RevenueCat (appl_) presentes; sem secret sk_ no bundle do IPA"
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4

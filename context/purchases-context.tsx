@@ -9,7 +9,7 @@
  * - isLoading: boolean - carregando dados iniciais
  * - isRestoring: boolean - restaurando compras
  * - error: string | null - último erro
- * - refresh(): Promise<PurchasesOffering | null> - recarregar dados do servidor
+ * - refresh(): Promise<OfferingLoadResult> - recarregar dados; informa offering + motivo
  * - purchasePackage(pkg): Promise<PurchaseResult> - comprar um plano
  * - restorePurchases(): Promise<PurchaseResult> - restaurar compras
  */
@@ -29,12 +29,13 @@ import Purchases, {
 } from "react-native-purchases";
 import {
   checkProAccess,
-  getCurrentOffering,
   getCustomerInfo,
+  getOfferingResult,
   hasProAccess,
   initializePurchases,
   purchasePackage as doPurchasePackage,
   restorePurchases as doRestorePurchases,
+  type OfferingLoadResult,
   type PurchaseResult,
 } from "@/lib/purchases";
 
@@ -57,8 +58,8 @@ export interface PurchasesContextValue {
   isTrialActive: boolean;
   /** Dias restantes do trial (0 se expirado ou já assinante) */
   trialDaysLeft: number;
-  /** Recarregar dados do servidor RevenueCat; retorna a offering carregada (ou null) */
-  refresh: () => Promise<PurchasesOffering | null>;
+  /** Recarregar dados do servidor RevenueCat; retorna a offering e o motivo da indisponibilidade */
+  refresh: () => Promise<OfferingLoadResult>;
   /** Comprar um pacote */
   purchasePackage: (pkg: PurchasesPackage) => Promise<PurchaseResult>;
   /** Restaurar compras anteriores */
@@ -89,11 +90,11 @@ export function PurchasesProvider({ children }: PurchasesProviderProps) {
 
   // -- Carregar dados iniciais ------------------------------------------------
 
-  const loadData = useCallback(async (): Promise<PurchasesOffering | null> => {
+  const loadData = useCallback(async (): Promise<OfferingLoadResult> => {
     // SDK só funciona em iOS/Android (não em web)
     if (Platform.OS === "web") {
       setIsLoading(false);
-      return null;
+      return { offering: null, reason: "not-configured" };
     }
 
     // Idempotente — garante que Purchases.configure() rodou antes de qualquer
@@ -104,19 +105,19 @@ export function PurchasesProvider({ children }: PurchasesProviderProps) {
     try {
       setError(null);
 
-      const [info, offering] = await Promise.all([
+      const [info, result] = await Promise.all([
         getCustomerInfo(),
-        getCurrentOffering(),
+        getOfferingResult(),
       ]);
 
       setCustomerInfo(info);
-      setCurrentOffering(offering);
-      return offering;
+      setCurrentOffering(result.offering);
+      return result;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao carregar dados de assinatura";
       setError(msg);
       console.error("[PurchasesContext] Erro ao carregar dados:", err);
-      return null;
+      return { offering: null, reason: "error" };
     } finally {
       setIsLoading(false);
     }
@@ -176,8 +177,8 @@ export function PurchasesProvider({ children }: PurchasesProviderProps) {
 
   // -- Refresh manual --------------------------------------------------------
 
-  const refresh = useCallback(async (): Promise<PurchasesOffering | null> => {
-    if (Platform.OS === "web") return null;
+  const refresh = useCallback(async (): Promise<OfferingLoadResult> => {
+    if (Platform.OS === "web") return { offering: null, reason: "not-configured" };
     setIsLoading(true);
     return loadData();
   }, [loadData]);
