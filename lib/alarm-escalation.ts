@@ -407,20 +407,3 @@ export async function escalateSOSToContacts(
   console.log(`[SOS] Complete: method=${method}, total sent=${result.totalSent}`);
   return result;
 }
-
-/**
- * Generate WhatsApp message with location (legacy helper, kept for compatibility)
- */
-export function generateWhatsAppMessage(
-  alarmDescription: string,
-  latitude?: number,
-  longitude?: number
-): string {
-  const timestamp = new Date().toLocaleTimeString('pt-BR');
-  const locationText =
-    latitude && longitude
-      ? `\n📍 Localização: ${generateMapsLink(latitude, longitude)}`
-      : '';
-
-  return `🚨 ALERTA DE EMERGÊNCIA 🚨\n\nAlarme: ${alarmDescription}\nHora: ${timestamp}${locationText}\n\nPor favor, verifique a situação.`;
-}
