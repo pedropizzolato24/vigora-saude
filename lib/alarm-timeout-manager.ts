@@ -90,29 +90,3 @@ export function clearAllAlarmTimeouts(): void {
   escalatedAlarms.clear();
   console.log('[Alarm Timeout] Cleared all timeouts');
 }
-
-/**
- * Get remaining time until escalation for an alarm
- */
-export function getTimeUntilEscalation(alarmId: string): number | null {
-  if (activeTimeouts.has(alarmId)) {
-    // Return approximate remaining time
-    return ALARM_TIMEOUT_CONFIG.ESCALATION_DELAY_MS;
-  }
-  return null;
-}
-
-/**
- * Check if alarm has been escalated
- */
-export function hasAlarmBeenEscalated(alarmId: string): boolean {
-  return escalatedAlarms.has(alarmId);
-}
-
-/**
- * Reset escalation flag for an alarm
- */
-export function resetAlarmEscalation(alarmId: string): void {
-  escalatedAlarms.delete(alarmId);
-  console.log(`[Alarm Timeout] Reset escalation flag for alarm ${alarmId}`);
-}
