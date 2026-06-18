@@ -139,41 +139,6 @@ export async function getActiveCaregiversForMonitored(monitoredOpenId: string) {
     );
 }
 
-/** The active link for a specific pair, or null. */
-export async function getActiveLinkForPair(
-  caregiverOpenId: string,
-  monitoredOpenId: string
-) {
-  const db = await getDb();
-  if (!db) return null;
-  const rows = await db
-    .select()
-    .from(caregiverLinks)
-    .where(
-      and(
-        eq(caregiverLinks.caregiverOpenId, caregiverOpenId),
-        eq(caregiverLinks.monitoredOpenId, monitoredOpenId),
-        eq(caregiverLinks.status, "active")
-      )
-    )
-    .limit(1);
-  return rows[0] ?? null;
-}
-
-/**
- * Throws "LINK_NOT_FOUND" if there is no active link between the pair. Used as
- * the authorization gate before any caregiver reads monitored health data.
- */
-export async function assertActiveLink(
-  caregiverOpenId: string,
-  monitoredOpenId: string
-): Promise<void> {
-  const db = await getDb();
-  if (!db) return; // dev mode: allow
-  const link = await getActiveLinkForPair(caregiverOpenId, monitoredOpenId);
-  if (!link) throw new Error("LINK_NOT_FOUND");
-}
-
 // --- Scoped monitored-data reads (caregiver side, Fase 4) ---------------------
 
 /**
