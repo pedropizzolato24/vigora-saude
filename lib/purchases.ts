@@ -205,19 +205,6 @@ export async function getOfferingResult(): Promise<OfferingLoadResult> {
   }
 }
 
-/**
- * Busca todos os offerings disponíveis.
- */
-export async function getAllOfferings(): Promise<Record<string, PurchasesOffering>> {
-  try {
-    const offerings = await Purchases.getOfferings();
-    return offerings.all;
-  } catch (error) {
-    console.error("[Purchases] Erro ao buscar todos os offerings:", error);
-    return {};
-  }
-}
-
 // --- Compras ------------------------------------------------------------------
 
 export interface PurchaseResult {
