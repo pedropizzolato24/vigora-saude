@@ -12,7 +12,6 @@ import { ThemeProvider } from "@/lib/theme-provider";
 import { AppProvider, useAppContext } from "@/lib/app-context";
 import { CaregiverProvider } from "@/lib/caregiver-context";
 import { NotificationsProvider } from "@/lib/notifications-context";
-import { MenuProvider } from '@/lib/menu-context';
 import { FontSizeProvider } from '@/lib/font-size-context';
 import { AccessibilityProvider } from '@/lib/accessibility-context';
 import { AppLockProvider } from '@/lib/app-lock-context';
@@ -253,7 +252,6 @@ export default function RootLayout() {
           <AppLockProvider>
           <MonitoringInitializer />
           <CheckinInitializer />
-          <MenuProvider>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           {/* Default to hiding native headers so raw route segments don't appear (e.g. "(tabs)", "products/[id]"). */}
@@ -312,7 +310,6 @@ export default function RootLayout() {
           <AppLockGate />
         </QueryClientProvider>
       </trpc.Provider>
-          </MenuProvider>
           </AppLockProvider>
           </AccessibilityProvider>
           </FontSizeProvider>
