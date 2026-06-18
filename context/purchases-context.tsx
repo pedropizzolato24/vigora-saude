@@ -28,7 +28,6 @@ import Purchases, {
   type PurchasesPackage,
 } from "react-native-purchases";
 import {
-  checkProAccess,
   getCustomerInfo,
   getOfferingResult,
   hasProAccess,

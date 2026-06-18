@@ -413,9 +413,6 @@ const PACKAGE_LABELS: Record<string, { title: string; period: string }> = {
   LIFETIME: { title: "Vitalício", period: "Pagamento único, para sempre" },
   ANNUAL: { title: "Anual", period: "por ano - economize 40%" },
   MONTHLY: { title: "Mensal", period: "por mês" },
-  lifetime: { title: "Vitalício", period: "Pagamento único, para sempre" },
-  yearly: { title: "Anual", period: "por ano - economize 40%" },
-  monthly: { title: "Mensal", period: "por mês" },
 };
 
 // --- Estilos ------------------------------------------------------------------

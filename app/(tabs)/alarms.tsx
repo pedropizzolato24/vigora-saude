@@ -268,12 +268,10 @@ export default function AlarmsScreen() {
         // Enable alarm: schedule native + notification
         const updatedAlarm = await scheduleFullAlarm({ ...alarm, enabled: true });
         dispatch({ type: 'UPDATE_ALARM', payload: updatedAlarm });
-      } else if (!newEnabled) {
+      } else {
         // Disable alarm: cancel both
         await cancelFullAlarm(alarm);
         dispatch({ type: 'UPDATE_ALARM', payload: { ...alarm, enabled: false, notificationId: undefined, nativeAlarmUids: [] } });
-      } else {
-        dispatch({ type: 'UPDATE_ALARM', payload: { ...alarm, enabled: newEnabled } });
       }
     } catch (error) {
       console.error('Error toggling alarm notification:', error);
