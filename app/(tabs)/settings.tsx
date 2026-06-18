@@ -1816,23 +1816,6 @@ const styles = StyleSheet.create({
   flagEmoji: { fontSize: 24 },
   languageLabel: { flex: 1, fontSize: 15, fontWeight: '500' },
 
-  // About
-  aboutBlock: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    gap: 6,
-  },
-  aboutLogoBadge: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  aboutAppName: { fontSize: 20, fontWeight: '800' },
-  aboutVersion: { fontSize: 14 },
-
   // Storage
   storageInfo: { padding: 16, gap: 10 },
   storageRow: {
