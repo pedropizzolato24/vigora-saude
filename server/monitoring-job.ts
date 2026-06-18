@@ -19,7 +19,6 @@ import {
   getExpiredPendingEvents,
   getInactiveDevices,
   getLastHeartbeat,
-  getLastWarning,
   getMissedCheckinEvents,
   getWarningHistory,
   markEventWarningSent,
