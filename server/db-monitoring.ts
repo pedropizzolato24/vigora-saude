@@ -410,30 +410,6 @@ export async function releaseWarning(id: number): Promise<void> {
   await db.delete(warningLog).where(eq(warningLog.id, id));
 }
 
-export async function recordWarning(data: {
-  deviceId: string;
-  level: number;
-  offlineHours: number;
-  contactsReached: number;
-  locationIncluded: boolean;
-}): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
-  await db.insert(warningLog).values({ ...data, sentAt: new Date() });
-}
-
-export async function getLastWarning(deviceId: string) {
-  const db = await getDb();
-  if (!db) return null;
-  const rows = await db
-    .select()
-    .from(warningLog)
-    .where(eq(warningLog.deviceId, deviceId))
-    .orderBy(warningLog.sentAt)
-    .limit(1);
-  return rows[0] ?? null;
-}
-
 export async function getWarningHistory(deviceId: string, limit = 20) {
   const db = await getDb();
   if (!db) return [];

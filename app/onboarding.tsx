@@ -212,11 +212,8 @@ export default function OnboardingScreen() {
   // Get the next button label based on current slide
   const getNextButtonLabel = () => {
     if (currentIndex === SLIDES.length - 1) return 'Começar';
-    if (currentSlide.type === 'location_foreground') {
-      return locationGranted ? 'Próximo' : 'Permitir Localização';
-    }
-    if (currentSlide.type === 'location_background') {
-      return 'Próximo';
+    if (currentSlide.type === 'location_foreground' && !locationGranted) {
+      return 'Permitir Localização';
     }
     return 'Próximo';
   };

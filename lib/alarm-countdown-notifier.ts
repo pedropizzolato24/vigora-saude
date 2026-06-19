@@ -101,15 +101,5 @@ export function stopCountdownNotification(alarmId: string, alarmTitle?: string):
   }
 }
 
-/**
- * Stop all active countdown notifications.
- */
-export function stopAllCountdownNotifications(): void {
-  for (const alarmId of [...countdownIntervals.keys()]) {
-    stopCountdownNotification(alarmId);
-  }
-}
-
 // Keep setupCountdownChannel for backward compatibility (no-op now)
 export async function setupCountdownChannel(): Promise<void> {}
-export const COUNTDOWN_CHANNEL_ID = 'vigora-countdown';

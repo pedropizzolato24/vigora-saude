@@ -1,25 +1,8 @@
 import { COOKIE_NAME, DEFAULT_SESSION_TTL_MS } from "../../shared/const.js";
 import type { Express, Request, Response } from "express";
-import { getUserByOpenId } from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
-
-function buildUserResponse(
-  user: Awaited<ReturnType<typeof getUserByOpenId>>,
-) {
-  return {
-    id: user?.id ?? null,
-    openId: user?.openId ?? null,
-    name: user?.name ?? null,
-    email: user?.email ?? null,
-    phone: user?.phone ?? null,
-    userType: user?.userType ?? null,
-    birthDate: user?.birthDate ?? null,
-    bloodType: user?.bloodType ?? null,
-    loginMethod: user?.loginMethod ?? null,
-    lastSignedIn: (user?.lastSignedIn ?? new Date()).toISOString(),
-  };
-}
+import { buildUserResponse } from "../auth-shared";
 
 /**
  * Auth routes shared across sign-in methods. The OAuth flow runs through

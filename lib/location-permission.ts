@@ -14,12 +14,6 @@
 import * as Location from 'expo-location';
 import { Linking, Platform } from 'react-native';
 
-export type LocationPermissionStatus =
-  | 'not_requested'
-  | 'foreground_granted'
-  | 'background_granted'
-  | 'denied';
-
 /**
  * Request foreground location permission.
  * Returns true if granted.
@@ -44,23 +38,6 @@ export async function requestBackgroundLocation(): Promise<boolean> {
     return status === 'granted';
   } catch {
     return false;
-  }
-}
-
-/**
- * Check current location permission status.
- */
-export async function getLocationPermissionStatus(): Promise<LocationPermissionStatus> {
-  try {
-    const fg = await Location.getForegroundPermissionsAsync();
-    if (fg.status !== 'granted') return 'denied';
-
-    const bg = await Location.getBackgroundPermissionsAsync();
-    if (bg.status === 'granted') return 'background_granted';
-
-    return 'foreground_granted';
-  } catch {
-    return 'not_requested';
   }
 }
 

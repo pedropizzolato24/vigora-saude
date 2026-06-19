@@ -47,9 +47,6 @@ export default function ProfileScreen() {
   const [bloodType, setBloodType] = useState('');
   const [phone, setPhone] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(state.profile.photoUri);
-  // O "Salvar" do cabeçalho foi removido (nenhum botão na área do título);
-  // o controle de mudanças continua para o reset pós-salvar.
-  const [, setHasChanges] = useState(false);
   const { dialogProps, showDialog } = useAppDialog();
   const updateProfile = trpc.auth.updateProfile.useMutation();
   const router = useRouter();
@@ -94,8 +91,6 @@ export default function ProfileScreen() {
     setPhotoUri(state.profile.photoUri);
   }, [state.profile.photoUri]);
 
-  const markChanged = () => setHasChanges(true);
-
   const handlePickPhoto = async () => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -116,7 +111,6 @@ export default function ProfileScreen() {
 
     if (!result.canceled && result.assets[0]) {
       setPhotoUri(result.assets[0].uri);
-      markChanged();
     }
   };
 
@@ -139,7 +133,6 @@ export default function ProfileScreen() {
 
     if (!result.canceled && result.assets[0]) {
       setPhotoUri(result.assets[0].uri);
-      markChanged();
     }
   };
 
@@ -151,7 +144,7 @@ export default function ProfileScreen() {
       options: [
         { label: 'Câmera', icon: '📷', onPress: handleTakePhoto },
         { label: 'Galeria', icon: '🖼', onPress: handlePickPhoto },
-        ...(photoUri ? [{ label: 'Remover Foto', icon: '🗑', onPress: () => { setPhotoUri(null); markChanged(); }, destructive: true }] : []),
+        ...(photoUri ? [{ label: 'Remover Foto', icon: '🗑', onPress: () => { setPhotoUri(null); }, destructive: true }] : []),
       ],
     });
   };
@@ -162,7 +155,6 @@ export default function ProfileScreen() {
     if (cleaned.length > 2) formatted = cleaned.slice(0, 2) + '/' + cleaned.slice(2);
     if (cleaned.length > 4) formatted = cleaned.slice(0, 2) + '/' + cleaned.slice(2, 4) + '/' + cleaned.slice(4, 8);
     setBirthDate(formatted);
-    markChanged();
   };
 
   const formatPhone = (text: string) => {
@@ -171,7 +163,6 @@ export default function ProfileScreen() {
     if (cleaned.length > 2) formatted = '(' + cleaned.slice(0, 2) + ') ' + cleaned.slice(2);
     if (cleaned.length > 7) formatted = '(' + cleaned.slice(0, 2) + ') ' + cleaned.slice(2, 7) + '-' + cleaned.slice(7, 11);
     setPhone(formatted);
-    markChanged();
   };
 
   const handleSave = async () => {
@@ -207,7 +198,6 @@ export default function ProfileScreen() {
       if (Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      setHasChanges(false);
       showDialog({ title: 'Perfil salvo', message: 'Suas informações foram atualizadas com sucesso.', variant: 'success', buttons: [{ text: 'OK' }] });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao salvar perfil.';
@@ -218,7 +208,7 @@ export default function ProfileScreen() {
   // --- ACCESSIBILITY MODE --------------------------------------------------
   if (isAccessibilityMode) {
     const a11yProfileFields: { label: string; value: string; onChange: (v: string) => void; placeholder: string; keyboard?: any; maxLength?: number }[] = [
-      { label: 'Nome completo', value: name, onChange: (v) => { setName(v); markChanged(); }, placeholder: 'Seu nome completo' },
+      { label: 'Nome completo', value: name, onChange: (v) => { setName(v); }, placeholder: 'Seu nome completo' },
       { label: 'Data de nascimento', value: birthDate, onChange: formatBirthDate, placeholder: 'DD/MM/AAAA', keyboard: 'numeric', maxLength: 10 },
       { label: 'Telefone', value: phone, onChange: formatPhone, placeholder: '(11) 99999-9999', keyboard: 'phone-pad' },
     ];
@@ -270,7 +260,7 @@ export default function ProfileScreen() {
               {BLOOD_TYPES.map((bt) => (
                 <TouchableOpacity
                   key={bt}
-                  onPress={() => { setBloodType(bt); markChanged(); }}
+                  onPress={() => { setBloodType(bt); }}
                   accessibilityRole="button"
                   accessibilityLabel={`Tipo sanguíneo ${bt}${bloodType === bt ? ', selecionado' : ''}`}
                   style={{ width: '22%', minHeight: 64, paddingHorizontal: 8, paddingVertical: 14, borderRadius: 14, borderWidth: 3, backgroundColor: bloodType === bt ? ac.emergency : ac.surface, borderColor: bloodType === bt ? ac.emergency : ac.border, alignItems: 'center', justifyContent: 'center' }}
@@ -347,7 +337,7 @@ export default function ProfileScreen() {
               <TextInput
                 style={[styles.input, { color: colors.foreground }]}
                 value={name}
-                onChangeText={(t) => { setName(t); markChanged(); }}
+                onChangeText={(t) => { setName(t); }}
                 placeholder="Seu nome completo"
                 placeholderTextColor={colors.muted}
               />
@@ -396,7 +386,6 @@ export default function ProfileScreen() {
                 key={type}
                 onPress={() => {
                   setBloodType(type);
-                  markChanged();
                   if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 }}
                 accessibilityRole="button"

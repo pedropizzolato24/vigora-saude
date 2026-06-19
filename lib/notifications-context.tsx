@@ -16,26 +16,11 @@ interface NotificationsContextValue {
     body: string,
     data?: Record<string, unknown>
   ) => Promise<void>;
-  scheduleNotification: (
-    title: string,
-    body: string,
-    secondsFromNow: number,
-    data?: Record<string, unknown>
-  ) => Promise<string | null>;
-  requestPermissions: () => Promise<boolean>;
 }
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
 
 export function NotificationsProvider({ children }: { children: React.ReactNode }) {
-  const requestPermissions = async (): Promise<boolean> => {
-    if (Platform.OS === 'web') return false;
-    const { status: existing } = await Notifications.getPermissionsAsync();
-    if (existing === 'granted') return true;
-    const { status } = await Notifications.requestPermissionsAsync();
-    return status === 'granted';
-  };
-
   const sendNotification = async (
     title: string,
     body: string,
@@ -53,31 +38,9 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     });
   };
 
-  const scheduleNotification = async (
-    title: string,
-    body: string,
-    secondsFromNow: number,
-    data: Record<string, unknown> = {}
-  ): Promise<string | null> => {
-    if (Platform.OS === 'web') return null;
-    const id = await Notifications.scheduleNotificationAsync({
-      content: {
-        title,
-        body,
-        data,
-        sound: 'default',
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: secondsFromNow,
-      },
-    });
-    return id;
-  };
-
   return (
     <NotificationsContext.Provider
-      value={{ sendNotification, scheduleNotification, requestPermissions }}
+      value={{ sendNotification }}
     >
       {children}
     </NotificationsContext.Provider>

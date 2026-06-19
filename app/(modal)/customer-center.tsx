@@ -46,33 +46,11 @@ export default function CustomerCenterScreen() {
     try {
       await RevenueCatUI.presentCustomerCenter({
         callbacks: {
-          onFeedbackSurveyCompleted: ({ feedbackSurveyOptionId }) => {
-            console.log("[CustomerCenter] Feedback enviado:", feedbackSurveyOptionId);
-          },
-          onShowingManageSubscriptions: () => {
-            console.log("[CustomerCenter] Tela de gerenciamento exibida");
-          },
-          onRestoreStarted: () => {
-            console.log("[CustomerCenter] Restauração iniciada");
-          },
           onRestoreCompleted: ({ customerInfo }) => {
             restoredPro = hasProAccess(customerInfo);
           },
           onRestoreFailed: ({ error }) => {
             console.error("[CustomerCenter] Restauração falhou:", error);
-          },
-          onRefundRequestStarted: ({ productIdentifier }) => {
-            console.log("[CustomerCenter] Reembolso solicitado para:", productIdentifier);
-          },
-          onRefundRequestCompleted: ({ productIdentifier, refundRequestStatus }) => {
-            console.log(
-              "[CustomerCenter] Reembolso concluído:",
-              productIdentifier,
-              refundRequestStatus
-            );
-          },
-          onManagementOptionSelected: ({ option, url }) => {
-            console.log("[CustomerCenter] Opção selecionada:", option, url);
           },
         },
       });

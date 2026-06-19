@@ -34,7 +34,7 @@ import { stopNativeAlarm } from '@/lib/native-alarm-manager';
 import { PulseView } from '@/components/animated-components';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { loadAlarmTimer, clearAlarmTimer, computeSecondsLeft } from '@/lib/alarm-timer-store';
+import { loadAlarmTimer, clearAlarmTimer } from '@/lib/alarm-timer-store';
 import { stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 import { updateAlarmWidgetOnDismiss } from '@/lib/update-widgets';
 import { confirmAlarmResponded, confirmAlarmMissed } from '@/lib/monitoring-service';

@@ -4,7 +4,6 @@
  */
 export {
   Colors,
-  Fonts,
   SchemeColors,
   ThemeColors,
   type ColorScheme,

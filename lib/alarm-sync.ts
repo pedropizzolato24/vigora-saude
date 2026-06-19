@@ -133,24 +133,3 @@ export async function cancelAllAlarms(alarms: Alarm[]): Promise<void> {
   // Cancel all notifications
   await Notifications.cancelAllScheduledNotificationsAsync();
 }
-
-/**
- * Get alarms that need rescheduling (notification missing).
- */
-export async function getAlarmsNeedingSync(alarms: Alarm[]): Promise<Alarm[]> {
-  try {
-    if (Platform.OS === 'web') return [];
-
-    const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
-    const scheduledIds = new Set(scheduledNotifications.map(n => n.identifier));
-
-    return alarms.filter(alarm => {
-      if (!alarm.enabled) return false;
-      if (!alarm.notificationId) return true;
-      return !scheduledIds.has(alarm.notificationId);
-    });
-  } catch (error) {
-    console.error('[Alarm Sync] Error getting alarms needing sync:', error);
-    return [];
-  }
-}

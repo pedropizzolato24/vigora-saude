@@ -17,7 +17,6 @@ const THEME_STORAGE_KEY = 'vigora_theme_preference';
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useSystemColorScheme() ?? "light";
   const [colorScheme, setColorSchemeState] = useState<ColorScheme>("light");
-  const [isLoaded, setIsLoaded] = useState(false);
 
   const applyScheme = useCallback((scheme: ColorScheme) => {
     nativewindColorScheme.set(scheme);
@@ -55,17 +54,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       } catch {
         // Default to light mode on error
         applyScheme('light');
-      } finally {
-        setIsLoaded(true);
       }
     })();
   }, [applyScheme]);
-
-  // Persist theme preference when it changes
-  useEffect(() => {
-    if (!isLoaded) return;
-    AsyncStorage.setItem(THEME_STORAGE_KEY, colorScheme).catch(() => {});
-  }, [colorScheme, isLoaded]);
 
   const themeVariables = useMemo(
     () =>

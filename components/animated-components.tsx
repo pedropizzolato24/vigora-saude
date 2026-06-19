@@ -185,30 +185,3 @@ export function PulseView({
     </Animated.View>
   );
 }
-
-// --- Press Scale ------------------------------------------------------------
-// Wrapper that scales down on press for tactile feedback
-
-interface PressScaleProps extends ViewProps {
-  pressed: boolean;
-  children: React.ReactNode;
-}
-
-export function PressScale({ pressed, children, style, ...props }: PressScaleProps) {
-  const scale = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    Animated.timing(scale, {
-      toValue: pressed ? 0.97 : 1,
-      duration: 80,
-      useNativeDriver: true,
-      easing: Easing.out(Easing.cubic),
-    }).start();
-  }, [pressed, scale]);
-
-  return (
-    <Animated.View style={[{ transform: [{ scale }] }, style]} {...props}>
-      {children}
-    </Animated.View>
-  );
-}

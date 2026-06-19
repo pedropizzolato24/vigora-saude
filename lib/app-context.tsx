@@ -475,25 +475,3 @@ export function getNextAlarm(alarms: Alarm[]): Alarm | null {
   });
   return sorted[0] ?? null;
 }
-
-export function getHealthStatus(
-  type: HealthMetric['type'],
-  value: number
-): 'normal' | 'warning' | 'critical' {
-  switch (type) {
-    case 'heart_rate':
-      if (value >= 60 && value <= 100) return 'normal';
-      if (value >= 50 && value <= 120) return 'warning';
-      return 'critical';
-    case 'blood_pressure':
-      if (value >= 90 && value <= 120) return 'normal';
-      if (value >= 80 && value <= 140) return 'warning';
-      return 'critical';
-    case 'glucose':
-      if (value >= 70 && value <= 100) return 'normal';
-      if (value >= 60 && value <= 140) return 'warning';
-      return 'critical';
-    default:
-      return 'normal';
-  }
-}
