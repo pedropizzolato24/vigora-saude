@@ -46,25 +46,6 @@ export interface ReportData {
 
 // --- Helpers -----------------------------------------------------------------
 
-function getStatusLabel(type: HealthMetric['type'], value: number): { label: string; color: string } {
-  switch (type) {
-    case 'heart_rate':
-      if (value >= 60 && value <= 100) return { label: 'Normal', color: '#22C55E' };
-      if (value >= 50 && value <= 120) return { label: 'Atenção', color: '#F59E0B' };
-      return { label: 'Crítico', color: '#EF4444' };
-    case 'blood_pressure':
-      if (value >= 90 && value <= 120) return { label: 'Normal', color: '#22C55E' };
-      if (value >= 80 && value <= 140) return { label: 'Atenção', color: '#F59E0B' };
-      return { label: 'Crítico', color: '#EF4444' };
-    case 'glucose':
-      if (value >= 70 && value <= 100) return { label: 'Normal', color: '#22C55E' };
-      if (value >= 60 && value <= 140) return { label: 'Atenção', color: '#F59E0B' };
-      return { label: 'Crítico', color: '#EF4444' };
-    default:
-      return { label: '-', color: '#9BA1A6' };
-  }
-}
-
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString('pt-BR');
 }
@@ -170,10 +151,7 @@ function buildSvgChart(
 
   // Pontos (círculos)
   const dots = filtered
-    .map((m, i) => {
-      const status = getStatusLabel(type, m.value);
-      return `<circle cx="${toX(i)}" cy="${toY(m.value)}" r="3.5" fill="${status.color}" stroke="white" stroke-width="1.5" />`;
-    })
+    .map((m, i) => `<circle cx="${toX(i)}" cy="${toY(m.value)}" r="3.5" fill="${color}" stroke="white" stroke-width="1.5" />`)
     .join('');
 
   // Eixo Y - 4 labels
@@ -229,7 +207,6 @@ function buildSummaryCard(metrics: HealthMetric[], type: HealthMetric['type']): 
     </div>`;
   }
 
-  const status = getStatusLabel(type, latest.value);
   const avg = filtered.length > 1
     ? Math.round(filtered.reduce((s, m) => s + m.value, 0) / filtered.length)
     : null;
@@ -239,7 +216,6 @@ function buildSummaryCard(metrics: HealthMetric[], type: HealthMetric['type']): 
     <div class="summary-info">
       <div class="summary-label">${esc(label)}</div>
       <div class="summary-value" style="color:${color}">${esc(latest.value)} <span class="summary-unit">${esc(unit)}</span></div>
-      <div class="summary-status" style="background:${status.color}20; color:${status.color}">${esc(status.label)}</div>
       ${avg !== null ? `<div class="summary-avg">Média: ${avg} ${esc(unit)} (${filtered.length} leituras)</div>` : ''}
     </div>
   </div>`;
@@ -309,11 +285,9 @@ export function buildReportHtml(data: ReportData): string {
 
     const recentForType = recentMetrics.filter((m) => m.type === type).sort((a, b) => b.timestamp - a.timestamp);
     const tableRows = recentForType.slice(0, 15).map((m) => {
-      const status = getStatusLabel(type, m.value);
       return `<tr>
         <td>${esc(formatDateTime(m.timestamp))}</td>
         <td style="font-weight:700; color:${color}">${esc(m.value)} ${esc(unit)}</td>
-        <td><span style="background:${status.color}20; color:${status.color}; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:600;">${esc(status.label)}</span></td>
       </tr>`;
     }).join('');
 
@@ -333,7 +307,6 @@ export function buildReportHtml(data: ReportData): string {
           <tr>
             <th>Data/Hora</th>
             <th>Valor</th>
-            <th>Status</th>
           </tr>
         </thead>
         <tbody>${tableRows}</tbody>
