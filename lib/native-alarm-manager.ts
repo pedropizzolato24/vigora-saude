@@ -103,10 +103,10 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         active: true,
         repeating: true,
         showDismiss: true,
-        showSnooze: false,
-        snoozeInterval: 0,
+        showSnooze: true,
+        snoozeInterval: 5,
         dismissText: 'Dispensar',
-        snoozeText: '',
+        snoozeText: 'Soneca',
       });
       uids.push(baseUid);
 
@@ -123,10 +123,10 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         active: true,
         repeating: true,
         showDismiss: true,
-        showSnooze: false,
-        snoozeInterval: 0,
+        showSnooze: true,
+        snoozeInterval: 5,
         dismissText: 'Dispensar',
-        snoozeText: '',
+        snoozeText: 'Soneca',
       });
         uids.push(uid);
       }
@@ -144,10 +144,10 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
           active: true,
           repeating: true,
           showDismiss: true,
-          showSnooze: false,
-          snoozeInterval: 0,
+          showSnooze: true,
+          snoozeInterval: 5,
           dismissText: 'Dispensar',
-          snoozeText: '',
+          snoozeText: 'Soneca',
         });
         uids.push(uid);
       }
@@ -164,10 +164,10 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
           active: true,
           repeating: true,
           showDismiss: true,
-          showSnooze: false,
-          snoozeInterval: 0,
+          showSnooze: true,
+          snoozeInterval: 5,
           dismissText: 'Dispensar',
-          snoozeText: '',
+          snoozeText: 'Soneca',
         });
         uids.push(uid);
       }
@@ -183,10 +183,10 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         active: true,
         repeating: false,
         showDismiss: true,
-        showSnooze: false,
-        snoozeInterval: 0,
+        showSnooze: true,
+        snoozeInterval: 5,
         dismissText: 'Dispensar',
-        snoozeText: '',
+        snoozeText: 'Soneca',
       });
       uids.push(baseUid);
     }
