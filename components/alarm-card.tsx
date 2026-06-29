@@ -59,6 +59,11 @@ export function AlarmCard({ alarm, onEdit, onToggle, onTest }: AlarmCardProps) {
 
         <View style={styles.infoSection}>
           <Text
+            // O app já controla o tamanho (fs.scaled + modo acessível); limitamos a
+            // escala de fonte do SO e travamos em 1 linha para o horário não quebrar
+            // quando a fonte do celular está muito grande (feedback do beta).
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.2}
             style={[
               styles.timeText,
               {
