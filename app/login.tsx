@@ -32,17 +32,21 @@ import {
 
 WebBrowser.maybeCompleteAuthSession();
 
-// Lua crescente — símbolo da marca Vigora
+// Lua crescente — símbolo da marca Vigora.
+// O recorte usa a cor de fundo do tema (não uma cor fixa), então o crescente
+// funciona em claro e escuro sem a "bola" creme destoar no escuro (feedback do beta).
 function MoonSymbol({ size = 72 }: { size?: number }) {
+  const colors = useColors();
   return (
     <Svg width={size} height={size} viewBox="0 0 72 72" fill="none">
-      {/* Lua: dois círculos sobrepostos */}
-      <Circle cx="36" cy="36" r="28" fill="#1E4D8C" />
-      <Circle cx="48" cy="28" r="22" fill="#F4EFE5" />
+      {/* Disco da lua na cor da marca */}
+      <Circle cx="36" cy="36" r="28" fill={colors.primary} />
+      {/* Recorte na cor do fundo cria o crescente (some a "bola" creme solta) */}
+      <Circle cx="48" cy="28" r="22" fill={colors.background} />
       {/* Estrelas pequenas */}
-      <Circle cx="22" cy="20" r="2" fill="#1E4D8C" />
-      <Circle cx="16" cy="34" r="1.5" fill="#1E4D8C" />
-      <Circle cx="28" cy="54" r="1.5" fill="#1E4D8C" />
+      <Circle cx="22" cy="20" r="2" fill={colors.primary} />
+      <Circle cx="16" cy="34" r="1.5" fill={colors.primary} />
+      <Circle cx="28" cy="54" r="1.5" fill={colors.primary} />
     </Svg>
   );
 }
