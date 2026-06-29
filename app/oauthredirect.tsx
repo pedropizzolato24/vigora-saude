@@ -14,7 +14,9 @@ export default function OAuthRedirectScreen() {
   const router = useRouter();
   const { reconcileFromCloud } = useAppContext();
   const params = useLocalSearchParams<{ code?: string; error?: string }>();
-  const [failed, setFailed] = useState(false);
+  // Guarda o erro real (códigos OAuth como redirect_uri_mismatch/invalid_grant —
+  // sem PII) para diagnosticar o login Google nos builds de teste.
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const code = typeof params.code === "string" ? params.code : undefined;
@@ -24,8 +26,9 @@ export default function OAuthRedirectScreen() {
     }
     finishGoogleLogin(code, router, reconcileFromCloud).catch((err) => {
       console.error("[OAuthRedirect] Auth failed:", err);
-      setFailed(true);
-      setTimeout(() => router.replace("/login"), 1500);
+      setError(err instanceof Error ? err.message : String(err));
+      // Tempo maior para o testador conseguir ler/screenshotar o motivo real.
+      setTimeout(() => router.replace("/login"), 5000);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.code]);
@@ -34,8 +37,11 @@ export default function OAuthRedirectScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ActivityIndicator size="large" color={colors.primary} />
       <Text style={[styles.text, { color: colors.muted }]}>
-        {failed ? "Não foi possível concluir o login." : "Concluindo login…"}
+        {error ? "Não foi possível concluir o login." : "Concluindo login…"}
       </Text>
+      {error ? (
+        <Text style={[styles.detail, { color: colors.muted }]}>{error}</Text>
+      ) : null}
     </View>
   );
 }
@@ -50,5 +56,12 @@ const styles = StyleSheet.create({
   text: {
     fontFamily: "PlusJakartaSans",
     fontSize: 15,
+  },
+  detail: {
+    fontFamily: "PlusJakartaSans",
+    fontSize: 12,
+    opacity: 0.7,
+    textAlign: "center",
+    paddingHorizontal: 24,
   },
 });

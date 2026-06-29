@@ -87,6 +87,9 @@ export async function finishGoogleLogin(
     await AsyncStorage.multiRemove([VERIFIER_KEY, REDIRECT_KEY]);
   } catch (err) {
     consumingCode = null;
+    // Diagnóstico (client IDs são públicos, sem segredo): confirma que o CLIENT_ID
+    // não veio vazio do bundle e ajuda a identificar redirect_uri_mismatch.
+    console.error("[GoogleLogin] failed. clientId:", CLIENT_ID || "(vazio!)", "err:", err);
     throw err;
   }
 }
