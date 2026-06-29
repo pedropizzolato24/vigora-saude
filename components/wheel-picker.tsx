@@ -28,12 +28,14 @@ import { useAccessibility } from '@/lib/accessibility-context';
 
 // --- Normal mode constants ----------------------------------------------------
 const ITEM_HEIGHT = 56;
-const VISIBLE_ITEMS = 5; // must be odd so the selected item is centred
+// 3 itens visíveis (centro + 1 acima + 1 abaixo): menos poluído para o público
+// idoso, com os vizinhos esmaecidos (feedback do beta). Deve ser ímpar.
+const VISIBLE_ITEMS = 3;
 const WHEEL_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
 
 // --- Accessibility mode constants --------------------------------------------
 const A11Y_ITEM_HEIGHT = 72;
-const A11Y_VISIBLE_ITEMS = 5;
+const A11Y_VISIBLE_ITEMS = 3;
 const A11Y_WHEEL_HEIGHT = A11Y_ITEM_HEIGHT * A11Y_VISIBLE_ITEMS;
 
 // We render 3 full copies of the list so the user can always scroll in both
@@ -186,15 +188,19 @@ export function WheelPicker({
               ? String(itemValue).padStart(2, '0')
               : String(itemValue);
 
-            const normalTextSize   = isSelected ? 36 : 28;
-            const a11yTextSize     = isSelected ? af['2xl'] : af.xl;
+            const normalTextSize   = isSelected ? 36 : 24;
+            const a11yTextSize     = isSelected ? af['2xl'] : af.lg;
             const textSize         = isAccessibilityMode ? a11yTextSize : normalTextSize;
             const textColor        = isSelected ? primaryColor : mutedColor;
             const fontWeight: any  = isSelected ? '800' : '500';
+            // Vizinhos esmaecidos para destacar o número central (feedback do beta).
+            const itemOpacity      = isSelected ? 1 : 0.4;
 
             return (
               <View key={i} style={{ height: itemH, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: textSize, fontWeight, color: textColor }}>
+                {/* itemH é fixo; o modo acessível já amplia roda+fonte juntos, então
+                    limitamos a escala de fonte do SO para os números não estourarem. */}
+                <Text maxFontSizeMultiplier={1.15} style={{ fontSize: textSize, fontWeight, color: textColor, opacity: itemOpacity }}>
                   {displayText}
                 </Text>
               </View>
