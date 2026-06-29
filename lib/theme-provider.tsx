@@ -1,9 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Appearance, View, useColorScheme as useSystemColorScheme } from "react-native";
 import { colorScheme as nativewindColorScheme, vars } from "nativewind";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { SchemeColors, type ColorScheme } from "@/constants/theme";
+import { getUserInfo, subscribeActiveUser } from "@/lib/_core/auth";
 
 type ThemeContextValue = {
   colorScheme: ColorScheme;
@@ -12,13 +13,26 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-const THEME_STORAGE_KEY = 'vigora_theme_preference';
+// Tema é POR CONTA (feedback do beta): cada usuário guarda o seu, chaveado pelo
+// openId. Deslogado (ou sem preferência salva), o app segue o tema do sistema —
+// assim a escolha de uma conta não vaza para a tela de login nem para a próxima
+// conta neste aparelho.
+const THEME_KEY_PREFIX = 'vigora_theme_pref';
+function themeKeyFor(openId: string | null): string | null {
+  return openId ? `${THEME_KEY_PREFIX}:${openId}` : null;
+}
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useSystemColorScheme() ?? "light";
-  const [colorScheme, setColorSchemeState] = useState<ColorScheme>("light");
+  const [colorScheme, setColorSchemeState] = useState<ColorScheme>(systemScheme);
+  // openId da conta ativa (null = deslogado). Em ref para o setColorScheme gravar
+  // sob a chave certa sem virar dependência do callback.
+  const activeOpenId = useRef<string | null>(null);
+  const systemSchemeRef = useRef<ColorScheme>(systemScheme);
+  systemSchemeRef.current = systemScheme;
 
   const applyScheme = useCallback((scheme: ColorScheme) => {
+    setColorSchemeState(scheme);
     nativewindColorScheme.set(scheme);
     Appearance.setColorScheme?.(scheme);
     if (typeof document !== "undefined") {
@@ -32,31 +46,52 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const setColorScheme = useCallback((scheme: ColorScheme) => {
-    setColorSchemeState(scheme);
-    applyScheme(scheme);
-    // Persist immediately
-    AsyncStorage.setItem(THEME_STORAGE_KEY, scheme).catch(() => {});
+  // Aplica o tema da conta (openId): a preferência salva dela ou, se não houver,
+  // o tema do sistema. Deslogado (openId null) também segue o sistema.
+  const loadThemeForUser = useCallback(async (openId: string | null) => {
+    activeOpenId.current = openId;
+    const key = themeKeyFor(openId);
+    let next: ColorScheme = systemSchemeRef.current;
+    if (key) {
+      try {
+        const saved = await AsyncStorage.getItem(key);
+        if (saved === 'dark' || saved === 'light') next = saved;
+      } catch {
+        // segue o sistema em caso de erro de leitura
+      }
+    }
+    applyScheme(next);
   }, [applyScheme]);
 
-  // Load saved theme preference on mount
-  useEffect(() => {
-    (async () => {
-      try {
-        const saved = await AsyncStorage.getItem(THEME_STORAGE_KEY);
-        if (saved === 'dark' || saved === 'light') {
-          setColorSchemeState(saved);
-          applyScheme(saved);
-        } else {
-          // Default to light mode
-          applyScheme('light');
-        }
-      } catch {
-        // Default to light mode on error
-        applyScheme('light');
-      }
-    })();
+  const setColorScheme = useCallback((scheme: ColorScheme) => {
+    applyScheme(scheme);
+    // Só é chamado quando logado (a tela de aparência exige login). Persiste sob a
+    // chave da conta ativa; sem conta, não há o que salvar.
+    const key = themeKeyFor(activeOpenId.current);
+    if (key) AsyncStorage.setItem(key, scheme).catch(() => {});
   }, [applyScheme]);
+
+  // Descobre a conta ativa no mount e reage a login/logout (subscribeActiveUser).
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const user = await getUserInfo().catch(() => null);
+      if (mounted) await loadThemeForUser(user?.openId ?? null);
+    })();
+    const unsubscribe = subscribeActiveUser((openId) => {
+      loadThemeForUser(openId);
+    });
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, [loadThemeForUser]);
+
+  // Deslogado, segue mudanças de tema do sistema em tempo real (ex.: usuário ativa
+  // o modo escuro do Android na própria tela de login).
+  useEffect(() => {
+    if (activeOpenId.current === null) applyScheme(systemScheme);
+  }, [systemScheme, applyScheme]);
 
   const themeVariables = useMemo(
     () =>

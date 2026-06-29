@@ -17,6 +17,30 @@ export type User = {
   lastSignedIn: Date;
 };
 
+// Notificação genérica de "conta ativa mudou" (openId, ou null no logout).
+// setUserInfo/clearUserInfo são os pontos únicos por onde TODO login/logout passa,
+// então quem precisa reagir à troca de conta (ex.: tema por conta) assina aqui em
+// vez de tentar interceptar cada fluxo de login/logout. Sem UI, fica no _core.
+type ActiveUserListener = (openId: string | null) => void;
+const activeUserListeners = new Set<ActiveUserListener>();
+
+export function subscribeActiveUser(listener: ActiveUserListener): () => void {
+  activeUserListeners.add(listener);
+  return () => {
+    activeUserListeners.delete(listener);
+  };
+}
+
+function notifyActiveUser(openId: string | null): void {
+  activeUserListeners.forEach((listener) => {
+    try {
+      listener(openId);
+    } catch {
+      // um listener com defeito não pode quebrar o fluxo de auth
+    }
+  });
+}
+
 export async function getSessionToken(): Promise<string | null> {
   try {
     // Web platform uses cookie-based auth, no manual token management needed
@@ -108,12 +132,14 @@ export async function setUserInfo(user: User): Promise<void> {
       // Use localStorage for web
       window.localStorage.setItem(USER_INFO_KEY, JSON.stringify(user));
       console.log("[Auth] User info stored in localStorage successfully");
+      notifyActiveUser(user.openId);
       return;
     }
 
     // Use SecureStore for native
     await SecureStore.setItemAsync(USER_INFO_KEY, JSON.stringify(user));
     console.log("[Auth] User info stored in SecureStore successfully");
+    notifyActiveUser(user.openId);
   } catch (error) {
     console.error("[Auth] Failed to set user info:", error);
   }
@@ -124,11 +150,13 @@ export async function clearUserInfo(): Promise<void> {
     if (Platform.OS === "web") {
       // Use localStorage for web
       window.localStorage.removeItem(USER_INFO_KEY);
+      notifyActiveUser(null);
       return;
     }
 
     // Use SecureStore for native
     await SecureStore.deleteItemAsync(USER_INFO_KEY);
+    notifyActiveUser(null);
   } catch (error) {
     console.error("[Auth] Failed to clear user info:", error);
   }
