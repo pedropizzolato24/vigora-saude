@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAccessibility } from '@/lib/accessibility-context';
 import {
   FlatList,
@@ -29,6 +30,7 @@ import { useFontSize } from '@/lib/font-size-context';
 import { BrandFonts } from '@/lib/_core/theme';
 import { generateId, useAppContext, type Alarm } from '@/lib/app-context';
 import { scheduleFullAlarm, cancelFullAlarm } from '@/lib/alarm-sync';
+import { openBatteryOptimizationSettings } from '@/lib/battery-optimization';
 import { useRouter } from 'expo-router';
 import { MAX_ALARMS } from '@/components/pro-limits';
 
@@ -93,6 +95,32 @@ export default function AlarmsScreen() {
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
   const { dialogProps, showDialog } = useAppDialog();
   const { toastProps, showToast } = useAppToast();
+
+  // Otimização de bateria: Android (Samsung/Xiaomi) mata o app e o alarme não
+  // toca. Avisa uma vez o monitorado para isentar o Vigora. (feedback do beta)
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    let cancelled = false;
+    (async () => {
+      const seen = await AsyncStorage.getItem('vigora_battery_prompt_seen').catch(() => null);
+      if (seen || cancelled) return;
+      await AsyncStorage.setItem('vigora_battery_prompt_seen', '1').catch(() => {});
+      showDialog({
+        title: 'Para o alarme tocar sempre',
+        message:
+          'Alguns celulares desligam apps em segundo plano, o que pode impedir o alarme de tocar. Toque em "Abrir configurações" e desative a otimização de bateria para o Vigora.',
+        variant: 'warning',
+        buttons: [
+          { text: 'Agora não', style: 'cancel' },
+          { text: 'Abrir configurações', onPress: () => openBatteryOptimizationSettings() },
+        ],
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Derived hour/minute from form.time for the split picker
   const [timeHour, timeMinute] = form.time.split(':');
