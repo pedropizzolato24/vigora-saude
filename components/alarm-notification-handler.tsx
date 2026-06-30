@@ -10,6 +10,7 @@ import { saveAlarmTimer, clearAlarmTimer, loadAlarmTimer } from '@/lib/alarm-tim
 import { startCountdownNotification, stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 import { isNativeAlarmAvailable } from '@/lib/native-alarm-manager';
 import { createPendingAlarmEvent } from '@/lib/monitoring-service';
+import { nextAlarmFireMs, lastAlarmFireMs } from '@/lib/alarm-fire-times';
 import { updateAlarmWidgetOnFire } from '@/lib/update-widgets';
 import { Alarm } from '@/lib/app-context';
 
@@ -51,62 +52,6 @@ function extractAlarmIdFromUid(uid: string): string | null {
   return match ? match[1] : null;
 }
 
-/**
- * Compute the next fire timestamp (ms) for an alarm given its time string (HH:MM)
- * and repeat settings. Returns null if the alarm is disabled or has no valid time.
- */
-function getNextAlarmFireMs(alarm: Alarm): number | null {
-  if (!alarm.enabled) return null;
-
-  const [hours, minutes] = alarm.time.split(':').map(Number);
-  if (isNaN(hours) || isNaN(minutes)) return null;
-
-  const now = new Date();
-  const todayJs = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-
-  // Helper: next Date for a given JS weekday at alarm time
-  const nextDateForJsDay = (jsDay: number): Date => {
-    const d = new Date();
-    d.setHours(hours, minutes, 0, 0);
-    let daysUntil = (jsDay - todayJs + 7) % 7;
-    if (daysUntil === 0 && d <= now) daysUntil = 7;
-    d.setDate(d.getDate() + daysUntil);
-    return d;
-  };
-
-  let candidates: Date[] = [];
-
-  if (alarm.repeat === 'daily') {
-    const d = new Date();
-    d.setHours(hours, minutes, 0, 0);
-    if (d <= now) d.setDate(d.getDate() + 1);
-    candidates.push(d);
-  } else if (alarm.repeat === 'weekdays') {
-    // Mon(1)–Fri(5) in JS
-    for (const jsDay of [1, 2, 3, 4, 5]) {
-      candidates.push(nextDateForJsDay(jsDay));
-    }
-  } else if (alarm.repeat === 'weekends') {
-    // Sat(6) and Sun(0)
-    for (const jsDay of [0, 6]) {
-      candidates.push(nextDateForJsDay(jsDay));
-    }
-  } else if (alarm.repeat === 'custom' && alarm.customDays && alarm.customDays.length > 0) {
-    // customDays: 0=Sun, 1=Mon, ..., 6=Sat (same as JS getDay)
-    for (const jsDay of alarm.customDays) {
-      candidates.push(nextDateForJsDay(jsDay));
-    }
-  } else {
-    // One-time or unknown repeat - treat as daily
-    const d = new Date();
-    d.setHours(hours, minutes, 0, 0);
-    if (d <= now) d.setDate(d.getDate() + 1);
-    candidates.push(d);
-  }
-
-  if (candidates.length === 0) return null;
-  return Math.min(...candidates.map((d) => d.getTime()));
-}
 
 /**
  * Shows an alert to the user with the escalation result summary.
@@ -209,8 +154,11 @@ export function AlarmNotificationHandler() {
 
     // Atualiza widget Android para mostrar estado "tocando agora"
     updateAlarmWidgetOnFire(alarmData.description || 'Alarme').catch(() => {});
-    // Create pending alarm event on server monitoring system
-    createPendingAlarmEvent(alarmData, new Date()).catch(() => {});
+    // Create pending alarm event on server monitoring system.
+    // scheduledAt canônico (HH:MM:00 do dia) para casar com o evento pré-registrado
+    // no sync (idempotente no servidor) — evita evento duplicado e alerta falso.
+    const canonicalSched = lastAlarmFireMs(alarmData) ?? Date.now();
+    createPendingAlarmEvent(alarmData, new Date(canonicalSched)).catch(() => {});
 
     // Inicia countdown na notificação nativa via módulo nativo
     startCountdownNotification(
@@ -368,7 +316,7 @@ export function AlarmNotificationHandler() {
 
       // Find the soonest next alarm fire time
       const nextFireMs = alarms
-        .map(getNextAlarmFireMs)
+        .map((a) => nextAlarmFireMs(a))
         .filter((t): t is number => t !== null)
         .reduce((min, t) => (t < min ? t : min), Infinity);
 

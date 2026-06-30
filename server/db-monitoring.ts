@@ -4,7 +4,7 @@
  * Database query helpers for the server-side alarm monitoring system.
  * Handles: device registration, alarm sync, heartbeat, alarm events, warning log.
  */
-import { and, desc, eq, gte, inArray, isNull, lt, lte, or } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt, lte, ne, or } from "drizzle-orm";
 import { getDb } from "./db";
 import { pickPendingEvent } from "./_core/pick-pending-event";
 import {
@@ -335,6 +335,31 @@ export async function getMissedCheckinEvents(alarmId: string, lookbackHours: num
       and(
         eq(alarmEvents.alarmId, alarmId),
         inArray(alarmEvents.status, ["missed", "not_sent"]),
+        eq(alarmEvents.warningSent, false),
+        gte(alarmEvents.scheduledAt, cutoff)
+      )
+    );
+}
+
+/**
+ * Eventos de alarme de MEDICAÇÃO (não check-in) que ficaram "missed" — ou seja,
+ * o dispositivo estava ONLINE no horário (Passo 1 marca "missed" só se online) e
+ * o usuário não respondeu — e ainda não foram escalados pelo servidor
+ * (warningSent=false). Backstop do dead man's switch para quando a escalação no
+ * cliente não completou (app morreu após o disparo). 'not_sent' (offline) NÃO
+ * entra aqui — esse caso é coberto pelo aviso de dispositivo offline (Passo 2).
+ */
+export async function getMissedMedicationEvents(checkinAlarmId: string, lookbackHours: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const cutoff = new Date(Date.now() - lookbackHours * 60 * 60 * 1000);
+  return db
+    .select()
+    .from(alarmEvents)
+    .where(
+      and(
+        ne(alarmEvents.alarmId, checkinAlarmId),
+        eq(alarmEvents.status, "missed"),
         eq(alarmEvents.warningSent, false),
         gte(alarmEvents.scheduledAt, cutoff)
       )

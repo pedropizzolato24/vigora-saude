@@ -15,6 +15,7 @@ import { AppState, AppStateStatus, Platform } from "react-native";
 import { getDeviceId } from "./device-id";
 import { getApiBaseUrl } from "@/constants/oauth";
 import { Alarm } from "./app-context";
+import { nextAlarmFireMs } from "./alarm-fire-times";
 import * as Auth from "./_core/auth";
 
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
@@ -271,6 +272,18 @@ export async function syncAlarmsToServer(alarms: Alarm[]): Promise<void> {
     alarms: payload,
   });
   console.log(`[Monitoring] Synced ${payload.length} alarms to server`);
+
+  // Pré-registra o PRÓXIMO disparo esperado de cada alarme como evento pendente.
+  // Assim o servidor sabe que o alarme era esperado mesmo se ele NÃO tocar (Doze/
+  // app morto) — e o dead man's switch escala e o histórico não fica vazio.
+  // Idempotente no servidor por (deviceId, alarmId, scheduledAt) canônico.
+  for (const a of alarms) {
+    if (!a.enabled) continue;
+    const fireMs = nextAlarmFireMs(a);
+    if (fireMs != null) {
+      await createPendingAlarmEvent(a, new Date(fireMs)).catch(() => {});
+    }
+  }
 }
 
 // --- Alarm Events -------------------------------------------------------------
