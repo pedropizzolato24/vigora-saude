@@ -10,7 +10,7 @@
  *   - Normal mode: compact wheel with ▲/▼ step buttons
  *   - Accessibility mode: larger wheel + larger step buttons + high-contrast colours
  */
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -19,6 +19,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -28,12 +29,14 @@ import { useAccessibility } from '@/lib/accessibility-context';
 
 // --- Normal mode constants ----------------------------------------------------
 const ITEM_HEIGHT = 56;
-const VISIBLE_ITEMS = 5; // must be odd so the selected item is centred
+// 3 itens visíveis (centro + 1 acima + 1 abaixo): menos poluído para o público
+// idoso, com os vizinhos esmaecidos (feedback do beta). Deve ser ímpar.
+const VISIBLE_ITEMS = 3;
 const WHEEL_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
 
 // --- Accessibility mode constants --------------------------------------------
 const A11Y_ITEM_HEIGHT = 72;
-const A11Y_VISIBLE_ITEMS = 5;
+const A11Y_VISIBLE_ITEMS = 3;
 const A11Y_WHEEL_HEIGHT = A11Y_ITEM_HEIGHT * A11Y_VISIBLE_ITEMS;
 
 // We render 3 full copies of the list so the user can always scroll in both
@@ -113,6 +116,29 @@ export function WheelPicker({
     }
   };
 
+  // -- Tocar no número central para digitar diretamente (feedback do beta) -------
+  // Em vez de só rolar/usar as setinhas, o idoso toca no número e digita a hora.
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+
+  const beginEdit = useCallback(() => {
+    setDraft(String(value));
+    setEditing(true);
+  }, [value]);
+
+  const commitEdit = useCallback(() => {
+    const n = parseInt(draft, 10);
+    if (!Number.isNaN(n)) {
+      const clamped = Math.min(count - 1, Math.max(0, n));
+      if (clamped !== value) onChange(clamped);
+      scrollToIndex(centreStart + clamped, false);
+    } else {
+      // entrada inválida: volta para o valor atual
+      scrollToIndex(centreStart + value, false);
+    }
+    setEditing(false);
+  }, [draft, count, value, onChange, scrollToIndex, centreStart]);
+
   const totalItems = count * COPIES;
 
   // -- Colours resolved per mode ----------------------------------------------
@@ -186,21 +212,62 @@ export function WheelPicker({
               ? String(itemValue).padStart(2, '0')
               : String(itemValue);
 
-            const normalTextSize   = isSelected ? 36 : 28;
-            const a11yTextSize     = isSelected ? af['2xl'] : af.xl;
+            const normalTextSize   = isSelected ? 36 : 24;
+            const a11yTextSize     = isSelected ? af['2xl'] : af.lg;
             const textSize         = isAccessibilityMode ? a11yTextSize : normalTextSize;
             const textColor        = isSelected ? primaryColor : mutedColor;
             const fontWeight: any  = isSelected ? '800' : '500';
+            // Vizinhos esmaecidos para destacar o número central (feedback do beta).
+            const itemOpacity      = isSelected ? 1 : 0.4;
 
             return (
               <View key={i} style={{ height: itemH, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: textSize, fontWeight, color: textColor }}>
+                {/* itemH é fixo; o modo acessível já amplia roda+fonte juntos, então
+                    limitamos a escala de fonte do SO para os números não estourarem. */}
+                <Text maxFontSizeMultiplier={1.15} style={{ fontSize: textSize, fontWeight, color: textColor, opacity: itemOpacity }}>
                   {displayText}
                 </Text>
               </View>
             );
           })}
         </ScrollView>
+
+        {/* Zona central tocável → digitar; vira TextInput em edição (feedback do beta).
+            Rolar continua funcionando pelas faixas acima/abaixo do centro. */}
+        {editing ? (
+          <TextInput
+            autoFocus
+            keyboardType="number-pad"
+            maxLength={2}
+            value={draft}
+            onChangeText={setDraft}
+            onSubmitEditing={commitEdit}
+            onBlur={commitEdit}
+            selectTextOnFocus
+            maxFontSizeMultiplier={1.15}
+            textAlign="center"
+            style={[
+              styles.centerInput,
+              {
+                top: itemH * Math.floor(visibleItems / 2),
+                height: itemH,
+                fontSize: isAccessibilityMode ? af['2xl'] : 36,
+                color: primaryColor,
+                backgroundColor: surfaceColor,
+              },
+            ]}
+          />
+        ) : (
+          <Pressable
+            onPress={beginEdit}
+            accessibilityRole="button"
+            accessibilityLabel={`${label ? label + ': ' : ''}toque para digitar`}
+            style={[
+              styles.centerTapZone,
+              { top: itemH * Math.floor(visibleItems / 2), height: itemH },
+            ]}
+          />
+        )}
       </View>
 
       {/* ▼ - increases value (scroll down = number goes up) */}
@@ -250,6 +317,21 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1,
+  },
+  centerTapZone: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 2,
+  },
+  centerInput: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 3,
+    textAlign: 'center',
+    fontWeight: '800',
+    padding: 0,
   },
   label: {
     fontWeight: '500',

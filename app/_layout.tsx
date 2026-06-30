@@ -95,7 +95,15 @@ export default function RootLayout() {
         if (Platform.OS === 'android') {
           try {
             const { getAlarmState } = require('expo-alarm-module');
-            const activeUid = await getAlarmState();
+            // ponytail: o módulo nativo pode não responder no instante 0 do cold
+            // start; tenta algumas vezes antes de desistir (feedback do beta: abrir
+            // o app com alarme tocando não levava à tela do alarme).
+            let activeUid: string | null = null;
+            for (let i = 0; i < 5; i++) {
+              activeUid = await getAlarmState();
+              if (activeUid && typeof activeUid === 'string') break;
+              await new Promise(resolve => setTimeout(resolve, 300));
+            }
             if (activeUid && typeof activeUid === 'string') {
               // activeUid is like "vigora_<alarmId>" - extract the alarmId
               // Native UIDs: "vigora_<alarmId>" or "vigora_<alarmId>_wd<0-6>"
