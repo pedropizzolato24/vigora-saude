@@ -107,7 +107,7 @@ export default function RootLayout() {
             if (activeUid && typeof activeUid === 'string') {
               // activeUid is like "vigora_<alarmId>" - extract the alarmId
               // Native UIDs: "vigora_<alarmId>" or "vigora_<alarmId>_wd<0-6>"
-              const match = activeUid.match(/^vigora_(.+?)(?:_wd\d+)?$/);
+              const match = activeUid.match(/^vigora_(.+?)(?:_wd\d+|_snooze)?$/);
               const alarmId = match ? match[1] : null;
               if (alarmId) {
                 console.log(`[RootLayout] Native alarm active: ${activeUid} -> alarmId: ${alarmId}`);

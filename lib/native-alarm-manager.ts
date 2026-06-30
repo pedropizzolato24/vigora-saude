@@ -103,10 +103,10 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         active: true,
         repeating: true,
         showDismiss: true,
-        showSnooze: true,
-        snoozeInterval: 5,
+        showSnooze: false,
+        snoozeInterval: 0,
         dismissText: 'Dispensar',
-        snoozeText: 'Soneca',
+        snoozeText: '',
       });
       uids.push(baseUid);
 
@@ -123,10 +123,10 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         active: true,
         repeating: true,
         showDismiss: true,
-        showSnooze: true,
-        snoozeInterval: 5,
+        showSnooze: false,
+        snoozeInterval: 0,
         dismissText: 'Dispensar',
-        snoozeText: 'Soneca',
+        snoozeText: '',
       });
         uids.push(uid);
       }
@@ -144,10 +144,10 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
           active: true,
           repeating: true,
           showDismiss: true,
-          showSnooze: true,
-          snoozeInterval: 5,
+          showSnooze: false,
+          snoozeInterval: 0,
           dismissText: 'Dispensar',
-          snoozeText: 'Soneca',
+          snoozeText: '',
         });
         uids.push(uid);
       }
@@ -164,10 +164,10 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
           active: true,
           repeating: true,
           showDismiss: true,
-          showSnooze: true,
-          snoozeInterval: 5,
+          showSnooze: false,
+          snoozeInterval: 0,
           dismissText: 'Dispensar',
-          snoozeText: 'Soneca',
+          snoozeText: '',
         });
         uids.push(uid);
       }
@@ -183,10 +183,10 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         active: true,
         repeating: false,
         showDismiss: true,
-        showSnooze: true,
-        snoozeInterval: 5,
+        showSnooze: false,
+        snoozeInterval: 0,
         dismissText: 'Dispensar',
-        snoozeText: 'Soneca',
+        snoozeText: '',
       });
       uids.push(baseUid);
     }
@@ -197,6 +197,36 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
   }
 
   return uids;
+}
+
+/**
+ * Re-agenda um disparo ÚNICO (soneca) em `fireAt`, sem mexer na recorrência do
+ * alarme. Usa um uid próprio (`vigora_<id>_snooze`) — extraído de volta para o
+ * alarmId pelos handlers de roteamento. Sem botão de soneca nativo (a próxima
+ * soneca é feita de novo na tela do app).
+ */
+export async function snoozeNativeAlarm(alarm: Alarm, fireAt: Date): Promise<void> {
+  if (!scheduleAlarmNative || Platform.OS !== 'android') return;
+  try {
+    await scheduleAlarmNative({
+      uid: `vigora_${alarm.id}_snooze`,
+      day: fireAt,
+      title: '⏰ Vigora - Alarme de Medicamento',
+      description: alarm.description
+        ? `${alarm.description} - Toque para confirmar que tomou o medicamento`
+        : 'Toque aqui para confirmar que tomou o medicamento',
+      active: true,
+      repeating: false,
+      showDismiss: true,
+      showSnooze: false,
+      snoozeInterval: 0,
+      dismissText: 'Dispensar',
+      snoozeText: '',
+    });
+    console.log(`[NativeAlarm] Snoozed alarm ${alarm.id} until ${fireAt.toISOString()}`);
+  } catch (e) {
+    console.error('[NativeAlarm] Error snoozing alarm:', e);
+  }
 }
 
 /**

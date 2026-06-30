@@ -48,7 +48,7 @@ async function readTimerDurationFromStorage(): Promise<number> {
  * Native UIDs look like: "vigora_<alarmId>" or "vigora_<alarmId>_wd<0-6>"
  */
 function extractAlarmIdFromUid(uid: string): string | null {
-  const match = uid.match(/^vigora_(.+?)(?:_wd\d+)?$/);
+  const match = uid.match(/^vigora_(.+?)(?:_wd\d+|_snooze)?$/);
   return match ? match[1] : null;
 }
 
