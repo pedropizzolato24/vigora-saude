@@ -1,0 +1,17 @@
+diff --git a/android/src/main/java/com/expoalarmmodule/Helper.java b/android/src/main/java/com/expoalarmmodule/Helper.java
+index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..55a00c1f0be8d80f1b869b183d29f950aca37f12 100644
+--- a/android/src/main/java/com/expoalarmmodule/Helper.java
++++ b/android/src/main/java/com/expoalarmmodule/Helper.java
+@@ -162,10 +162,11 @@ public class Helper {
+                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                 .setCategory(NotificationCompat.CATEGORY_ALARM)
+                 .setAutoCancel(true)
+-                .setOngoing(false)
++                .setOngoing(true)
+                 .setSound(null)
+                 .setVibrate(null)
+                 .setContentIntent(createOnClickedIntent(context, alarmUid, id))
++                .setFullScreenIntent(createOnClickedIntent(context, alarmUid, id), true)
+                 .setDeleteIntent(pendingIntentDismiss);
+ 
+         // If the dismiss button should be visible.
