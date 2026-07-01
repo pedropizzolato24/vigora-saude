@@ -14,6 +14,21 @@ export function redirectSystemPath({
       const query = queryIndex >= 0 ? path.slice(queryIndex) : "";
       return `/oauthredirect${query}`;
     }
+    // O tap (e o full-screen) da notificação nativa do alarme abrem
+    // `vigora://alarm-ring?uid=<uid>`. Roteamos direto para a tela do alarme com
+    // o alarmId extraído — sem depender do getAlarmState no cold start (Android
+    // antigo dava tela preta → home). uid: vigora_<id> | _wd<n> | _snooze.
+    if (path.includes("alarm-ring")) {
+      const queryIndex = path.indexOf("?");
+      const query = queryIndex >= 0 ? path.slice(queryIndex + 1) : "";
+      const uidMatch = query.match(/(?:^|&)uid=([^&]+)/);
+      if (uidMatch) {
+        const uid = decodeURIComponent(uidMatch[1]);
+        const m = uid.match(/^vigora_(.+?)(?:_wd\d+|_snooze)?$/);
+        const alarmId = m ? m[1] : uid;
+        return `/alarm-ring?alarmId=${encodeURIComponent(alarmId)}`;
+      }
+    }
   } catch {
     // Em caso de erro de parsing, não quebra o deep linking padrão.
   }

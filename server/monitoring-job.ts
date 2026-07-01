@@ -20,6 +20,7 @@ import {
   getInactiveDevices,
   getLastHeartbeat,
   getMissedCheckinEvents,
+  getMissedMedicationEvents,
   getWarningHistory,
   markEventWarningSent,
   purgeStaleData,
@@ -458,6 +459,64 @@ export async function runMonitoringJob(): Promise<void> {
 
       await markEventWarningSent(event.id);
       console.log(`[Monitor] Step 3: escalated check-in event ${event.id}, ${totalSent} contacts reached, ${pushed} caregiver push(es) delivered`);
+    }
+
+    // -- Step 4: Escalate missed MEDICATION alarms (device online, unanswered) --
+    // Backstop do dead man's switch para quando a escalação no cliente não rodou
+    // (app morreu logo após o disparo). warningSent=true é setado pelo cliente
+    // quando ELE escala (confirmAlarmMissed), então aqui só caem os que ninguém
+    // alertou. 'not_sent' (offline) fica para o Passo 2. Look-back 48h.
+    const missedAlarms = await getMissedMedicationEvents("checkin-daily", 48);
+    console.log(`[Monitor] Found ${missedAlarms.length} missed medication alarms to escalate`);
+
+    for (const event of missedAlarms) {
+      const appUser = await getAppUser(event.deviceId);
+      if (!appUser) {
+        await markEventWarningSent(event.id);
+        continue;
+      }
+
+      // ANATEL opt-in: só mensageia contatos que consentiram (legado = mantido).
+      const contacts = ((appUser.emergencyContacts as any[]) || []).filter(
+        (c) => c.consentToAlerts !== false
+      );
+      const caregiverOpenIds = await getLinkedCaregiverOpenIds(appUser.openId);
+      if (contacts.length === 0 && caregiverOpenIds.length === 0) {
+        await markEventWarningSent(event.id);
+        continue;
+      }
+
+      const name = appUser.userName || "O usuário do Vigora";
+      const scheduledStr = event.scheduledAt.toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const desc = event.alarmDescription || "alarme de medicamento";
+      const message =
+        `⚠️ ALARME NÃO RESPONDIDO - Vigora\n\n` +
+        `${name} não confirmou o alarme "${desc}" previsto para ${scheduledStr}.\n\n` +
+        `Por favor, entre em contato para verificar se está tudo bem.\n\n` +
+        `- Enviado automaticamente pelo Vigora`;
+
+      let totalSent = 0;
+      for (const contact of contacts) {
+        const result = await sendToContact(
+          { name: contact.name, phone: contact.phone, whatsapp: contact.whatsapp },
+          message
+        );
+        if (result.sent) totalSent++;
+        await new Promise((r) => setTimeout(r, 500));
+      }
+
+      const pushed = await sendPushToCaregivers(
+        caregiverOpenIds,
+        "⚠️ Alarme não respondido — Vigora",
+        `${name} não respondeu ao alarme das ${scheduledStr}. Toque para ver os detalhes.`,
+        { type: "missed_alarm", url: "/(caregiver-tabs)/alerts" }
+      );
+
+      await markEventWarningSent(event.id);
+      console.log(`[Monitor] Step 4: escalated missed alarm ${event.id}, ${totalSent} contacts reached, ${pushed} caregiver push(es) delivered`);
     }
 
     jobHealth.lastSuccessAt = Date.now();

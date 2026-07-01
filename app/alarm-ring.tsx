@@ -30,17 +30,18 @@ import { useAppContext } from '@/lib/app-context';
 import { useAccessibility } from '@/lib/accessibility-context';
 import { useColors } from '@/hooks/use-colors';
 import { escalateAlarmToContacts } from '@/lib/alarm-escalation';
-import { stopNativeAlarm } from '@/lib/native-alarm-manager';
+import { stopNativeAlarm, snoozeNativeAlarm } from '@/lib/native-alarm-manager';
 import { PulseView } from '@/components/animated-components';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loadAlarmTimer, clearAlarmTimer } from '@/lib/alarm-timer-store';
 import { stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 import { updateAlarmWidgetOnDismiss } from '@/lib/update-widgets';
-import { confirmAlarmResponded, confirmAlarmMissed } from '@/lib/monitoring-service';
+import { confirmAlarmResponded, confirmAlarmMissed, createPendingAlarmEvent } from '@/lib/monitoring-service';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
 const COUNTDOWN_SECONDS = 30;
+const SNOOZE_MINUTES = 5;
 
 // Builds the speech text for the alarm announcement
 function buildSpeechText(alarmDescription?: string, alarmTime?: string): string {
@@ -304,6 +305,38 @@ export default function AlarmRingScreen() {
     router.replace('/(tabs)/alarms');
   }, [alarmId, player, dispatch, router]);
 
+  // Soneca: conta como respondido AGORA (idoso interagiu = vivo), mas re-arma um
+  // disparo em 5 min. Se a soneca for ignorada, o evento +5min vira "perdido" no
+  // servidor e escala — regra do usuário (feedback do beta, item 4.3).
+  const handleSnooze = useCallback(() => {
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    setDismissed(true); // impede a escalação do disparo atual
+    stopNativeAlarm().catch(() => {});
+    Speech.stop().catch(() => {});
+    if (alarmId) {
+      stopCountdownNotification(alarmId, alarm?.description || 'Alarme de Medicamento');
+      clearAlarmTimer(alarmId);
+    }
+    try {
+      player.pause();
+      player.remove();
+      Vibration.cancel();
+    } catch {}
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    if (alarm) {
+      dispatch({ type: 'RESET_MISSED_ALARM' });
+      confirmAlarmResponded(alarm, new Date()).catch(() => {});
+      const fireAt = new Date(Date.now() + SNOOZE_MINUTES * 60 * 1000);
+      snoozeNativeAlarm(alarm, fireAt).catch(() => {});
+      createPendingAlarmEvent(alarm, fireAt).catch(() => {});
+    }
+
+    router.replace('/(tabs)/alarms');
+  }, [alarmId, alarm, player, dispatch, router]);
+
   const handleSpeakAgain = useCallback(async () => {
     const speaking = await Speech.isSpeakingAsync();
     if (speaking) {
@@ -417,8 +450,24 @@ export default function AlarmRingScreen() {
           )}
         </View>
 
-        {/* Dismiss button */}
-        <View style={styles.bottomSection}>
+        {/* Snooze + Dismiss buttons */}
+        <View style={[styles.bottomSection, { gap: 14 }]}>
+          {!isExpired && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.snoozeButton,
+                { minHeight: 72, paddingVertical: 20, backgroundColor: ac.surface, borderColor: ac.border, borderWidth: 2 },
+                pressed && { opacity: 0.85 },
+              ]}
+              onPress={handleSnooze}
+              accessibilityLabel={`Soneca de ${SNOOZE_MINUTES} minutos`}
+            >
+              <MaterialIcons name="snooze" size={36} color={ac.foreground} />
+              <Text style={[styles.snoozeText, { fontSize: af.md, color: ac.foreground, fontWeight: '800' }]}>
+                Soneca ({SNOOZE_MINUTES} min)
+              </Text>
+            </Pressable>
+          )}
           <Pressable
             style={({ pressed }) => [
               styles.dismissButton,
@@ -514,8 +563,18 @@ export default function AlarmRingScreen() {
         )}
       </View>
 
-      {/* Dismiss button */}
-      <View style={styles.bottomSection}>
+      {/* Snooze + Dismiss buttons */}
+      <View style={[styles.bottomSection, { gap: 12 }]}>
+        {!isExpired && (
+          <Pressable
+            style={({ pressed }) => [styles.snoozeButton, pressed && { opacity: 0.8 }]}
+            onPress={handleSnooze}
+            accessibilityLabel={`Soneca de ${SNOOZE_MINUTES} minutos`}
+          >
+            <MaterialIcons name="snooze" size={24} color="#FFFFFF" />
+            <Text style={styles.snoozeText}>Soneca ({SNOOZE_MINUTES} min)</Text>
+          </Pressable>
+        )}
         <Pressable
           style={({ pressed }) => [
             styles.dismissButton,
@@ -670,5 +729,23 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.5,
+  },
+  snoozeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    width: '100%',
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  snoozeText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

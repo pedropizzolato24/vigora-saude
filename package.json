@@ -142,6 +142,10 @@
       "yaml@1": ">=1.10.3 <2",
       "yaml@2": ">=2.8.3 <3",
       "ajv@6": ">=6.14.0 <7",
+      "ajv@8": ">=8.18.0 <9"
+    },
+    "patchedDependencies": {
+      "expo-alarm-module": "patches/expo-alarm-module.patch"
       "ajv@8": ">=8.18.0 <9",
       "uuid": ">=11.1.1 <12",
       "@esbuild-kit/core-utils>esbuild": ">=0.25.0 <0.26.0"

@@ -1,0 +1,36 @@
+diff --git a/android/src/main/java/com/expoalarmmodule/Helper.java b/android/src/main/java/com/expoalarmmodule/Helper.java
+index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..d5b12f5b3913fa6883087533fee97328f33af36f 100644
+--- a/android/src/main/java/com/expoalarmmodule/Helper.java
++++ b/android/src/main/java/com/expoalarmmodule/Helper.java
+@@ -11,6 +11,7 @@ import android.content.res.Resources;
+ import android.graphics.Bitmap;
+ import android.graphics.BitmapFactory;
+ import android.graphics.Color;
++import android.net.Uri;
+ import android.os.Build;
+ import android.util.Log;
+ 
+@@ -162,10 +163,11 @@ public class Helper {
+                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                 .setCategory(NotificationCompat.CATEGORY_ALARM)
+                 .setAutoCancel(true)
+-                .setOngoing(false)
++                .setOngoing(true)
+                 .setSound(null)
+                 .setVibrate(null)
+                 .setContentIntent(createOnClickedIntent(context, alarmUid, id))
++                .setFullScreenIntent(createOnClickedIntent(context, alarmUid, id), true)
+                 .setDeleteIntent(pendingIntentDismiss);
+ 
+         // If the dismiss button should be visible.
+@@ -195,6 +197,10 @@ public class Helper {
+     private static PendingIntent createOnClickedIntent(Context context, String alarmUid, int notificationID) {
+         Intent resultIntent = new Intent(context, Helper.getMainActivityClass(context));
+         resultIntent.putExtra("ALARM_UID", alarmUid);
++        // Deep link explícito para a tela do alarme — roteia de forma determinística
++        // no cold start do Android antigo (não depende do getAlarmState em memória).
++        resultIntent.setAction(Intent.ACTION_VIEW);
++        resultIntent.setData(Uri.parse("vigora://alarm-ring?uid=" + Uri.encode(alarmUid)));
+ 
+         PendingIntent pendingIntent = null;
+         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {  
