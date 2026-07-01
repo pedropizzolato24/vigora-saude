@@ -8,6 +8,9 @@ import {
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
+import { useFontSize } from '@/lib/font-size-context';
+import { useAccessibility } from '@/lib/accessibility-context';
+import { BrandFonts } from '@/lib/_core/theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useDeleteAccount } from '@/hooks/use-delete-account';
 import * as Auth from '@/lib/_core/auth';
@@ -15,8 +18,22 @@ import { useAppLock } from '@/lib/app-lock-context';
 import { useCaregiverContext } from '@/lib/caregiver-context';
 import { trpc } from '@/lib/trpc';
 
-export default function CaregiverSettingsScreen() {
+/** Paleta + tamanhos resolvidos conforme o modo (normal vs acessível). */
+function useSettingsSkin() {
   const colors = useColors();
+  const fs = useFontSize();
+  const { isAccessibilityMode: a11y, a11yColors: ac, a11yFontSize: af, a11ySpacing: as_ } = useAccessibility();
+  const c = a11y
+    ? { bg: ac.background, surface: ac.surface, border: ac.border, foreground: ac.foreground, muted: ac.muted, primary: ac.primary, onPrimary: ac.onPrimary, error: ac.error }
+    : { bg: colors.background, surface: colors.surface, border: colors.border, foreground: colors.foreground, muted: colors.muted, primary: colors.primary, onPrimary: colors.onPrimary, error: colors.error };
+  const sz = a11y
+    ? { sectionTitle: af.md, kv: af.md, kvSub: af.sm, editLink: af.sm, label: af.sm, input: af.md, btn: af.md, note: af.xs, toggle: af.md, logout: af.md }
+    : { sectionTitle: fs.md, kv: fs.md, kvSub: fs.sm, editLink: fs.scaled(14), label: fs.sm, input: fs.base, btn: fs.base, note: fs.xs, toggle: fs.base, logout: fs.base };
+  return { a11y, c, sz, bw: a11y ? 2 : 1, touch: a11y ? as_.touchTarget : 48 };
+}
+
+export default function CaregiverSettingsScreen() {
+  const { a11y, c, sz, bw, touch } = useSettingsSkin();
   const router = useRouter();
   const { logout } = useAuth();
   const { state, clearLinkedMonitored, updateNotificationPrefs } = useCaregiverContext();
@@ -24,10 +41,7 @@ export default function CaregiverSettingsScreen() {
   const appLock = useAppLock();
   const { runDeleteAccount, isDeleting } = useDeleteAccount(async () => {
     clearLinkedMonitored();
-    await AsyncStorage.multiRemove([
-      'vigora_caregiver_state',
-      'vigora_caregiver_onboarding_completed',
-    ]);
+    await AsyncStorage.multiRemove(['vigora_caregiver_state']);
   });
 
   const updateProfile = trpc.auth.updateProfile.useMutation();
@@ -135,21 +149,21 @@ export default function CaregiverSettingsScreen() {
   };
 
   return (
-    <ScreenContainer>
+    <ScreenContainer containerStyle={a11y ? { backgroundColor: c.bg } : undefined}>
       <ScrollView contentContainerStyle={styles.content}>
         {/* Perfil do Cuidador */}
         <Section title="Perfil do Cuidador">
           {editing ? (
             <View style={{ gap: 10 }}>
-              <Text style={[styles.label, { color: colors.muted }]}>Nome</Text>
+              <Text style={[styles.label, { color: c.muted, fontSize: sz.label, fontFamily: BrandFonts.body }]}>Nome</Text>
               <TextInput
                 value={name} onChangeText={setName}
-                style={[styles.input, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]}
+                style={[styles.input, { color: c.foreground, backgroundColor: c.surface, borderColor: c.border, borderWidth: bw, fontSize: sz.input, minHeight: touch, fontFamily: BrandFonts.body }]}
               />
-              <Text style={[styles.label, { color: colors.muted }]}>Telefone</Text>
+              <Text style={[styles.label, { color: c.muted, fontSize: sz.label, fontFamily: BrandFonts.body }]}>Telefone</Text>
               <TextInput
                 value={phone} onChangeText={setPhone} keyboardType="phone-pad"
-                style={[styles.input, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]}
+                style={[styles.input, { color: c.foreground, backgroundColor: c.surface, borderColor: c.border, borderWidth: bw, fontSize: sz.input, minHeight: touch, fontFamily: BrandFonts.body }]}
               />
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <Pressable
@@ -161,24 +175,24 @@ export default function CaregiverSettingsScreen() {
                     setPhone(u?.phone ?? '');
                     setEditing(false);
                   }}
-                  style={({ pressed }) => [styles.secondaryBtn, { borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
+                  style={({ pressed }) => [styles.secondaryBtn, { borderColor: c.border, borderWidth: bw, minHeight: touch, opacity: pressed ? 0.85 : 1 }]}
                 >
-                  <Text style={{ color: colors.foreground, fontWeight: '600' }}>Cancelar</Text>
+                  <Text style={{ color: c.foreground, fontWeight: '600', fontSize: sz.btn, fontFamily: BrandFonts.body }}>Cancelar</Text>
                 </Pressable>
                 <Pressable
                   onPress={saveProfile} disabled={saving}
-                  style={({ pressed }) => [styles.primaryBtn, { backgroundColor: colors.primary, opacity: saving ? 0.6 : pressed ? 0.85 : 1 }]}
+                  style={({ pressed }) => [styles.primaryBtn, { backgroundColor: c.primary, minHeight: touch, opacity: saving ? 0.6 : pressed ? 0.85 : 1 }]}
                 >
-                  {saving ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={[styles.primaryBtnText, { color: colors.onPrimary }]}>Salvar</Text>}
+                  {saving ? <ActivityIndicator color={c.onPrimary} /> : <Text style={[styles.primaryBtnText, { color: c.onPrimary, fontSize: sz.btn, fontFamily: BrandFonts.body }]}>Salvar</Text>}
                 </Pressable>
               </View>
             </View>
           ) : (
             <View>
-              <Text style={[styles.kv, { color: colors.foreground }]}>{name || '—'}</Text>
-              <Text style={[styles.kvSub, { color: colors.muted }]}>{phone || 'Sem telefone'}</Text>
-              <Pressable onPress={() => setEditing(true)} hitSlop={6}>
-                <Text style={[styles.editLink, { color: colors.primary }]}>Editar</Text>
+              <Text style={[styles.kv, { color: c.foreground, fontSize: sz.kv, fontFamily: BrandFonts.body }]}>{name || '—'}</Text>
+              <Text style={[styles.kvSub, { color: c.muted, fontSize: sz.kvSub, fontFamily: BrandFonts.body }]}>{phone || 'Sem telefone'}</Text>
+              <Pressable onPress={() => setEditing(true)} hitSlop={6} accessibilityRole="button">
+                <Text style={[styles.editLink, { color: c.primary, fontSize: sz.editLink, fontFamily: BrandFonts.body }]}>Editar</Text>
               </Pressable>
             </View>
           )}
@@ -188,25 +202,25 @@ export default function CaregiverSettingsScreen() {
         <Section title="Pessoa monitorada">
           {state.linkedMonitored ? (
             <View style={{ gap: 8 }}>
-              <Text style={[styles.kv, { color: colors.foreground }]}>{state.linkedMonitored.displayName}</Text>
-              <Text style={[styles.kvSub, { color: colors.muted }]}>
+              <Text style={[styles.kv, { color: c.foreground, fontSize: sz.kv, fontFamily: BrandFonts.body }]}>{state.linkedMonitored.displayName}</Text>
+              <Text style={[styles.kvSub, { color: c.muted, fontSize: sz.kvSub, fontFamily: BrandFonts.body }]}>
                 {state.linkedMonitored.relationship ?? 'Sem parentesco'}
               </Text>
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
-                <Pressable onPress={confirmUnlink}>
-                  <Text style={[styles.editLink, { color: colors.error }]}>Desvincular</Text>
+                <Pressable onPress={confirmUnlink} accessibilityRole="button">
+                  <Text style={[styles.editLink, { color: c.error, fontSize: sz.editLink, fontFamily: BrandFonts.body }]}>Desvincular</Text>
                 </Pressable>
-                <Pressable onPress={() => router.push('/(caregiver-tabs)/link')}>
-                  <Text style={[styles.editLink, { color: colors.primary }]}>Trocar</Text>
+                <Pressable onPress={() => router.push('/(caregiver-tabs)/link')} accessibilityRole="button">
+                  <Text style={[styles.editLink, { color: c.primary, fontSize: sz.editLink, fontFamily: BrandFonts.body }]}>Trocar</Text>
                 </Pressable>
               </View>
             </View>
           ) : (
             <Pressable
               onPress={() => router.push('/(caregiver-tabs)/link')}
-              style={({ pressed }) => [styles.primaryBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
+              style={({ pressed }) => [styles.primaryBtn, { backgroundColor: c.primary, minHeight: touch, opacity: pressed ? 0.85 : 1 }]}
             >
-              <Text style={[styles.primaryBtnText, { color: colors.onPrimary }]}>Vincular agora</Text>
+              <Text style={[styles.primaryBtnText, { color: c.onPrimary, fontSize: sz.btn, fontFamily: BrandFonts.body }]}>Vincular agora</Text>
             </Pressable>
           )}
         </Section>
@@ -228,7 +242,7 @@ export default function CaregiverSettingsScreen() {
             value={state.notificationPrefs.deadManSwitch}
             onChange={(v) => updateNotificationPrefs({ deadManSwitch: v })}
           />
-          <Text style={[styles.note, { color: colors.muted }]}>
+          <Text style={[styles.note, { color: c.muted, fontSize: sz.note, fontFamily: BrandFonts.body }]}>
             As notificações começarão a chegar quando a sincronização estiver ativa.
           </Text>
         </Section>
@@ -238,15 +252,15 @@ export default function CaregiverSettingsScreen() {
             abas do monitorado sem volta. A tela compartilhada usa router.back()
             e preserva o fluxo do cuidador. */}
         <Section title="Aparência e acessibilidade">
-          <Text style={[styles.note, { color: colors.muted }]}>
+          <Text style={[styles.note, { color: c.muted, fontSize: sz.note, fontFamily: BrandFonts.body }]}>
             Tema, tamanho de fonte e modo acessibilidade são configurados no app
             todo. Toque abaixo para abrir os controles.
           </Text>
           <Pressable
             onPress={() => router.push('/appearance-settings')}
-            style={({ pressed }) => [styles.secondaryBtn, { borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [styles.secondaryBtn, { borderColor: c.border, borderWidth: bw, minHeight: touch, opacity: pressed ? 0.85 : 1 }]}
           >
-            <Text style={{ color: colors.foreground, fontWeight: '600' }}>Abrir configurações de aparência</Text>
+            <Text style={{ color: c.foreground, fontWeight: '600', fontSize: sz.btn, fontFamily: BrandFonts.body }}>Abrir configurações de aparência</Text>
           </Pressable>
         </Section>
 
@@ -254,9 +268,9 @@ export default function CaregiverSettingsScreen() {
         <Section title="Vigora Pro">
           <Pressable
             onPress={() => router.push('/(modal)/paywall')}
-            style={({ pressed }) => [styles.primaryBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [styles.primaryBtn, { backgroundColor: c.primary, minHeight: touch, opacity: pressed ? 0.85 : 1 }]}
           >
-            <Text style={[styles.primaryBtnText, { color: colors.onPrimary }]}>Ver planos</Text>
+            <Text style={[styles.primaryBtnText, { color: c.onPrimary, fontSize: sz.btn, fontFamily: BrandFonts.body }]}>Ver planos</Text>
           </Pressable>
         </Section>
 
@@ -279,7 +293,7 @@ export default function CaregiverSettingsScreen() {
                 onChange={(v) => appLock.setBiometricEnabled(v)}
               />
             )}
-            <Text style={[styles.note, { color: colors.muted }]}>
+            <Text style={[styles.note, { color: c.muted, fontSize: sz.note, fontFamily: BrandFonts.body }]}>
               Com o bloqueio ativo, o app pede PIN ou biometria sempre que é aberto.
             </Text>
           </Section>
@@ -289,19 +303,20 @@ export default function CaregiverSettingsScreen() {
         <Section title="Ajuda e FAQ">
           <Pressable
             onPress={() => router.push('/help')}
-            style={({ pressed }) => [styles.secondaryBtn, { borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [styles.secondaryBtn, { borderColor: c.border, borderWidth: bw, minHeight: touch, opacity: pressed ? 0.85 : 1 }]}
           >
-            <Text style={{ color: colors.foreground, fontWeight: '600' }}>Abrir ajuda</Text>
+            <Text style={{ color: c.foreground, fontWeight: '600', fontSize: sz.btn, fontFamily: BrandFonts.body }}>Abrir ajuda</Text>
           </Pressable>
         </Section>
 
         {/* Logout */}
         <Pressable
           onPress={confirmLogout}
-          style={({ pressed }) => [styles.logoutBtn, { borderColor: colors.error, opacity: pressed ? 0.85 : 1 }]}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.logoutBtn, { borderColor: c.error, borderWidth: bw, minHeight: touch, opacity: pressed ? 0.85 : 1 }]}
         >
-          <MaterialIcons name="logout" size={20} color={colors.error} />
-          <Text style={[styles.logoutText, { color: colors.error }]}>Sair da conta</Text>
+          <MaterialIcons name="logout" size={a11y ? 26 : 20} color={c.error} />
+          <Text style={[styles.logoutText, { color: c.error, fontSize: sz.logout, fontFamily: BrandFonts.body }]}>Sair da conta</Text>
         </Pressable>
 
         {/* Exclusão definitiva da conta (LGPD Art. 18, VI) */}
@@ -310,14 +325,14 @@ export default function CaregiverSettingsScreen() {
           disabled={isDeleting}
           accessibilityRole="button"
           accessibilityLabel="Excluir minha conta e todos os dados do servidor"
-          style={({ pressed }) => [styles.logoutBtn, { borderColor: colors.error, opacity: isDeleting ? 0.6 : pressed ? 0.85 : 1 }]}
+          style={({ pressed }) => [styles.logoutBtn, { borderColor: c.error, borderWidth: bw, minHeight: touch, opacity: isDeleting ? 0.6 : pressed ? 0.85 : 1 }]}
         >
-          <MaterialIcons name="no-accounts" size={20} color={colors.error} />
-          <Text style={[styles.logoutText, { color: colors.error }]}>
+          <MaterialIcons name="no-accounts" size={a11y ? 26 : 20} color={c.error} />
+          <Text style={[styles.logoutText, { color: c.error, fontSize: sz.logout, fontFamily: BrandFonts.body }]}>
             {isDeleting ? 'Excluindo...' : 'Excluir minha conta'}
           </Text>
         </Pressable>
-        <Text style={[styles.note, { color: colors.muted, textAlign: 'center' }]}>
+        <Text style={[styles.note, { color: c.muted, textAlign: 'center', fontSize: sz.note, fontFamily: BrandFonts.body }]}>
           Apaga sua conta e todos os dados dos nossos servidores (LGPD, Art. 18). Permanente.
         </Text>
       </ScrollView>
@@ -327,20 +342,20 @@ export default function CaregiverSettingsScreen() {
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  const colors = useColors();
+  const { c, sz, bw } = useSettingsSkin();
   return (
-    <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{title}</Text>
+    <View style={[styles.section, { backgroundColor: c.surface, borderColor: c.border, borderWidth: bw }]}>
+      <Text style={[styles.sectionTitle, { color: c.foreground, fontSize: sz.sectionTitle, fontFamily: BrandFonts.body }]}>{title}</Text>
       {children}
     </View>
   );
 }
 
 function ToggleRow({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
-  const colors = useColors();
+  const { c, sz, a11y } = useSettingsSkin();
   return (
-    <View style={styles.toggleRow}>
-      <Text style={{ color: colors.foreground, fontSize: 15, flex: 1 }}>{label}</Text>
+    <View style={[styles.toggleRow, a11y && { minHeight: 56 }]}>
+      <Text style={{ color: c.foreground, fontSize: sz.toggle, flex: 1, fontFamily: BrandFonts.body }}>{label}</Text>
       <Switch value={value} onValueChange={onChange} />
     </View>
   );
@@ -348,21 +363,21 @@ function ToggleRow({ label, value, onChange }: { label: string; value: boolean; 
 
 const styles = StyleSheet.create({
   content: { padding: 16, gap: 12, paddingBottom: 32 },
-  section: { padding: 14, borderRadius: 14, borderWidth: 1, gap: 10 },
-  sectionTitle: { fontSize: 16, fontWeight: '700' },
-  kv: { fontSize: 16, fontWeight: '600' },
-  kvSub: { fontSize: 13, marginTop: 2 },
-  editLink: { fontSize: 14, fontWeight: '700', marginTop: 6 },
-  label: { fontSize: 13, fontWeight: '600' },
-  input: { paddingHorizontal: 14, paddingVertical: 12, borderRadius: 10, borderWidth: 1, fontSize: 15 },
-  primaryBtn: { paddingVertical: 12, borderRadius: 12, alignItems: 'center', flex: 1 },
-  primaryBtnText: { fontSize: 15, fontWeight: '700' },
-  secondaryBtn: { paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, flex: 1 },
+  section: { padding: 14, borderRadius: 14, gap: 10 },
+  sectionTitle: { fontWeight: '700' },
+  kv: { fontWeight: '600' },
+  kvSub: { marginTop: 2 },
+  editLink: { fontWeight: '700', marginTop: 6 },
+  label: { fontWeight: '600' },
+  input: { paddingHorizontal: 14, paddingVertical: 12, borderRadius: 10 },
+  primaryBtn: { paddingVertical: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flex: 1 },
+  primaryBtnText: { fontWeight: '700' },
+  secondaryBtn: { paddingVertical: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flex: 1 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 },
-  note: { fontSize: 12, lineHeight: 18 },
+  note: { lineHeight: 18 },
   logoutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, padding: 14, borderRadius: 12, borderWidth: 1, marginTop: 12,
+    gap: 8, padding: 14, borderRadius: 12, marginTop: 12,
   },
-  logoutText: { fontSize: 15, fontWeight: '700' },
+  logoutText: { fontWeight: '700' },
 });
