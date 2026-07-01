@@ -93,13 +93,10 @@ export default function CaregiverSettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             await logout();
-            // Clear caregiver-scoped local data so a different caregiver
-            // signing in on the same device starts fresh (sees the
-            // onboarding slideshow and has no leftover link stub).
-            await AsyncStorage.multiRemove([
-              'vigora_caregiver_state',
-              'vigora_caregiver_onboarding_completed',
-            ]);
+            // Limpa o vínculo local para não vazar entre contas. NÃO apaga a flag
+            // de onboarding: ela é por conta (openId), então a mesma conta não
+            // re-onboarda ao relogar e uma conta diferente ainda vê o onboarding.
+            await AsyncStorage.multiRemove(['vigora_caregiver_state']);
             router.replace('/login');
           },
         },

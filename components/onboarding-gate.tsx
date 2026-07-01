@@ -4,10 +4,10 @@ import * as Linking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Auth from '@/lib/_core/auth';
 import { setPendingInvite } from '@/lib/pending-invite';
+import { hasCompletedCaregiverOnboarding } from '@/lib/caregiver-onboarding-flag';
 
 const ONBOARDING_KEY = 'vigora_onboarding_completed';
 const LOGIN_COMPLETED_KEY = 'vigora_login_completed';
-const CAREGIVER_ONBOARDING_KEY = 'vigora_caregiver_onboarding_completed';
 
 /**
  * Runs once at app startup to enforce the onboarding → login → register funnel.
@@ -84,7 +84,7 @@ export function OnboardingGate() {
         }
 
         if (user.userType === 'caregiver') {
-          const caregiverOnboardingDone = await AsyncStorage.getItem(CAREGIVER_ONBOARDING_KEY);
+          const caregiverOnboardingDone = await hasCompletedCaregiverOnboarding(user.openId);
           router.replace(caregiverOnboardingDone ? '/(caregiver-tabs)' : '/caregiver-onboarding');
           return;
         }
