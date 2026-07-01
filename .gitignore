@@ -43,6 +43,7 @@ app-example
 # generated native folders
 /ios
 /android
+modules/expo-alarm-countdown/android/
 
 # IDE
 .vscode/
