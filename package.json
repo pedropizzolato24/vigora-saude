@@ -146,6 +146,9 @@
     },
     "patchedDependencies": {
       "expo-alarm-module": "patches/expo-alarm-module.patch"
+      "ajv@8": ">=8.18.0 <9",
+      "uuid": ">=11.1.1 <12",
+      "@esbuild-kit/core-utils>esbuild": ">=0.25.0 <0.26.0"
     }
   },
   "expo": {
