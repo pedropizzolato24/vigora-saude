@@ -18,7 +18,7 @@ import {
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { AppToast, useAppToast } from '@/components/app-toast';
 import { FormKeyboardView } from '@/components/form-keyboard-view';
-import { WheelPicker } from '@/components/wheel-picker';
+import { WheelPicker, wheelColumnMetrics } from '@/components/wheel-picker';
 import { WizardStep } from '@/components/wizard-step';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
@@ -124,6 +124,10 @@ export default function AlarmsScreen() {
 
   // Derived hour/minute from form.time for the split picker
   const [timeHour, timeMinute] = form.time.split(':');
+
+  // Alinha o ":" à faixa selecionada da roda (em vez de um margin fixo, que
+  // desalinhou quando a roda passou de 5 para 3 itens).
+  const colonMetrics = wheelColumnMetrics(isAccessibilityMode, as_.touchTarget);
 
   const handleHourChange = (val: string) => {
     const digits = val.replace(/\D/g, '').slice(0, 2);
@@ -801,7 +805,9 @@ export default function AlarmsScreen() {
                       }
                       label="hora"
                     />
-                    <Text style={[styles.timeColon, { color: colors.foreground, fontSize: fs.scaled(40) }]}>:</Text>
+                    <View style={{ marginTop: colonMetrics.wheelTop, height: colonMetrics.wheelHeight, justifyContent: 'center' }}>
+                      <Text style={[styles.timeColon, { color: colors.foreground, fontSize: fs.scaled(40) }]}>:</Text>
+                    </View>
                     <WheelPicker
                       count={60}
                       value={parseInt(timeMinute, 10) || 0}
@@ -1198,14 +1204,13 @@ const styles = StyleSheet.create({
   },
   timePicker: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
     gap: 12,
   },
   timeColon: {
     fontWeight: '800',
     paddingHorizontal: 4,
-    marginTop: 50,
   },
   quickPicks: {
     gap: 8,

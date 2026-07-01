@@ -43,6 +43,23 @@ const A11Y_WHEEL_HEIGHT = A11Y_ITEM_HEIGHT * A11Y_VISIBLE_ITEMS;
 // directions without hitting an edge. After settling we silently re-centre.
 const COPIES = 3;
 
+// Gap between the step buttons and the wheel (styles.container gap).
+const CONTAINER_GAP = 6;
+const NORMAL_BTN_HEIGHT = 44;
+
+/**
+ * Geometry of a wheel column so callers (e.g. the alarm time screen's ":")
+ * can align to the wheel's selection band instead of guessing a margin.
+ * `wheelTop` is the distance from the column top to the wheel; centring a box
+ * of `wheelHeight` there lands exactly on the highlighted band, in both modes.
+ */
+export function wheelColumnMetrics(isAccessibilityMode: boolean, a11yTouchTarget: number) {
+  const itemH = isAccessibilityMode ? A11Y_ITEM_HEIGHT : ITEM_HEIGHT;
+  const visible = isAccessibilityMode ? A11Y_VISIBLE_ITEMS : VISIBLE_ITEMS;
+  const btnH = isAccessibilityMode ? a11yTouchTarget : NORMAL_BTN_HEIGHT;
+  return { wheelTop: btnH + CONTAINER_GAP, wheelHeight: itemH * visible };
+}
+
 interface WheelPickerProps {
   count: number;       // total values (24 for hours, 60 for minutes)
   value: number;       // currently selected value (0-based)
@@ -66,7 +83,7 @@ export function WheelPicker({
   const visibleItems = isAccessibilityMode ? A11Y_VISIBLE_ITEMS : VISIBLE_ITEMS;
   const wheelH = isAccessibilityMode ? A11Y_WHEEL_HEIGHT : WHEEL_HEIGHT;
   const wheelWidth = isAccessibilityMode ? 116 : 90;
-  const btnHeight = isAccessibilityMode ? as_.touchTarget : 44;
+  const btnHeight = isAccessibilityMode ? as_.touchTarget : NORMAL_BTN_HEIGHT;
   const iconSize = isAccessibilityMode ? 36 : 26;
   const labelSize = isAccessibilityMode ? af.sm : 12;
 
@@ -107,7 +124,14 @@ export function WheelPicker({
     [count, value, onChange, centreStart, itemH],
   );
 
+  // -- Tocar no número central para digitar diretamente (feedback do beta) -------
+  // Em vez de só rolar/usar as setinhas, o idoso toca no número e digita a hora.
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+
   const increment = (delta: number) => {
+    // Usar as setinhas encerra a edição manual (desseleciona o número digitado).
+    if (editing) setEditing(false);
     const next = ((value + delta) + count) % count;
     onChange(next);
     scrollToIndex(centreStart + next, true);
@@ -116,28 +140,31 @@ export function WheelPicker({
     }
   };
 
-  // -- Tocar no número central para digitar diretamente (feedback do beta) -------
-  // Em vez de só rolar/usar as setinhas, o idoso toca no número e digita a hora.
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
-
   const beginEdit = useCallback(() => {
     setDraft(String(value));
     setEditing(true);
   }, [value]);
 
+  // Comita ao vivo: cada dígito válido já atualiza o valor no pai, então o
+  // horário fica salvo mesmo se o usuário tocar "Continuar" sem dar OK no teclado.
+  const handleChangeText = useCallback(
+    (t: string) => {
+      setDraft(t);
+      const n = parseInt(t, 10);
+      if (!Number.isNaN(n)) {
+        const clamped = Math.min(count - 1, Math.max(0, n));
+        if (clamped !== value) onChange(clamped);
+      }
+    },
+    [count, value, onChange],
+  );
+
+  // OK no teclado / tocar fora: apenas encerra a edição e reancora a roda no
+  // valor atual (já comitado por handleChangeText).
   const commitEdit = useCallback(() => {
-    const n = parseInt(draft, 10);
-    if (!Number.isNaN(n)) {
-      const clamped = Math.min(count - 1, Math.max(0, n));
-      if (clamped !== value) onChange(clamped);
-      scrollToIndex(centreStart + clamped, false);
-    } else {
-      // entrada inválida: volta para o valor atual
-      scrollToIndex(centreStart + value, false);
-    }
     setEditing(false);
-  }, [draft, count, value, onChange, scrollToIndex, centreStart]);
+    scrollToIndex(centreStart + value, false);
+  }, [value, scrollToIndex, centreStart]);
 
   const totalItems = count * COPIES;
 
@@ -220,27 +247,37 @@ export function WheelPicker({
             // Vizinhos esmaecidos para destacar o número central (feedback do beta).
             const itemOpacity      = isSelected ? 1 : 0.4;
 
+            // O número central é tocável (digitar direto). Fica DENTRO do
+            // ScrollView, então tocar abre a edição e arrastar rola normalmente —
+            // sem a antiga sobreposição que bloqueava o scroll a partir do centro.
+            const ItemComponent = isSelected ? Pressable : View;
             return (
-              <View key={i} style={{ height: itemH, alignItems: 'center', justifyContent: 'center' }}>
+              <ItemComponent
+                key={i}
+                onPress={isSelected ? beginEdit : undefined}
+                accessibilityRole={isSelected ? 'button' : undefined}
+                accessibilityLabel={isSelected ? `${label ? label + ': ' : ''}toque para digitar` : undefined}
+                style={{ height: itemH, alignItems: 'center', justifyContent: 'center' }}
+              >
                 {/* itemH é fixo; o modo acessível já amplia roda+fonte juntos, então
                     limitamos a escala de fonte do SO para os números não estourarem. */}
                 <Text maxFontSizeMultiplier={1.15} style={{ fontSize: textSize, fontWeight, color: textColor, opacity: itemOpacity }}>
                   {displayText}
                 </Text>
-              </View>
+              </ItemComponent>
             );
           })}
         </ScrollView>
 
-        {/* Zona central tocável → digitar; vira TextInput em edição (feedback do beta).
-            Rolar continua funcionando pelas faixas acima/abaixo do centro. */}
-        {editing ? (
+        {/* Em edição, um TextInput cobre só a faixa central. Fora de edição não
+            há sobreposição alguma, então o scroll a partir do centro funciona. */}
+        {editing && (
           <TextInput
             autoFocus
             keyboardType="number-pad"
             maxLength={2}
             value={draft}
-            onChangeText={setDraft}
+            onChangeText={handleChangeText}
             onSubmitEditing={commitEdit}
             onBlur={commitEdit}
             selectTextOnFocus
@@ -255,16 +292,6 @@ export function WheelPicker({
                 color: primaryColor,
                 backgroundColor: surfaceColor,
               },
-            ]}
-          />
-        ) : (
-          <Pressable
-            onPress={beginEdit}
-            accessibilityRole="button"
-            accessibilityLabel={`${label ? label + ': ' : ''}toque para digitar`}
-            style={[
-              styles.centerTapZone,
-              { top: itemH * Math.floor(visibleItems / 2), height: itemH },
             ]}
           />
         )}
@@ -317,12 +344,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1,
-  },
-  centerTapZone: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    zIndex: 2,
   },
   centerInput: {
     position: 'absolute',
