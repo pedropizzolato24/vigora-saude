@@ -7,7 +7,6 @@ import { useAppContext } from '@/lib/app-context';
 import { clearAlarmTimeout } from '@/lib/alarm-timeout-manager';
 import { escalateAlarmToContacts, type EscalationResult } from '@/lib/alarm-escalation';
 import { saveAlarmTimer, clearAlarmTimer, loadAlarmTimer } from '@/lib/alarm-timer-store';
-import { startCountdownNotification, stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
 import { isNativeAlarmAvailable } from '@/lib/native-alarm-manager';
 import { createPendingAlarmEvent } from '@/lib/monitoring-service';
 import { nextAlarmFireMs, lastAlarmFireMs } from '@/lib/alarm-fire-times';
@@ -160,13 +159,6 @@ export function AlarmNotificationHandler() {
     const canonicalSched = lastAlarmFireMs(alarmData) ?? Date.now();
     createPendingAlarmEvent(alarmData, new Date(canonicalSched)).catch(() => {});
 
-    // Inicia countdown na notificação nativa via módulo nativo
-    startCountdownNotification(
-      alarmId,
-      alarmData.description || 'Alarme de Medicamento',
-      expiresAt,
-    );
-
     // Navigate to alarm-ring screen, passing expiresAt as URL param.
     // alarm-ring uses expiresAt directly - no AsyncStorage race condition.
     if (!navigatedAlarms.current.has(alarmId)) {
@@ -283,7 +275,7 @@ export function AlarmNotificationHandler() {
   //
   // Problem: expo-alarm-module does NOT emit a JS event when an alarm fires - it only
   // creates the native notification directly via AlarmService (Java). Without polling,
-  // startCountdownNotification() is never called when the app is already open.
+  // handleAlarmFired() (navigation + escalation timer) never runs when the app is open.
   //
   // Solution: instead of polling constantly (battery drain), we:
   //   1. Find the next enabled alarm's fire time from state.
