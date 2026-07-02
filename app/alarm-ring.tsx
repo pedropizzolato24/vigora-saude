@@ -35,7 +35,7 @@ import { PulseView } from '@/components/animated-components';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loadAlarmTimer, clearAlarmTimer } from '@/lib/alarm-timer-store';
-import { stopCountdownNotification } from '@/lib/alarm-countdown-notifier';
+import { lastAlarmFireMs } from '@/lib/alarm-fire-times';
 import { updateAlarmWidgetOnDismiss } from '@/lib/update-widgets';
 import { confirmAlarmResponded, confirmAlarmMissed, createPendingAlarmEvent } from '@/lib/monitoring-service';
 
@@ -76,21 +76,36 @@ export default function AlarmRingScreen() {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const escalationDoneRef = useRef(false);
   const expiresAtRef = useRef<number | null>(null);
+  // Timeout que dispara a fala (TTS). Guardado em ref para ser cancelado no
+  // dismiss/unmount — senão ele fala depois que o usuário já saiu da tela (#8).
+  const speechTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Marca que o alarme foi respondido, para não retomar o som do alarme depois
+  // que a fala termina/para (o handler onDone/onStopped roda de forma assíncrona).
+  const dismissedRef = useRef(false);
+
+  // scheduledAt canônico (hora real do disparo) — usado para casar com o evento
+  // pré-registrado no servidor. Confirmar com new Date() não batia e o alarme
+  // respondido virava "pendente"/"não tocou" (#12.2).
+  const canonicalScheduledAt = () =>
+    new Date((alarm && lastAlarmFireMs(alarm)) || Date.now());
 
   // Audio player
   const player = useAudioPlayer(ALARM_SOUND);
 
-  // Speak alarm info aloud - uses speechRate and speechVolume from settings
-  // Ducks alarm volume during speech so the voice is clearly audible
+  // Speak alarm info aloud - uses speechRate and speechVolume from settings.
+  // Pausa o som do alarme durante a fala (em vez de só abaixar): o loop do alarme
+  // disputava o foco de áudio e deixava a voz quase inaudível (#7). Ao terminar,
+  // retoma o alarme — a menos que o usuário já tenha respondido.
   const speakAlarm = useCallback(() => {
     if (Platform.OS === 'web') return;
     const text = buildSpeechText(alarm?.description, alarm?.time);
     const speechVol = (state.settings.speechVolume ?? 90) / 100;
     const speechRate = state.settings.speechRate ?? 0.75;
-    // Alarm volume at full while speech is not yet started
-    const alarmVol = (state.settings.alarmVolume ?? 80) / 100;
-    // Ducked alarm volume: 25% of original so voice is clearly heard
-    const duckedAlarmVol = alarmVol * 0.25;
+
+    const resumeAlarm = () => {
+      if (dismissedRef.current) return;
+      try { player.play(); } catch {}
+    };
 
     setIsSpeaking(true);
     Speech.speak(text, {
@@ -100,21 +115,20 @@ export default function AlarmRingScreen() {
       volume: speechVol,
       onStart: () => {
         setIsSpeaking(true);
-        // Duck alarm audio so voice is audible
-        try { player.volume = duckedAlarmVol; } catch {}
+        // Silencia o alarme para a voz ser claramente ouvida
+        try { player.pause(); } catch {}
       },
       onDone: () => {
         setIsSpeaking(false);
-        // Restore alarm volume
-        try { player.volume = alarmVol; } catch {}
+        resumeAlarm();
       },
       onStopped: () => {
         setIsSpeaking(false);
-        try { player.volume = alarmVol; } catch {}
+        resumeAlarm();
       },
       onError: () => {
         setIsSpeaking(false);
-        try { player.volume = alarmVol; } catch {}
+        resumeAlarm();
       },
     });
   }, [alarm, state.settings, player]);
@@ -144,10 +158,12 @@ export default function AlarmRingScreen() {
           // Vibrate in a repeating pattern
           Vibration.vibrate([0, 500, 500, 500], true);
 
-          // Wait 1.5s for alarm sound to start, then speak alarm info
-          setTimeout(() => {
+          // Curto atraso para o som iniciar, então fala. Guardado em ref para
+          // ser cancelado se o usuário desligar antes de começar (#8).
+          speechTimeoutRef.current = setTimeout(() => {
+            speechTimeoutRef.current = null;
             speakAlarm();
-          }, 1500);
+          }, 500);
         }
       } catch (e) {
         console.warn('[AlarmRing] Audio error:', e);
@@ -158,6 +174,7 @@ export default function AlarmRingScreen() {
 
     return () => {
       try {
+        if (speechTimeoutRef.current) clearTimeout(speechTimeoutRef.current);
         player.pause();
         player.remove();
         Vibration.cancel();
@@ -210,8 +227,11 @@ export default function AlarmRingScreen() {
         // Use the persisted expiresAt to compute real remaining time
         startCountdown(entry.expiresAt);
       } else {
-        // Last resort - read timerDuration from AsyncStorage to avoid stale state
+        // Cold start (app morto no disparo, sem timer persistido). Ancoramos a
+        // contagem na hora REAL do disparo agendado — não em Date.now() — para
+        // continuar de onde deveria em vez de reiniciar em 30s (#10).
         let duration = configuredDuration;
+        let alarmForAnchor = alarm;
         try {
           const raw = await AsyncStorage.getItem('vigora_app_state');
           if (raw) {
@@ -220,9 +240,13 @@ export default function AlarmRingScreen() {
             if (typeof stored === 'number' && [15, 30, 45, 60].includes(stored)) {
               duration = stored;
             }
+            if (!alarmForAnchor) {
+              alarmForAnchor = parsed?.alarms?.find((a: any) => a.id === alarmId);
+            }
           }
         } catch {}
-        startCountdown(Date.now() + duration * 1000);
+        const fireMs = alarmForAnchor ? lastAlarmFireMs(alarmForAnchor) : null;
+        startCountdown((fireMs ?? Date.now()) + duration * 1000);
       }
     };
 
@@ -241,7 +265,7 @@ export default function AlarmRingScreen() {
       setEscalated(true);
       // Confirm alarm as missed on server monitoring system
       if (alarm) {
-        confirmAlarmMissed(alarm, new Date()).catch(() => {});
+        confirmAlarmMissed(alarm, canonicalScheduledAt()).catch(() => {});
       }
 
       const doEscalate = async () => {
@@ -272,14 +296,15 @@ export default function AlarmRingScreen() {
 
   const handleDismiss = useCallback(() => {
     setDismissed(true);
+    dismissedRef.current = true;
     if (countdownRef.current) clearInterval(countdownRef.current);
+    if (speechTimeoutRef.current) clearTimeout(speechTimeoutRef.current);
     // Stop native alarm (Android AlarmManager)
     stopNativeAlarm().catch(() => {});
     // Stop speech
     Speech.stop().catch(() => {});
-    // Stop countdown notification and clear persisted timer
+    // Clear persisted timer
     if (alarmId) {
-      stopCountdownNotification(alarmId, alarm?.description || 'Alarme de Medicamento');
       clearAlarmTimer(alarmId);
     }
 
@@ -297,7 +322,7 @@ export default function AlarmRingScreen() {
     dispatch({ type: 'RESET_MISSED_ALARM' });
     // Confirm alarm as responded on server monitoring system
     if (alarm) {
-      confirmAlarmResponded(alarm, new Date()).catch(() => {});
+      confirmAlarmResponded(alarm, canonicalScheduledAt()).catch(() => {});
     }
     // Atualiza widget Android para mostrar o próximo alarme pendente
     updateAlarmWidgetOnDismiss(state.alarms).catch(() => {});
@@ -310,11 +335,12 @@ export default function AlarmRingScreen() {
   // servidor e escala — regra do usuário (feedback do beta, item 4.3).
   const handleSnooze = useCallback(() => {
     if (countdownRef.current) clearInterval(countdownRef.current);
+    if (speechTimeoutRef.current) clearTimeout(speechTimeoutRef.current);
     setDismissed(true); // impede a escalação do disparo atual
+    dismissedRef.current = true;
     stopNativeAlarm().catch(() => {});
     Speech.stop().catch(() => {});
     if (alarmId) {
-      stopCountdownNotification(alarmId, alarm?.description || 'Alarme de Medicamento');
       clearAlarmTimer(alarmId);
     }
     try {
@@ -328,7 +354,7 @@ export default function AlarmRingScreen() {
 
     if (alarm) {
       dispatch({ type: 'RESET_MISSED_ALARM' });
-      confirmAlarmResponded(alarm, new Date()).catch(() => {});
+      confirmAlarmResponded(alarm, canonicalScheduledAt()).catch(() => {});
       const fireAt = new Date(Date.now() + SNOOZE_MINUTES * 60 * 1000);
       snoozeNativeAlarm(alarm, fireAt).catch(() => {});
       createPendingAlarmEvent(alarm, fireAt).catch(() => {});

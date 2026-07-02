@@ -5,7 +5,6 @@
  * completing registration. Sets `vigora_caregiver_onboarding_completed` on
  * exit so it never reappears.
  */
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -21,8 +20,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
+import * as Auth from '@/lib/_core/auth';
+import { markCaregiverOnboardingCompleted } from '@/lib/caregiver-onboarding-flag';
 
-const CAREGIVER_ONBOARDING_KEY = 'vigora_caregiver_onboarding_completed';
 const { width } = Dimensions.get('window');
 
 interface Slide {
@@ -62,7 +62,8 @@ export default function CaregiverOnboardingScreen() {
   const [index, setIndex] = useState(0);
 
   const finish = async (destination: '/(caregiver-tabs)/link' | '/(caregiver-tabs)/') => {
-    await AsyncStorage.setItem(CAREGIVER_ONBOARDING_KEY, 'true');
+    const user = await Auth.getUserInfo();
+    if (user?.openId) await markCaregiverOnboardingCompleted(user.openId);
     router.replace(destination);
   };
 

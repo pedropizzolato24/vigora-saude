@@ -2,9 +2,13 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CaregiverEmptyState } from '@/components/caregiver-empty-state';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
+import { useFontSize } from '@/lib/font-size-context';
+import { useAccessibility } from '@/lib/accessibility-context';
+import { BrandFonts } from '@/lib/_core/theme';
 import { useCaregiverContext } from '@/lib/caregiver-context';
 import { trpc } from '@/lib/trpc';
 import { relativeTime } from '@/lib/caregiver-format';
@@ -20,8 +24,14 @@ interface AlertItem {
   ts: number;
 }
 
+const FILTERS: Filter[] = ['all', 'critical', 'warning'];
+const filterLabel = (f: Filter) => (f === 'all' ? 'Todos' : f === 'critical' ? 'Críticos' : 'Avisos');
+
 export default function CaregiverAlertsScreen() {
   const colors = useColors();
+  const fs = useFontSize();
+  const insets = useSafeAreaInsets();
+  const { isAccessibilityMode, a11yColors: ac, a11yFontSize: af } = useAccessibility();
   const router = useRouter();
   const { state } = useCaregiverContext();
   const linked = state.linkedMonitored;
@@ -31,7 +41,7 @@ export default function CaregiverAlertsScreen() {
 
   if (!linked) {
     return (
-      <ScreenContainer>
+      <ScreenContainer containerStyle={isAccessibilityMode ? { backgroundColor: ac.background } : undefined}>
         <CaregiverEmptyState
           icon="notifications-none"
           title="Sem vínculo ativo"
@@ -67,16 +77,81 @@ export default function CaregiverAlertsScreen() {
 
   const filtered = items.filter((i) => filter === 'all' || i.severity === filter);
 
+  // --- Accessibility Mode ---------------------------------------------------
+  if (isAccessibilityMode) {
+    return (
+      <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar }}>
+          <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground, fontFamily: BrandFonts.body }}>Alertas</Text>
+          <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4, fontFamily: BrandFonts.body }}>{items.length} recente(s)</Text>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingTop: 14 }}>
+          {FILTERS.map((f) => {
+            const selected = filter === f;
+            return (
+              <Pressable
+                key={f}
+                onPress={() => setFilter(f)}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                style={({ pressed }) => [{ paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14, borderWidth: 2, minHeight: 56, justifyContent: 'center', backgroundColor: selected ? ac.primary : ac.surface, borderColor: selected ? ac.primary : ac.border, opacity: pressed ? 0.85 : 1 }]}
+              >
+                <Text style={{ fontSize: af.sm, fontWeight: '800', color: selected ? ac.onPrimary : ac.foreground, fontFamily: BrandFonts.body }}>{filterLabel(f)}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }} showsVerticalScrollIndicator={false}>
+          {alerts.isLoading ? (
+            <ActivityIndicator color={ac.primary} style={{ marginTop: 24 }} />
+          ) : filtered.length === 0 ? (
+            <View style={{ padding: 20, borderRadius: 16, borderWidth: 2, backgroundColor: ac.surface, borderColor: ac.border, alignItems: 'center', gap: 12 }}>
+              <MaterialIcons name="check-circle" size={40} color={ac.success} />
+              <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.foreground, textAlign: 'center', fontFamily: BrandFonts.body }}>Nenhum alerta recente</Text>
+              <Text style={{ fontSize: af.sm, color: ac.muted, lineHeight: af.sm * 1.5, textAlign: 'center', fontFamily: BrandFonts.body }}>
+                Você verá aqui medicação perdida, alarmes não enviados e avisos do dead man&apos;s switch.
+              </Text>
+            </View>
+          ) : (
+            filtered.map((item) => {
+              const accent = item.severity === 'critical' ? ac.error : ac.warning;
+              return (
+                <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, borderRadius: 16, borderWidth: 2, backgroundColor: ac.surface, borderColor: ac.border }}>
+                  <View style={{ width: 56, height: 56, borderRadius: 14, backgroundColor: accent + '20', alignItems: 'center', justifyContent: 'center' }}>
+                    <MaterialIcons name={item.icon} size={30} color={accent} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.foreground, fontFamily: BrandFonts.body }}>{item.title}</Text>
+                    <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 2, fontFamily: BrandFonts.body }}>{item.subtitle}</Text>
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </ScrollView>
+      </ScreenContainer>
+    );
+  }
+
+  // --- Normal Mode ----------------------------------------------------------
   return (
-    <ScreenContainer>
+    <ScreenContainer edges={['left', 'right']}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+        <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: fs.scaled(26), fontFamily: BrandFonts.body }]}>Alertas</Text>
+        <Text style={[styles.headerSub, { color: colors.muted, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>{items.length} recente(s)</Text>
+      </View>
+
       <View style={styles.filters}>
-        {(['all', 'critical', 'warning'] as Filter[]).map((f) => {
+        {FILTERS.map((f) => {
           const selected = filter === f;
-          const label = f === 'all' ? 'Todos' : f === 'critical' ? 'Críticos' : 'Avisos';
           return (
             <Pressable
               key={f}
               onPress={() => setFilter(f)}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
               style={({ pressed }) => [
                 styles.filter,
                 {
@@ -86,8 +161,8 @@ export default function CaregiverAlertsScreen() {
                 },
               ]}
             >
-              <Text style={[styles.filterText, { color: selected ? colors.onPrimary : colors.foreground }]}>
-                {label}
+              <Text style={[styles.filterText, { color: selected ? colors.onPrimary : colors.foreground, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
+                {filterLabel(f)}
               </Text>
             </Pressable>
           );
@@ -100,8 +175,8 @@ export default function CaregiverAlertsScreen() {
         ) : filtered.length === 0 ? (
           <View style={[styles.explainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <MaterialIcons name="check-circle" size={28} color={colors.success} />
-            <Text style={[styles.explainerTitle, { color: colors.foreground }]}>Nenhum alerta recente</Text>
-            <Text style={[styles.explainerBody, { color: colors.muted }]}>
+            <Text style={[styles.explainerTitle, { color: colors.foreground, fontSize: fs.lg, fontFamily: BrandFonts.body }]}>Nenhum alerta recente</Text>
+            <Text style={[styles.explainerBody, { color: colors.muted, fontSize: fs.scaled(14), fontFamily: BrandFonts.body }]}>
               Você verá aqui medicação perdida, alarmes não enviados e avisos do dead man&apos;s switch da pessoa
               que você acompanha.
             </Text>
@@ -118,8 +193,8 @@ export default function CaregiverAlertsScreen() {
                   <MaterialIcons name={item.icon} size={22} color={accent} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.alertTitle, { color: colors.foreground }]}>{item.title}</Text>
-                  <Text style={[styles.alertSubtitle, { color: colors.muted }]}>{item.subtitle}</Text>
+                  <Text style={[styles.alertTitle, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>{item.title}</Text>
+                  <Text style={[styles.alertSubtitle, { color: colors.muted, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>{item.subtitle}</Text>
                 </View>
               </View>
             );
@@ -131,15 +206,18 @@ export default function CaregiverAlertsScreen() {
 }
 
 const styles = StyleSheet.create({
-  filters: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12 },
+  header: { paddingHorizontal: 20, paddingBottom: 4 },
+  headerTitle: { fontWeight: '800' },
+  headerSub: { fontWeight: '500', marginTop: 2 },
+  filters: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingTop: 12 },
   filter: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1 },
-  filterText: { fontSize: 13, fontWeight: '600' },
-  body: { padding: 16, gap: 12 },
+  filterText: { fontWeight: '600' },
+  body: { padding: 20, gap: 12 },
   explainer: { padding: 18, borderRadius: 14, borderWidth: 1, alignItems: 'center', gap: 10 },
-  explainerTitle: { fontSize: 17, fontWeight: '700', textAlign: 'center' },
-  explainerBody: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  explainerTitle: { fontWeight: '700', textAlign: 'center' },
+  explainerBody: { lineHeight: 20, textAlign: 'center' },
   alertCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, borderWidth: 1 },
   alertIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  alertTitle: { fontSize: 15, fontWeight: '700' },
-  alertSubtitle: { fontSize: 13, marginTop: 2 },
+  alertTitle: { fontWeight: '700' },
+  alertSubtitle: { marginTop: 2 },
 });
