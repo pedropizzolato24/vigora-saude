@@ -43,6 +43,10 @@ on:
           - ad-hoc
           - app-store
 
+# Least privilege: só faz checkout e sobe o IPA como artifact do run.
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build iOS IPA
