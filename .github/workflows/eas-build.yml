@@ -12,6 +12,10 @@ on:
           - debug
           - release
 
+# Least privilege: só faz checkout e sobe o APK como artifact do run.
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build Android APK

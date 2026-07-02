@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main, develop]
 
+# Least privilege: este workflow só lê o código e roda testes.
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Rodar Testes (Node ${{ matrix.node-version }})
