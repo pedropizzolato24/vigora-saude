@@ -107,18 +107,15 @@ async function tryDeepLinkEscalation(
       const fullPhone = phone.length <= 11 ? `55${phone}` : phone;
       const url = `whatsapp://send?phone=${fullPhone}&text=${encodeURIComponent(message)}`;
 
-      const canOpen = await Linking.canOpenURL(url);
-      if (canOpen) {
-        await Linking.openURL(url);
-        sent++;
-        // No PII in logs: contact name/phone are personal data (LGPD).
-        console.log(`[Escalation] Deep link opened for a contact`);
-        // Delay between contacts to allow user to send each message
-        await new Promise((r) => setTimeout(r, 2000));
-      } else {
-        failed++;
-        console.log(`[Escalation] Cannot open WhatsApp for a contact`);
-      }
+      // Não usar canOpenURL: no Android 11+ ele retorna false para schemes não
+      // declarados em <queries> (package visibility), mesmo com o WhatsApp
+      // instalado. openURL dispara o intent direto e rejeita se não houver app.
+      await Linking.openURL(url);
+      sent++;
+      // No PII in logs: contact name/phone are personal data (LGPD).
+      console.log(`[Escalation] Deep link opened for a contact`);
+      // Delay between contacts to allow user to send each message
+      await new Promise((r) => setTimeout(r, 2000));
     } catch {
       failed++;
     }
