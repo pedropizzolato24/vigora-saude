@@ -1,5 +1,5 @@
 diff --git a/android/src/main/java/com/expoalarmmodule/Helper.java b/android/src/main/java/com/expoalarmmodule/Helper.java
-index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..d5b12f5b3913fa6883087533fee97328f33af36f 100644
+index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..792e5d157c3046cbc8105ae8da62a25fdd641072 100644
 --- a/android/src/main/java/com/expoalarmmodule/Helper.java
 +++ b/android/src/main/java/com/expoalarmmodule/Helper.java
 @@ -11,6 +11,7 @@ import android.content.res.Resources;
@@ -10,7 +10,56 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..d5b12f5b3913fa6883087533fee97328
  import android.os.Build;
  import android.util.Log;
  
-@@ -162,10 +163,11 @@ public class Helper {
+@@ -51,12 +52,29 @@ public class Helper {
+             );
+         }
+ 
+-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
+-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
+-        } else {
+-            alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
++        // Android 12/12L: SCHEDULE_EXACT_ALARM pode ser revogada pelo usuário
++        // ("Alarmes e lembretes") e USE_EXACT_ALARM só existe no 13+. Sem a
++        // permissão, setExact* lança SecurityException — que aqui derrubaria o
++        // BootReceiver/NotificationActionReceiver. Fallback: alarme inexato
++        // (pode atrasar alguns minutos, mas dispara).
++        try {
++            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
++                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
++                Log.w(TAG, "Exact alarms not permitted - scheduled inexact alarm");
++            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
++                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
++            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
++                alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
++            } else {
++                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
++            }
++        } catch (SecurityException e) {
++            Log.w(TAG, "Exact alarm rejected, falling back to inexact", e);
++            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
++                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
++            } else {
++                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
++            }
+         }
+         Log.d(TAG, "SDK version: " + Build.VERSION.SDK_INT);
+         Log.d(TAG, "scheduling alarm with notification id: " + notificationID);
+@@ -100,6 +118,12 @@ public class Helper {
+     }
+ 
+     static Notification getAlarmNotification(Context context, Alarm alarm, int notificationID) {
++        if (alarm == null) {
++            // PendingIntent obsoleto (alarme já removido do storage): notificação
++            // genérica em vez de NPE — o NPE derrubava o AlarmService antes do
++            // startForeground (ANR "did not call startForeground" no Android 8+).
++            return getNotification(context, notificationID, "", "Vigora", "Toque para abrir o Vigora", false, false, "", "");
++        }
+         return getNotification(context, notificationID, alarm.uid, alarm.title, alarm.description, alarm.showDismiss, alarm.showSnooze, alarm.dismissText, alarm.snoozeText);
+     }
+ 
+@@ -162,10 +186,11 @@ public class Helper {
                  .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                  .setCategory(NotificationCompat.CATEGORY_ALARM)
                  .setAutoCancel(true)
@@ -23,7 +72,7 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..d5b12f5b3913fa6883087533fee97328
                  .setDeleteIntent(pendingIntentDismiss);
  
          // If the dismiss button should be visible.
-@@ -195,6 +197,10 @@ public class Helper {
+@@ -195,6 +220,10 @@ public class Helper {
      private static PendingIntent createOnClickedIntent(Context context, String alarmUid, int notificationID) {
          Intent resultIntent = new Intent(context, Helper.getMainActivityClass(context));
          resultIntent.putExtra("ALARM_UID", alarmUid);
@@ -34,3 +83,68 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..d5b12f5b3913fa6883087533fee97328
  
          PendingIntent pendingIntent = null;
          if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {  
+diff --git a/android/src/main/java/com/expoalarmmodule/Manager.java b/android/src/main/java/com/expoalarmmodule/Manager.java
+index 004075da7464088c26edd8b5e6e2e5a191ec7633..0c99d438397e41c7b7454e67740de805649b4141 100644
+--- a/android/src/main/java/com/expoalarmmodule/Manager.java
++++ b/android/src/main/java/com/expoalarmmodule/Manager.java
+@@ -131,11 +131,16 @@ public class Manager {
+             AlarmDates dates = Storage.getDates(context, activeAlarmUid);
+             if(alarm != null) {
+                 if (alarm.repeating) {
++                    // dates pode ser null (storage inconsistente após limpeza/
++                    // reinstalação) — NPE aqui crasharia o receiver do botão
++                    // "Dispensar". Sem dates, o sync do app reagenda na abertura.
++                    if (dates != null) {
+                     Date current = dates.getCurrentDate();
+                     Date updated = AlarmDates.setNextWeek(current);
+                     dates.update(current, updated);
+                     Storage.saveDates(context, dates);
+                     Helper.scheduleAlarm(context, dates.alarmUid, updated.getTime(), dates.getCurrentNotificationId());
++                    }
+                 } else {
+                     alarm.active = false;
+                     Storage.saveAlarm(context, alarm);
+diff --git a/android/src/main/java/com/expoalarmmodule/Sound.java b/android/src/main/java/com/expoalarmmodule/Sound.java
+index 73b00616707cd5533258ce215fb1fb1e2deafb50..a2ebb659d297512694081e4c1fd73ba26e727854 100644
+--- a/android/src/main/java/com/expoalarmmodule/Sound.java
++++ b/android/src/main/java/com/expoalarmmodule/Sound.java
+@@ -40,12 +40,19 @@ class Sound {
+         try {
+             if (mediaPlayer.isPlaying()) {
+                 stopSound();
+-                stopVibration();
+-                mediaPlayer.release();
+             }
+         } catch (IllegalStateException e) {
+             Log.d(TAG, "Sound has probably been released already");
+         }
++        try {
++            mediaPlayer.release();
++        } catch (Exception e) {
++            Log.d(TAG, "MediaPlayer already released");
++        }
++        // Sempre cancela a vibração: se o som falhou ao iniciar (isPlaying()
++        // false), a versão original nunca chamava stopVibration() e o padrão
++        // repetido (repeat=0) vibrava para sempre.
++        stopVibration();
+     }
+ 
+     private void playSound(Uri soundUri) {
+@@ -100,7 +107,16 @@ class Sound {
+     private Uri getSoundUri(String soundName) {
+         Uri soundUri;
+         if (soundName.equals("default")) {
+-            soundUri = Settings.System.DEFAULT_RINGTONE_URI;
++            // Som de alarme do app (res/raw/alarm_notification.wav, empacotado
++            // pelo plugin expo-notifications) — o mesmo som em qualquer aparelho.
++            // O DEFAULT_RINGTONE_URI original varia por dispositivo e fica MUDO
++            // quando o toque do celular é "Nenhum" (comum em aparelhos antigos).
++            int rawId = context.getResources().getIdentifier("alarm_notification", "raw", context.getPackageName());
++            if (rawId != 0) {
++                return Uri.parse("android.resource://" + context.getPackageName() + "/" + rawId);
++            }
++            Uri alarmUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM);
++            soundUri = alarmUri != null ? alarmUri : Settings.System.DEFAULT_RINGTONE_URI;
+         } else {
+             int resId;
+             if (context.getResources().getIdentifier(soundName, "raw", context.getPackageName()) != 0) {
