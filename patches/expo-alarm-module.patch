@@ -1,5 +1,5 @@
 diff --git a/android/src/main/java/com/expoalarmmodule/Helper.java b/android/src/main/java/com/expoalarmmodule/Helper.java
-index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..792e5d157c3046cbc8105ae8da62a25fdd641072 100644
+index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..3d7739011bdb9a60bd31eaae75de7a286f0f8265 100644
 --- a/android/src/main/java/com/expoalarmmodule/Helper.java
 +++ b/android/src/main/java/com/expoalarmmodule/Helper.java
 @@ -11,6 +11,7 @@ import android.content.res.Resources;
@@ -59,7 +59,22 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..792e5d157c3046cbc8105ae8da62a25f
          return getNotification(context, notificationID, alarm.uid, alarm.title, alarm.description, alarm.showDismiss, alarm.showSnooze, alarm.dismissText, alarm.snoozeText);
      }
  
-@@ -162,10 +186,11 @@ public class Helper {
+@@ -147,7 +171,13 @@ public class Helper {
+         ) {
+         Resources res = context.getResources();
+         String packageName = context.getPackageName();
+-        int smallIconResId = res.getIdentifier("ic_launcher", "mipmap", packageName);
++        // Ícone dedicado de notificação (glifo branco em transparência, gerado
++        // pelo plugin expo-notifications) — o ic_launcher adaptativo vira um
++        // quadrado cinza na status bar de muitos aparelhos. Fallback: launcher.
++        int smallIconResId = res.getIdentifier("notification_icon", "drawable", packageName);
++        if (smallIconResId == 0) {
++            smallIconResId = res.getIdentifier("ic_launcher", "mipmap", packageName);
++        }
+         String channelId = context.getResources().getString(R.string.notification_channel_id);
+     
+         PendingIntent pendingIntentDismiss = createActionIntent(context, alarmUid, id, "DISMISS_ACTION");
+@@ -162,10 +192,11 @@ public class Helper {
                  .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                  .setCategory(NotificationCompat.CATEGORY_ALARM)
                  .setAutoCancel(true)
@@ -72,7 +87,7 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..792e5d157c3046cbc8105ae8da62a25f
                  .setDeleteIntent(pendingIntentDismiss);
  
          // If the dismiss button should be visible.
-@@ -195,6 +220,10 @@ public class Helper {
+@@ -195,6 +226,10 @@ public class Helper {
      private static PendingIntent createOnClickedIntent(Context context, String alarmUid, int notificationID) {
          Intent resultIntent = new Intent(context, Helper.getMainActivityClass(context));
          resultIntent.putExtra("ALARM_UID", alarmUid);

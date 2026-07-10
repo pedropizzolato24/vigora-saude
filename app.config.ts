@@ -150,6 +150,10 @@ const config: ExpoConfig = {
     [
       "expo-notifications",
       {
+        // Ícone dedicado de notificação (glifo branco em transparência) — sem
+        // ele o Android usa o ic_launcher adaptativo, que vira quadrado cinza.
+        "icon": "./assets/images/android-icon-monochrome.png",
+        "color": "#0033CC",
         "sounds": ["./assets/alarm_notification.wav"],
         "defaultChannel": "default"
       }

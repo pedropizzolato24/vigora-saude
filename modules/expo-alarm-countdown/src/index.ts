@@ -53,3 +53,30 @@ export function clearAlarmNotification(title: string): void {
     console.warn('[ExpoAlarmCountdown] clearAlarmNotification failed:', e);
   }
 }
+
+/**
+ * Android 12+: whether the app holds the "Alarms & reminders" special access
+ * (SCHEDULE_EXACT_ALARM). Always true on other platforms/versions.
+ * Fail-open: returns true when the native module is unavailable (Expo Go).
+ */
+export async function canScheduleExactAlarms(): Promise<boolean> {
+  if (Platform.OS !== 'android') return true;
+  try {
+    return await ExpoAlarmCountdown.canScheduleExactAlarms();
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Android 12+: opens the system "Alarms & reminders" screen for this app.
+ * No-op on other platforms/versions.
+ */
+export async function openExactAlarmSettings(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  try {
+    await ExpoAlarmCountdown.openExactAlarmSettings();
+  } catch (e) {
+    console.warn('[ExpoAlarmCountdown] openExactAlarmSettings failed:', e);
+  }
+}

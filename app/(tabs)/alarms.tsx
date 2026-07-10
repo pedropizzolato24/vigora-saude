@@ -31,8 +31,13 @@ import { BrandFonts } from '@/lib/_core/theme';
 import { generateId, useAppContext, type Alarm } from '@/lib/app-context';
 import { scheduleFullAlarm, cancelFullAlarm } from '@/lib/alarm-sync';
 import { openBatteryOptimizationSettings } from '@/lib/battery-optimization';
+import { canScheduleExactAlarms, openExactAlarmSettings } from 'expo-alarm-countdown';
 import { useRouter } from 'expo-router';
 import { MAX_ALARMS } from '@/components/pro-limits';
+
+// Evita repetir o aviso de "Alarmes e lembretes" a cada visita à aba na mesma
+// sessão (a permissão continua sendo checada — só o diálogo não re-aparece).
+let exactAlarmPromptShown = false;
 
 const REPEAT_OPTIONS: { value: Alarm['repeat']; label: string }[] = [
   { value: 'daily', label: 'Diário' },
@@ -113,6 +118,34 @@ export default function AlarmsScreen() {
         buttons: [
           { text: 'Agora não', style: 'cancel' },
           { text: 'Abrir configurações', onPress: () => openBatteryOptimizationSettings() },
+        ],
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Android 12/12L: a permissão "Alarmes e lembretes" pode estar revogada —
+  // sem ela o alarme dispara inexato (pode atrasar minutos). Diferente do
+  // aviso de bateria (uma vez só), este re-checa a permissão a cada visita e
+  // avisa 1x por sessão enquanto ela estiver desligada.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    let cancelled = false;
+    (async () => {
+      const allowed = await canScheduleExactAlarms();
+      if (allowed || cancelled || exactAlarmPromptShown) return;
+      exactAlarmPromptShown = true;
+      showDialog({
+        title: 'Permita alarmes exatos',
+        message:
+          'Para os alarmes tocarem na hora certa, o Vigora precisa da permissão "Alarmes e lembretes". Toque em "Abrir configurações" e ative a chave para o Vigora.',
+        variant: 'warning',
+        buttons: [
+          { text: 'Agora não', style: 'cancel' },
+          { text: 'Abrir configurações', onPress: () => { openExactAlarmSettings(); } },
         ],
       });
     })();
