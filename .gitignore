@@ -86,6 +86,7 @@ docs/claude/
 # EAS Credentials
 credentials/
 credentials.json
+google-service-account.json
 
 # Vigora Redesign
 design_handoff_vigora_b
