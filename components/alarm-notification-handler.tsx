@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Alert, AppState, Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
+import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -53,30 +54,35 @@ function extractAlarmIdFromUid(uid: string): string | null {
 
 
 /**
- * Shows an alert to the user with the escalation result summary.
+ * Builds the escalation result summary shown to the user (via AppDialog).
+ * Returns null when there is nothing to show.
  */
-function showEscalationAlert(result: EscalationResult) {
-  if (result.totalSent === 0 && result.method === 'none') return;
+function buildEscalationDialog(
+  result: EscalationResult
+): { title: string; message: string; variant: 'warning' | 'error' } | null {
+  if (result.totalSent === 0 && result.method === 'none') return null;
 
   let title = 'Escalação Automática';
-  let body = '';
+  let variant: 'warning' | 'error' = 'warning';
+  let message = '';
 
   switch (result.method) {
     case 'deeplink':
-      body = `Mensagens WhatsApp abertas para ${result.deepLinkSent} contato(s) de emergência.\n\nAs mensagens foram abertas no seu WhatsApp pessoal. Confirme o envio de cada uma.`;
+      message = `Mensagens WhatsApp abertas para ${result.deepLinkSent} contato(s) de emergência.\n\nAs mensagens foram abertas no seu WhatsApp pessoal. Confirme o envio de cada uma.`;
       break;
     case 'server_api':
-      body = `Mensagens enviadas automaticamente para ${result.serverApiSent} contato(s) de emergência via WhatsApp Business.\n\nAs mensagens foram enviadas do número do Vigora.`;
+      message = `Mensagens enviadas automaticamente para ${result.serverApiSent} contato(s) de emergência via WhatsApp Business.\n\nAs mensagens foram enviadas do número do Vigora.`;
       break;
     case 'both':
-      body = `Escalação híbrida:\n* ${result.deepLinkSent} contato(s) via seu WhatsApp pessoal\n* ${result.serverApiSent} contato(s) via WhatsApp Business (automático)`;
+      message = `Escalação híbrida:\n* ${result.deepLinkSent} contato(s) via seu WhatsApp pessoal\n* ${result.serverApiSent} contato(s) via WhatsApp Business (automático)`;
       break;
     default:
-      body = 'Nenhum contato de emergência foi notificado. Verifique se há contatos com WhatsApp configurados.';
+      message = 'Nenhum contato de emergência foi notificado. Verifique se há contatos com WhatsApp configurados.';
       title = 'Escalação Falhou';
+      variant = 'error';
   }
 
-  Alert.alert(title, body);
+  return { title, message, variant };
 }
 
 /**
@@ -97,6 +103,7 @@ function showEscalationAlert(result: EscalationResult) {
 export function AlarmNotificationHandler() {
   const { state, dispatch } = useAppContext();
   const router = useRouter();
+  const { dialogProps, showDialog } = useAppDialog();
   const pendingAlarms = useRef<Set<string>>(new Set());
   const navigatedAlarms = useRef<Set<string>>(new Set());
   const escalationTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -194,7 +201,10 @@ export function AlarmNotificationHandler() {
               state.profile?.name || undefined,
               newCount
             ).then((result) => {
-              showEscalationAlert(result);
+              const dialog = buildEscalationDialog(result);
+              if (dialog) {
+                showDialog({ ...dialog, buttons: [{ text: 'OK' }] });
+              }
             }).catch((error) => {
               console.error('[AlarmHandler] Escalation error:', error);
             });
@@ -397,5 +407,5 @@ export function AlarmNotificationHandler() {
     return () => subscription.remove();
   }, [dispatch, router]);
 
-  return null;
+  return <AppDialog {...dialogProps} />;
 }

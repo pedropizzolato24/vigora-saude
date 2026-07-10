@@ -253,11 +253,13 @@ export default function RootLayout() {
         <CaregiverProvider>
         <AppProvider>
           <AlarmSyncInitializer />
-          <AlarmNotificationHandler />
           <OnboardingGate />
           <FontSizeProvider>
           <AccessibilityProvider>
           <AppLockProvider>
+          {/* Precisa do AccessibilityProvider: renderiza AppDialog (resultado
+              da escalação) — fora dele o useAccessibility lança erro. */}
+          <AlarmNotificationHandler />
           <MonitoringInitializer />
           <CheckinInitializer />
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
