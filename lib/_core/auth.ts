@@ -41,6 +41,50 @@ function notifyActiveUser(openId: string | null): void {
   });
 }
 
+// Notificação de "sessão expirou/foi rejeitada pelo servidor" (401/403). Ponto
+// único por onde o app reage a um token inválido: limpa a sessão e manda o
+// usuário reautenticar. Sem UI, fica no _core; a raiz do app assina e roteia
+// para /login. Antes disso o app rodava "logado" com token expirado e todas as
+// chamadas protegidas (heartbeat/sync/eventos) falhavam em silêncio.
+type SessionExpiredListener = () => void;
+const sessionExpiredListeners = new Set<SessionExpiredListener>();
+let handlingUnauthorized = false;
+
+export function subscribeSessionExpired(listener: SessionExpiredListener): () => void {
+  sessionExpiredListeners.add(listener);
+  return () => {
+    sessionExpiredListeners.delete(listener);
+  };
+}
+
+/**
+ * Chamado quando o servidor rejeita a sessão (401/403 em rota protegida).
+ * Limpa token + user info e notifica os assinantes (raiz → /login). Idempotente
+ * dentro de uma rajada: várias chamadas paralelas falhando juntas disparam o
+ * fluxo uma vez só (reset após o tratamento).
+ */
+export async function handleUnauthorized(): Promise<void> {
+  if (handlingUnauthorized) return;
+  handlingUnauthorized = true;
+  try {
+    await removeSessionToken();
+    await clearUserInfo();
+  } finally {
+    sessionExpiredListeners.forEach((listener) => {
+      try {
+        listener();
+      } catch {
+        // um listener com defeito não pode quebrar o fluxo de auth
+      }
+    });
+    // Libera após o ciclo atual para reagrupar rajadas curtas sem travar
+    // permanentemente um novo tratamento após o usuário relogar.
+    setTimeout(() => {
+      handlingUnauthorized = false;
+    }, 3000);
+  }
+}
+
 export async function getSessionToken(): Promise<string | null> {
   try {
     // Web platform uses cookie-based auth, no manual token management needed

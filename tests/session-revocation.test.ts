@@ -56,10 +56,13 @@ function makeRes() {
 }
 
 describe("Fix #9 — session TTL", () => {
-  it("default TTL is 7 days, not 1 year", () => {
-    const SEVEN_DAYS = 1000 * 60 * 60 * 24 * 7;
+  it("default TTL is 30 days, not 1 year", () => {
+    // Sliding session: 30-day base bounds a leaked-token window while an
+    // active device stays alive via auth.refresh on every startup. The
+    // security invariant remains "bounded, not a year".
+    const THIRTY_DAYS = 1000 * 60 * 60 * 24 * 30;
     const ONE_YEAR = 1000 * 60 * 60 * 24 * 365;
-    expect(DEFAULT_SESSION_TTL_MS).toBe(SEVEN_DAYS);
+    expect(DEFAULT_SESSION_TTL_MS).toBe(THIRTY_DAYS);
     expect(DEFAULT_SESSION_TTL_MS).not.toBe(ONE_YEAR);
   });
 

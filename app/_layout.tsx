@@ -26,6 +26,8 @@ import { AlarmNotificationHandler } from '@/components/alarm-notification-handle
 import { MonitoringInitializer } from '@/components/monitoring-initializer';
 import { CheckinInitializer } from '@/components/checkin-initializer';
 import { OnboardingGate } from '@/components/onboarding-gate';
+import { refreshSessionOnStartup } from "@/lib/session-refresh";
+import { subscribeSessionExpired } from "@/lib/_core/auth";
 import {
   SafeAreaFrameContext,
   SafeAreaInsetsContext,
@@ -71,6 +73,19 @@ export default function RootLayout() {
       await requestNotificationPermissions();
     };
     init();
+  }, []);
+
+  // Sliding session + expired-session guard. Refresh the token on startup so an
+  // actively-used device never logs out — a dead session silently disarms the
+  // dead man's switch (heartbeat/sync/events all 401). If the server rejects
+  // the session (token expired / user deleted), route the user back to login.
+  useEffect(() => {
+    refreshSessionOnStartup();
+    const unsubscribe = subscribeSessionExpired(() => {
+      const { router } = require('expo-router');
+      router.replace('/login');
+    });
+    return unsubscribe;
   }, []);
 
   // Handle notification that launched the app (app was closed/killed)

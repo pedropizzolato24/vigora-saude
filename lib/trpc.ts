@@ -29,12 +29,20 @@ export function createTRPCClient() {
           const token = await Auth.getSessionToken();
           return token ? { Authorization: `Bearer ${token}` } : {};
         },
-        // Custom fetch to include credentials for cookie-based auth
-        fetch(url, options) {
-          return fetch(url, {
+        // Custom fetch to include credentials for cookie-based auth. Also
+        // detects a rejected session (401/403) and routes the user back to
+        // login — the same safety net the monitoring calls use, so a UI screen
+        // hitting an expired token doesn't just show an error forever.
+        async fetch(url, options) {
+          const res = await fetch(url, {
             ...options,
             credentials: "include",
           });
+          if (res.status === 401 || res.status === 403) {
+            const Auth = await import("@/lib/_core/auth");
+            Auth.handleUnauthorized().catch(() => {});
+          }
+          return res;
         },
       }),
     ],
