@@ -1,11 +1,16 @@
 package com.vigoraalarmcountdown
 
+import android.app.AlarmManager
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.core.app.NotificationCompat
+import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
@@ -90,6 +95,45 @@ class ExpoAlarmCountdownModule(private val reactContext: ReactApplicationContext
         }
     }
 
+    /**
+     * Whether the app can schedule exact alarms (Android 12+: permissão
+     * "Alarmes e lembretes"). Always true below API 31.
+     */
+    @ReactMethod
+    fun canScheduleExactAlarms(promise: Promise) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val alarmManager =
+                    reactContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                promise.resolve(alarmManager.canScheduleExactAlarms())
+            } else {
+                promise.resolve(true)
+            }
+        } catch (e: Exception) {
+            // Fail-open: se não dá para checar, não incomoda o usuário
+            promise.resolve(true)
+        }
+    }
+
+    /**
+     * Opens the system "Alarms & reminders" screen for THIS app (Android 12+).
+     */
+    @ReactMethod
+    fun openExactAlarmSettings(promise: Promise) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                    data = Uri.parse("package:${reactContext.packageName}")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                reactContext.startActivity(intent)
+            }
+            promise.resolve(null)
+        } catch (e: Exception) {
+            promise.reject("open_settings_failed", e.message, e)
+        }
+    }
+
     private fun buildNotification(
         context: Context,
         title: String,
@@ -99,9 +143,11 @@ class ExpoAlarmCountdownModule(private val reactContext: ReactApplicationContext
         val res = context.resources
         val packageName = context.packageName
 
-        // Use the app launcher icon (same as expo-alarm-module does)
-        val smallIconResId = res.getIdentifier("ic_launcher", "mipmap", packageName)
-            .takeIf { it != 0 } ?: android.R.drawable.ic_dialog_info
+        // Ícone dedicado de notificação (glifo branco); fallback pro launcher
+        val smallIconResId = res.getIdentifier("notification_icon", "drawable", packageName)
+            .takeIf { it != 0 }
+            ?: res.getIdentifier("ic_launcher", "mipmap", packageName)
+                .takeIf { it != 0 } ?: android.R.drawable.ic_dialog_info
 
         val builder = NotificationCompat.Builder(context, ALARM_CHANNEL_ID)
             .setSmallIcon(smallIconResId)

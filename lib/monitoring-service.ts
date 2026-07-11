@@ -96,6 +96,13 @@ async function trpcMutation(
         body: JSON.stringify({ json: input }),
       });
       console.log(`[Monitoring] POST ${procedure} status: ${res.status}`);
+      if (res.status === 401 || res.status === 403) {
+        // Sessão expirou: não adianta re-tentar. Limpa e manda relogar — antes
+        // isso ficava mudo e o dead man's switch seguia desarmado.
+        const Auth = await import("./_core/auth");
+        await Auth.handleUnauthorized();
+        return null;
+      }
       if (!res.ok) {
         const errText = await res.text().catch(() => "(no body)");
         console.warn(
@@ -147,6 +154,11 @@ async function trpcQuery(
       }
       const res = await fetchWithTimeout(url, { headers, credentials: "include" });
       console.log(`[Monitoring] GET ${procedure} status: ${res.status}`);
+      if (res.status === 401 || res.status === 403) {
+        const Auth = await import("./_core/auth");
+        await Auth.handleUnauthorized();
+        return null;
+      }
       if (!res.ok) {
         const errText = await res.text().catch(() => "(no body)");
         console.warn(

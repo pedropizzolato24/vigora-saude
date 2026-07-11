@@ -13,10 +13,18 @@
  *   - Alarme comum: o disparo recém-criado (mais perto de agora) é o resolvido.
  *
  * Em empate, mantém o primeiro encontrado (ordem de inserção/PK).
+ *
+ * `maxWindowMs` limita o quão longe da referência o melhor candidato pode
+ * estar. Sem esse limite, uma confirmação atrasada do disparo de HOJE podia
+ * "consumir" o evento pré-registrado de AMANHÃ (~24h de distância) quando o de
+ * hoje já tinha sido resolvido — marcando amanhã como respondido e deixando o
+ * disparo real de amanhã sem cobertura. Default Infinity mantém o comportamento
+ * dos chamadores que não passam janela.
  */
 export function pickPendingEvent<T extends { scheduledAt: Date }>(
   pending: T[],
-  reference: Date
+  reference: Date,
+  maxWindowMs: number = Infinity
 ): T | null {
   const target = reference.getTime();
   let best: T | null = null;
@@ -28,5 +36,6 @@ export function pickPendingEvent<T extends { scheduledAt: Date }>(
       bestDiff = diff;
     }
   }
+  if (best && bestDiff > maxWindowMs) return null;
   return best;
 }

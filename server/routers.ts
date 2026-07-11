@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { parse as parseCookieHeader } from "cookie";
 import { z } from "zod";
-import { COOKIE_NAME } from "../shared/const.js";
+import { COOKIE_NAME, DEFAULT_SESSION_TTL_MS } from "../shared/const.js";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { sdk, revokeJti } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
@@ -69,6 +69,35 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
+    /**
+     * Sliding session: issue a fresh token for the already-authenticated user
+     * and (on web) reset the session cookie. Called on every app startup
+     * (lib/session-refresh.ts) so an actively-used device never expires —
+     * without this, a session dying after the TTL silently disarms the dead
+     * man's switch (heartbeat/sync/events all start 401ing). The previous
+     * token is left to expire naturally (no revoke) to avoid racing in-flight
+     * requests still carrying it.
+     */
+    refresh: protectedProcedure.mutation(async ({ ctx }) => {
+      const token = await sdk.createSessionToken(ctx.user.openId, {
+        name: ctx.user.name ?? "",
+      });
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.cookie(COOKIE_NAME, token, {
+        ...cookieOptions,
+        maxAge: DEFAULT_SESSION_TTL_MS,
+      });
+      // Só devolve o token no corpo para clientes NATIVOS (que se autenticam via
+      // Bearer e guardam o token no SecureStore). Na web o token vive no cookie
+      // httpOnly acima — devolvê-lo no corpo o exporia ao JS (leitura por XSS),
+      // anulando a proteção httpOnly. Web autentica por cookie, sem Bearer.
+      const authHeader = ctx.req.headers.authorization;
+      const isNativeBearer =
+        typeof authHeader === "string" && authHeader.startsWith("Bearer ");
+      return isNativeBearer
+        ? ({ success: true, token } as const)
+        : ({ success: true } as const);
+    }),
     /**
      * Completes the post-login registration: stores name (possibly edited),
      * phone, and the account type chosen by the user.

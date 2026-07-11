@@ -103,11 +103,11 @@ export default function AmbulanceScreen() {
         {
           text: `Ligar para ${phone}`,
           onPress: async () => {
-            const url = `tel:${phone}`;
-            const canOpen = await Linking.canOpenURL(url);
-            if (canOpen) {
-              await Linking.openURL(url);
-            } else {
+            // Não usar canOpenURL: no Android 11+ retorna false para tel: sem
+            // <queries> no manifest (package visibility), mesmo com discador.
+            try {
+              await Linking.openURL(`tel:${phone}`);
+            } catch {
               showDialog({ title: 'Erro', message: 'Não foi possível abrir o discador. Ligue manualmente para ' + phone, variant: 'error', buttons: [{ text: 'OK' }] });
             }
           },
@@ -149,7 +149,7 @@ export default function AmbulanceScreen() {
                   variant: 'confirm',
                   buttons: [
                     { text: 'Cancelar', style: 'cancel' },
-                    { text: `Ligar ${opt.phone}`, onPress: async () => { const url = `tel:${opt.phone}`; const canOpen = await Linking.canOpenURL(url); if (canOpen) await Linking.openURL(url); else showDialog({ title: 'Erro', message: 'Ligue manualmente para ' + opt.phone, variant: 'error', buttons: [{ text: 'OK' }] }); } },
+                    { text: `Ligar ${opt.phone}`, onPress: async () => { try { await Linking.openURL(`tel:${opt.phone}`); } catch { showDialog({ title: 'Erro', message: 'Ligue manualmente para ' + opt.phone, variant: 'error', buttons: [{ text: 'OK' }] }); } } },
                   ],
                 });
               }}

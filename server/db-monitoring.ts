@@ -270,26 +270,37 @@ export async function updateAlarmEventStatusByAlarmId(
   const db = await getDb();
   if (!db) return;
 
-  // Resolve the pending event whose scheduledAt is closest to the reference
-  // time (clients send "now"). With check-in this picks today's event over
-  // tomorrow's; the old query had no ORDER BY and could resolve an arbitrary
-  // pending event — marking tomorrow's check-in done and suppressing its alert.
-  const pending = await db
+  // Janela máxima entre o evento e a referência (o scheduledAt canônico do
+  // disparo). Impede que uma confirmação atrasada de HOJE consuma o evento
+  // pré-registrado de AMANHÃ (~24h) quando o de hoje já foi resolvido.
+  const MAX_MATCH_WINDOW_MS = 12 * 60 * 60 * 1000;
+
+  // Candidatos: sempre os pendentes. Para uma resposta do usuário
+  // ("responded"), também considera eventos JÁ resolvidos como not_sent/missed
+  // — o servidor pode ter marcado "não enviado/perdido" prematuramente (app
+  // fechado ou resposta após o grace period) e o usuário de fato respondeu.
+  // Sem isso, a resposta real caía no evento pendente de amanhã e o de hoje
+  // ficava eternamente "Não enviado".
+  const statusesToConsider: ("pending" | "not_sent" | "missed")[] =
+    status === "responded" ? ["pending", "not_sent", "missed"] : ["pending"];
+
+  const candidates = await db
     .select()
     .from(alarmEvents)
     .where(
       and(
         eq(alarmEvents.deviceId, deviceId),
         eq(alarmEvents.alarmId, alarmId),
-        eq(alarmEvents.status, "pending")
+        inArray(alarmEvents.status, statusesToConsider)
       )
     );
 
-  const target = pickPendingEvent(pending, scheduledAt);
+  const target = pickPendingEvent(candidates, scheduledAt, MAX_MATCH_WINDOW_MS);
   if (!target) return;
 
   // When the client confirms a missed event it has already escalated client-side.
   // Set warningSent=true so Step 3 of the monitoring job doesn't double-escalate.
+  // (Ao virar "responded" o evento sai do filtro de missed, então não re-escala.)
   const warningSent = status === "missed";
 
   await db
