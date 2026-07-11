@@ -1,3 +1,45 @@
+diff --git a/android/src/main/java/com/expoalarmmodule/AlarmDates.java b/android/src/main/java/com/expoalarmmodule/AlarmDates.java
+index 455375ae411fa22e853dbd8c945124690e703e18..86eb3dc3bf18fb147635e7b0f792cc90d61b2c7e 100644
+--- a/android/src/main/java/com/expoalarmmodule/AlarmDates.java
++++ b/android/src/main/java/com/expoalarmmodule/AlarmDates.java
+@@ -48,6 +48,23 @@ public class AlarmDates {
+         return calendar.getTime();
+     }
+ 
++    /**
++     * Avança a data em passos de intervalDays até ficar no FUTURO.
++     * Substitui o setNextWeek fixo no dismiss: alarme diário repete a cada
++     * 1 dia (a lib original assumia sempre semanal — ficava mudo 6 dias) e,
++     * se a data base estiver no passado (alarme atrasado/dispensado tarde),
++     * avança quantos passos forem precisos em vez de agendar no passado
++     * (que dispararia imediatamente).
++     */
++    public static Date setNextOccurrence (Date date, int intervalDays) {
++        Calendar calendar = Calendar.getInstance();
++        calendar.setTime(date);
++        do {
++            calendar.add(Calendar.DATE, intervalDays);
++        } while (calendar.getTimeInMillis() <= System.currentTimeMillis());
++        return calendar.getTime();
++    }
++
+     public static Date snooze (Date date, int minutes) {
+         Calendar calendar = Calendar.getInstance();
+         calendar.setTime(date);
+@@ -65,6 +82,13 @@ public class AlarmDates {
+     }
+ 
+     public Date getCurrentDate () {
++        // Todos os alarmes do Vigora têm exatamente UMA data por uid (diário,
++        // por-dia-da-semana e soneca usam uids separados). O match por dia da
++        // semana abaixo retornava null para um alarme dispensado depois da
++        // meia-noite (dia da semana já virou) — e o dismiss não reagendava.
++        if (dates.length == 1) {
++            return dates[0];
++        }
+         Calendar calendar = Calendar.getInstance();
+         int currentDay = calendar.get(Calendar.DAY_OF_WEEK);
+         for (Date date : dates) {
 diff --git a/android/src/main/java/com/expoalarmmodule/Helper.java b/android/src/main/java/com/expoalarmmodule/Helper.java
 index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..3d7739011bdb9a60bd31eaae75de7a286f0f8265 100644
 --- a/android/src/main/java/com/expoalarmmodule/Helper.java
@@ -99,19 +141,26 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..3d7739011bdb9a60bd31eaae75de7a28
          PendingIntent pendingIntent = null;
          if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {  
 diff --git a/android/src/main/java/com/expoalarmmodule/Manager.java b/android/src/main/java/com/expoalarmmodule/Manager.java
-index 004075da7464088c26edd8b5e6e2e5a191ec7633..0c99d438397e41c7b7454e67740de805649b4141 100644
+index 004075da7464088c26edd8b5e6e2e5a191ec7633..7f59f547a0fc06accdb972ca842c42b17d07ec1a 100644
 --- a/android/src/main/java/com/expoalarmmodule/Manager.java
 +++ b/android/src/main/java/com/expoalarmmodule/Manager.java
-@@ -131,11 +131,16 @@ public class Manager {
+@@ -131,11 +131,21 @@ public class Manager {
              AlarmDates dates = Storage.getDates(context, activeAlarmUid);
              if(alarm != null) {
                  if (alarm.repeating) {
-+                    // dates pode ser null (storage inconsistente após limpeza/
-+                    // reinstalação) — NPE aqui crasharia o receiver do botão
-+                    // "Dispensar". Sem dates, o sync do app reagenda na abertura.
-+                    if (dates != null) {
-                     Date current = dates.getCurrentDate();
-                     Date updated = AlarmDates.setNextWeek(current);
+-                    Date current = dates.getCurrentDate();
+-                    Date updated = AlarmDates.setNextWeek(current);
++                    // dates/current podem ser null (storage inconsistente após
++                    // limpeza/reinstalação) — NPE aqui crasharia o receiver do
++                    // botão "Dispensar". Sem eles, o app reagenda na abertura.
++                    Date current = dates != null ? dates.getCurrentDate() : null;
++                    if (current != null) {
++                    // BUG CRÍTICO corrigido: a lib original sempre reagendava
++                    // +7 dias (setNextWeek) — alarme DIÁRIO do Vigora (uid sem
++                    // sufixo "_wd") ficava mudo por 6 dias após ser dispensado.
++                    // Diário = +1 dia; por-dia-da-semana (uid "..._wd<N>") = +7.
++                    int intervalDays = alarm.uid.contains("_wd") ? 7 : 1;
++                    Date updated = AlarmDates.setNextOccurrence(current, intervalDays);
                      dates.update(current, updated);
                      Storage.saveDates(context, dates);
                      Helper.scheduleAlarm(context, dates.alarmUid, updated.getTime(), dates.getCurrentNotificationId());
