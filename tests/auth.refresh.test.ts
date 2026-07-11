@@ -38,11 +38,14 @@ function makeUser(openId: string): User {
   };
 }
 
-function makeCtx(user: User | null) {
+function makeCtx(user: User | null, opts: { bearer?: boolean } = {}) {
   const cookies: { name: string; value: string; options: unknown }[] = [];
+  const headers: Record<string, string> = {};
+  // Nativo autentica via Bearer; web via cookie (sem Authorization).
+  if (opts.bearer) headers.authorization = "Bearer some-native-token";
   const ctx = {
     user,
-    req: { headers: {}, protocol: "https" },
+    req: { headers, protocol: "https" },
     res: {
       cookie: (name: string, value: string, options: unknown) =>
         cookies.push({ name, value, options }),
@@ -65,27 +68,33 @@ describe("auth.refresh — sliding session", () => {
     );
   });
 
-  it("issues a fresh, valid token for the authenticated user", async () => {
-    const { ctx } = makeCtx(makeUser("vovo-open-id"));
+  it("native (Bearer): issues a fresh, valid token in the response body", async () => {
+    const { ctx } = makeCtx(makeUser("vovo-open-id"), { bearer: true });
     const caller = appRouter.createCaller(ctx);
 
     const result = await caller.auth.refresh();
 
     expect(result.success).toBe(true);
-    expect(typeof result.token).toBe("string");
-    expect(result.token.length).toBeGreaterThan(0);
+    expect("token" in result && typeof result.token === "string").toBe(true);
+    const token = (result as { token: string }).token;
+    expect(token.length).toBeGreaterThan(0);
 
     // The new token must verify and carry the same identity.
-    const decoded = await sdk.verifySession(result.token);
+    const decoded = await sdk.verifySession(token);
     expect(decoded).not.toBeNull();
     expect(decoded!.openId).toBe("vovo-open-id");
   });
 
-  it("resets the web session cookie", async () => {
+  it("web (cookie): resets the cookie but does NOT leak the token in the body", async () => {
+    // No Bearer header => web client. The token must stay in the httpOnly
+    // cookie only; returning it in the body would expose it to JS (XSS).
     const { ctx, cookies } = makeCtx(makeUser("vovo-open-id"));
     const caller = appRouter.createCaller(ctx);
 
-    await caller.auth.refresh();
+    const result = await caller.auth.refresh();
+
+    expect(result.success).toBe(true);
+    expect("token" in result).toBe(false);
 
     expect(cookies).toHaveLength(1);
     expect(cookies[0].name).toBe("app_session_id");

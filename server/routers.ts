@@ -87,9 +87,16 @@ export const appRouter = router({
         ...cookieOptions,
         maxAge: DEFAULT_SESSION_TTL_MS,
       });
-      // Native reads `token` and stores it in SecureStore; web relies on the
-      // cookie above and ignores it.
-      return { success: true, token } as const;
+      // Só devolve o token no corpo para clientes NATIVOS (que se autenticam via
+      // Bearer e guardam o token no SecureStore). Na web o token vive no cookie
+      // httpOnly acima — devolvê-lo no corpo o exporia ao JS (leitura por XSS),
+      // anulando a proteção httpOnly. Web autentica por cookie, sem Bearer.
+      const authHeader = ctx.req.headers.authorization;
+      const isNativeBearer =
+        typeof authHeader === "string" && authHeader.startsWith("Bearer ");
+      return isNativeBearer
+        ? ({ success: true, token } as const)
+        : ({ success: true } as const);
     }),
     /**
      * Completes the post-login registration: stores name (possibly edited),
