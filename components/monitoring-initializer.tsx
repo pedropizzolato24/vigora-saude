@@ -19,6 +19,7 @@ import {
   checkOfflineAlarms,
   getWarningLog,
 } from "@/lib/monitoring-service";
+import * as Auth from "@/lib/_core/auth";
 import * as Location from "expo-location";
 import { Platform } from "react-native";
 import { AppDialog, useAppDialog } from "@/components/app-dialog";
@@ -78,23 +79,35 @@ function translateSeverity(level: string): string {
 export function MonitoringInitializer() {
   const { state } = useAppContext();
   const initializedRef = useRef(false);
+  const bootstrappedOpenIdRef = useRef<string | null>(null);
   const lastAlarmHashRef = useRef<string>("");
+  // Ref sempre com o state mais recente: o bootstrap pode rodar num login
+  // TARDIO (sessão ausente/expirada no mount), quando o closure do efeito já
+  // capturou um state velho.
+  const stateRef = useRef(state);
+  stateRef.current = state;
   const { dialogProps, showDialog, hideDialog } = useAppDialog();
 
-  // Register device and start heartbeat on mount
+  // Bootstrap do monitoramento (registro + heartbeat + sync + aviso de offline)
+  // amarrado ao usuário AUTENTICADO — não só ao mount. Antes rodava uma vez no
+  // mount e marcava initializedRef=true na hora; se a sessão não existia ainda
+  // (token expirado, login posterior), TODAS as chamadas caíam em 401 e o dead
+  // man's switch nunca era armado, sem nunca re-tentar após o login.
   useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
+    const bootstrap = async (openId: string) => {
+      if (bootstrappedOpenIdRef.current === openId) return; // já feito p/ este usuário
+      bootstrappedOpenIdRef.current = openId;
+      initializedRef.current = true;
+      const s = stateRef.current;
 
-    const init = async () => {
       try {
         // Get current location ONLY if the user opted in to location sharing.
         // Respecting the autoShareLocation setting (Privacy) — see Fix #13.
-        const optedIn = state.settings?.autoShareLocation ?? false;
+        const optedIn = s.settings?.autoShareLocation ?? false;
         const location = await getCurrentLocationStringIfOptedIn(optedIn);
 
         // Build emergency contacts payload
-        const contacts = state.emergencyContacts.map((c) => ({
+        const contacts = s.emergencyContacts.map((c) => ({
           id: c.id,
           name: c.name,
           phone: c.phone,
@@ -105,29 +118,29 @@ export function MonitoringInitializer() {
 
         // Register device with server
         await registerDevice({
-          userName: state.anamnesis?.fullName,
+          userName: s.anamnesis?.fullName,
           emergencyContacts: contacts,
           lastLocation: location,
         });
 
-        // Start heartbeat service. We re-read the opt-in flag on each
-        // tick (via closure over `state`) so toggling it in Settings
-        // takes effect without a restart.
+        // Start heartbeat service. We re-read the opt-in flag on each tick
+        // (via stateRef) so toggling it in Settings takes effect without a
+        // restart. startHeartbeat is idempotente (no-op se já rodando).
         startHeartbeat(() =>
           getCurrentLocationStringIfOptedIn(
-            state.settings?.autoShareLocation ?? false
+            stateRef.current.settings?.autoShareLocation ?? false
           )
         );
 
         // Sync current alarms
-        await syncAlarmsToServer(state.alarms);
+        await syncAlarmsToServer(s.alarms);
 
         // Check for offline alarms (not_sent) from previous sessions
-        const { notSentCount } = await checkOfflineAlarms(state.alarms);
+        const { notSentCount } = await checkOfflineAlarms(s.alarms);
 
         if (notSentCount > 0) {
           console.log(
-            `[Monitoring] ${notSentCount} alarm(s) were not sent while device was offline`
+            `[Monitoring] ${notSentCount} alarm(s) were not confirmed while the app was closed/offline`
           );
 
           // Check if the server sent any warnings to contacts during the offline period
@@ -141,7 +154,7 @@ export function MonitoringInitializer() {
 
           // Build the dialog message
           const alarmWord = notSentCount === 1 ? "alarme" : "alarmes";
-          let message = `Nas últimas 48 horas, ${notSentCount} ${alarmWord} de remédio não ${notSentCount === 1 ? "tocou" : "tocaram"} — provavelmente o celular estava desligado, sem bateria ou sem conexão.`;
+          let message = `Nas últimas 48 horas, ${notSentCount} ${alarmWord} de remédio não ${notSentCount === 1 ? "foi confirmado" : "foram confirmados"} — o celular pode ter ficado desligado, sem internet ou com o app fechado.`;
 
           if (recentWarnings.length > 0) {
             const lastWarning = recentWarnings[0];
@@ -157,7 +170,7 @@ export function MonitoringInitializer() {
           // Small delay to let the app fully initialize before showing the dialog
           setTimeout(() => {
             showDialog({
-              title: "Alarmes Perdidos",
+              title: "Alarmes não confirmados",
               message,
               variant: recentWarnings.length > 0 ? "warning" : "info",
               buttons: [
@@ -173,13 +186,34 @@ export function MonitoringInitializer() {
 
         console.log("[Monitoring] Initialized successfully");
       } catch (error) {
+        // Falhou (rede/401): libera o marcador para re-tentar no próximo
+        // login/notify em vez de ficar preso sem monitoramento.
+        bootstrappedOpenIdRef.current = null;
         console.warn("[Monitoring] Initialization failed:", error);
       }
     };
 
-    init();
+    // Startup já-logado: nenhuma notificação de troca de conta é emitida
+    // (setUserInfo só roda no login), então dispara o bootstrap na mão.
+    (async () => {
+      const user = await Auth.getUserInfo();
+      if (user?.openId) bootstrap(user.openId);
+    })();
+
+    // Login posterior (sessão estava ausente/expirada no mount): re-bootstrap.
+    // Logout: para o heartbeat e libera para re-armar no próximo login.
+    const unsubscribe = Auth.subscribeActiveUser((openId) => {
+      if (openId) {
+        bootstrap(openId);
+      } else {
+        stopHeartbeat();
+        bootstrappedOpenIdRef.current = null;
+        initializedRef.current = false;
+      }
+    });
 
     return () => {
+      unsubscribe();
       stopHeartbeat();
     };
   }, []);
