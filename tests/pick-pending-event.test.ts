@@ -43,4 +43,22 @@ describe("pickPendingEvent", () => {
     const now = new Date("2026-06-04T10:00:00");
     expect(pickPendingEvent([a, b], now)?.id).toBe(1);
   });
+
+  it("janela: NÃO consome o evento de amanhã quando só ele sobrou (resposta atrasada de hoje)", () => {
+    // Cenário do bug: o de hoje já virou not_sent e saiu da lista; só o
+    // pré-registrado de amanhã (~24h de distância) está pendente. Com janela
+    // de 12h, a resposta de hoje não deve resolver o de amanhã.
+    const amanha: Ev = { id: 2, scheduledAt: new Date("2026-06-05T12:00:00") };
+    const hojeRef = new Date("2026-06-04T12:05:00");
+    const WINDOW_12H = 12 * 60 * 60 * 1000;
+    expect(pickPendingEvent([amanha], hojeRef, WINDOW_12H)).toBeNull();
+  });
+
+  it("janela: resolve o evento de hoje dentro da janela mesmo com o de amanhã na lista", () => {
+    const hoje: Ev = { id: 1, scheduledAt: new Date("2026-06-04T12:00:00") };
+    const amanha: Ev = { id: 2, scheduledAt: new Date("2026-06-05T12:00:00") };
+    const ref = new Date("2026-06-04T12:20:00");
+    const WINDOW_12H = 12 * 60 * 60 * 1000;
+    expect(pickPendingEvent([amanha, hoje], ref, WINDOW_12H)?.id).toBe(1);
+  });
 });
