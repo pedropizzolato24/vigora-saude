@@ -5,8 +5,9 @@
  * Displays each alarm event with its status:
  *   ✅ responded  - user dismissed the alarm
  *   ❌ missed     - alarm timed out without response (SOS sent)
- *   📵 not_sent   - device was offline when alarm was due
- *   ⏳ pending    - alarm is currently active
+ *   📵 not_sent   - the app never confirmed it (device off, no network, or app closed)
+ *   ⏳ pending    - alarm is currently active, awaiting response
+ *   📅 scheduled  - pending event whose scheduledAt is still in the future
  *
  * Also shows server warning log (messages sent to emergency contacts).
  */
@@ -62,8 +63,8 @@ const STATUS_CONFIG = {
   not_sent: {
     icon: 'phone-disabled' as const,
     color: '#F0C24A',
-    label: 'Não enviado',
-    description: 'Celular estava offline quando o alarme disparou',
+    label: 'Não confirmado',
+    description: 'O app não confirmou este alarme (celular desligado, sem internet ou app fechado)',
   },
   pending: {
     icon: 'access-time' as const,
@@ -71,7 +72,28 @@ const STATUS_CONFIG = {
     label: 'Pendente',
     description: 'Alarme ativo aguardando resposta',
   },
+  // Evento pré-registrado do PRÓXIMO disparo (scheduledAt no futuro). É como o
+  // servidor sabe cobrar um alarme que nunca tocar — mas não é um alarme ativo
+  // "aguardando resposta"; mostrar como "Pendente" confundia (parecia travado).
+  scheduled: {
+    icon: 'event-available' as const,
+    color: '#6B7280',
+    label: 'Agendado',
+    description: 'Próximo disparo programado — aguardando o horário',
+  },
 };
+
+/**
+ * Um evento "pending" com scheduledAt no futuro é o disparo AGENDADO (não um
+ * alarme ativo sem resposta). Distinguir evita o "Pendente" eterno no topo do
+ * histórico, que na verdade é o alarme de amanhã.
+ */
+function getDisplayStatus(event: AlarmEvent): keyof typeof STATUS_CONFIG {
+  if (event.status === 'pending' && new Date(event.scheduledAt).getTime() > Date.now()) {
+    return 'scheduled';
+  }
+  return event.status;
+}
 
 const WARNING_LEVEL_CONFIG = {
   1: { color: '#F0C24A', label: 'Aviso leve', icon: 'warning' as const },
@@ -161,7 +183,7 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
           </View>
           <View style={[styles.summaryCard, { backgroundColor: colors.warningLight }]}>
             <Text style={[styles.summaryNum, { color: colors.warningDark }]}>{notSentCount}</Text>
-            <Text style={[styles.summaryLabel, { color: colors.warningDark }]}>Offline</Text>
+            <Text style={[styles.summaryLabel, { color: colors.warningDark }]}>Não confirmados</Text>
           </View>
         </View>
 
@@ -212,7 +234,7 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
                 </View>
               ) : (
                 events.map((event) => {
-                  const cfg = STATUS_CONFIG[event.status] ?? STATUS_CONFIG.pending;
+                  const cfg = STATUS_CONFIG[getDisplayStatus(event)] ?? STATUS_CONFIG.pending;
                   return (
                     <View key={event.id} style={[styles.eventCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                       <View style={[styles.statusDot, { backgroundColor: cfg.color }]} />
