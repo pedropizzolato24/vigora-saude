@@ -85,6 +85,26 @@ describe("auth.refresh — sliding session", () => {
     expect(decoded!.openId).toBe("vovo-open-id");
   });
 
+  it("native (Bearer): a user with NO name still gets a token that verifies", async () => {
+    // Regressão: contas sem nome no banco (cadastro por telefone, ou Google/
+    // e-mail que não gravou nome) tinham ctx.user.name === null. O refresh emitia
+    // `name: ""`, que verifySession REJEITA -> 403 na requisição seguinte ->
+    // usuário chutado de volta pro login logo após entrar.
+    const user = makeUser("sem-nome-open-id");
+    user.name = null;
+    const { ctx } = makeCtx(user, { bearer: true });
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.auth.refresh();
+
+    expect(result.success).toBe(true);
+    const token = (result as { token: string }).token;
+    // O token PRECISA verificar — senão a próxima chamada protegida dá 403.
+    const decoded = await sdk.verifySession(token);
+    expect(decoded).not.toBeNull();
+    expect(decoded!.openId).toBe("sem-nome-open-id");
+  });
+
   it("web (cookie): resets the cookie but does NOT leak the token in the body", async () => {
     // No Bearer header => web client. The token must stay in the httpOnly
     // cookie only; returning it in the body would expose it to JS (XSS).
