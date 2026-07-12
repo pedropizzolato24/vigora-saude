@@ -79,8 +79,14 @@ export const appRouter = router({
      * requests still carrying it.
      */
     refresh: protectedProcedure.mutation(async ({ ctx }) => {
+      // O nome vai DENTRO do JWT e verifySession REJEITA token com name vazio
+      // (mesma invariante que issueSession protege no login). Contas sem nome no
+      // banco (cadastro por telefone, ou Google/e-mail que não gravou nome) têm
+      // ctx.user.name === null; emitir `name: ""` aqui gerava um token que falha
+      // na verificação da PRÓXIMA requisição -> 403 -> handleUnauthorized() ->
+      // usuário chutado de volta pro login logo após entrar. Fallback p/ "Usuário".
       const token = await sdk.createSessionToken(ctx.user.openId, {
-        name: ctx.user.name ?? "",
+        name: ctx.user.name?.trim() || "Usuário",
       });
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.cookie(COOKIE_NAME, token, {

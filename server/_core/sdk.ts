@@ -82,10 +82,17 @@ class SDKServer {
     const expirationSeconds = Math.floor((issuedAt + expiresInMs) / 1000);
     const jti = randomBytes(16).toString("hex");
 
+    // Invariante de segurança: verifySession REJEITA token com name/appId vazio.
+    // Emitir um aqui produz um token que falha na própria verificação (403 na
+    // requisição seguinte), então nenhum caller pode gerar um token auto-inválido:
+    // coage nome vazio para um fallback não-vazio. O nome no JWT é só cosmético
+    // (authenticateRequest re-busca o usuário por openId), então isto é seguro.
+    const safeName = payload.name?.trim() || "Usuário";
+
     return new SignJWT({
       openId: payload.openId,
       appId: payload.appId,
-      name: payload.name,
+      name: safeName,
       jti,
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
