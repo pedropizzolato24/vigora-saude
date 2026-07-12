@@ -278,3 +278,165 @@ independente.
 - **Eliminar `synced_alarms`** assume que o único leitor é `getStatus`
   (auditado nesta data); reconfirmar na implementação que nada novo passou a
   lê-la antes de dropar.
+
+---
+
+# Anexo A — Login opcional via "conta anônima" (garfo de identidade)
+
+**Status:** Proposto / em discussão. Direção definida, mas ainda não decidido
+implementar. Redefine o papel do `deviceId` — por isso vive junto deste spec.
+
+## Motivação
+
+O público-alvo (60+, baixa fluência tecnológica) tem fricção real com
+login/senha — documentado em `docs/strategy/how-monitored-is-reached.md`
+("*tanta senha, senha pra isso, senha pra aquilo... é preferível que nem
+mexa*") e com **medo de "desconfigurar"** ao mexer no app. Hoje o
+`OnboardingGate` **exige login** (não há caminho de convidado): sem conta, não
+se chega ao app. A pergunta: dá para tornar o login **opcional** sem perder as
+features que tornam o app único?
+
+Nota importante: sempre que este anexo diz "login", entende-se **qualquer
+método** — Google, e-mail+senha, telefone, Apple (quando a App Store liberar).
+Nada aqui é específico do Google.
+
+## Caminhos descartados
+
+- **Nível 1 — anônimo de verdade, sem nenhuma conta no servidor.** Reintroduz
+  identidade por device (o oposto do refactor), sem cloud backup e **sem
+  monitoramento pela família** — mata o diferencial. Descartado.
+- **Nível 2 — login adiado com "nag" ("use agora, proteja depois").** Para este
+  público, adiar → na prática **nunca loga** (medo de desconfigurar). Um app que
+  fica pedindo login depois gera ansiedade e é ignorado. Descartado como padrão.
+- **Config remota pelo cuidador** como bala de prata: descartada. O "cuidador"
+  pode ser o cônjuge 60+ — "configurar o aparelho de outra pessoa à distância" é
+  *mais* assustador, não menos. É **um** canal, não a solução.
+
+## Modelo escolhido: "conta anônima", não "sem conta"
+
+Em vez de uma tabela separada de "usuários sem conta" chaveada por `deviceId`
+(que forçaria caminhos duplicados `deviceId` OU `openId` em todo lugar —
+justamente o que este refactor remove), trata-se o usuário sem login como uma
+**conta real que ainda não vinculou um login externo**:
+
+1. Primeiro boot → gera `deviceId` → onboarding → usuário escolhe o tipo.
+2. Ao "seguir sem login", o servidor **cria uma conta real** (`users` row) com um
+   `openId` normal, `loginMethod: "anonymous"`, sem e-mail/telefone/OAuth. O
+   `deviceId` (no SecureStore) é a **credencial** que reautentica nessa conta —
+   o "login invisível" dela.
+3. **Tudo continua chaveado por `openId`** — alarmes, eventos, dead man's switch
+   — idêntico para conta anônima e real. **A identidade única do refactor
+   sobrevive intacta; zero caminho duplicado.**
+4. "Fazer login" um dia = **vincular uma identidade** (qualquer provider) à conta
+   anônima que já existe → o `openId` **não muda** → **não há migração de
+   dados** (os dados nunca trocam de dono; só se anexa uma identidade).
+
+Reframe da decisão de identidade: a "identidade única = `openId`" passa a valer
+**para todos, inclusive convidados**. E o `deviceId` — que o corpo do spec
+rebaixa a metadado — ganha um segundo papel legítimo: **credencial da conta
+anônima**.
+
+## Restrições (inerentes, aceitas)
+
+- **(a) Sem vínculo cuidador↔monitorado enquanto anônimo.** O vínculo precisa de
+  um `openId` que **sobreviva a reinstalar**; a conta anônima só é recuperável
+  pelo `deviceId` do SecureStore, que morre no reinstall. Logo, vincular cuidador
+  **exige** ter linkado um login. Enquanto anônimo, o dead man's switch avisa só
+  os contatos de emergência salvos (como hoje).
+- **(b) Sem backup ao reinstalar/trocar de aparelho.** Dados ficam no banco por
+  `openId_anônimo`, mas a única chave para reautenticar (o `deviceId`) se perde →
+  dados ficam órfãos (candidatos a expurgo, LGPD). Ao linkar um login, o reinstall
+  recupera via provider → mesmo `openId` → dados de volta.
+
+O bug original (duas contas no mesmo aparelho) continua resolvido: anônima e
+logada = dois `openId` = zero colisão.
+
+## Custos honestos
+
+1. **Falso alarme ao "sumir" (ver Anexo B).** Uma conta anônima abandonada
+   (factory reset) continua com heartbeat velho → o switch escala pros contatos.
+   **Não é perda silenciosa — é falso alarme, e já existe hoje para contas reais
+   também.** Tratado no Anexo B; mitigação específica aqui: expurgar contas
+   anônimas órfãs na retenção.
+2. **Superfície de abuso.** Qualquer um cria infinitas contas anônimas e dispara
+   WhatsApp/push. Precisa rate-limit por device/IP (o alerta de emergência já tem
+   rate-limit — estender ao cadastro anônimo).
+3. **Onboarding ainda precisa explicar o upgrade** — mas **sem pressão**, porque
+   o app funciona 100% sem ele. Enquadrar como **proteção da família**
+   ("*ligue sua conta para não perder seus avisos se trocar de celular*"), não
+   como "faça login para continuar".
+4. **Caso raro de merge:** linkar um login cujo provider **já tinha conta** (usado
+   em outro aparelho) exige mesclar os dados locais anônimos na conta existente.
+   É a **única** migração real, e é borda.
+
+## Viabilidade no código atual (esboço)
+
+- Novo endpoint `/api/auth/anonymous` recebe o `deviceId` e emite `sessionToken`
+  para um `openId` anônimo (reusa `sdk.createSessionToken`).
+- `authenticateRequest` já resolve tudo por `openId` → só precisa existir a
+  `users` row anônima.
+- `resolveAccount` (`server/db-auth.ts`) ganha um ramo: "se há sessão anônima
+  ativa, vincule o provider a **este** `openId` em vez de criar outro".
+- Cliente: `OnboardingGate` deixa de ser parede; após o tipo, chama o endpoint
+  anônimo e entra. O `deviceId` no SecureStore é a chave.
+
+## Item de copy em aberto: renomear "monitorado"
+
+"Monitorado" soa clínico/vigilante. Trocar o rótulo abstrato por **intenção em
+primeira pessoa** é mais acolhedor *e* mais fácil para o idoso entender:
+- **"É para mim"** vs **"É para alguém que eu cuido"**, ou
+- **"Quero me cuidar"** vs **"Quero cuidar de alguém"**.
+Para um substantivo, "**acompanhado(a)**" é mais quente que "monitorado".
+Decisão de copy à parte — testar com gente do público.
+
+---
+
+# Anexo B — Achado: falso alarme do dead man's switch por inatividade
+
+**Status:** Bug pré-existente, independente da decisão de login. Corrigir de
+qualquer forma.
+
+## O problema
+
+O `monitoring-job.ts` tem **dois** caminhos de escalação:
+
+- **Baseado em evento** (Passos 1/3/4): dispara quando um alarme/check-in
+  **realmente venceu sem confirmação**. Sinal *correto* de perigo.
+- **Baseado em inatividade** (Passo 2): dispara por **pura ausência de
+  heartbeat**. `getInactiveDevices` retorna todo device com `lastSeenAt` acima de
+  **30 min**, **sem** filtrar por alarme perdido. Havendo contato/cuidador →
+  escala (nível 1 aos 30 min, 2 às 2h, 3 às 6h).
+
+O heartbeat só roda com o app **em primeiro plano**. Logo, hoje, **qualquer**
+destes faz o servidor ver a conta "offline" e avisar a família:
+
+- desinstalar sem excluir a conta;
+- **fazer logout** (o `stopHeartbeat` é só no cliente — nada no servidor desarma;
+  a linha de `device_heartbeat` fica com o timestamp velho);
+- celular desligado / sem bateria;
+- **só deixar o app em segundo plano** tempo suficiente.
+
+A retenção não protege: `purgeStaleData` apaga eventos/avisos antigos e limpa
+localização, mas **não remove `device_heartbeat` nem `app_users`** — a projeção
+fica "armada" quase para sempre. **Não há hoje nenhum sistema que previna isso.**
+
+Consequência: o Passo 2 **confunde "app sumiu" com "pessoa em perigo"**.
+
+## Como resolver (3 alavancas, da mais limpa à mais defensiva)
+
+1. **Escalar por evento perdido, não por inatividade pura.** Um alarme/check-in
+   vencido sem confirmação É o sinal de perigo; "app fora do foreground há 30
+   min" não é. Remover o Passo 2 ou **gateá-lo** para só disparar havendo
+   evento esperado e não confirmado (Passos 3/4 já fazem isso). Elimina o falso
+   alarme de desinstalar/logout/segundo-plano quando não havia nada a confirmar.
+   **Recomendada como base.**
+2. **Desarmar explicitamente no logout.** O logout chama um endpoint que pausa o
+   monitoramento (ou remove a projeção) → sair da conta não dispara a família.
+   Desinstalar não consegue avisar o servidor → para esse caso, alavanca 1 +
+   threshold bem maior que 30 min.
+3. **Expurgar contas anônimas/projeções órfãs.** Incluir `device_heartbeat`
+   (`account_liveness`, no modelo novo) e a conta anônima no purge de retenção,
+   para uma conta abandonada parar de "existir" no switch após N dias.
+
+Meta: o dead man's switch dispara por **risco real**, não por **app ausente** —
+igual para conta normal e anônima.
