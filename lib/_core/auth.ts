@@ -50,6 +50,11 @@ type SessionExpiredListener = () => void;
 const sessionExpiredListeners = new Set<SessionExpiredListener>();
 let handlingUnauthorized = false;
 
+// Política de "que status HTTP encerra a sessão" (só 401, nunca 403). Vive num
+// módulo puro (sem deps de RN/Expo) para ser testável; re-exportada aqui para
+// os call sites usarem via `Auth.isSessionExpiredStatus`. Ver session-status.ts.
+export { isSessionExpiredStatus } from "./session-status";
+
 export function subscribeSessionExpired(listener: SessionExpiredListener): () => void {
   sessionExpiredListeners.add(listener);
   return () => {

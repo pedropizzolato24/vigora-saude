@@ -96,10 +96,11 @@ async function trpcMutation(
         body: JSON.stringify({ json: input }),
       });
       console.log(`[Monitoring] POST ${procedure} status: ${res.status}`);
-      if (res.status === 401 || res.status === 403) {
-        // Sessão expirou: não adianta re-tentar. Limpa e manda relogar — antes
-        // isso ficava mudo e o dead man's switch seguia desarmado.
-        const Auth = await import("./_core/auth");
+      if (Auth.isSessionExpiredStatus(res.status)) {
+        // Sessão expirou (401): não adianta re-tentar. Limpa e manda relogar —
+        // antes isso ficava mudo e o dead man's switch seguia desarmado.
+        // 403 (device de outro usuário ao trocar de conta) NÃO desloga — cai no
+        // tratamento de !res.ok abaixo e falha em silêncio. Ver isSessionExpiredStatus.
         await Auth.handleUnauthorized();
         return null;
       }
@@ -154,8 +155,8 @@ async function trpcQuery(
       }
       const res = await fetchWithTimeout(url, { headers, credentials: "include" });
       console.log(`[Monitoring] GET ${procedure} status: ${res.status}`);
-      if (res.status === 401 || res.status === 403) {
-        const Auth = await import("./_core/auth");
+      if (Auth.isSessionExpiredStatus(res.status)) {
+        // Só 401 desloga; 403 (posse de device) falha em silêncio. Ver POST acima.
         await Auth.handleUnauthorized();
         return null;
       }

@@ -60,9 +60,12 @@ export async function refreshSessionOnStartup(): Promise<void> {
       clearTimeout(timer);
     }
 
-    // Server rejected the session: token expired / user deleted. Clear and
-    // send the user to login instead of running "logged in but dead".
-    if (res.status === 401 || res.status === 403) {
+    // Server rejected the session (401 = token expirado / usuário deletado):
+    // limpa e manda pro login em vez de rodar "logado mas morto". Um 403 aqui
+    // NÃO desloga (não existe 403 de negócio no refresh; e 403 nunca significa
+    // sessão inválida — ver isSessionExpiredStatus): cai no !res.ok abaixo e
+    // mantém a sessão atual.
+    if (Auth.isSessionExpiredStatus(res.status)) {
       console.warn("[SessionRefresh] Session rejected by server, signing out");
       await Auth.handleUnauthorized();
       return;
