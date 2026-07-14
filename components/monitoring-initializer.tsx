@@ -2,17 +2,16 @@
  * monitoring-initializer.tsx
  *
  * Invisible component that bootstraps the server monitoring system:
- * 1. Registers the device on first launch
- * 2. Starts the heartbeat service
- * 3. Syncs alarms to the server
- * 4. Checks for offline alarms on startup and shows a summary dialog
+ * 1. Starts the heartbeat service (liveness da conta; contatos/nome sobem
+ *    pelo cloud backup userData.put — não há mais registro de device)
+ * 2. Pre-registers expected alarm events on the server
+ * 3. Checks for offline alarms on startup and shows a summary dialog
  *
  * Mount this inside AppProvider so it has access to app state.
  */
 import { useEffect, useRef } from "react";
 import { useAppContext } from "@/lib/app-context";
 import {
-  registerDevice,
   startHeartbeat,
   stopHeartbeat,
   syncAlarmsToServer,
@@ -101,28 +100,6 @@ export function MonitoringInitializer() {
       const s = stateRef.current;
 
       try {
-        // Get current location ONLY if the user opted in to location sharing.
-        // Respecting the autoShareLocation setting (Privacy) — see Fix #13.
-        const optedIn = s.settings?.autoShareLocation ?? false;
-        const location = await getCurrentLocationStringIfOptedIn(optedIn);
-
-        // Build emergency contacts payload
-        const contacts = s.emergencyContacts.map((c) => ({
-          id: c.id,
-          name: c.name,
-          phone: c.phone,
-          relation: c.relation,
-          whatsapp: c.whatsapp ?? false,
-          email: c.email,
-        }));
-
-        // Register device with server
-        await registerDevice({
-          userName: s.anamnesis?.fullName,
-          emergencyContacts: contacts,
-          lastLocation: location,
-        });
-
         // Start heartbeat service. We re-read the opt-in flag on each tick
         // (via stateRef) so toggling it in Settings takes effect without a
         // restart. startHeartbeat is idempotente (no-op se já rodando).
@@ -217,25 +194,6 @@ export function MonitoringInitializer() {
       stopHeartbeat();
     };
   }, []);
-
-  // Re-register when emergency contacts or name change
-  useEffect(() => {
-    if (!initializedRef.current) return;
-
-    const contacts = state.emergencyContacts.map((c) => ({
-      id: c.id,
-      name: c.name,
-      phone: c.phone,
-      relation: c.relation,
-      whatsapp: c.whatsapp ?? false,
-      email: c.email,
-    }));
-
-    registerDevice({
-      userName: state.anamnesis?.fullName,
-      emergencyContacts: contacts,
-    }).catch(console.warn);
-  }, [state.emergencyContacts, state.anamnesis?.fullName]);
 
   // Sync alarms whenever the alarm list changes
   useEffect(() => {
