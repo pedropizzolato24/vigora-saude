@@ -2,225 +2,84 @@
  * db-monitoring.ts
  *
  * Database query helpers for the server-side alarm monitoring system.
- * Handles: device registration, alarm sync, heartbeat, alarm events, warning log.
+ * Posse de dados é SEMPRE por conta (openId) — nunca por aparelho. O deviceId
+ * sobrevive apenas como metadado de liveness (account_liveness.lastDeviceId).
+ * Ver docs/design/2026-07-12-monitoring-account-ownership.md.
+ *
+ * Handles: account liveness (heartbeat), alarm events, warning log, retention.
  */
-import { and, desc, eq, gte, inArray, isNull, lt, lte, ne, or } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, lte, ne } from "drizzle-orm";
 import { getDb } from "./db";
 import { pickPendingEvent } from "./_core/pick-pending-event";
 import {
+  accountLiveness,
   alarmEvents,
-  appUsers,
-  deviceHeartbeat,
-  EmergencyContactRecord,
   InsertAlarmEvent,
-  syncedAlarms,
   warningLog,
 } from "../drizzle/schema";
 
-// --- App Users ----------------------------------------------------------------
-
-export async function upsertAppUser(data: {
-  deviceId: string;
-  openId: string;
-  userName?: string;
-  emergencyContacts?: EmergencyContactRecord[];
-  lastLocation?: string;
-}): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
-
-  const values = {
-    deviceId: data.deviceId,
-    openId: data.openId,
-    userName: data.userName ?? null,
-    emergencyContacts: data.emergencyContacts ?? [],
-    lastLocation: data.lastLocation ?? null,
-    lastLocationAt: data.lastLocation ? new Date() : undefined,
-  };
-
-  await db
-    .insert(appUsers)
-    .values(values)
-    .onDuplicateKeyUpdate({
-      set: {
-        openId: values.openId,
-        userName: values.userName,
-        emergencyContacts: values.emergencyContacts,
-        ...(data.lastLocation
-          ? { lastLocation: data.lastLocation, lastLocationAt: new Date() }
-          : {}),
-      },
-    });
-}
-
-export async function getAppUser(deviceId: string) {
-  const db = await getDb();
-  if (!db) return null;
-  const rows = await db
-    .select()
-    .from(appUsers)
-    .where(eq(appUsers.deviceId, deviceId))
-    .limit(1);
-  return rows[0] ?? null;
-}
+// --- Account Liveness -----------------------------------------------------------
 
 /**
- * Returns the appUsers row only if (deviceId, openId) match.
- * Used by protected procedures to enforce per-user ownership of devices.
+ * Registra "a conta deu sinal agora" — de qualquer aparelho. lastDeviceId e
+ * localização são metadados opcionais; a localização só é sobrescrita quando
+ * um valor novo chega (senão o último fix conhecido é preservado).
  */
-export async function getAppUserForOwner(
-  deviceId: string,
-  openId: string
-) {
-  const db = await getDb();
-  if (!db) return null;
-  const rows = await db
-    .select()
-    .from(appUsers)
-    .where(and(eq(appUsers.deviceId, deviceId), eq(appUsers.openId, openId)))
-    .limit(1);
-  return rows[0] ?? null;
-}
-
-/**
- * Throws if the deviceId is registered to a different owner.
- * Returns true if registered to this owner OR not yet registered (free to claim via register()).
- * Used as an authorization check before mutating device-scoped data.
- */
-export async function assertDeviceOwnership(
-  deviceId: string,
-  openId: string
-): Promise<void> {
-  const db = await getDb();
-  if (!db) return; // No DB = dev mode, allow
-  const rows = await db
-    .select({ openId: appUsers.openId })
-    .from(appUsers)
-    .where(eq(appUsers.deviceId, deviceId))
-    .limit(1);
-  if (rows.length === 0) {
-    throw new Error("DEVICE_NOT_REGISTERED");
-  }
-  const owner = rows[0].openId;
-  if (owner !== null && owner !== openId) {
-    throw new Error("DEVICE_OWNED_BY_ANOTHER_USER");
-  }
-}
-
-// --- Synced Alarms ------------------------------------------------------------
-
-export async function upsertSyncedAlarm(data: {
-  deviceId: string;
-  alarmId: string;
-  time: string;
-  description: string;
-  enabled: boolean;
-  repeat: "daily" | "weekdays" | "weekends" | "custom";
-  customDays?: number[];
-}): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
-
-  await db
-    .insert(syncedAlarms)
-    .values(data)
-    .onDuplicateKeyUpdate({
-      set: {
-        time: data.time,
-        description: data.description,
-        enabled: data.enabled,
-        repeat: data.repeat,
-        customDays: data.customDays ?? [],
-      },
-    });
-}
-
-export async function deleteSyncedAlarm(deviceId: string, alarmId: string): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
-  await db
-    .delete(syncedAlarms)
-    .where(
-      and(eq(syncedAlarms.deviceId, deviceId), eq(syncedAlarms.alarmId, alarmId))
-    );
-}
-
-export async function getSyncedAlarms(deviceId: string) {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(syncedAlarms).where(eq(syncedAlarms.deviceId, deviceId));
-}
-
-export async function replaceAllSyncedAlarms(
-  deviceId: string,
-  alarms: Array<{
-    alarmId: string;
-    time: string;
-    description: string;
-    enabled: boolean;
-    repeat: "daily" | "weekdays" | "weekends" | "custom";
-    customDays?: number[];
-  }>
+export async function recordHeartbeat(
+  openId: string,
+  meta?: { appVersion?: string; lastDeviceId?: string; lastLocation?: string }
 ): Promise<void> {
   const db = await getDb();
   if (!db) return;
 
-  // Delete all existing alarms for this device
-  await db.delete(syncedAlarms).where(eq(syncedAlarms.deviceId, deviceId));
-
-  if (alarms.length === 0) return;
-
-  // Insert all new alarms
-  await db.insert(syncedAlarms).values(
-    alarms.map((a) => ({
-      deviceId,
-      alarmId: a.alarmId,
-      time: a.time,
-      description: a.description,
-      enabled: a.enabled,
-      repeat: a.repeat,
-      customDays: a.customDays ?? [],
-    }))
-  );
-}
-
-// --- Device Heartbeat ---------------------------------------------------------
-
-export async function recordHeartbeat(deviceId: string, appVersion?: string): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
+  const now = new Date();
+  const locationFields = meta?.lastLocation
+    ? { lastLocation: meta.lastLocation, lastLocationAt: now }
+    : {};
 
   await db
-    .insert(deviceHeartbeat)
-    .values({ deviceId, lastSeenAt: new Date(), appVersion: appVersion ?? null })
+    .insert(accountLiveness)
+    .values({
+      openId,
+      lastSeenAt: now,
+      appVersion: meta?.appVersion ?? null,
+      lastDeviceId: meta?.lastDeviceId ?? null,
+      ...locationFields,
+    })
     .onDuplicateKeyUpdate({
-      set: { lastSeenAt: new Date(), appVersion: appVersion ?? null },
+      set: {
+        lastSeenAt: now,
+        appVersion: meta?.appVersion ?? null,
+        lastDeviceId: meta?.lastDeviceId ?? null,
+        ...locationFields,
+      },
     });
 }
 
-export async function getLastHeartbeat(deviceId: string) {
+/** Linha de liveness da conta (lastSeenAt, localização), ou null. */
+export async function getAccountLiveness(openId: string) {
   const db = await getDb();
   if (!db) return null;
   const rows = await db
     .select()
-    .from(deviceHeartbeat)
-    .where(eq(deviceHeartbeat.deviceId, deviceId))
+    .from(accountLiveness)
+    .where(eq(accountLiveness.openId, openId))
     .limit(1);
   return rows[0] ?? null;
 }
 
-/** Returns all devices that haven't sent a heartbeat in the last `thresholdMinutes` minutes */
-export async function getInactiveDevices(thresholdMinutes: number) {
+/** Returns all accounts whose last sign of life is older than `thresholdMinutes`. */
+export async function getInactiveAccounts(thresholdMinutes: number) {
   const db = await getDb();
-  // Fail-closed: a DB outage must NOT look like "0 inactive devices, all good"
+  // Fail-closed: a DB outage must NOT look like "0 inactive accounts, all good"
   // — that would silently disarm the dead man's switch. Throw so the job's
   // catch records the failure and /api/health turns unhealthy.
   if (!db) throw new Error("DATABASE_UNAVAILABLE");
   const cutoff = new Date(Date.now() - thresholdMinutes * 60 * 1000);
   return db
     .select()
-    .from(deviceHeartbeat)
-    .where(lte(deviceHeartbeat.lastSeenAt, cutoff));
+    .from(accountLiveness)
+    .where(lte(accountLiveness.lastSeenAt, cutoff));
 }
 
 // --- Alarm Events -------------------------------------------------------------
@@ -229,7 +88,7 @@ export async function createAlarmEvent(data: InsertAlarmEvent): Promise<number> 
   const db = await getDb();
   if (!db) throw new Error("DB not available");
 
-  // Idempotency: return existing row if (deviceId, alarmId, scheduledAt) already exists.
+  // Idempotency: return existing row if (openId, alarmId, scheduledAt) already exists.
   // Prevents duplicate pending events when createEvent is called multiple times
   // (e.g., startup effect + respond-and-recreate on the same deadline).
   const existing = await db
@@ -237,7 +96,7 @@ export async function createAlarmEvent(data: InsertAlarmEvent): Promise<number> 
     .from(alarmEvents)
     .where(
       and(
-        eq(alarmEvents.deviceId, data.deviceId),
+        eq(alarmEvents.openId, data.openId),
         eq(alarmEvents.alarmId, data.alarmId),
         eq(alarmEvents.scheduledAt, data.scheduledAt as Date)
       )
@@ -262,7 +121,7 @@ export async function updateAlarmEventStatus(
 }
 
 export async function updateAlarmEventStatusByAlarmId(
-  deviceId: string,
+  openId: string,
   alarmId: string,
   scheduledAt: Date,
   status: "responded" | "missed" | "not_sent"
@@ -289,7 +148,7 @@ export async function updateAlarmEventStatusByAlarmId(
     .from(alarmEvents)
     .where(
       and(
-        eq(alarmEvents.deviceId, deviceId),
+        eq(alarmEvents.openId, openId),
         eq(alarmEvents.alarmId, alarmId),
         inArray(alarmEvents.status, statusesToConsider)
       )
@@ -311,7 +170,7 @@ export async function updateAlarmEventStatusByAlarmId(
 
 /**
  * Returns all pending alarm events whose scheduledAt is older than `gracePeriodMinutes`.
- * These are alarms that fired but the device never confirmed.
+ * These are alarms that fired but the account never confirmed.
  */
 export async function getExpiredPendingEvents(gracePeriodMinutes: number) {
   const db = await getDb();
@@ -354,11 +213,11 @@ export async function getMissedCheckinEvents(alarmId: string, lookbackHours: num
 
 /**
  * Eventos de alarme de MEDICAÇÃO (não check-in) que ficaram "missed" — ou seja,
- * o dispositivo estava ONLINE no horário (Passo 1 marca "missed" só se online) e
+ * a conta estava ONLINE no horário (Passo 1 marca "missed" só se online) e
  * o usuário não respondeu — e ainda não foram escalados pelo servidor
  * (warningSent=false). Backstop do dead man's switch para quando a escalação no
  * cliente não completou (app morreu após o disparo). 'not_sent' (offline) NÃO
- * entra aqui — esse caso é coberto pelo aviso de dispositivo offline (Passo 2).
+ * entra aqui — esse caso é coberto pelo aviso de conta offline (Passo 2).
  */
 export async function getMissedMedicationEvents(checkinAlarmId: string, lookbackHours: number) {
   const db = await getDb();
@@ -378,15 +237,15 @@ export async function getMissedMedicationEvents(checkinAlarmId: string, lookback
 }
 
 /**
- * True se o device tem algum evento esperado que expirou SEM confirmação
+ * True se a conta tem algum evento esperado que expirou SEM confirmação
  * ('missed' | 'not_sent') dentro da janela de look-back. Gate do Passo 2 do
  * monitoring-job: inatividade sozinha (logout, desinstalação, app em segundo
  * plano) não é sinal de perigo — só escala havendo evento não confirmado.
- * Fail-closed como getInactiveDevices: sem DB, lança em vez de responder
+ * Fail-closed como getInactiveAccounts: sem DB, lança em vez de responder
  * "false" e silenciar o switch.
  */
 export async function hasUnconfirmedEvents(
-  deviceId: string,
+  openId: string,
   lookbackHours: number
 ): Promise<boolean> {
   const db = await getDb();
@@ -397,7 +256,7 @@ export async function hasUnconfirmedEvents(
     .from(alarmEvents)
     .where(
       and(
-        eq(alarmEvents.deviceId, deviceId),
+        eq(alarmEvents.openId, openId),
         inArray(alarmEvents.status, ["missed", "not_sent"]),
         gte(alarmEvents.scheduledAt, cutoff)
       )
@@ -415,7 +274,7 @@ export async function markEventWarningSent(id: number): Promise<void> {
     .where(eq(alarmEvents.id, id));
 }
 
-export async function getAlarmEventHistory(deviceId: string, limit = 50) {
+export async function getAlarmEventHistory(openId: string, limit = 50) {
   const db = await getDb();
   if (!db) return [];
   // Mais recentes primeiro: com ASC + limit, eventos antigos monopolizavam a
@@ -423,7 +282,7 @@ export async function getAlarmEventHistory(deviceId: string, limit = 50) {
   return db
     .select()
     .from(alarmEvents)
-    .where(eq(alarmEvents.deviceId, deviceId))
+    .where(eq(alarmEvents.openId, openId))
     .orderBy(desc(alarmEvents.scheduledAt))
     .limit(limit);
 }
@@ -438,7 +297,7 @@ export async function getAlarmEventHistory(deviceId: string, limit = 50) {
  * warningHistory after this insert will see the row and skip its own send.
  */
 export async function claimWarning(data: {
-  deviceId: string;
+  openId: string;
   level: number;
   offlineHours: number;
   locationIncluded: boolean;
@@ -475,13 +334,13 @@ export async function releaseWarning(id: number): Promise<void> {
   await db.delete(warningLog).where(eq(warningLog.id, id));
 }
 
-export async function getWarningHistory(deviceId: string, limit = 20) {
+export async function getWarningHistory(openId: string, limit = 20) {
   const db = await getDb();
   if (!db) return [];
   return db
     .select()
     .from(warningLog)
-    .where(eq(warningLog.deviceId, deviceId))
+    .where(eq(warningLog.openId, openId))
     .orderBy(warningLog.sentAt)
     .limit(limit);
 }
@@ -521,11 +380,11 @@ export async function purgeStaleData(now: number = Date.now()): Promise<{
 
   const ev = await db.delete(alarmEvents).where(lt(alarmEvents.createdAt, eventsCutoff));
   const wl = await db.delete(warningLog).where(lt(warningLog.sentAt, eventsCutoff));
-  // Stale GPS: blank the location fields rather than deleting the device row.
+  // Stale GPS: blank the location fields rather than deleting the liveness row.
   const loc = await db
-    .update(appUsers)
+    .update(accountLiveness)
     .set({ lastLocation: null, lastLocationAt: null })
-    .where(lt(appUsers.lastLocationAt, locationCutoff));
+    .where(lt(accountLiveness.lastLocationAt, locationCutoff));
 
   return {
     alarmEvents: affected(ev),

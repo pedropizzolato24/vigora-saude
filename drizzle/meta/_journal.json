@@ -71,6 +71,20 @@
       "when": 1781103531696,
       "tag": "0009_dark_tarot",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1784052256272,
+      "tag": "0010_openid_ownership_a",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1784052296568,
+      "tag": "0011_openid_ownership_b",
+      "breakpoints": true
     }
   ]
 }

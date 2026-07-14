@@ -88,7 +88,7 @@ export type UserData = typeof userData.$inferSelect;
 export type InsertUserData = typeof userData.$inferInsert;
 
 // -----------------------------------------------------------------------------
-// App Users - device registration (no Manus OAuth required)
+// Emergency contacts - shape of the contact records stored in user_data
 // -----------------------------------------------------------------------------
 
 export interface EmergencyContactRecord {
@@ -108,77 +108,50 @@ export interface EmergencyContactRecord {
   consentToAlerts?: boolean;
 }
 
-export const appUsers = mysqlTable("app_users", {
+// -----------------------------------------------------------------------------
+// Account Liveness - "the person is responding" signal, one row per ACCOUNT
+// -----------------------------------------------------------------------------
+
+/**
+ * Liveness da conta (não do aparelho): última vez que QUALQUER aparelho da
+ * conta deu sinal. É o que o dead man's switch consulta em repouso. O
+ * `lastDeviceId` é só metadado (gancho p/ multi-device/wearables futuros) —
+ * nunca chave de posse. Ver docs/design/2026-07-12-monitoring-account-ownership.md.
+ */
+export const accountLiveness = mysqlTable("account_liveness", {
   id: int("id").autoincrement().primaryKey(),
-  deviceId: varchar("deviceId", { length: 64 }).notNull().unique(),
-  /**
-   * OAuth openId of the user that owns this device row.
-   * Required for new registrations (set via authenticated tRPC).
-   * Legacy rows may be null until the user re-registers.
-   */
-  openId: varchar("openId", { length: 64 }),
-  userName: varchar("userName", { length: 255 }),
-  emergencyContacts: json("emergencyContacts").$type<EmergencyContactRecord[]>(),
+  openId: varchar("openId", { length: 64 }).notNull().unique(),
+  lastSeenAt: timestamp("lastSeenAt").defaultNow().notNull(),
   lastLocation: varchar("lastLocation", { length: 64 }),
   lastLocationAt: timestamp("lastLocationAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type AppUser = typeof appUsers.$inferSelect;
-export type InsertAppUser = typeof appUsers.$inferInsert;
-
-// -----------------------------------------------------------------------------
-// Synced Alarms - server-side copy of the user's alarm schedule
-// -----------------------------------------------------------------------------
-
-export const syncedAlarms = mysqlTable("synced_alarms", {
-  id: int("id").autoincrement().primaryKey(),
-  deviceId: varchar("deviceId", { length: 64 }).notNull(),
-  alarmId: varchar("alarmId", { length: 64 }).notNull(),
-  time: varchar("time", { length: 5 }).notNull(),
-  description: varchar("description", { length: 255 }).notNull().default(""),
-  enabled: boolean("enabled").notNull().default(true),
-  repeat: mysqlEnum("repeat", ["daily", "weekdays", "weekends", "custom"]).notNull().default("daily"),
-  customDays: json("customDays").$type<number[]>(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SyncedAlarm = typeof syncedAlarms.$inferSelect;
-export type InsertSyncedAlarm = typeof syncedAlarms.$inferInsert;
-
-// -----------------------------------------------------------------------------
-// Device Heartbeat - periodic "I'm alive" pings from the app
-// -----------------------------------------------------------------------------
-
-export const deviceHeartbeat = mysqlTable("device_heartbeat", {
-  id: int("id").autoincrement().primaryKey(),
-  deviceId: varchar("deviceId", { length: 64 }).notNull().unique(),
-  lastSeenAt: timestamp("lastSeenAt").defaultNow().notNull(),
+  lastDeviceId: varchar("lastDeviceId", { length: 64 }),
   appVersion: varchar("appVersion", { length: 32 }),
 });
 
-export type DeviceHeartbeat = typeof deviceHeartbeat.$inferSelect;
-export type InsertDeviceHeartbeat = typeof deviceHeartbeat.$inferInsert;
+export type AccountLiveness = typeof accountLiveness.$inferSelect;
+export type InsertAccountLiveness = typeof accountLiveness.$inferInsert;
 
 // -----------------------------------------------------------------------------
 // Alarm Events - audit log of every alarm occurrence
 // -----------------------------------------------------------------------------
 
-export const alarmEvents = mysqlTable("alarm_events", {
-  id: int("id").autoincrement().primaryKey(),
-  deviceId: varchar("deviceId", { length: 64 }).notNull(),
-  alarmId: varchar("alarmId", { length: 64 }).notNull(),
-  alarmDescription: varchar("alarmDescription", { length: 255 }).notNull().default(""),
-  scheduledAt: timestamp("scheduledAt").notNull(),
-  status: mysqlEnum("status", ["pending", "responded", "missed", "not_sent"])
-    .notNull()
-    .default("pending"),
-  resolvedAt: timestamp("resolvedAt"),
-  warningSent: boolean("warningSent").notNull().default(false),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const alarmEvents = mysqlTable(
+  "alarm_events",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    openId: varchar("openId", { length: 64 }).notNull(),
+    alarmId: varchar("alarmId", { length: 64 }).notNull(),
+    alarmDescription: varchar("alarmDescription", { length: 255 }).notNull().default(""),
+    scheduledAt: timestamp("scheduledAt").notNull(),
+    status: mysqlEnum("status", ["pending", "responded", "missed", "not_sent"])
+      .notNull()
+      .default("pending"),
+    resolvedAt: timestamp("resolvedAt"),
+    warningSent: boolean("warningSent").notNull().default(false),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [index("alarm_events_openid_idx").on(t.openId)]
+);
 
 export type AlarmEvent = typeof alarmEvents.$inferSelect;
 export type InsertAlarmEvent = typeof alarmEvents.$inferInsert;
@@ -187,15 +160,19 @@ export type InsertAlarmEvent = typeof alarmEvents.$inferInsert;
 // Warning Log - record of every warning message sent to contacts
 // -----------------------------------------------------------------------------
 
-export const warningLog = mysqlTable("warning_log", {
-  id: int("id").autoincrement().primaryKey(),
-  deviceId: varchar("deviceId", { length: 64 }).notNull(),
-  level: int("level").notNull().default(1),
-  offlineHours: int("offlineHours").notNull(),
-  contactsReached: int("contactsReached").notNull().default(0),
-  locationIncluded: boolean("locationIncluded").notNull().default(false),
-  sentAt: timestamp("sentAt").defaultNow().notNull(),
-});
+export const warningLog = mysqlTable(
+  "warning_log",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    openId: varchar("openId", { length: 64 }).notNull(),
+    level: int("level").notNull().default(1),
+    offlineHours: int("offlineHours").notNull(),
+    contactsReached: int("contactsReached").notNull().default(0),
+    locationIncluded: boolean("locationIncluded").notNull().default(false),
+    sentAt: timestamp("sentAt").defaultNow().notNull(),
+  },
+  (t) => [index("warning_log_openid_idx").on(t.openId)]
+);
 
 export type WarningLog = typeof warningLog.$inferSelect;
 export type InsertWarningLog = typeof warningLog.$inferInsert;
