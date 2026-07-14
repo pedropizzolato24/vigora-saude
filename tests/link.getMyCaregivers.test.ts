@@ -43,10 +43,9 @@ vi.mock("../server/db-links", () => ({
   createInvite: vi.fn(),
   consumeInviteByCode: vi.fn(),
   getActiveLinkForCaregiver: vi.fn(),
-  getDevicesForOwner: vi.fn(async () => []),
   getInviteByCode: vi.fn(),
-  getRecentMissedEventsForDevice: vi.fn(async () => []),
-  getRecentWarningsForDevice: vi.fn(async () => []),
+  getRecentMissedEventsForAccount: vi.fn(async () => []),
+  getRecentWarningsForAccount: vi.fn(async () => []),
   revokeLink: vi.fn(),
   upsertActiveLink: vi.fn(),
 }));

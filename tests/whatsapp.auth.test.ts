@@ -3,8 +3,9 @@
  *
  * Validates that whatsapp.sendEmergencyAlert is no longer abusable:
  *   - requires auth
- *   - enforces device ownership
- *   - only sends to contacts that are pre-registered for the device
+ *   - contatos vêm do user_data da PRÓPRIA conta autenticada (posse
+ *     implícita por openId — uma conta nunca alcança contatos de outra)
+ *   - only sends to contacts that are pre-registered for the account
  *   - rate-limits to prevent spam
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,40 +14,30 @@ import type { User, EmergencyContactRecord } from "../drizzle/schema";
 
 // In-memory mocks of the DB + WhatsApp send. Mock BEFORE importing the
 // router so the module graph picks them up.
-const deviceOwners = new Map<string, string | null>();
-const deviceContacts = new Map<string, EmergencyContactRecord[]>();
+const accountContacts = new Map<string, EmergencyContactRecord[]>();
 const sendCalls: Array<{ contacts: { phone: string; name: string }[]; message: string }> = [];
 
+// routers-monitoring/links importam estes helpers no mesmo grafo do appRouter.
 vi.mock("../server/db-monitoring", () => ({
-  assertDeviceOwnership: vi.fn(async (deviceId: string, openId: string) => {
-    if (!deviceOwners.has(deviceId)) throw new Error("DEVICE_NOT_REGISTERED");
-    const owner = deviceOwners.get(deviceId);
-    if (owner !== null && owner !== openId) {
-      throw new Error("DEVICE_OWNED_BY_ANOTHER_USER");
-    }
-  }),
-  upsertAppUser: vi.fn(async (data: { deviceId: string; openId: string }) => {
-    deviceOwners.set(data.deviceId, data.openId);
-  }),
-  getAppUserForOwner: vi.fn(async (deviceId: string, openId: string) => {
-    const owner = deviceOwners.get(deviceId);
-    if (owner !== openId) return null;
-    return {
-      deviceId,
-      openId,
-      emergencyContacts: deviceContacts.get(deviceId) ?? [],
-    };
-  }),
-  getAppUser: vi.fn(async () => null),
-  recordHeartbeat: vi.fn(),
-  replaceAllSyncedAlarms: vi.fn(),
+  recordHeartbeat: vi.fn(async () => undefined),
+  getAccountLiveness: vi.fn(async () => null),
   createAlarmEvent: vi.fn(async () => 1),
-  updateAlarmEventStatusByAlarmId: vi.fn(),
+  updateAlarmEventStatusByAlarmId: vi.fn(async () => undefined),
   getAlarmEventHistory: vi.fn(async () => []),
   getWarningHistory: vi.fn(async () => []),
-  getLastHeartbeat: vi.fn(async () => null),
-  getSyncedAlarms: vi.fn(async () => []),
 }));
+
+// Contatos por conta: sendEmergencyAlert lê user_data.emergencyContacts.
+vi.mock("../server/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../server/db")>();
+  return {
+    ...actual,
+    getUserData: vi.fn(async (openId: string) => {
+      if (!accountContacts.has(openId)) return undefined;
+      return { emergencyContacts: accountContacts.get(openId) } as never;
+    }),
+  };
+});
 
 vi.mock("../server/whatsapp", () => ({
   isWhatsAppApiConfigured: vi.fn(() => true),
@@ -92,23 +83,20 @@ function makeCtx(user: User | null): TrpcContext {
   };
 }
 
-function registerDevice(openId: string, deviceId: string, contacts: EmergencyContactRecord[]) {
-  deviceOwners.set(deviceId, openId);
-  deviceContacts.set(deviceId, contacts);
+function registerContacts(openId: string, contacts: EmergencyContactRecord[]) {
+  accountContacts.set(openId, contacts);
 }
 
 beforeEach(() => {
-  deviceOwners.clear();
-  deviceContacts.clear();
+  accountContacts.clear();
   sendCalls.length = 0;
 });
 
-describe("whatsapp.sendEmergencyAlert — auth & ownership", () => {
+describe("whatsapp.sendEmergencyAlert — auth & posse por conta", () => {
   it("rejects unauthenticated calls", async () => {
     const caller = appRouter.createCaller(makeCtx(null));
     await expect(
       caller.whatsapp.sendEmergencyAlert({
-        deviceId: "device-A",
         contacts: [{ phone: "11999999999", name: "Mom" }],
         missedAlarmCount: 1,
       })
@@ -116,31 +104,46 @@ describe("whatsapp.sendEmergencyAlert — auth & ownership", () => {
     expect(sendCalls.length).toBe(0);
   });
 
-  it("rejects when device is owned by another user", async () => {
-    registerDevice("alice", "device-A", [
+  it("uma conta nunca alcança os contatos de outra (isolamento por openId)", async () => {
+    // alice tem contatos; mallory (outra conta, mesmo aparelho ou não) tenta
+    // disparar para o contato de alice — a leitura é do user_data de MALLORY,
+    // que está vazio, então nada é enviado.
+    registerContacts("alice", [
       { id: "1", name: "Mom", phone: "11999999999", relation: "Mãe", whatsapp: true },
     ]);
     const mallory = appRouter.createCaller(makeCtx(makeUser("mallory")));
     await expect(
       mallory.whatsapp.sendEmergencyAlert({
-        deviceId: "device-A",
         contacts: [{ phone: "11999999999", name: "Mom" }],
         missedAlarmCount: 1,
       })
-    ).rejects.toThrow(/outro usuário|FORBIDDEN/i);
+    ).rejects.toThrow(/contato.*emergência|PRECONDITION/i);
     expect(sendCalls.length).toBe(0);
+  });
+
+  it("compat: payload antigo com deviceId extra é aceito e ignorado", async () => {
+    registerContacts("alice", [
+      { id: "1", name: "Mom", phone: "11999999999", relation: "Mãe", whatsapp: true },
+    ]);
+    const alice = appRouter.createCaller(makeCtx(makeUser("alice")));
+    const result = await alice.whatsapp.sendEmergencyAlert({
+      deviceId: "device-A",
+      contacts: [{ phone: "11999999999", name: "Mom" }],
+      missedAlarmCount: 1,
+    });
+    expect(result.success).toBe(true);
+    expect(sendCalls.length).toBe(1);
   });
 });
 
 describe("whatsapp.sendEmergencyAlert — recipient whitelist", () => {
   it("rejects phone numbers not registered as emergency contacts", async () => {
-    registerDevice("alice", "device-A", [
+    registerContacts("alice", [
       { id: "1", name: "Mom", phone: "(11) 99999-9999", relation: "Mãe", whatsapp: true },
     ]);
     const alice = appRouter.createCaller(makeCtx(makeUser("alice")));
     await expect(
       alice.whatsapp.sendEmergencyAlert({
-        deviceId: "device-A",
         contacts: [{ phone: "11888888888", name: "Random Person" }],
         missedAlarmCount: 1,
       })
@@ -149,12 +152,11 @@ describe("whatsapp.sendEmergencyAlert — recipient whitelist", () => {
   });
 
   it("accepts contacts whose digits match a stored one (ignoring formatting)", async () => {
-    registerDevice("alice", "device-A", [
+    registerContacts("alice", [
       { id: "1", name: "Mom", phone: "(11) 99999-9999", relation: "Mãe", whatsapp: true },
     ]);
     const alice = appRouter.createCaller(makeCtx(makeUser("alice")));
     const result = await alice.whatsapp.sendEmergencyAlert({
-      deviceId: "device-A",
       // Different formatting but same digits
       contacts: [{ phone: "5511999999999", name: "Mom" }],
       missedAlarmCount: 1,
@@ -163,12 +165,11 @@ describe("whatsapp.sendEmergencyAlert — recipient whitelist", () => {
     expect(sendCalls.length).toBe(1);
   });
 
-  it("rejects when device has no emergency contacts registered", async () => {
-    registerDevice("alice", "device-A", []);
+  it("rejects when the account has no emergency contacts registered", async () => {
+    registerContacts("alice", []);
     const alice = appRouter.createCaller(makeCtx(makeUser("alice")));
     await expect(
       alice.whatsapp.sendEmergencyAlert({
-        deviceId: "device-A",
         contacts: [{ phone: "11999999999", name: "Mom" }],
         missedAlarmCount: 1,
       })
@@ -177,13 +178,12 @@ describe("whatsapp.sendEmergencyAlert — recipient whitelist", () => {
   });
 
   it("rejects if even one of many recipients is not whitelisted", async () => {
-    registerDevice("alice", "device-A", [
+    registerContacts("alice", [
       { id: "1", name: "Mom", phone: "11999999999", relation: "Mãe", whatsapp: true },
     ]);
     const alice = appRouter.createCaller(makeCtx(makeUser("alice")));
     await expect(
       alice.whatsapp.sendEmergencyAlert({
-        deviceId: "device-A",
         contacts: [
           { phone: "11999999999", name: "Mom" },
           { phone: "11888888888", name: "Attacker target" },
@@ -200,20 +200,18 @@ describe("whatsapp.sendEmergencyAlert — rate limit", () => {
     // Use a fresh openId because the rate-limit map persists across tests
     // within the same vitest worker (it lives at module scope).
     const openId = `rate-test-${Date.now()}-${Math.random()}`;
-    registerDevice(openId, "device-RL", [
+    registerContacts(openId, [
       { id: "1", name: "Mom", phone: "11999999999", relation: "Mãe", whatsapp: true },
     ]);
     const caller = appRouter.createCaller(makeCtx(makeUser(openId)));
     for (let i = 0; i < 5; i++) {
       await caller.whatsapp.sendEmergencyAlert({
-        deviceId: "device-RL",
         contacts: [{ phone: "11999999999", name: "Mom" }],
         missedAlarmCount: 1,
       });
     }
     await expect(
       caller.whatsapp.sendEmergencyAlert({
-        deviceId: "device-RL",
         contacts: [{ phone: "11999999999", name: "Mom" }],
         missedAlarmCount: 1,
       })
