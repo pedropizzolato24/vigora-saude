@@ -33,7 +33,6 @@ import { escalateAlarmToContacts } from '@/lib/alarm-escalation';
 import { stopNativeAlarm, snoozeNativeAlarm } from '@/lib/native-alarm-manager';
 import { PulseView } from '@/components/animated-components';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loadAlarmTimer, clearAlarmTimer } from '@/lib/alarm-timer-store';
 import { lastAlarmFireMs } from '@/lib/alarm-fire-times';
 import { updateAlarmWidgetOnDismiss } from '@/lib/update-widgets';
@@ -233,7 +232,8 @@ export default function AlarmRingScreen() {
         let duration = configuredDuration;
         let alarmForAnchor = alarm;
         try {
-          const raw = await AsyncStorage.getItem('vigora_app_state');
+          const { loadCurrentAppStateRaw } = require('@/lib/app-state-storage');
+          const raw = await loadCurrentAppStateRaw();
           if (raw) {
             const parsed = JSON.parse(raw);
             const stored = parsed?.settings?.timerDuration;

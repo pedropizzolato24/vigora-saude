@@ -3,6 +3,8 @@ import * as Crypto from 'expo-crypto';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useReducer } from 'react';
 import { updateAllWidgets } from './update-widgets';
 import { pullCloudData, pushCloudData, type CloudSnapshot } from './cloud-sync';
+import { appStateKeyFor, loadAppStateRaw } from './app-state-storage';
+import * as Auth from './_core/auth';
 
 // --- Types -------------------------------------------------------------------
 
@@ -134,7 +136,10 @@ type AppAction =
   | { type: 'INCREMENT_MISSED_ALARM' }
   | { type: 'RESET_MISSED_ALARM' }
   | { type: 'UPDATE_PROFILE'; payload: Partial<UserProfile> }
-  | { type: 'CLEAR_ALL_DATA' };
+  | { type: 'CLEAR_ALL_DATA' }
+  /** Troca de conta/logout: volta ao estado inicial (isLoading: true) antes de
+   *  carregar o blob da nova conta — LOAD_STATE faz merge, não substitui. */
+  | { type: 'RESET_FOR_ACCOUNT_SWITCH' };
 
 // --- Initial State ------------------------------------------------------------
 
@@ -208,6 +213,9 @@ function baseReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'LOAD_STATE':
       return { ...state, ...action.payload, isLoading: false };
+
+    case 'RESET_FOR_ACCOUNT_SWITCH':
+      return initialState;
 
     case 'ADD_ALARM': {
       if (state.alarms.length >= 24) return state;
@@ -316,8 +324,6 @@ interface AppContextValue {
 
 const AppContext = createContext<AppContextValue | null>(null);
 
-const STORAGE_KEY = 'vigora_app_state';
-
 function buildSnapshot(state: AppState): CloudSnapshot {
   return {
     anamnesis: state.anamnesis,
@@ -344,21 +350,49 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const lastSyncedTsRef = useRef(0);
   const pushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load persisted state on mount
+  // Conta dona do estado em memória. `undefined` = ainda resolvendo no mount.
+  // O estado local é POR CONTA (vigora_app_state:<openId>) — ver app-state-storage.
+  const activeOpenIdRef = useRef<string | null | undefined>(undefined);
+
+  // Load persisted state on mount + recarga na troca de conta (login/logout).
   useEffect(() => {
-    (async () => {
+    const loadFor = async (openId: string | null) => {
       try {
-        const stored = await AsyncStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored) as Partial<AppState>;
-          dispatch({ type: 'LOAD_STATE', payload: parsed });
-        } else {
+        const stored = await loadAppStateRaw(openId);
+        if (activeOpenIdRef.current !== openId) return; // trocou de novo no meio
+        dispatch({
+          type: 'LOAD_STATE',
+          payload: stored ? (JSON.parse(stored) as Partial<AppState>) : {},
+        });
+      } catch {
+        if (activeOpenIdRef.current === openId) {
           dispatch({ type: 'LOAD_STATE', payload: {} });
         }
-      } catch {
-        dispatch({ type: 'LOAD_STATE', payload: {} });
       }
+    };
+
+    (async () => {
+      const user = await Auth.getUserInfo().catch(() => null);
+      // A subscription pode ter resolvido primeiro (login durante o mount).
+      if (activeOpenIdRef.current !== undefined) return;
+      activeOpenIdRef.current = user?.openId ?? null;
+      await loadFor(activeOpenIdRef.current);
     })();
+
+    // Troca de conta no mesmo aparelho: reset (LOAD_STATE faz merge, não
+    // substitui — sem o reset, dados da conta anterior vazariam nos campos
+    // ausentes do blob novo) + recarga do blob da nova conta. O ciclo
+    // isLoading true->false re-arma o primeiro reconcile do cloud sync e o
+    // cleanup do push debounced descarta qualquer push pendente da conta velha.
+    const unsubscribe = Auth.subscribeActiveUser((openId) => {
+      const next = openId ?? null;
+      if (next === activeOpenIdRef.current) return;
+      activeOpenIdRef.current = next;
+      syncReadyRef.current = false;
+      dispatch({ type: 'RESET_FOR_ACCOUNT_SWITCH' });
+      loadFor(next);
+    });
+    return unsubscribe;
   }, []);
 
   // Pull the cloud backup and reconcile. If the cloud copy is newer (e.g. after
@@ -369,8 +403,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     try {
+      // Se a conta trocar enquanto o pull está em voo, o resultado é da conta
+      // VELHA — aplicá-lo (ou pushar o local) contaminaria a conta nova.
+      const epoch = activeOpenIdRef.current;
       const local = stateRef.current;
       const cloud = await pullCloudData();
+      if (activeOpenIdRef.current !== epoch) return;
       if (cloud && cloud.dataUpdatedAt > local.dataUpdatedAt) {
         // Cloud wins: hydrate local state from the backup.
         const payload: Partial<AppState> = {
@@ -411,7 +449,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (state.dataUpdatedAt <= lastSyncedTsRef.current) return;
 
     if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
+    const epoch = activeOpenIdRef.current;
     pushTimerRef.current = setTimeout(() => {
+      // Conta trocou entre o agendamento e o disparo: não pusha o snapshot
+      // da conta velha com a sessão da nova.
+      if (activeOpenIdRef.current !== epoch) return;
       const snapshot = buildSnapshot(stateRef.current);
       pushCloudData(snapshot).then((ok) => {
         if (ok) lastSyncedTsRef.current = snapshot.dataUpdatedAt;
@@ -423,13 +465,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, [state.dataUpdatedAt, state.isLoading]);
 
-  // Persist state on every change (except isLoading)
+  // Persist state on every change (except isLoading). A chave vem do ref da
+  // conta ativa (síncrono) para nunca gravar o estado de uma conta sob a
+  // chave de outra durante uma troca.
   useEffect(() => {
     if (state.isLoading) return;
     const { isLoading: _loading, ...persistable } = state;
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(persistable)).catch(
-      () => {}
-    );
+    const key = appStateKeyFor(activeOpenIdRef.current ?? null);
+    AsyncStorage.setItem(key, JSON.stringify(persistable)).catch(() => {});
   }, [state]);
 
   // Atualiza widgets Android quando alarmes ou métricas de saúde mudarem

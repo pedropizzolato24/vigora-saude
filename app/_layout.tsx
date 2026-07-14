@@ -128,7 +128,7 @@ export default function RootLayout() {
                 console.log(`[RootLayout] Native alarm active: ${activeUid} -> alarmId: ${alarmId}`);
                 const { router } = require('expo-router');
                 const { loadAlarmTimer, saveAlarmTimer } = require('@/lib/alarm-timer-store');
-                const AsyncStorageMod = require('@react-native-async-storage/async-storage').default;
+                const { loadCurrentAppStateRaw } = require('@/lib/app-state-storage');
 
                 // Try to load persisted timer first
                 let expiresAtForNav: number | null = null;
@@ -143,7 +143,7 @@ export default function RootLayout() {
                 if (!expiresAtForNav) {
                   try {
                     let timerDuration = 30;
-                    const raw = await AsyncStorageMod.getItem('vigora_app_state');
+                    const raw = await loadCurrentAppStateRaw();
                     if (raw) {
                       const parsed = JSON.parse(raw);
                       const stored = parsed?.settings?.timerDuration;
@@ -199,10 +199,10 @@ export default function RootLayout() {
             // O dedup por identifier evita escalonamento duplo quando o response
             // listener do CheckinInitializer também processa o mesmo toque.
             const { handleCheckinTimeout } = require('@/lib/checkin-notification-handler');
-            const AsyncStorageMod = require('@react-native-async-storage/async-storage').default;
+            const { loadCurrentAppStateRaw } = require('@/lib/app-state-storage');
             let handled = false;
             try {
-              const raw = await AsyncStorageMod.getItem('vigora_app_state');
+              const raw = await loadCurrentAppStateRaw();
               const parsed = raw ? JSON.parse(raw) : null;
               const contacts = parsed?.emergencyContacts ?? [];
               const ct = (data?.checkinTime as string | undefined) ?? '09:00';
