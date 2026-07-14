@@ -377,6 +377,35 @@ export async function getMissedMedicationEvents(checkinAlarmId: string, lookback
     );
 }
 
+/**
+ * True se o device tem algum evento esperado que expirou SEM confirmação
+ * ('missed' | 'not_sent') dentro da janela de look-back. Gate do Passo 2 do
+ * monitoring-job: inatividade sozinha (logout, desinstalação, app em segundo
+ * plano) não é sinal de perigo — só escala havendo evento não confirmado.
+ * Fail-closed como getInactiveDevices: sem DB, lança em vez de responder
+ * "false" e silenciar o switch.
+ */
+export async function hasUnconfirmedEvents(
+  deviceId: string,
+  lookbackHours: number
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const cutoff = new Date(Date.now() - lookbackHours * 60 * 60 * 1000);
+  const rows = await db
+    .select({ id: alarmEvents.id })
+    .from(alarmEvents)
+    .where(
+      and(
+        eq(alarmEvents.deviceId, deviceId),
+        inArray(alarmEvents.status, ["missed", "not_sent"]),
+        gte(alarmEvents.scheduledAt, cutoff)
+      )
+    )
+    .limit(1);
+  return rows.length > 0;
+}
+
 export async function markEventWarningSent(id: number): Promise<void> {
   const db = await getDb();
   if (!db) return;

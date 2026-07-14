@@ -5,7 +5,8 @@
  * 1. Detect alarm events that expired without device confirmation
  *    -> If device was offline (no heartbeat): mark as "not_sent"
  *    -> If device was online but user didn't respond: mark as "missed"
- * 2. Check for devices that have been offline for 12h+ with unresolved alarms
+ * 2. Check for devices that went offline AND have an unconfirmed alarm event
+ *    in the look-back window (inactivity alone is NOT a danger signal)
  *    -> Send progressive warning messages to emergency contacts via WhatsApp
  *
  * Warning escalation levels:
@@ -22,6 +23,7 @@ import {
   getMissedCheckinEvents,
   getMissedMedicationEvents,
   getWarningHistory,
+  hasUnconfirmedEvents,
   markEventWarningSent,
   purgeStaleData,
   releaseWarning,
@@ -38,6 +40,11 @@ const GRACE_PERIOD_MINUTES = 15;
 
 // Heartbeat threshold: if device hasn't pinged in this many minutes, it's considered offline
 const OFFLINE_THRESHOLD_MINUTES = 30;
+
+// Look-back (horas) compartilhado por toda escalação orientada a evento:
+// gate do Passo 2 e Passos 3/4. Evento mais velho que isso não escala mais —
+// uma instalação abandonada para de avisar a família em vez de avisar para sempre.
+const EVENT_LOOKBACK_HOURS = 48;
 
 // Warning thresholds in hours (fractional allowed, e.g. 0.5 = 30 min)
 const WARNING_LEVELS = [
@@ -282,6 +289,18 @@ export async function runMonitoringJob(): Promise<void> {
       const warningLevel = getWarningLevel(offlineHours);
       if (warningLevel === null) continue;
 
+      // Gate anti-falso-alarme (Anexo B do spec 2026-07-12): inatividade
+      // sozinha não é perigo — logout, desinstalação ou app em segundo plano
+      // escalavam à família sem nenhum alarme perdido. Só escala se um
+      // alarme/check-in esperado expirou SEM confirmação na janela de look-back.
+      const danger = await hasUnconfirmedEvents(device.deviceId, EVENT_LOOKBACK_HOURS);
+      if (!danger) {
+        console.log(
+          `[Monitor] Device ${device.deviceId}: inactive but no unconfirmed events, skipping (no false alarm)`
+        );
+        continue;
+      }
+
       // Check if we already sent a warning at this level recently
       const warnings = await getWarningHistory(device.deviceId, 10);
       const recentWarningAtLevel = warnings.find(
@@ -405,7 +424,7 @@ export async function runMonitoringJob(): Promise<void> {
     // Scoped to 'checkin-daily' to avoid cascading on every missed medication alarm.
     // warningSent=false means the client did not handle escalation (device was offline).
     // Look back 48h so events that missed a job run still get caught.
-    const missedCheckins = await getMissedCheckinEvents("checkin-daily", 48);
+    const missedCheckins = await getMissedCheckinEvents("checkin-daily", EVENT_LOOKBACK_HOURS);
     console.log(`[Monitor] Found ${missedCheckins.length} missed check-in events to escalate`);
 
     for (const event of missedCheckins) {
@@ -466,7 +485,7 @@ export async function runMonitoringJob(): Promise<void> {
     // (app morreu logo após o disparo). warningSent=true é setado pelo cliente
     // quando ELE escala (confirmAlarmMissed), então aqui só caem os que ninguém
     // alertou. 'not_sent' (offline) fica para o Passo 2. Look-back 48h.
-    const missedAlarms = await getMissedMedicationEvents("checkin-daily", 48);
+    const missedAlarms = await getMissedMedicationEvents("checkin-daily", EVENT_LOOKBACK_HOURS);
     console.log(`[Monitor] Found ${missedAlarms.length} missed medication alarms to escalate`);
 
     for (const event of missedAlarms) {
