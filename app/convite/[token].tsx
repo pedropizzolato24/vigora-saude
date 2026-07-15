@@ -95,7 +95,7 @@ export default function AcceptInviteScreen() {
       <ScreenContainer>
         <View style={styles.center}>
           <MaterialIcons name="info-outline" size={48} color={colors.primary} />
-          <Text style={[styles.title, { color: colors.foreground }]}>Convite para a pessoa monitorada</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>Convite para a pessoa acompanhada</Text>
           <Text style={[styles.body, { color: colors.muted }]}>
             Este convite deve ser aberto pela pessoa que será acompanhada, no aparelho dela.
           </Text>

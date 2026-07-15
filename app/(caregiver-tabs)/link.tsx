@@ -184,7 +184,7 @@ export default function LinkScreen() {
         { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 },
       ]}
     >
-      <Text style={[styles.title, { color: c.foreground, fontSize: sz.title, fontFamily: BrandFonts.body }]}>Vincular pessoa monitorada</Text>
+      <Text style={[styles.title, { color: c.foreground, fontSize: sz.title, fontFamily: BrandFonts.body }]}>Vincular pessoa acompanhada</Text>
       <Text style={[styles.subtitle, { color: c.muted, fontSize: sz.subtitle, fontFamily: BrandFonts.body }]}>
         A pessoa que você vai acompanhar gera um código no app dela (em "Convidar cuidador"). Digite o
         código aqui ou escaneie o QR que aparece na tela dela.
@@ -193,7 +193,7 @@ export default function LinkScreen() {
       <MethodCard
         icon="dialpad"
         title="Código de convite"
-        description="Digite o código de 6 caracteres que a pessoa monitorada gerou."
+        description="Digite o código de 6 caracteres que a pessoa acompanhada gerou."
         onSubmit={(v) => submitMethod('code', v)}
         placeholder="ABC-DEF"
       />
@@ -204,7 +204,7 @@ export default function LinkScreen() {
           <Text style={[styles.methodTitle, { color: c.foreground, fontSize: sz.methodTitle, fontFamily: BrandFonts.body }]}>Escanear QR code</Text>
         </View>
         <Text style={[styles.methodDesc, { color: c.muted, fontSize: sz.methodDesc, fontFamily: BrandFonts.body }]}>
-          A pessoa monitorada mostra um QR no app dela; aponte a câmera.
+          A pessoa acompanhada mostra um QR no app dela; aponte a câmera.
         </Text>
 
         {permission?.granted ? (

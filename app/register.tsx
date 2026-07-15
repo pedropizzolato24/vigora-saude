@@ -79,7 +79,7 @@ export default function RegisterScreen() {
       return;
     }
     if (!userType) {
-      setError('Selecione se você é cuidador ou monitorado.');
+      setError('Escolha se o app é para você ou para alguém que você cuida.');
       return;
     }
 
@@ -251,19 +251,19 @@ export default function RegisterScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={[styles.label, { color: colors.foreground }]}>Você é:</Text>
+          <Text style={[styles.label, { color: colors.foreground }]}>Este app é para quem?</Text>
           <View style={styles.typeRow}>
             <TypeOption
               icon="favorite"
-              title="Monitorado"
-              description="Quero usar o app para minha própria saúde e segurança"
+              title="Para mim"
+              description="Quero cuidar da minha saúde e segurança"
               selected={userType === 'monitored'}
               onPress={() => setUserType('monitored')}
               colors={colors}
             />
             <TypeOption
               icon="shield"
-              title="Cuidador"
+              title="Para alguém que eu cuido"
               description="Quero acompanhar a saúde de outra pessoa"
               selected={userType === 'caregiver'}
               onPress={() => setUserType('caregiver')}

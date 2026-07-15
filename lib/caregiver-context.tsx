@@ -61,7 +61,7 @@ function mapServerLink(l: ServerLink): LinkedMonitored {
     monitoredOpenId: l.monitoredOpenId,
     method: l.method,
     identifier: l.monitoredOpenId,
-    displayName: l.displayName || l.monitoredName || 'Pessoa monitorada',
+    displayName: l.displayName || l.monitoredName || 'Pessoa acompanhada',
     relationship: l.relationship ?? undefined,
     linkedAt: l.linkedAt,
     status: l.status === 'active' ? 'active' : 'pending',

@@ -61,7 +61,7 @@ export default function CaregiverHomeScreen() {
       <ScreenContainer containerStyle={isAccessibilityMode ? { backgroundColor: ac.background } : undefined}>
         <CaregiverEmptyState
           icon="link"
-          title="Vincule uma pessoa monitorada para começar"
+          title="Vincule uma pessoa acompanhada para começar"
           description="Você vai acompanhar a saúde dessa pessoa e receber alertas importantes."
           ctaLabel="Vincular agora"
           onCtaPress={() => router.push('/(caregiver-tabs)/link')}

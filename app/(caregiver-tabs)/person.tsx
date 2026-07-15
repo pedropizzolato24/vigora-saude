@@ -63,7 +63,7 @@ export default function CaregiverPersonScreen() {
       <ScreenContainer containerStyle={isAccessibilityMode ? { backgroundColor: ac.background } : undefined}>
         <CaregiverEmptyState
           icon="person-add"
-          title="Nenhuma pessoa monitorada ainda"
+          title="Nenhuma pessoa acompanhada ainda"
           description="Adicione a pessoa que você cuida para começar a acompanhar."
           ctaLabel="Vincular agora"
           onCtaPress={() => router.push('/(caregiver-tabs)/link')}
