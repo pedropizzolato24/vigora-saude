@@ -4,7 +4,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { z } from "zod";
 import { getUserByOpenId, upsertUser } from "./db";
 import { resolveAccount } from "./db-auth";
-import { issueSession } from "./auth-shared";
+import { getLinkableAnonymousOpenId, issueSession } from "./auth-shared";
 
 /**
  * Sign in with Apple.
@@ -70,7 +70,8 @@ export async function verifyAppleIdentityToken(
 
 export async function handleAppleAuth(
   identityToken: string,
-  fullName?: string | null
+  fullName?: string | null,
+  linkToOpenId?: string
 ) {
   const claims = await verifyAppleIdentityToken(identityToken);
 
@@ -80,6 +81,7 @@ export async function handleAppleAuth(
     email: claims.email,
     emailVerified: claims.emailVerified,
     name: fullName ?? claims.email ?? "Usuário",
+    linkToOpenId,
   });
 
   // Só grava o nome se a conta ainda não tem um — a Apple não reenvia o nome
@@ -122,9 +124,12 @@ export function registerAppleAuthRoute(app: Express): void {
     }
 
     try {
+      // Upgrade de conta anônima: anexa o login Apple à conta da sessão atual.
+      const linkToOpenId = await getLinkableAnonymousOpenId(req);
       const result = await handleAppleAuth(
         parsed.data.identity_token,
-        parsed.data.full_name ?? null
+        parsed.data.full_name ?? null,
+        linkToOpenId
       );
       res.json(result);
     } catch (err) {

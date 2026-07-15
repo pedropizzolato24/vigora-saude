@@ -9,7 +9,7 @@ import {
   putAuthCode,
   resolveAccount,
 } from "./db-auth";
-import { issueSession } from "./auth-shared";
+import { getLinkableAnonymousOpenId, issueSession } from "./auth-shared";
 import { createRateLimit } from "./_core/rate-limit";
 import { isWhatsAppApiConfigured, sendWhatsAppAuthCode } from "./whatsapp";
 
@@ -133,9 +133,12 @@ export function registerPhoneAuthRoutes(app: Express): void {
         return;
       }
 
+      // Upgrade de conta anônima: anexa o telefone à conta da sessão atual.
+      const linkToOpenId = await getLinkableAnonymousOpenId(req);
       const { openId, isNew } = await resolveAccount({
         provider: "phone",
         subject: phone,
+        linkToOpenId,
       });
 
       const existing = await getUserByOpenId(openId);

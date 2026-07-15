@@ -106,7 +106,15 @@ export interface ResolvedAccount {
  *   1. identidade já registrada → conta dela
  *   2. legado: users.openId = `provider:sub` (contas pré-auth_identities) → backfill
  *   3. e-mail verificado bate com conta existente → vincula nesta conta
- *   4. cria conta nova
+ *   4. sessão anônima ativa (`linkToOpenId`) → anexa a credencial à conta
+ *      anônima que JÁ existe — o openId não muda, nada migra
+ *   5. cria conta nova
+ *
+ * Nota sobre a ordem 3 vs 4: o invariante "mesmo e-mail verificado = mesma
+ * conta" vence a vinculação anônima. Se o login já tem conta própria, o
+ * usuário entra NELA (borda de merge do spec — os dados locais anônimos
+ * permanecem no aparelho sob a chave da conta anônima; o lado servidor
+ * expira no expurgo de contas anônimas abandonadas).
  */
 export async function resolveAccount(input: {
   provider: AuthProvider;
@@ -115,6 +123,8 @@ export async function resolveAccount(input: {
   emailVerified?: boolean;
   name?: string | null;
   passwordHash?: string | null;
+  /** openId da conta ANÔNIMA autenticada no request — alvo da vinculação. */
+  linkToOpenId?: string | null;
 }): Promise<ResolvedAccount> {
   const db = await getDb();
   if (!db) {
@@ -150,6 +160,40 @@ export async function resolveAccount(input: {
       // possivelmente apontando para outra conta — releia a verdade.
       const settled = await findIdentity(input.provider, input.subject);
       return { openId: settled?.openId ?? match.openId, isNew: false };
+    }
+  }
+
+  // Upgrade da conta anônima: anexa a identidade ao openId que a sessão já
+  // usa. Só quando o alvo é de fato uma conta anônima (defesa em profundidade
+  // — quem chama já filtra por loginMethod, mas o parâmetro não é confiável
+  // por construção).
+  if (input.linkToOpenId) {
+    const target = await getUserByOpenId(input.linkToOpenId);
+    if (target?.loginMethod === "anonymous") {
+      await createIdentity(
+        input.provider,
+        input.subject,
+        target.openId,
+        input.passwordHash
+      );
+      // Corrida: outro request pode ter registrado a identidade primeiro,
+      // possivelmente para outra conta — releia a verdade.
+      const settled = await findIdentity(input.provider, input.subject);
+      const openId = settled?.openId ?? target.openId;
+      if (openId === target.openId) {
+        // A conta deixa de ser anônima: método real, e-mail verificado e nome
+        // (só preenche vazios — nome editado no app tem precedência).
+        await upsertUser({
+          openId,
+          loginMethod: input.provider,
+          lastSignedIn: new Date(),
+          ...(input.emailVerified && input.email && !target.email
+            ? { email: input.email }
+            : {}),
+          ...(!target.name && input.name ? { name: input.name } : {}),
+        });
+      }
+      return { openId, isNew: false };
     }
   }
 
