@@ -3,38 +3,36 @@
  *
  * tRPC routes for the server-side alarm monitoring system.
  *
- * SECURITY: All procedures require authentication. Each device row is bound
- * to the openId of the user that registered it. Subsequent calls verify
- * that the supplied deviceId belongs to ctx.user.openId — preventing
- * deviceId enumeration attacks that previously leaked PII (contacts,
- * location, alarm history) and allowed an attacker to overwrite a
- * victim's emergency contacts.
+ * SECURITY: All procedures require authentication. A posse dos dados é
+ * IMPLÍCITA pela conta autenticada (ctx.user.openId) — cada rota só toca os
+ * dados do próprio openId. Não existe mais posse por deviceId (e portanto não
+ * existem mais 403 DEVICE_OWNED_BY_ANOTHER_USER ao trocar de conta no mesmo
+ * aparelho). Ver docs/design/2026-07-12-monitoring-account-ownership.md.
+ *
+ * Compat: clientes antigos ainda enviam `deviceId` no input — o zod descarta
+ * chaves desconhecidas, e onde o campo segue declarado ele é só metadado.
  *
  * Routes:
- *   monitoring.register        - Register/claim device for ctx.user
- *   monitoring.heartbeat       - Send "I'm alive" ping
- *   monitoring.syncAlarms      - Replace all synced alarms for the device
+ *   monitoring.register        - (deprecated) compat: registra sinal de vida
+ *   monitoring.heartbeat       - Send "I'm alive" ping (liveness da conta)
+ *   monitoring.syncAlarms      - (deprecated) compat no-op: agenda vive em user_data
  *   monitoring.createEvent     - Create a pending alarm event
  *   monitoring.confirmEvent    - Confirm alarm as responded/missed/not_sent
- *   monitoring.getHistory      - Get alarm event history (own device)
- *   monitoring.getWarnings     - Get warning log (own device)
+ *   monitoring.getHistory      - Get alarm event history (own account)
+ *   monitoring.getWarnings     - Get warning log (own account)
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import {
-  assertDeviceOwnership,
   createAlarmEvent,
+  getAccountLiveness,
   getAlarmEventHistory,
-  getAppUserForOwner,
-  getLastHeartbeat,
-  getSyncedAlarms,
   getWarningHistory,
   recordHeartbeat,
-  replaceAllSyncedAlarms,
   updateAlarmEventStatusByAlarmId,
-  upsertAppUser,
 } from "./db-monitoring";
+import { getUserData } from "./db";
 import { getActiveCaregiversForMonitored } from "./db-links";
 import { getPushTokensForOpenIds } from "./db-push";
 import { sendExpoPush } from "./push";
@@ -61,84 +59,22 @@ function isSosRateLimited(openId: string): boolean {
   return false;
 }
 
-const emergencyContactSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  phone: z.string(),
-  relation: z.string(),
-  whatsapp: z.boolean(),
-  /** Optional email address for fallback notifications (Email -> SMS) */
-  email: z.string().email().optional(),
-});
-
-/**
- * Maps the ownership-check errors thrown by assertDeviceOwnership into
- * the appropriate tRPC error codes so the client gets a stable contract.
- */
-async function requireDeviceOwnership(
-  deviceId: string,
-  openId: string
-): Promise<void> {
-  try {
-    await assertDeviceOwnership(deviceId, openId);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg === "DEVICE_NOT_REGISTERED") {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message:
-          "Dispositivo não registrado. Chame monitoring.register primeiro.",
-      });
-    }
-    if (msg === "DEVICE_OWNED_BY_ANOTHER_USER") {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "Este dispositivo pertence a outro usuário.",
-      });
-    }
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "Falha ao verificar propriedade do dispositivo.",
-    });
-  }
-}
-
 export const monitoringRouter = router({
   /**
-   * Register or update a device profile.
-   * Called on app startup and whenever contacts/name change.
-   * Claims the deviceId for the authenticated user.
+   * DEPRECATED (compat com clientes antigos): contatos e nome agora vivem no
+   * cloud backup por conta (userData.put). Registrar ainda conta como sinal
+   * de vida — o cliente antigo chama isto no bootstrap.
    */
   register: protectedProcedure
     .input(
       z.object({
-        deviceId: z.string().min(1).max(64),
-        userName: z.string().optional(),
-        emergencyContacts: z.array(emergencyContactSchema).optional(),
+        deviceId: z.string().max(64).optional(),
         lastLocation: z.string().optional(), // "lat,lng"
       })
     )
     .mutation(async ({ ctx, input }) => {
-      // Allow claim if device is unowned OR already owned by current user.
-      // assertDeviceOwnership only throws when the row exists with a
-      // *different* openId — so we ignore DEVICE_NOT_REGISTERED here.
-      try {
-        await assertDeviceOwnership(input.deviceId, ctx.user.openId);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        if (msg === "DEVICE_OWNED_BY_ANOTHER_USER") {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "Este dispositivo pertence a outro usuário.",
-          });
-        }
-        // DEVICE_NOT_REGISTERED is fine — registering creates the row.
-      }
-      await upsertAppUser({
-        deviceId: input.deviceId,
-        openId: ctx.user.openId,
-        userName: input.userName,
-        emergencyContacts: input.emergencyContacts,
+      await recordHeartbeat(ctx.user.openId, {
+        lastDeviceId: input.deviceId,
         lastLocation: input.lastLocation,
       });
       return { success: true };
@@ -146,53 +82,37 @@ export const monitoringRouter = router({
 
   /**
    * Send a heartbeat ping. Called every 5 minutes while app is active.
+   * Liveness é da CONTA: qualquer aparelho da conta que pingar mantém a
+   * pessoa "viva" para o dead man's switch. deviceId/lastDeviceId é metadado.
    */
   heartbeat: protectedProcedure
     .input(
       z.object({
-        deviceId: z.string().min(1).max(64),
+        /** Compat: clientes antigos mandam deviceId; novos mandam lastDeviceId. */
+        deviceId: z.string().max(64).optional(),
+        lastDeviceId: z.string().max(64).optional(),
         appVersion: z.string().optional(),
         lastLocation: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      await requireDeviceOwnership(input.deviceId, ctx.user.openId);
-      await recordHeartbeat(input.deviceId, input.appVersion);
-      // Update location if provided
-      if (input.lastLocation) {
-        await upsertAppUser({
-          deviceId: input.deviceId,
-          openId: ctx.user.openId,
-          lastLocation: input.lastLocation,
-        });
-      }
+      await recordHeartbeat(ctx.user.openId, {
+        appVersion: input.appVersion,
+        lastDeviceId: input.lastDeviceId ?? input.deviceId,
+        lastLocation: input.lastLocation,
+      });
       return { success: true, timestamp: new Date().toISOString() };
     }),
 
   /**
-   * Replace all synced alarms for a device.
-   * Called whenever the alarm list changes (add/edit/delete).
+   * DEPRECATED (compat com clientes antigos): a agenda de alarmes autoritativa
+   * vive em user_data.alarms (cloud backup). A tabela synced_alarms foi
+   * eliminada; aceita a chamada e responde sucesso para não quebrar o cliente.
    */
   syncAlarms: protectedProcedure
-    .input(
-      z.object({
-        deviceId: z.string().min(1).max(64),
-        alarms: z.array(
-          z.object({
-            alarmId: z.string(),
-            time: z.string().regex(/^\d{2}:\d{2}$/),
-            description: z.string(),
-            enabled: z.boolean(),
-            repeat: z.enum(["daily", "weekdays", "weekends", "custom"]),
-            customDays: z.array(z.number().min(0).max(6)).optional(),
-          })
-        ),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      await requireDeviceOwnership(input.deviceId, ctx.user.openId);
-      await replaceAllSyncedAlarms(input.deviceId, input.alarms);
-      return { success: true, count: input.alarms.length };
+    .input(z.object({ alarms: z.array(z.unknown()).optional() }))
+    .mutation(async ({ input }) => {
+      return { success: true, count: input.alarms?.length ?? 0 };
     }),
 
   /**
@@ -203,16 +123,14 @@ export const monitoringRouter = router({
   createEvent: protectedProcedure
     .input(
       z.object({
-        deviceId: z.string().min(1).max(64),
         alarmId: z.string(),
         alarmDescription: z.string(),
         scheduledAt: z.string(), // ISO string
       })
     )
     .mutation(async ({ ctx, input }) => {
-      await requireDeviceOwnership(input.deviceId, ctx.user.openId);
       const id = await createAlarmEvent({
-        deviceId: input.deviceId,
+        openId: ctx.user.openId,
         alarmId: input.alarmId,
         alarmDescription: input.alarmDescription,
         scheduledAt: new Date(input.scheduledAt),
@@ -228,16 +146,14 @@ export const monitoringRouter = router({
   confirmEvent: protectedProcedure
     .input(
       z.object({
-        deviceId: z.string().min(1).max(64),
         alarmId: z.string(),
         scheduledAt: z.string(), // ISO string
         status: z.enum(["responded", "missed", "not_sent"]),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      await requireDeviceOwnership(input.deviceId, ctx.user.openId);
       await updateAlarmEventStatusByAlarmId(
-        input.deviceId,
+        ctx.user.openId,
         input.alarmId,
         new Date(input.scheduledAt),
         input.status
@@ -246,70 +162,56 @@ export const monitoringRouter = router({
     }),
 
   /**
-   * Get alarm event history for a device.
+   * Get alarm event history for the authenticated account.
    */
   getHistory: protectedProcedure
     .input(
       z.object({
-        deviceId: z.string().min(1).max(64),
         limit: z.number().min(1).max(200).optional().default(50),
       })
     )
     .query(async ({ ctx, input }) => {
-      await requireDeviceOwnership(input.deviceId, ctx.user.openId);
-      const events = await getAlarmEventHistory(input.deviceId, input.limit);
+      const events = await getAlarmEventHistory(ctx.user.openId, input.limit);
       return { events };
     }),
 
   /**
-   * Get warning log for a device.
+   * Get warning log for the authenticated account.
    */
   getWarnings: protectedProcedure
     .input(
       z.object({
-        deviceId: z.string().min(1).max(64),
         limit: z.number().min(1).max(100).optional().default(20),
       })
     )
     .query(async ({ ctx, input }) => {
-      await requireDeviceOwnership(input.deviceId, ctx.user.openId);
-      const warnings = await getWarningHistory(input.deviceId, input.limit);
+      const warnings = await getWarningHistory(ctx.user.openId, input.limit);
       return { warnings };
     }),
 
   /**
-   * Get device profile (for debugging/settings display).
-   * Scoped: returns null if the device is not owned by the current user.
-   */
-  getProfile: protectedProcedure
-    .input(z.object({ deviceId: z.string().min(1).max(64) }))
-    .query(async ({ ctx, input }) => {
-      const user = await getAppUserForOwner(input.deviceId, ctx.user.openId);
-      return { user };
-    }),
-
-  /**
    * Get monitoring status summary for the settings panel.
-   * Returns last check-in time, synced alarm count, and recent event counts.
+   * Returns last check-in time, alarm counts (from user_data, the
+   * authoritative schedule) and recent event counts.
    */
   getStatus: protectedProcedure
-    .input(z.object({ deviceId: z.string().min(1).max(64) }))
-    .query(async ({ ctx, input }) => {
-      await requireDeviceOwnership(input.deviceId, ctx.user.openId);
-      const [heartbeat, alarms, events] = await Promise.all([
-        getLastHeartbeat(input.deviceId),
-        getSyncedAlarms(input.deviceId),
-        getAlarmEventHistory(input.deviceId, 30),
+    .input(z.object({}).optional())
+    .query(async ({ ctx }) => {
+      const [liveness, data, events] = await Promise.all([
+        getAccountLiveness(ctx.user.openId),
+        getUserData(ctx.user.openId),
+        getAlarmEventHistory(ctx.user.openId, 30),
       ]);
 
+      const alarms = ((data?.alarms ?? []) as Array<{ enabled?: boolean }>);
       const respondedCount = events.filter((e) => e.status === "responded").length;
       const missedCount = events.filter((e) => e.status === "missed").length;
       const notSentCount = events.filter((e) => e.status === "not_sent").length;
 
       return {
-        lastCheckIn: heartbeat?.lastSeenAt ?? null,
+        lastCheckIn: liveness?.lastSeenAt ?? null,
         syncedAlarmCount: alarms.length,
-        enabledAlarmCount: alarms.filter((a) => a.enabled).length,
+        enabledAlarmCount: alarms.filter((a) => a?.enabled).length,
         recentEvents: { respondedCount, missedCount, notSentCount },
       };
     }),

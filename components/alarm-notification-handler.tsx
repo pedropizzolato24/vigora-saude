@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { AppState, Platform } from 'react-native';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import * as Notifications from 'expo-notifications';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { loadCurrentAppStateRaw } from '@/lib/app-state-storage';
 import { useRouter } from 'expo-router';
 import { useAppContext } from '@/lib/app-context';
 import { clearAlarmTimeout } from '@/lib/alarm-timeout-manager';
@@ -23,15 +23,13 @@ if (Platform.OS === 'android') {
   } catch {}
 }
 
-const STORAGE_KEY = 'vigora_app_state';
-
 /**
  * Read timerDuration directly from AsyncStorage to avoid stale closure issues.
  * Falls back to 30s if not found or not yet loaded.
  */
 async function readTimerDurationFromStorage(): Promise<number> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    const raw = await loadCurrentAppStateRaw();
     if (raw) {
       const parsed = JSON.parse(raw);
       const duration = parsed?.settings?.timerDuration;
@@ -123,7 +121,7 @@ export function AlarmNotificationHandler() {
     let alarmData = alarm;
     if (!alarmData || !alarmData.enabled) {
       try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        const raw = await loadCurrentAppStateRaw();
         if (raw) {
           const parsed = JSON.parse(raw);
           alarmData = parsed?.alarms?.find((a: any) => a.id === alarmId && a.enabled);

@@ -4,12 +4,11 @@
  * Client-side service that communicates with the server monitoring system.
  *
  * Responsibilities:
- * 1. Register device on first launch
- * 2. Send heartbeat every 5 minutes while app is active
- * 3. Sync alarm list whenever it changes
- * 4. Create pending alarm events before each alarm fires
- * 5. Confirm alarm events (responded / missed / not_sent)
- * 6. Detect "not_sent" alarms when device comes back online
+ * 1. Send heartbeat every 5 minutes while app is active (liveness da CONTA —
+ *    o servidor chaveia tudo por openId; o deviceId vai só como metadado)
+ * 2. Create pending alarm events before each alarm fires
+ * 3. Confirm alarm events (responded / missed / not_sent)
+ * 4. Detect "not_sent" alarms when device comes back online
  */
 import { AppState, AppStateStatus, Platform } from "react-native";
 import { getDeviceId } from "./device-id";
@@ -182,40 +181,16 @@ async function trpcQuery(
   return null;
 }
 
-// --- Device Registration ------------------------------------------------------
-
-export async function registerDevice(options: {
-  userName?: string;
-  emergencyContacts?: Array<{
-    id: string;
-    name: string;
-    phone: string;
-    relation: string;
-    whatsapp: boolean;
-    /** Optional email for fallback notifications */
-    email?: string;
-  }>;
-  lastLocation?: string;
-}): Promise<void> {
-  const deviceId = await getDeviceId();
-  await trpcMutation("monitoring.register", {
-    deviceId,
-    userName: options.userName,
-    emergencyContacts: options.emergencyContacts,
-    lastLocation: options.lastLocation,
-  });
-  console.log("[Monitoring] Device registered:", deviceId);
-}
-
 // --- Heartbeat ----------------------------------------------------------------
 
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let appStateSubscription: { remove: () => void } | null = null;
 
 async function sendHeartbeat(location?: string): Promise<void> {
+  // deviceId é só metadado de liveness (lastDeviceId) — nunca chave de posse.
   const deviceId = await getDeviceId();
   await trpcMutation("monitoring.heartbeat", {
-    deviceId,
+    lastDeviceId: deviceId,
     appVersion: "1.0.0",
     lastLocation: location,
   });
@@ -268,28 +243,13 @@ export function stopHeartbeat(): void {
 // --- Alarm Sync ---------------------------------------------------------------
 
 export async function syncAlarmsToServer(alarms: Alarm[]): Promise<void> {
-  const deviceId = await getDeviceId();
-  const payload = alarms
-    .filter((a) => a.enabled)
-    .map((a) => ({
-      alarmId: a.id,
-      time: a.time,
-      description: a.description,
-      enabled: a.enabled,
-      repeat: a.repeat,
-      customDays: a.customDays,
-    }));
-
-  await trpcMutation("monitoring.syncAlarms", {
-    deviceId,
-    alarms: payload,
-  });
-  console.log(`[Monitoring] Synced ${payload.length} alarms to server`);
-
-  // Pré-registra o PRÓXIMO disparo esperado de cada alarme como evento pendente.
-  // Assim o servidor sabe que o alarme era esperado mesmo se ele NÃO tocar (Doze/
-  // app morto) — e o dead man's switch escala e o histórico não fica vazio.
-  // Idempotente no servidor por (deviceId, alarmId, scheduledAt) canônico.
+  // A agenda autoritativa por conta já sobe via cloud backup (userData.put);
+  // a antiga monitoring.syncAlarms (tabela synced_alarms) foi eliminada.
+  // O que o dead man's switch precisa é do EVENTO esperado:
+  // pré-registra o PRÓXIMO disparo de cada alarme como evento pendente.
+  // Assim o servidor sabe que o alarme era esperado mesmo se ele NÃO tocar
+  // (Doze/app morto) — e o switch escala e o histórico não fica vazio.
+  // Idempotente no servidor por (openId, alarmId, scheduledAt) canônico.
   for (const a of alarms) {
     if (!a.enabled) continue;
     const fireMs = nextAlarmFireMs(a);
@@ -297,6 +257,7 @@ export async function syncAlarmsToServer(alarms: Alarm[]): Promise<void> {
       await createPendingAlarmEvent(a, new Date(fireMs)).catch(() => {});
     }
   }
+  console.log(`[Monitoring] Pre-registered next fire for enabled alarms`);
 }
 
 // --- Alarm Events -------------------------------------------------------------
@@ -309,9 +270,7 @@ export async function createPendingAlarmEvent(
   alarm: Alarm,
   scheduledAt: Date
 ): Promise<void> {
-  const deviceId = await getDeviceId();
   await trpcMutation("monitoring.createEvent", {
-    deviceId,
     alarmId: alarm.id,
     alarmDescription: alarm.description || alarm.time,
     scheduledAt: scheduledAt.toISOString(),
@@ -327,9 +286,7 @@ export async function confirmAlarmResponded(
   alarm: Alarm,
   scheduledAt: Date
 ): Promise<void> {
-  const deviceId = await getDeviceId();
   await trpcMutation("monitoring.confirmEvent", {
-    deviceId,
     alarmId: alarm.id,
     scheduledAt: scheduledAt.toISOString(),
     status: "responded",
@@ -345,9 +302,7 @@ export async function confirmAlarmMissed(
   alarm: Alarm,
   scheduledAt: Date
 ): Promise<void> {
-  const deviceId = await getDeviceId();
   await trpcMutation("monitoring.confirmEvent", {
-    deviceId,
     alarmId: alarm.id,
     scheduledAt: scheduledAt.toISOString(),
     status: "missed",
@@ -359,11 +314,7 @@ export async function confirmAlarmMissed(
  * Get alarm event history from server.
  */
 export async function getAlarmHistory(limit = 50): Promise<any[]> {
-  const deviceId = await getDeviceId();
-  const result = await trpcQuery("monitoring.getHistory", {
-    deviceId,
-    limit,
-  });
+  const result = await trpcQuery("monitoring.getHistory", { limit });
   return result?.events ?? [];
 }
 
@@ -371,11 +322,7 @@ export async function getAlarmHistory(limit = 50): Promise<any[]> {
  * Get warning log from server.
  */
 export async function getWarningLog(limit = 20): Promise<any[]> {
-  const deviceId = await getDeviceId();
-  const result = await trpcQuery("monitoring.getWarnings", {
-    deviceId,
-    limit,
-  });
+  const result = await trpcQuery("monitoring.getWarnings", { limit });
   return result?.warnings ?? [];
 }
 
@@ -392,8 +339,7 @@ export async function getMonitoringStatus(): Promise<{
     notSentCount: number;
   };
 } | null> {
-  const deviceId = await getDeviceId();
-  const result = await trpcQuery("monitoring.getStatus", { deviceId });
+  const result = await trpcQuery("monitoring.getStatus", {});
   return result ?? null;
 }
 

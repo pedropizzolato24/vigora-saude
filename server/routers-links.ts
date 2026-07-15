@@ -20,16 +20,15 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getUserByOpenId, getUserData } from "./db";
-import { getLastHeartbeat } from "./db-monitoring";
+import { getAccountLiveness } from "./db-monitoring";
 import {
   consumeInviteByCode,
   createInvite,
   getActiveCaregiversForMonitored,
   getActiveLinkForCaregiver,
-  getDevicesForOwner,
   getInviteByCode,
-  getRecentMissedEventsForDevice,
-  getRecentWarningsForDevice,
+  getRecentMissedEventsForAccount,
+  getRecentWarningsForAccount,
   revokeLink as revokeLinkRow,
   upsertActiveLink,
 } from "./db-links";
@@ -246,18 +245,11 @@ export const linkRouter = router({
     const link = await requireCaregiverLink(ctx.user.openId);
     const monitoredOpenId = link.monitoredOpenId;
 
-    const [data, monitored, devices] = await Promise.all([
+    const [data, monitored, liveness] = await Promise.all([
       getUserData(monitoredOpenId),
       getUserByOpenId(monitoredOpenId),
-      getDevicesForOwner(monitoredOpenId),
+      getAccountLiveness(monitoredOpenId),
     ]);
-
-    const primary = devices[0] ?? null;
-    let lastHeartbeatAt: number | null = null;
-    if (primary) {
-      const hb = await getLastHeartbeat(primary.deviceId);
-      lastHeartbeatAt = hb?.lastSeenAt ? hb.lastSeenAt.getTime() : null;
-    }
 
     const metrics = (data?.healthMetrics ?? []) as unknown[];
     const alarms = (data?.alarms ?? []) as unknown[];
@@ -269,26 +261,23 @@ export const linkRouter = router({
       alarms: alarms.slice(0, 200),
       healthMetrics: metrics.slice(-100),
       emergencyContacts: (data?.emergencyContacts ?? []) as unknown[],
-      lastHeartbeatAt,
-      lastLocation: primary?.lastLocation ?? null,
-      lastLocationAt: primary?.lastLocationAt ? primary.lastLocationAt.getTime() : null,
+      lastHeartbeatAt: liveness?.lastSeenAt ? liveness.lastSeenAt.getTime() : null,
+      lastLocation: liveness?.lastLocation ?? null,
+      lastLocationAt: liveness?.lastLocationAt ? liveness.lastLocationAt.getTime() : null,
       dataUpdatedAt: data?.dataUpdatedAt ?? 0,
     };
   }),
 
   /**
    * Caregiver-only: recent escalation-relevant events for the linked monitored
-   * person's primary device (missed/not-sent alarms + warning log).
+   * account (missed/not-sent alarms + warning log).
    */
   getMonitoredAlerts: protectedProcedure.query(async ({ ctx }) => {
     const link = await requireCaregiverLink(ctx.user.openId);
-    const devices = await getDevicesForOwner(link.monitoredOpenId);
-    const primary = devices[0] ?? null;
-    if (!primary) return { events: [], warnings: [] };
 
     const [events, warnings] = await Promise.all([
-      getRecentMissedEventsForDevice(primary.deviceId, 30),
-      getRecentWarningsForDevice(primary.deviceId, 20),
+      getRecentMissedEventsForAccount(link.monitoredOpenId, 30),
+      getRecentWarningsForAccount(link.monitoredOpenId, 20),
     ]);
 
     return {

@@ -10,7 +10,7 @@
  */
 import { and, desc, eq, gt, inArray, isNull } from "drizzle-orm";
 import { getDb } from "./db";
-import { alarmEvents, appUsers, caregiverLinks, linkInvites, warningLog } from "../drizzle/schema";
+import { alarmEvents, caregiverLinks, linkInvites, warningLog } from "../drizzle/schema";
 
 // --- Invites ------------------------------------------------------------------
 
@@ -141,23 +141,8 @@ export async function getActiveCaregiversForMonitored(monitoredOpenId: string) {
 
 // --- Scoped monitored-data reads (caregiver side, Fase 4) ---------------------
 
-/**
- * Devices owned by a monitored account, most recently updated first. The first
- * row is treated as the monitored person's primary device for live data
- * (heartbeat, location, alarm events).
- */
-export async function getDevicesForOwner(openId: string) {
-  const db = await getDb();
-  if (!db) return [];
-  return db
-    .select()
-    .from(appUsers)
-    .where(eq(appUsers.openId, openId))
-    .orderBy(desc(appUsers.updatedAt));
-}
-
-/** Recent missed / not-sent alarm events for a device (newest first). */
-export async function getRecentMissedEventsForDevice(deviceId: string, limit = 30) {
+/** Recent missed / not-sent alarm events for an account (newest first). */
+export async function getRecentMissedEventsForAccount(openId: string, limit = 30) {
   const db = await getDb();
   if (!db) return [];
   return db
@@ -165,7 +150,7 @@ export async function getRecentMissedEventsForDevice(deviceId: string, limit = 3
     .from(alarmEvents)
     .where(
       and(
-        eq(alarmEvents.deviceId, deviceId),
+        eq(alarmEvents.openId, openId),
         inArray(alarmEvents.status, ["missed", "not_sent"])
       )
     )
@@ -173,14 +158,14 @@ export async function getRecentMissedEventsForDevice(deviceId: string, limit = 3
     .limit(limit);
 }
 
-/** Recent escalation warnings for a device (newest first). */
-export async function getRecentWarningsForDevice(deviceId: string, limit = 20) {
+/** Recent escalation warnings for an account (newest first). */
+export async function getRecentWarningsForAccount(openId: string, limit = 20) {
   const db = await getDb();
   if (!db) return [];
   return db
     .select()
     .from(warningLog)
-    .where(eq(warningLog.deviceId, deviceId))
+    .where(eq(warningLog.openId, openId))
     .orderBy(desc(warningLog.sentAt))
     .limit(limit);
 }

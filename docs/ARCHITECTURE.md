@@ -66,7 +66,7 @@ O Vigora segue uma arquitetura **mobile-first com um backend próprio único**: 
 |---|---|---|
 | `auth` | `completeRegistration`, `updateProfile`, `me`, `logout` | Autenticação e perfil |
 | `userData` | `get`, `put` | Cloud backup por conta |
-| `monitoring` | `register`, `heartbeat`, `syncAlarms`, `createEvent`, `confirmEvent`, `getHistory` | Registro de device e eventos de alarme |
+| `monitoring` | `heartbeat`, `createEvent`, `confirmEvent`, `getHistory`, `getStatus` (+ `register`/`syncAlarms` como stubs de compat) | Liveness da conta e eventos de alarme — posse por `openId` |
 | `link` | convites (código/QR/link), `getMonitoredAlerts` | Vínculo monitorado↔cuidador |
 | `push` | `register` | Registro do token de push (Expo) do cuidador |
 | `whatsapp` | `sendEmergencyAlert`, `isConfigured` | Alertas via WhatsApp |

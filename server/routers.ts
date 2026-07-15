@@ -7,7 +7,6 @@ import { sdk, revokeJti } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { isWhatsAppApiConfigured, sendEmergencyAlerts } from "./whatsapp";
-import { assertDeviceOwnership, getAppUserForOwner } from "./db-monitoring";
 import { monitoringRouter } from "./routers-monitoring";
 import { linkRouter } from "./routers-links";
 import { pushRouter } from "./routers-push";
@@ -207,7 +206,7 @@ export const appRouter = router({
      * we also revoke the caller's current token and clear the web cookie.
      */
     deleteAccount: protectedProcedure.mutation(async ({ ctx }) => {
-      const result = await deleteAccountData(ctx.user.openId);
+      await deleteAccountData(ctx.user.openId);
 
       // Belt-and-suspenders: revoke the caller's current token now.
       try {
@@ -232,7 +231,7 @@ export const appRouter = router({
 
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return { success: true, ...result } as const;
+      return { success: true } as const;
     }),
   }),
 
@@ -305,15 +304,15 @@ export const appRouter = router({
      * the deep link path fails (app in background, unconscious user, etc.).
      *
      * SECURITY: Requires authentication and verifies that:
-     *   1. The deviceId is owned by ctx.user
-     *   2. Every phone number in `contacts` matches a stored emergency
-     *      contact for that device (no arbitrary destinations)
-     *   3. Per-user rate limit (5 calls / 60s) to prevent spam abuse
+     *   1. Every phone number in `contacts` matches a stored emergency
+     *      contact for ctx.user's account (no arbitrary destinations)
+     *   2. Per-user rate limit (5 calls / 60s) to prevent spam abuse
      */
     sendEmergencyAlert: protectedProcedure
       .input(
         z.object({
-          deviceId: z.string().min(1).max(64),
+          /** Compat: clientes antigos ainda enviam; ignorado (posse é por conta). */
+          deviceId: z.string().max(64).optional(),
           contacts: z.array(
             z.object({
               phone: z.string().min(8),
@@ -343,36 +342,12 @@ export const appRouter = router({
           });
         }
 
-        // Ownership: deviceId must belong to caller and be registered
-        try {
-          await assertDeviceOwnership(input.deviceId, ctx.user.openId);
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          if (msg === "DEVICE_NOT_REGISTERED") {
-            throw new TRPCError({
-              code: "PRECONDITION_FAILED",
-              message: "Dispositivo não registrado.",
-            });
-          }
-          if (msg === "DEVICE_OWNED_BY_ANOTHER_USER") {
-            throw new TRPCError({
-              code: "FORBIDDEN",
-              message: "Dispositivo pertence a outro usuário.",
-            });
-          }
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "Falha ao verificar dispositivo.",
-          });
-        }
-
-        // Load the stored contacts and verify all targets are whitelisted
-        const appUser = await getAppUserForOwner(
-          input.deviceId,
-          ctx.user.openId
-        );
+        // Load the account's stored contacts and verify all targets are
+        // whitelisted. user_data (cloud backup por conta) é o lar autoritativo
+        // dos contatos — posse implícita pelo openId autenticado.
+        const data = await getUserData(ctx.user.openId);
         const storedContacts: EmergencyContactRecord[] =
-          (appUser?.emergencyContacts as EmergencyContactRecord[] | null) ?? [];
+          (data?.emergencyContacts as EmergencyContactRecord[] | null) ?? [];
         if (storedContacts.length === 0) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",

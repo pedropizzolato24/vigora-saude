@@ -2,8 +2,9 @@
  * db-account.ts
  *
  * Account elimination (LGPD Art. 18, VI). A single transactional purge of every
- * record tied to an account, across both the openId-keyed tables and the
- * device-keyed monitoring tables (reached via app_users.openId -> deviceId).
+ * record tied to an account. Todas as tabelas de domínio são chaveadas por
+ * openId (ver docs/design/2026-07-12-monitoring-account-ownership.md), então a
+ * exclusão não precisa mais resolver deviceIds.
  *
  * The canonical `users` row is deleted LAST so that, the instant the transaction
  * commits, every outstanding session for the account stops working:
@@ -13,58 +14,39 @@
  */
 import { eq, inArray, or } from "drizzle-orm";
 import {
+  accountLiveness,
   alarmEvents,
-  appUsers,
   authCodes,
   authIdentities,
   caregiverLinks,
-  deviceHeartbeat,
   linkInvites,
   pushTokens,
-  syncedAlarms,
   userData,
   users,
   warningLog,
 } from "../drizzle/schema";
 import { getDb, getUserByOpenId } from "./db";
 
-export async function deleteAccountData(
-  openId: string,
-): Promise<{ deletedDevices: number }> {
+export async function deleteAccountData(openId: string): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("DATABASE_UNAVAILABLE");
 
-  // Resolve the account's contacts (to clear any pending auth codes) and its
-  // device ids (to clear device-keyed monitoring data) BEFORE the transaction.
+  // Resolve the account's contacts (to clear any pending auth codes) BEFORE
+  // the transaction. Phone OTP codes are keyed by the digits-only number while
+  // users.phone is stored with a leading '+', so include both.
   const user = await getUserByOpenId(openId);
-  // Phone OTP codes are keyed by the digits-only number while users.phone is
-  // stored with a leading '+', so include both to purge a pending phone code.
   const phoneDigits = user?.phone?.replace(/\D/g, "");
   const codeTargets = [user?.email, user?.phone, phoneDigits].filter(
     (t): t is string => !!t,
   );
 
-  let deletedDevices = 0;
   await db.transaction(async (tx) => {
-    // Resolve the account's devices INSIDE the transaction so a device claimed
-    // mid-delete can't leave its device-keyed rows orphaned.
-    const deviceRows = await tx
-      .select({ deviceId: appUsers.deviceId })
-      .from(appUsers)
-      .where(eq(appUsers.openId, openId));
-    const deviceIds = deviceRows.map((r) => r.deviceId);
-    deletedDevices = deviceIds.length;
+    // Monitoring data (all openId-keyed).
+    await tx.delete(accountLiveness).where(eq(accountLiveness.openId, openId));
+    await tx.delete(alarmEvents).where(eq(alarmEvents.openId, openId));
+    await tx.delete(warningLog).where(eq(warningLog.openId, openId));
 
-    // Device-keyed tables (heartbeat, alarm schedule + event log, warning log).
-    if (deviceIds.length > 0) {
-      await tx.delete(syncedAlarms).where(inArray(syncedAlarms.deviceId, deviceIds));
-      await tx.delete(deviceHeartbeat).where(inArray(deviceHeartbeat.deviceId, deviceIds));
-      await tx.delete(alarmEvents).where(inArray(alarmEvents.deviceId, deviceIds));
-      await tx.delete(warningLog).where(inArray(warningLog.deviceId, deviceIds));
-    }
-
-    // openId-keyed tables.
-    await tx.delete(appUsers).where(eq(appUsers.openId, openId));
+    // Account data.
     await tx.delete(userData).where(eq(userData.openId, openId));
     await tx.delete(pushTokens).where(eq(pushTokens.openId, openId));
     await tx.delete(authIdentities).where(eq(authIdentities.openId, openId));
@@ -98,6 +80,4 @@ export async function deleteAccountData(
     // Canonical account last — invalidates all sessions on commit.
     await tx.delete(users).where(eq(users.openId, openId));
   });
-
-  return { deletedDevices };
 }

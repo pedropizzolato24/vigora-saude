@@ -2,24 +2,28 @@
  * monitoring-job.ts
  *
  * Server-side background job that runs every 5 minutes to:
- * 1. Detect alarm events that expired without device confirmation
- *    -> If device was offline (no heartbeat): mark as "not_sent"
- *    -> If device was online but user didn't respond: mark as "missed"
- * 2. Check for devices that went offline AND have an unconfirmed alarm event
+ * 1. Detect alarm events that expired without confirmation
+ *    -> If the account was offline (no heartbeat): mark as "not_sent"
+ *    -> If the account was online but user didn't respond: mark as "missed"
+ * 2. Check for accounts that went offline AND have an unconfirmed alarm event
  *    in the look-back window (inactivity alone is NOT a danger signal)
  *    -> Send progressive warning messages to emergency contacts via WhatsApp
  *
+ * Tudo chaveado por CONTA (openId): a pergunta do switch é "esta PESSOA está
+ * respondendo?", não "este aparelho está ligado?". Qualquer aparelho da conta
+ * que pingar mantém a conta viva. Ver
+ * docs/design/2026-07-12-monitoring-account-ownership.md.
+ *
  * Warning escalation levels:
- *   Level 1 (30min) -> Aviso leve: dispositivo sem atividade
+ *   Level 1 (30min) -> Aviso leve: conta sem atividade
  *   Level 2 (2h)    -> Preocupação moderada: múltiplos alarmes perdidos
  *   Level 3 (6h+)   -> Alerta sério: possível emergência
  */
 import {
   claimWarning,
-  getAppUser,
+  getAccountLiveness,
   getExpiredPendingEvents,
-  getInactiveDevices,
-  getLastHeartbeat,
+  getInactiveAccounts,
   getMissedCheckinEvents,
   getMissedMedicationEvents,
   getWarningHistory,
@@ -30,15 +34,17 @@ import {
   updateAlarmEventStatus,
   updateWarningResult,
 } from "./db-monitoring";
+import { getUserByOpenId, getUserData } from "./db";
 import { sendWhatsAppMessage, isWhatsAppApiConfigured } from "./whatsapp";
 import { getActiveCaregiversForMonitored } from "./db-links";
 import { getPushTokensForOpenIds } from "./db-push";
 import { sendExpoPush } from "./push";
+import type { EmergencyContactRecord } from "../drizzle/schema";
 
 // Grace period: how long after scheduledAt we wait before resolving a pending event
 const GRACE_PERIOD_MINUTES = 15;
 
-// Heartbeat threshold: if device hasn't pinged in this many minutes, it's considered offline
+// Heartbeat threshold: if the account hasn't pinged in this many minutes, it's considered offline
 const OFFLINE_THRESHOLD_MINUTES = 30;
 
 // Look-back (horas) compartilhado por toda escalação orientada a evento:
@@ -113,6 +119,29 @@ function formatOfflineDuration(offlineHours: number): string {
   }
   const hours = Math.round(offlineHours);
   return `${hours} hora${hours !== 1 ? "s" : ""}`;
+}
+
+/**
+ * Perfil de escalação da conta: nome e contatos de emergência consentidos.
+ * Vem de user_data (lar autoritativo por conta) com fallback do nome da
+ * conta (users.name). ANATEL opt-in: só contatos que não recusaram alertas
+ * (legado/undefined é mantido; só o false explícito exclui). Manual SOS não
+ * passa por aqui.
+ */
+async function getAccountProfile(openId: string): Promise<{
+  userName: string;
+  contacts: EmergencyContactRecord[];
+}> {
+  const [data, user] = await Promise.all([
+    getUserData(openId),
+    getUserByOpenId(openId),
+  ]);
+  const anamnesis = (data?.anamnesis ?? null) as { fullName?: string } | null;
+  const userName = anamnesis?.fullName || user?.name || "";
+  const contacts = ((data?.emergencyContacts ?? []) as EmergencyContactRecord[]).filter(
+    (c) => c && c.consentToAlerts !== false
+  );
+  return { userName, contacts };
 }
 
 /**
@@ -204,9 +233,8 @@ async function sendToContact(
 
 /** Open IDs of every caregiver actively linked to the monitored person. */
 async function getLinkedCaregiverOpenIds(
-  monitoredOpenId: string | null
+  monitoredOpenId: string
 ): Promise<string[]> {
-  if (!monitoredOpenId) return [];
   const caregivers = await getActiveCaregiversForMonitored(monitoredOpenId);
   return caregivers.map((c) => c.caregiverOpenId);
 }
@@ -259,16 +287,16 @@ export async function runMonitoringJob(): Promise<void> {
     console.log(`[Monitor] Found ${expiredEvents.length} expired pending events`);
 
     for (const event of expiredEvents) {
-      const heartbeat = await getLastHeartbeat(event.deviceId);
-      const deviceOnline =
-        heartbeat &&
-        heartbeat.lastSeenAt.getTime() >
+      const liveness = await getAccountLiveness(event.openId);
+      const accountOnline =
+        liveness &&
+        liveness.lastSeenAt.getTime() >
           event.scheduledAt.getTime() - OFFLINE_THRESHOLD_MINUTES * 60 * 1000;
 
-      if (!deviceOnline) {
+      if (!accountOnline) {
         await updateAlarmEventStatus(event.id, "not_sent");
         console.log(
-          `[Monitor] Event ${event.id} (alarm ${event.alarmId}) -> not_sent (device offline)`
+          `[Monitor] Event ${event.id} (alarm ${event.alarmId}) -> not_sent (account offline)`
         );
       } else {
         await updateAlarmEventStatus(event.id, "missed");
@@ -278,12 +306,12 @@ export async function runMonitoringJob(): Promise<void> {
       }
     }
 
-    // -- Step 2: Check for devices needing warning messages -------------------
-    const inactiveDevices = await getInactiveDevices(OFFLINE_THRESHOLD_MINUTES);
-    console.log(`[Monitor] Found ${inactiveDevices.length} inactive devices`);
+    // -- Step 2: Check for accounts needing warning messages -------------------
+    const inactiveAccounts = await getInactiveAccounts(OFFLINE_THRESHOLD_MINUTES);
+    console.log(`[Monitor] Found ${inactiveAccounts.length} inactive accounts`);
 
-    for (const device of inactiveDevices) {
-      const offlineMs = now.getTime() - device.lastSeenAt.getTime();
+    for (const account of inactiveAccounts) {
+      const offlineMs = now.getTime() - account.lastSeenAt.getTime();
       const offlineHours = offlineMs / (1000 * 60 * 60);
 
       const warningLevel = getWarningLevel(offlineHours);
@@ -293,16 +321,16 @@ export async function runMonitoringJob(): Promise<void> {
       // sozinha não é perigo — logout, desinstalação ou app em segundo plano
       // escalavam à família sem nenhum alarme perdido. Só escala se um
       // alarme/check-in esperado expirou SEM confirmação na janela de look-back.
-      const danger = await hasUnconfirmedEvents(device.deviceId, EVENT_LOOKBACK_HOURS);
+      const danger = await hasUnconfirmedEvents(account.openId, EVENT_LOOKBACK_HOURS);
       if (!danger) {
         console.log(
-          `[Monitor] Device ${device.deviceId}: inactive but no unconfirmed events, skipping (no false alarm)`
+          `[Monitor] Account ${account.openId}: inactive but no unconfirmed events, skipping (no false alarm)`
         );
         continue;
       }
 
       // Check if we already sent a warning at this level recently
-      const warnings = await getWarningHistory(device.deviceId, 10);
+      const warnings = await getWarningHistory(account.openId, 10);
       const recentWarningAtLevel = warnings.find(
         (w) =>
           w.level === warningLevel &&
@@ -311,39 +339,28 @@ export async function runMonitoringJob(): Promise<void> {
       );
       if (recentWarningAtLevel) {
         console.log(
-          `[Monitor] Device ${device.deviceId}: level ${warningLevel} warning already sent recently, skipping`
+          `[Monitor] Account ${account.openId}: level ${warningLevel} warning already sent recently, skipping`
         );
         continue;
       }
 
-      // Get app user data (contacts, name, location)
-      const appUser = await getAppUser(device.deviceId);
-      if (!appUser) {
-        console.log(`[Monitor] Device ${device.deviceId}: no app user found, skipping`);
-        continue;
-      }
-
-      // ANATEL opt-in: the AUTOMATIC switch only messages contacts that
-      // consented. Legacy contacts (undefined) are grandfathered; only an
-      // explicit false is excluded. Manual SOS (routers.ts) is not gated.
-      const contacts = ((appUser.emergencyContacts as any[]) || []).filter(
-        (c) => c.consentToAlerts !== false
-      );
-      const caregiverOpenIds = await getLinkedCaregiverOpenIds(appUser.openId);
+      // Escalation profile (name + consented contacts) from user_data
+      const { userName, contacts } = await getAccountProfile(account.openId);
+      const caregiverOpenIds = await getLinkedCaregiverOpenIds(account.openId);
 
       // Two independent recipient sets: WhatsApp reaches emergency contacts,
       // push reaches linked caregivers. Skip only when neither has anyone.
       if (contacts.length === 0 && caregiverOpenIds.length === 0) {
         console.log(
-          `[Monitor] Device ${device.deviceId}: no consented contacts or caregivers, skipping`
+          `[Monitor] Account ${account.openId}: no consented contacts or caregivers, skipping`
         );
         continue;
       }
 
-      // Build location URL if available
+      // Build location URL if available (last fix stored on the liveness row)
       let locationUrl: string | undefined;
-      if (appUser.lastLocation) {
-        const [lat, lng] = appUser.lastLocation.split(",");
+      if (account.lastLocation) {
+        const [lat, lng] = account.lastLocation.split(",");
         if (lat && lng) {
           locationUrl = `https://maps.google.com/?q=${lat},${lng}`;
         }
@@ -354,21 +371,21 @@ export async function runMonitoringJob(): Promise<void> {
       // closing the TOCTOU window to a DB round-trip rather than the entire send loop.
       // The claim dedups both channels (WhatsApp + push) for this level.
       const claimId = await claimWarning({
-        deviceId: device.deviceId,
+        openId: account.openId,
         level: warningLevel,
         offlineHours,
         locationIncluded: !!locationUrl,
       });
 
       const message = buildWarningMessage(
-        appUser.userName || "",
+        userName,
         warningLevel,
         offlineHours,
         locationUrl
       );
 
       console.log(
-        `[Monitor] Sending level ${warningLevel} warning for device ${device.deviceId} (${offlineHours}h offline)`
+        `[Monitor] Sending level ${warningLevel} warning for account ${account.openId} (${offlineHours}h offline)`
       );
       console.log(`[Monitor] WhatsApp configured: ${isWhatsAppApiConfigured()}`);
 
@@ -394,7 +411,7 @@ export async function runMonitoringJob(): Promise<void> {
 
       // In-app push to linked caregivers (real-time companion to WhatsApp).
       const pushTitle = buildWarningPushTitle(warningLevel);
-      const pushBody = buildWarningPushBody(appUser.userName || "", offlineHours);
+      const pushBody = buildWarningPushBody(userName, offlineHours);
       const pushed = await sendPushToCaregivers(caregiverOpenIds, pushTitle, pushBody, {
         type: "monitoring_warning",
         level: warningLevel,
@@ -408,7 +425,7 @@ export async function runMonitoringJob(): Promise<void> {
           // silent for MIN_WARNING_INTERVAL_HOURS.
           await releaseWarning(claimId);
           console.error(
-            `[Monitor] ⛔ Warning level ${warningLevel} for device ${device.deviceId} reached NOBODY (0 WhatsApp, 0 push) — claim released for retry next run`
+            `[Monitor] ⛔ Warning level ${warningLevel} for account ${account.openId} reached NOBODY (0 WhatsApp, 0 push) — claim released for retry next run`
           );
         } else {
           await updateWarningResult(claimId, totalSent, !!locationUrl);
@@ -423,30 +440,20 @@ export async function runMonitoringJob(): Promise<void> {
     // -- Step 3: Escalate missed check-in events --------------------------------
     // Scoped to 'checkin-daily' to avoid cascading on every missed medication alarm.
     // warningSent=false means the client did not handle escalation (device was offline).
-    // Look back 48h so events that missed a job run still get caught.
+    // Look back EVENT_LOOKBACK_HOURS so events that missed a job run still get caught.
     const missedCheckins = await getMissedCheckinEvents("checkin-daily", EVENT_LOOKBACK_HOURS);
     console.log(`[Monitor] Found ${missedCheckins.length} missed check-in events to escalate`);
 
     for (const event of missedCheckins) {
-      const appUser = await getAppUser(event.deviceId);
-      if (!appUser) {
-        console.log(`[Monitor] Step 3: no app user for device ${event.deviceId}, skipping`);
-        await markEventWarningSent(event.id);
-        continue;
-      }
-
-      // ANATEL opt-in: only message contacts that consented (legacy = grandfathered).
-      const contacts = ((appUser.emergencyContacts as any[]) || []).filter(
-        (c) => c.consentToAlerts !== false
-      );
-      const caregiverOpenIds = await getLinkedCaregiverOpenIds(appUser.openId);
+      const { userName, contacts } = await getAccountProfile(event.openId);
+      const caregiverOpenIds = await getLinkedCaregiverOpenIds(event.openId);
       if (contacts.length === 0 && caregiverOpenIds.length === 0) {
-        console.log(`[Monitor] Step 3: no consented contacts or caregivers for device ${event.deviceId}, skipping`);
+        console.log(`[Monitor] Step 3: no consented contacts or caregivers for account ${event.openId}, skipping`);
         await markEventWarningSent(event.id);
         continue;
       }
 
-      const name = appUser.userName || "O usuário do Vigora";
+      const name = userName || "O usuário do Vigora";
       const scheduledStr = event.scheduledAt.toLocaleTimeString("pt-BR", {
         hour: "2-digit",
         minute: "2-digit",
@@ -457,7 +464,7 @@ export async function runMonitoringJob(): Promise<void> {
         `Por favor, entre em contato para verificar se está tudo bem.\n\n` +
         `- Enviado automaticamente pelo Vigora`;
 
-      console.log(`[Monitor] Step 3: escalating check-in for device ${event.deviceId}`);
+      console.log(`[Monitor] Step 3: escalating check-in for account ${event.openId}`);
 
       let totalSent = 0;
       for (const contact of contacts) {
@@ -480,7 +487,7 @@ export async function runMonitoringJob(): Promise<void> {
       console.log(`[Monitor] Step 3: escalated check-in event ${event.id}, ${totalSent} contacts reached, ${pushed} caregiver push(es) delivered`);
     }
 
-    // -- Step 4: Escalate missed MEDICATION alarms (device online, unanswered) --
+    // -- Step 4: Escalate missed MEDICATION alarms (account online, unanswered) --
     // Backstop do dead man's switch para quando a escalação no cliente não rodou
     // (app morreu logo após o disparo). warningSent=true é setado pelo cliente
     // quando ELE escala (confirmAlarmMissed), então aqui só caem os que ninguém
@@ -489,23 +496,14 @@ export async function runMonitoringJob(): Promise<void> {
     console.log(`[Monitor] Found ${missedAlarms.length} missed medication alarms to escalate`);
 
     for (const event of missedAlarms) {
-      const appUser = await getAppUser(event.deviceId);
-      if (!appUser) {
-        await markEventWarningSent(event.id);
-        continue;
-      }
-
-      // ANATEL opt-in: só mensageia contatos que consentiram (legado = mantido).
-      const contacts = ((appUser.emergencyContacts as any[]) || []).filter(
-        (c) => c.consentToAlerts !== false
-      );
-      const caregiverOpenIds = await getLinkedCaregiverOpenIds(appUser.openId);
+      const { userName, contacts } = await getAccountProfile(event.openId);
+      const caregiverOpenIds = await getLinkedCaregiverOpenIds(event.openId);
       if (contacts.length === 0 && caregiverOpenIds.length === 0) {
         await markEventWarningSent(event.id);
         continue;
       }
 
-      const name = appUser.userName || "O usuário do Vigora";
+      const name = userName || "O usuário do Vigora";
       const scheduledStr = event.scheduledAt.toLocaleTimeString("pt-BR", {
         hour: "2-digit",
         minute: "2-digit",
