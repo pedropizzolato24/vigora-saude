@@ -10,6 +10,7 @@ import { registerGoogleAuthRoute } from "../google-auth";
 import { registerAppleAuthRoute } from "../apple-auth";
 import { registerEmailAuthRoutes, isEmailServiceConfigured } from "../email-auth";
 import { registerPhoneAuthRoutes, isPhoneLoginConfigured } from "../phone-auth";
+import { registerAnonymousAuthRoute } from "../anonymous-auth";
 import { createRateLimit } from "./rate-limit";
 import { securityHeadersMiddleware } from "./security-headers";
 import { assertRequiredSecrets } from "./env";
@@ -104,6 +105,7 @@ async function startServer() {
   registerAppleAuthRoute(app);
   registerEmailAuthRoutes(app);
   registerPhoneAuthRoutes(app);
+  registerAnonymousAuthRoute(app);
 
   // Quais métodos de login estão habilitados neste deploy — o app esconde
   // botões de métodos sem a infraestrutura configurada (Resend / template OTP).

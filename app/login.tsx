@@ -20,8 +20,11 @@ import * as Google from "expo-auth-session/providers/google";
 import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/use-colors";
 import { useAppContext } from "@/lib/app-context";
+import * as Auth from "@/lib/_core/auth";
 import { finishGoogleLogin, persistOAuthPkce } from "@/lib/google-signin";
 import { isAppleCancel, signInWithApple } from "@/lib/apple-signin";
+import { signInAnonymously } from "@/lib/anonymous-signin";
+import { completeServerLogin } from "@/lib/auth-session";
 import { fetchAuthMethods, type AuthMethods } from "@/lib/phone-signin";
 import {
   APPLE_SIGNIN_ENABLED,
@@ -70,6 +73,9 @@ export default function LoginScreen() {
     email: false,
     phone: false,
   });
+  // Conta anônima ativa => esta tela está em modo "proteger conta": esconde o
+  // "Continuar sem conta" (seria circular) e os logins ANEXAM à conta atual.
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   useEffect(() => {
     // Só checa disponibilidade do Apple quando o build foi gerado com a
@@ -80,7 +86,37 @@ export default function LoginScreen() {
         .catch(() => setAppleAvailable(false));
     }
     fetchAuthMethods().then(setMethods);
+    Auth.getUserInfo()
+      .then((u) => setIsAnonymous(u?.loginMethod === "anonymous"))
+      .catch(() => {});
   }, []);
+
+  const handleAnonymousLogin = async () => {
+    if (loading) return;
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await signInAnonymously();
+      // Adaptador: o Router tipado do expo-router não satisfaz Nav
+      // estruturalmente (href literal vs string) — mesmo atrito pré-existente
+      // dos outros provedores; aqui resolvido sem `as` no router inteiro.
+      await completeServerLogin(
+        result,
+        { replace: (href: string) => router.replace(href as never) },
+        reconcileFromCloud
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : "Não foi possível entrar. Verifique sua conexão e tente novamente."
+      );
+      setLoading(false);
+    }
+  };
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: GOOGLE_ANDROID_CLIENT_ID,
@@ -316,6 +352,31 @@ export default function LoginScreen() {
           </View>
         ) : null}
 
+        {/* Continuar sem conta — o app funciona inteiro; login vira upgrade
+            opcional ("proteja sua conta"). Some quando a sessão atual JÁ é
+            anônima (esta tela vira o fluxo de proteger a conta). */}
+        {!isAnonymous ? (
+          <Pressable
+            onPress={handleAnonymousLogin}
+            disabled={loading}
+            style={({ pressed }) => [
+              styles.anonymousButton,
+              { opacity: pressed || loading ? 0.6 : 1 },
+            ]}
+            accessibilityLabel="Continuar sem conta"
+            accessibilityRole="button"
+          >
+            <Text style={[styles.anonymousButtonText, { color: colors.muted }]}>
+              Continuar sem conta
+            </Text>
+          </Pressable>
+        ) : (
+          <Text style={[styles.linkHint, { color: colors.muted }]}>
+            Entre com um dos métodos acima para proteger sua conta — seus dados
+            continuam os mesmos.
+          </Text>
+        )}
+
         <Text style={[styles.privacyNote, { color: colors.muted }]}>
           Ao entrar, você concorda com os Termos de Uso e Política de Privacidade.
         </Text>
@@ -430,5 +491,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: "center",
     lineHeight: 18,
+  },
+  anonymousButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 44,
+    paddingVertical: 10,
+  },
+  anonymousButtonText: {
+    fontFamily: "PlusJakartaSans",
+    fontSize: 16,
+    fontWeight: "600",
+    textDecorationLine: "underline",
+  },
+  linkHint: {
+    fontFamily: "PlusJakartaSans",
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
   },
 });

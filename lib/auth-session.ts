@@ -63,9 +63,17 @@ export async function postAuthRoute<T = Record<string, unknown>>(
     );
   }
 
+  // Upgrade de conta anônima: se já existe uma sessão (conta anônima), envia
+  // o Bearer — o servidor ANEXA o login novo à conta atual em vez de criar
+  // outra (getLinkableAnonymousOpenId). Inofensivo no login normal: o servidor
+  // só usa a sessão quando ela é de conta anônima.
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const token = await Auth.getSessionToken().catch(() => null);
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const res = await fetch(`${baseUrl}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(body),
   });
 

@@ -2,7 +2,7 @@
 import type { Express, Request, Response } from "express";
 import { getUserByOpenId, upsertUser } from "./db";
 import { resolveAccount } from "./db-auth";
-import { issueSession } from "./auth-shared";
+import { getLinkableAnonymousOpenId, issueSession } from "./auth-shared";
 
 interface GoogleTokenPayload {
   sub: string;
@@ -79,7 +79,7 @@ export async function verifyGoogleIdToken(
  * 2. Resolve a conta canônica (vinculando por e-mail verificado se existir)
  * 3. Emite o JWT de sessão interno
  */
-export async function handleGoogleAuth(idToken: string) {
+export async function handleGoogleAuth(idToken: string, linkToOpenId?: string) {
   const payload = await verifyGoogleIdToken(idToken);
 
   const emailVerified =
@@ -95,6 +95,7 @@ export async function handleGoogleAuth(idToken: string) {
     email,
     emailVerified,
     name,
+    linkToOpenId,
   });
 
   // Não sobrescreve nome/e-mail já gravados (ex.: conta criada via e-mail e
@@ -128,7 +129,10 @@ export function registerGoogleAuthRoute(app: Express): void {
     }
 
     try {
-      const result = await handleGoogleAuth(id_token);
+      // Upgrade de conta anônima: se o request já carrega uma sessão anônima,
+      // o login Google é ANEXADO a essa conta (openId preservado).
+      const linkToOpenId = await getLinkableAnonymousOpenId(req);
+      const result = await handleGoogleAuth(id_token, linkToOpenId);
       res.json(result);
     } catch (err) {
       if (err instanceof Error && err.message === "INVALID_TOKEN") {

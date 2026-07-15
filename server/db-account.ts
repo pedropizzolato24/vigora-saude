@@ -12,7 +12,7 @@
  * when it's gone (see _core/sdk.ts). That gives us "log out everywhere" for free
  * and satisfies the post-incident containment requirement too.
  */
-import { eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, or } from "drizzle-orm";
 import {
   accountLiveness,
   alarmEvents,
@@ -80,4 +80,45 @@ export async function deleteAccountData(openId: string): Promise<void> {
     // Canonical account last — invalidates all sessions on commit.
     await tx.delete(users).where(eq(users.openId, openId));
   });
+}
+
+/**
+ * Expurga contas ANÔNIMAS abandonadas (spec "Contas sem login", custo 1 +
+ * Anexo B alavanca 3): sem login linkado e sem sinal de vida há mais de
+ * RETENTION_ANON_DAYS (default 180), a conta some do dead man's switch e da
+ * base (LGPD minimização — dado órfão irrecuperável pelo dono).
+ *
+ * Seguro contra expurgo indevido: o openId anônimo é determinístico
+ * (`anon:<deviceId>`) — se o aparelho voltar, o mesmo openId é recriado e o
+ * estado local por conta do app continua batendo.
+ */
+export async function purgeAbandonedAnonymousAccounts(
+  now: number = Date.now(),
+): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+
+  const raw = Number(process.env.RETENTION_ANON_DAYS);
+  const days = Number.isFinite(raw) && raw > 0 ? raw : 180;
+  const cutoff = new Date(now - days * 24 * 60 * 60 * 1000);
+
+  // Abandonada = liveness velha, OU nunca pingou e a conta é antiga.
+  const rows = await db
+    .select({ openId: users.openId })
+    .from(users)
+    .leftJoin(accountLiveness, eq(accountLiveness.openId, users.openId))
+    .where(
+      and(
+        eq(users.loginMethod, "anonymous"),
+        or(
+          lt(accountLiveness.lastSeenAt, cutoff),
+          and(isNull(accountLiveness.id), lt(users.createdAt, cutoff)),
+        ),
+      ),
+    );
+
+  for (const row of rows) {
+    await deleteAccountData(row.openId);
+  }
+  return rows.length;
 }

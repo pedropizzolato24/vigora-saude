@@ -13,7 +13,7 @@ import {
   resolveAccount,
   setIdentityPassword,
 } from "./db-auth";
-import { issueSession } from "./auth-shared";
+import { getLinkableAnonymousOpenId, issueSession } from "./auth-shared";
 import { createRateLimit } from "./_core/rate-limit";
 
 /**
@@ -284,6 +284,8 @@ export function registerEmailAuthRoutes(app: Express): void {
       }
       const name = payload.name?.trim() || email;
 
+      // Upgrade de conta anônima: anexa o e-mail+senha à conta da sessão atual.
+      const linkToOpenId = await getLinkableAnonymousOpenId(req);
       const { openId } = await resolveAccount({
         provider: "email",
         subject: email,
@@ -291,6 +293,7 @@ export function registerEmailAuthRoutes(app: Express): void {
         emailVerified: true,
         name,
         passwordHash: payload.passwordHash,
+        linkToOpenId,
       });
       // Garante a senha mesmo quando a identidade já existia sem hash
       // (ex.: corrida entre dois verifies).

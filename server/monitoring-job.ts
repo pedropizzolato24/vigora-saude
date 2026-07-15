@@ -35,6 +35,7 @@ import {
   updateWarningResult,
 } from "./db-monitoring";
 import { getUserByOpenId, getUserData } from "./db";
+import { purgeAbandonedAnonymousAccounts } from "./db-account";
 import { sendWhatsAppMessage, isWhatsAppApiConfigured } from "./whatsapp";
 import { getActiveCaregiversForMonitored } from "./db-links";
 import { getPushTokensForOpenIds } from "./db-push";
@@ -581,6 +582,12 @@ export function startMonitoringScheduler(): void {
           `[Monitor] Retention purge: ${r.alarmEvents} alarm events, ${r.warningLog} warnings, ${r.locationsCleared} stale locations cleared`
         )
       )
+      // Contas anônimas abandonadas param de "existir" para o switch (e para a
+      // base — LGPD). Encadeado após o purge principal, mesma cadência diária.
+      .then(() => purgeAbandonedAnonymousAccounts())
+      .then((n) => {
+        if (n > 0) console.log(`[Monitor] Purged ${n} abandoned anonymous account(s)`);
+      })
       .catch((e) => console.error("[Monitor] Retention purge failed:", e));
   runPurge();
   const purgeTimer = setInterval(runPurge, DAY_MS);

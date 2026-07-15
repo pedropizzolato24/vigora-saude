@@ -68,6 +68,23 @@ const isShareCreateRateLimited = makeRateLimiter(60_000, 10);
 const isAcceptRateLimited = makeRateLimiter(60_000, 8);
 
 /**
+ * Vínculo exige um login de verdade: a conta anônima só é recuperável pelo
+ * deviceId do aparelho (SecureStore) — morre no reinstall, e um vínculo
+ * monitorado↔cuidador não pode morrer junto (spec "Contas sem login",
+ * restrição a). O cliente mostra o caminho ("proteja sua conta"); este é o
+ * trust boundary.
+ */
+function requireLinkedLogin(user: { loginMethod: string | null }): void {
+  if (user.loginMethod === "anonymous") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "Para vincular, primeiro proteja sua conta: entre com Google, e-mail ou telefone em Configurações.",
+    });
+  }
+}
+
+/**
  * Resolve the caller's single active link, throwing if there isn't one. This is
  * the authorization gate for every monitored-data read: a caregiver can only
  * ever read the data of the person they're actively linked to (the monitored
@@ -89,6 +106,7 @@ export const linkRouter = router({
    * Monitored-only: mint a single-use invite code valid for INVITE_TTL_MS.
    */
   createInvite: protectedProcedure.mutation(async ({ ctx }) => {
+    requireLinkedLogin(ctx.user);
     if (ctx.user.userType !== "monitored") {
       throw new TRPCError({
         code: "FORBIDDEN",
@@ -126,6 +144,7 @@ export const linkRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      requireLinkedLogin(ctx.user);
       if (ctx.user.userType !== "caregiver") {
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -303,6 +322,7 @@ export const linkRouter = router({
    * the caregiver already has an active link (one monitored at a time).
    */
   createShareInvite: protectedProcedure.mutation(async ({ ctx }) => {
+    requireLinkedLogin(ctx.user);
     if (ctx.user.userType !== "caregiver") {
       throw new TRPCError({
         code: "FORBIDDEN",
@@ -360,6 +380,7 @@ export const linkRouter = router({
   acceptInvite: protectedProcedure
     .input(z.object({ token: z.string().min(1).max(32) }))
     .mutation(async ({ ctx, input }) => {
+      requireLinkedLogin(ctx.user);
       if (ctx.user.userType !== "monitored") {
         throw new TRPCError({
           code: "FORBIDDEN",

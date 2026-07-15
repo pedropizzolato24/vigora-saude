@@ -20,6 +20,7 @@ import { AppToast, useAppToast } from '@/components/app-toast';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useAccessibility } from '@/lib/accessibility-context';
+import * as Auth from '@/lib/_core/auth';
 import { useFontSize } from '@/lib/font-size-context';
 import { trpc } from '@/lib/trpc';
 
@@ -46,6 +47,14 @@ export default function InviteCaregiverScreen() {
   const [code, setCode] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  // Conta anônima não pode vincular (o vínculo precisa sobreviver a
+  // reinstalação; o servidor também bloqueia) — mostra o caminho do upgrade.
+  const [anonymous, setAnonymous] = useState(false);
+  useEffect(() => {
+    Auth.getUserInfo()
+      .then((u) => setAnonymous(u?.loginMethod === 'anonymous'))
+      .catch(() => {});
+  }, []);
 
   const createInvite = trpc.link.createInvite.useMutation();
   const caregivers = trpc.link.getMyCaregivers.useQuery();
@@ -111,6 +120,61 @@ export default function InviteCaregiverScreen() {
 
   const expired = code !== null && secondsLeft <= 0;
   const list = caregivers.data ?? [];
+
+  if (anonymous) {
+    return (
+      <ScreenContainer containerStyle={isAccessibilityMode ? { backgroundColor: ac.background } : undefined}>
+        <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}>
+          <View style={styles.headerRow}>
+            <Pressable
+              onPress={() => router.back()}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Voltar"
+              style={({ pressed }) => [
+                { opacity: pressed ? 0.6 : 1 },
+                isAccessibilityMode && { minWidth: 60, minHeight: 60, justifyContent: 'center' },
+              ]}
+            >
+              <MaterialIcons name="arrow-back" size={isAccessibilityMode ? 34 : 26} color={fg} />
+            </Pressable>
+            <Text style={[styles.title, { color: fg, fontSize: sz(22) }]}>Convidar cuidador</Text>
+          </View>
+
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: border, alignItems: 'center', gap: 12 }]}>
+            <MaterialIcons name="shield" size={44} color={colors.primary} />
+            <Text style={[styles.title, { color: fg, fontSize: sz(18), textAlign: 'center' }]}>
+              Proteja sua conta primeiro
+            </Text>
+            <Text style={[styles.subtitle, { color: muted, fontSize: sz(15), lineHeight: sz(15) * 1.5, textAlign: 'center' }]}>
+              Para convidar um cuidador, sua conta precisa de um login (Google, e-mail ou telefone).
+              Assim o vínculo com sua família não se perde se você trocar de celular.
+            </Text>
+            <Pressable
+              onPress={() => router.push('/login')}
+              accessibilityRole="button"
+              accessibilityLabel="Proteger minha conta"
+              style={({ pressed }) => [
+                {
+                  backgroundColor: colors.primary,
+                  minHeight: minTouch,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  alignSelf: 'stretch',
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}
+            >
+              <Text style={{ color: colors.onPrimary, fontSize: sz(16), fontWeight: '700' }}>
+                Proteger minha conta
+              </Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer containerStyle={isAccessibilityMode ? { backgroundColor: ac.background } : undefined}>

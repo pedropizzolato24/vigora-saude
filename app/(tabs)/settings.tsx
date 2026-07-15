@@ -29,6 +29,7 @@ import { useAppLock } from '@/lib/app-lock-context';
 import { useDeleteAccount } from '@/hooks/use-delete-account';
 import { useRouter } from 'expo-router';
 import { MonitoringStatusPanel } from '@/components/monitoring-status-panel';
+import { ProtectAccountBanner } from '@/components/protect-account-banner';
 import { TrialBanner, ExpiredBanner } from '@/components/trial-banner';
 import { scheduleCheckin, cancelCheckin } from '@/lib/checkin-service';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -445,6 +446,9 @@ export default function SettingsScreen() {
           <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Configurações</Text>
         </View>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          {/* Upgrade da conta anônima — só aparece para quem entrou sem login */}
+          <ProtectAccountBanner />
+
           {/* Accessibility toggle - always visible at top */}
           <Pressable
             onPress={handleToggleAccessibility}
@@ -764,6 +768,9 @@ export default function SettingsScreen() {
 
       <FormKeyboardView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
+        {/* Upgrade da conta anônima — só aparece para quem entrou sem login */}
+        <ProtectAccountBanner />
 
         {/* ═══ ACCESSIBILITY TOGGLE (always at top, outside any group) ═══ */}
         <Pressable
