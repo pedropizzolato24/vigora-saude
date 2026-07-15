@@ -3,20 +3,20 @@
 -- MySQL DDL não é transacional — aplicar com o job pausado e backup feito.
 
 -- 1) account_liveness: consolida device_heartbeat + app_users por conta.
---    ORDER BY lastSeenAt ASC + ON DUPLICATE KEY UPDATE => para contas com
---    vários devices, o heartbeat mais RECENTE vence (última linha processada).
+--    ROW_NUMBER particionado por openId (heartbeat mais RECENTE primeiro) => uma
+--    linha por conta, sem risco de chave duplicada (openId é UNIQUE). Empate de
+--    lastSeenAt é desempatado por deviceId, de forma determinística.
 INSERT INTO `account_liveness` (`openId`, `lastSeenAt`, `lastLocation`, `lastLocationAt`, `lastDeviceId`, `appVersion`)
-SELECT au.`openId`, hb.`lastSeenAt` AS hbSeen, au.`lastLocation` AS auLoc, au.`lastLocationAt` AS auLocAt, hb.`deviceId` AS hbDev, hb.`appVersion` AS hbVer
-FROM `device_heartbeat` hb
-JOIN `app_users` au ON au.`deviceId` = hb.`deviceId`
-WHERE au.`openId` IS NOT NULL
-ORDER BY hb.`lastSeenAt` ASC
-ON DUPLICATE KEY UPDATE
-  `lastSeenAt` = hbSeen,
-  `lastLocation` = auLoc,
-  `lastLocationAt` = auLocAt,
-  `lastDeviceId` = hbDev,
-  `appVersion` = hbVer;--> statement-breakpoint
+SELECT `openId`, `lastSeenAt`, `lastLocation`, `lastLocationAt`, `deviceId`, `appVersion`
+FROM (
+  SELECT au.`openId`, hb.`lastSeenAt`, au.`lastLocation`, au.`lastLocationAt`,
+         hb.`deviceId`, hb.`appVersion`,
+         ROW_NUMBER() OVER (PARTITION BY au.`openId` ORDER BY hb.`lastSeenAt` DESC, hb.`deviceId` DESC) AS rn
+  FROM `device_heartbeat` hb
+  JOIN `app_users` au ON au.`deviceId` = hb.`deviceId`
+  WHERE au.`openId` IS NOT NULL
+) ranked
+WHERE rn = 1;--> statement-breakpoint
 
 -- 2) alarm_events: re-atribui por conta (append-only; histórico preservado).
 UPDATE `alarm_events` e JOIN `app_users` au ON au.`deviceId` = e.`deviceId` SET e.`openId` = au.`openId`;--> statement-breakpoint
@@ -44,15 +44,19 @@ WHERE (ud.`emergencyContacts` IS NULL OR JSON_LENGTH(ud.`emergencyContacts`) = 0
   AND au.`emergencyContacts` IS NOT NULL AND JSON_LENGTH(au.`emergencyContacts`) > 0;--> statement-breakpoint
 
 -- 6b) Conta com contatos no app_users e SEM linha de user_data: cria a linha.
---     ODKU no-op engole a 2ª linha de contas com múltiplos devices.
+--     ROW_NUMBER dedupa contas com múltiplos devices (uma linha por openId),
+--     evitando conflito de chave única sem precisar de ON DUPLICATE KEY UPDATE.
 INSERT INTO `user_data` (`openId`, `emergencyContacts`)
-SELECT au.`openId`, au.`emergencyContacts`
-FROM `app_users` au
-LEFT JOIN `user_data` ud ON ud.`openId` = au.`openId`
-WHERE au.`openId` IS NOT NULL
-  AND au.`emergencyContacts` IS NOT NULL AND JSON_LENGTH(au.`emergencyContacts`) > 0
-  AND ud.`id` IS NULL
-ON DUPLICATE KEY UPDATE `id` = `id`;--> statement-breakpoint
+SELECT `openId`, `emergencyContacts` FROM (
+  SELECT au.`openId`, au.`emergencyContacts`,
+         ROW_NUMBER() OVER (PARTITION BY au.`openId` ORDER BY au.`id`) AS rn
+  FROM `app_users` au
+  LEFT JOIN `user_data` ud ON ud.`openId` = au.`openId`
+  WHERE au.`openId` IS NOT NULL
+    AND au.`emergencyContacts` IS NOT NULL AND JSON_LENGTH(au.`emergencyContacts`) > 0
+    AND ud.`id` IS NULL
+) picked
+WHERE rn = 1;--> statement-breakpoint
 
 -- 7) Constraints e drops (só depois de todo o backfill acima).
 ALTER TABLE `alarm_events` MODIFY COLUMN `openId` varchar(64) NOT NULL;--> statement-breakpoint
