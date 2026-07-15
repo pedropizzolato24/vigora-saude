@@ -8,7 +8,7 @@
  */
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View,
 } from 'react-native';
@@ -20,6 +20,7 @@ import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { useAccessibility } from '@/lib/accessibility-context';
 import { BrandFonts } from '@/lib/_core/theme';
+import * as Auth from '@/lib/_core/auth';
 import { useCaregiverContext } from '@/lib/caregiver-context';
 import { trpc } from '@/lib/trpc';
 import { buildInviteUrl } from '@/constants/links';
@@ -73,6 +74,14 @@ export default function LinkScreen() {
   // Latch so the QR camera doesn't fire submitMethod repeatedly between the
   // first scan and the re-render that unmounts CameraView.
   const scannedRef = useRef(false);
+  // Conta anônima não pode vincular (o vínculo precisa sobreviver a
+  // reinstalação; o servidor também bloqueia) — mostra o caminho do upgrade.
+  const [anonymous, setAnonymous] = useState(false);
+  useEffect(() => {
+    Auth.getUserInfo()
+      .then((u) => setAnonymous(u?.loginMethod === 'anonymous'))
+      .catch(() => {});
+  }, []);
 
   const submitMethod = (method: Mode, value: string) => {
     if (!value.trim()) return;
@@ -103,6 +112,34 @@ export default function LinkScreen() {
       setSubmitting(false);
     }
   };
+
+  if (anonymous) {
+    return (
+      <View style={{ flex: 1, backgroundColor: c.bg, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 14 }}>
+        <MaterialIcons name="shield" size={48} color={c.primary} />
+        <Text style={[styles.title, { color: c.foreground, fontSize: sz.title, fontFamily: BrandFonts.body, textAlign: 'center' }]}>
+          Proteja sua conta primeiro
+        </Text>
+        <Text style={[styles.subtitle, { color: c.muted, fontSize: sz.subtitle, fontFamily: BrandFonts.body, textAlign: 'center' }]}>
+          Para acompanhar alguém, sua conta precisa de um login (Google, e-mail ou
+          telefone) — assim o vínculo com a pessoa não se perde se você trocar de celular.
+        </Text>
+        <Pressable
+          onPress={() => router.push('/login')}
+          accessibilityRole="button"
+          accessibilityLabel="Proteger minha conta"
+          style={({ pressed }) => [
+            styles.primary,
+            { backgroundColor: c.primary, minHeight: touch, alignSelf: 'stretch', opacity: pressed ? 0.85 : 1 },
+          ]}
+        >
+          <Text style={[styles.primaryText, { color: c.onPrimary, fontSize: sz.primary, fontFamily: BrandFonts.body }]}>
+            Proteger minha conta
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   if (step === 'details') {
     return (

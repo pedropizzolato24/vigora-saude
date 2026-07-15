@@ -6,6 +6,7 @@ import {
   ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View,
 } from 'react-native';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
+import { ProtectAccountBanner } from '@/components/protect-account-banner';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
@@ -151,6 +152,9 @@ export default function CaregiverSettingsScreen() {
   return (
     <ScreenContainer containerStyle={a11y ? { backgroundColor: c.bg } : undefined}>
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Upgrade da conta anônima — só aparece para quem entrou sem login */}
+        <ProtectAccountBanner />
+
         {/* Perfil do Cuidador */}
         <Section title="Perfil do Cuidador">
           {editing ? (
