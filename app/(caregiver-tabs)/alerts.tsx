@@ -45,7 +45,7 @@ export default function CaregiverAlertsScreen() {
         <CaregiverEmptyState
           icon="notifications-none"
           title="Sem vínculo ativo"
-          description="Vincule uma pessoa monitorada para receber alertas."
+          description="Vincule uma pessoa acompanhada para receber alertas."
           ctaLabel="Vincular agora"
           onCtaPress={() => router.push('/(caregiver-tabs)/link')}
         />

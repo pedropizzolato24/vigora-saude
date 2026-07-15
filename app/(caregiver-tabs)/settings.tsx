@@ -199,7 +199,7 @@ export default function CaregiverSettingsScreen() {
         </Section>
 
         {/* Pessoa monitorada */}
-        <Section title="Pessoa monitorada">
+        <Section title="Pessoa acompanhada">
           {state.linkedMonitored ? (
             <View style={{ gap: 8 }}>
               <Text style={[styles.kv, { color: c.foreground, fontSize: sz.kv, fontFamily: BrandFonts.body }]}>{state.linkedMonitored.displayName}</Text>
