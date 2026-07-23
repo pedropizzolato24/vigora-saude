@@ -188,12 +188,22 @@ export async function updateAlarmEventStatusByAlarmId(
   // (ex.: whatsappSent / caregiverPushed) aqui, no Passo 4 e em confirmEvent.
   const warningSent = status === "missed";
 
-  await db
+  // Claim atômica: condiciona o UPDATE ao status que foi LIDO. Duas chamadas
+  // concorrentes (ex.: retry + original de confirmEvent) podem selecionar o
+  // mesmo candidato pendente antes de qualquer commit; sem o guard de status,
+  // as duas "transicionariam" e o caller mandaria push duplicado ao cuidador.
+  // Só a que vence a corrida afeta a linha (affectedRows>0). Mesmo padrão de
+  // consumeInviteByCode (db-links.ts).
+  const res = await db
     .update(alarmEvents)
     .set({ status, resolvedAt: new Date(), warningSent })
-    .where(eq(alarmEvents.id, target.id));
+    .where(and(eq(alarmEvents.id, target.id), eq(alarmEvents.status, target.status)));
 
-  return { id: target.id };
+  const affected =
+    (res as { affectedRows?: number }).affectedRows ??
+    (res as Array<{ affectedRows?: number }>)[0]?.affectedRows ??
+    0;
+  return affected > 0 ? { id: target.id } : null;
 }
 
 /**

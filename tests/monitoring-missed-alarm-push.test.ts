@@ -98,6 +98,20 @@ describe("confirmEvent — push ao cuidador em alarme perdido (app vivo)", () =>
     expect(message.data).toMatchObject({ type: "missed_alarm" });
   });
 
+  it("missed de check-in => push 'missed_checkin' (não 'missed_alarm')", async () => {
+    const caller = appRouter.createCaller(makeCtx(makeUser("vovo")));
+    await caller.monitoring.confirmEvent({
+      alarmId: "checkin-daily",
+      scheduledAt: new Date().toISOString(),
+      status: "missed",
+    });
+
+    expect(push.sendExpoPush).toHaveBeenCalledTimes(1);
+    const [, message] = vi.mocked(push.sendExpoPush).mock.calls[0];
+    expect(message.data).toMatchObject({ type: "missed_checkin" });
+    expect(message.title).toMatch(/Check-in/i);
+  });
+
   it("responded => nunca notifica o cuidador", async () => {
     const caller = appRouter.createCaller(makeCtx(makeUser("vovo")));
     await caller.monitoring.confirmEvent({

@@ -45,6 +45,10 @@ const SOS_WINDOW_MS = 60_000;
 const SOS_LIMIT = 5;
 const sosRateLimit = new Map<string, number[]>();
 
+// Mesmo id usado pelo check-in diário no cliente (lib/checkin-*) e no
+// monitoring-job (Passos 3/4). O push ao cuidador ramifica por ele.
+const CHECKIN_ALARM_ID = "checkin-daily";
+
 function isSosRateLimited(openId: string): boolean {
   const now = Date.now();
   const recent = (sosRateLimit.get(openId) ?? []).filter(
@@ -75,6 +79,7 @@ function isSosRateLimited(openId: string): boolean {
  */
 async function pushMissedAlarmToCaregivers(
   monitoredOpenId: string,
+  alarmId: string,
   scheduledAt: Date
 ): Promise<void> {
   try {
@@ -100,14 +105,27 @@ async function pushMissedAlarmToCaregivers(
       hour: "2-digit",
       minute: "2-digit",
     });
-    await sendExpoPush(
-      tokens.map((t) => t.token),
-      {
-        title: "⚠️ Alarme não respondido — Vigora",
-        body: `${name} não respondeu ao alarme das ${scheduledStr}. Toque para ver os detalhes.`,
-        data: { type: "missed_alarm", url: "/(caregiver-tabs)/alerts" },
-      }
-    );
+
+    // Check-in e alarme de medicação têm cópia/tipo de push DIFERENTES — e no
+    // servidor, branches de escalação distintos (Passo 3 missed_checkin vs
+    // Passo 4 missed_alarm). Como confirmEvent é compartilhado pelos dois fluxos
+    // (o timeout do check-in também chama confirmAlarmMissed), sem ramificar aqui
+    // o check-in saía como "missed_alarm" (texto errado) e, pior, o warningSent=true
+    // ainda suprimia o missed_checkin do Passo 3.
+    const message =
+      alarmId === CHECKIN_ALARM_ID
+        ? {
+            title: "⚠️ Check-in não respondido — Vigora",
+            body: `${name} não respondeu ao check-in das ${scheduledStr}. Toque para ver os detalhes.`,
+            data: { type: "missed_checkin", url: "/(caregiver-tabs)/alerts" },
+          }
+        : {
+            title: "⚠️ Alarme não respondido — Vigora",
+            body: `${name} não respondeu ao alarme das ${scheduledStr}. Toque para ver os detalhes.`,
+            data: { type: "missed_alarm", url: "/(caregiver-tabs)/alerts" },
+          };
+
+    await sendExpoPush(tokens.map((t) => t.token), message);
   } catch (err) {
     console.warn("[Monitoring] push de alarme perdido ao cuidador falhou:", err);
   }
@@ -220,7 +238,7 @@ export const monitoringRouter = router({
       // mesmo instante em que warningSent=true é setado (senão o Passo 4 nunca
       // dispara e o cuidador não é avisado). Só na transição real → idempotente.
       if (input.status === "missed" && transitioned) {
-        await pushMissedAlarmToCaregivers(ctx.user.openId, scheduledAt);
+        await pushMissedAlarmToCaregivers(ctx.user.openId, input.alarmId, scheduledAt);
       }
       return { success: true };
     }),

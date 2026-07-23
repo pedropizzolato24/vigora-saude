@@ -116,7 +116,20 @@ export function CaregiverProvider({ children }: { children: React.ReactNode }) {
     let next: CaregiverState = DEFAULT_CAREGIVER_STATE;
     if (key) {
       try {
-        const raw = await AsyncStorage.getItem(key);
+        let raw = await AsyncStorage.getItem(key);
+        // Migração única da chave global antiga (pré-escopo por-conta): se esta
+        // conta ainda não tem cache próprio, adota o global uma vez — sem isto,
+        // um cuidador já logado no upgrade veria "sem vínculo" ao abrir offline
+        // até o primeiro refreshLink. Consome de uma vez (apaga na leitura) para
+        // não vazar para o próximo cuidador no aparelho; a persist effect regrava
+        // sob a chave por-openId.
+        if (!raw) {
+          const legacy = await AsyncStorage.getItem(STORAGE_PREFIX);
+          if (legacy) {
+            await AsyncStorage.removeItem(STORAGE_PREFIX).catch(() => {});
+            raw = legacy;
+          }
+        }
         if (raw) {
           const parsed = JSON.parse(raw) as Partial<CaregiverState>;
           next = {
@@ -131,6 +144,11 @@ export function CaregiverProvider({ children }: { children: React.ReactNode }) {
         // ignore parse errors — start with defaults
       }
     }
+    // Se a conta trocou durante o(s) await(s) acima, este load é de uma conta já
+    // superada — aplicá-lo (e depois persisti-lo sob a chave nova) reabriria o
+    // vazamento entre contas que esta mudança conserta. Descarta. Espelha o
+    // loadFor de lib/app-context.tsx.
+    if (activeOpenIdRef.current !== openId) return;
     dispatch({ type: 'LOAD', payload: next });
   }, []);
 
