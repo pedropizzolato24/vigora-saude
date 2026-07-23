@@ -1,0 +1,1 @@
+ALTER TABLE `account_liveness` ADD `batteryExempt` boolean;

@@ -1,7 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
 import React, { useEffect, useRef, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAccessibility } from '@/lib/accessibility-context';
 import {
   FlatList,
@@ -31,13 +30,23 @@ import { BrandFonts } from '@/lib/_core/theme';
 import { generateId, useAppContext, type Alarm } from '@/lib/app-context';
 import { scheduleFullAlarm, cancelFullAlarm } from '@/lib/alarm-sync';
 import { openBatteryOptimizationSettings } from '@/lib/battery-optimization';
-import { canScheduleExactAlarms, openExactAlarmSettings } from 'expo-alarm-countdown';
+import { oemBatteryHint } from '@/lib/_core/oem-battery-hint';
+import { canScheduleExactAlarms, isIgnoringBatteryOptimizations, openExactAlarmSettings } from 'expo-alarm-countdown';
 import { useRouter } from 'expo-router';
 import { MAX_ALARMS } from '@/components/pro-limits';
 
 // Evita repetir o aviso de "Alarmes e lembretes" a cada visita à aba na mesma
 // sessão (a permissão continua sendo checada — só o diálogo não re-aparece).
 let exactAlarmPromptShown = false;
+// Mesma lógica para o aviso de otimização de bateria (a isenção continua sendo
+// re-checada a cada visita — só o diálogo não re-aparece na mesma sessão).
+let batteryPromptShown = false;
+// Um aviso de configuração por sessão: os efeitos de bateria e de alarmes
+// exatos disparam quase juntos no mount e o AppDialog é único — sem este gate o
+// segundo showDialog sobrescreve o primeiro e engole um dos avisos em silêncio.
+// O que não aparecer nesta sessão volta na próxima (a flag de tópico só é
+// marcada para o que de fato foi exibido).
+let alarmSetupPromptShownThisSession = false;
 
 const REPEAT_OPTIONS: { value: Alarm['repeat']; label: string }[] = [
   { value: 'daily', label: 'Diário' },
@@ -101,19 +110,27 @@ export default function AlarmsScreen() {
   const { dialogProps, showDialog } = useAppDialog();
   const { toastProps, showToast } = useAppToast();
 
-  // Otimização de bateria: Android (Samsung/Xiaomi) mata o app e o alarme não
-  // toca. Avisa uma vez o monitorado para isentar o Vigora. (feedback do beta)
+  // Otimização de bateria: OEMs agressivos (Samsung/Xiaomi) matam o app e o
+  // alarme não toca. Igual ao aviso de alarmes exatos abaixo: re-checa o estado
+  // REAL da isenção a cada visita e avisa 1x por sessão enquanto ela não
+  // estiver concedida (antes só marcava "já vi" e nunca mais avisava).
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     let cancelled = false;
     (async () => {
-      const seen = await AsyncStorage.getItem('vigora_battery_prompt_seen').catch(() => null);
-      if (seen || cancelled) return;
-      await AsyncStorage.setItem('vigora_battery_prompt_seen', '1').catch(() => {});
+      const exempt = await isIgnoringBatteryOptimizations();
+      if (exempt || cancelled || batteryPromptShown || alarmSetupPromptShownThisSession) return;
+      batteryPromptShown = true;
+      alarmSetupPromptShownThisSession = true;
+      // Passo extra por fabricante (Samsung/Xiaomi têm listas próprias além da
+      // isenção padrão do Android); null nos OEMs stock.
+      const manufacturer = (Platform.constants as { Manufacturer?: string }).Manufacturer ?? '';
+      const hint = oemBatteryHint(manufacturer);
       showDialog({
         title: 'Para o alarme tocar sempre',
         message:
-          'Alguns celulares desligam apps em segundo plano, o que pode impedir o alarme de tocar. Toque em "Abrir configurações" e desative a otimização de bateria para o Vigora.',
+          'Alguns celulares desligam apps em segundo plano, o que pode impedir o alarme de tocar. Toque em "Abrir configurações" e desative a otimização de bateria para o Vigora.' +
+          (hint ? `\n\n${hint}` : ''),
         variant: 'warning',
         buttons: [
           { text: 'Agora não', style: 'cancel' },
@@ -136,8 +153,9 @@ export default function AlarmsScreen() {
     let cancelled = false;
     (async () => {
       const allowed = await canScheduleExactAlarms();
-      if (allowed || cancelled || exactAlarmPromptShown) return;
+      if (allowed || cancelled || exactAlarmPromptShown || alarmSetupPromptShownThisSession) return;
       exactAlarmPromptShown = true;
+      alarmSetupPromptShownThisSession = true;
       showDialog({
         title: 'Permita alarmes exatos',
         message:

@@ -69,6 +69,21 @@ export async function canScheduleExactAlarms(): Promise<boolean> {
 }
 
 /**
+ * Android 6+: whether the app is exempt from battery optimization (Doze).
+ * OEMs agressivos (Samsung/Xiaomi) matam o app em segundo plano sem isso e o
+ * alarme não toca. Always true on other platforms/versions. Fail-open (true)
+ * when the native module is unavailable (Expo Go), como canScheduleExactAlarms.
+ */
+export async function isIgnoringBatteryOptimizations(): Promise<boolean> {
+  if (Platform.OS !== 'android') return true;
+  try {
+    return await ExpoAlarmCountdown.isIgnoringBatteryOptimizations();
+  } catch {
+    return true;
+  }
+}
+
+/**
  * Android 12+: opens the system "Alarms & reminders" screen for this app.
  * No-op on other platforms/versions.
  */

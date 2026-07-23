@@ -8,6 +8,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import com.facebook.react.bridge.Promise
@@ -106,6 +107,29 @@ class ExpoAlarmCountdownModule(private val reactContext: ReactApplicationContext
                 val alarmManager =
                     reactContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
                 promise.resolve(alarmManager.canScheduleExactAlarms())
+            } else {
+                promise.resolve(true)
+            }
+        } catch (e: Exception) {
+            // Fail-open: se não dá para checar, não incomoda o usuário
+            promise.resolve(true)
+        }
+    }
+
+    /**
+     * Whether the app is exempt from battery optimization (Doze/App Standby).
+     * OEMs agressivos (Samsung/Xiaomi) matam o app em segundo plano sem isso e o
+     * alarme não toca. Always true below API 23 (no such restriction).
+     */
+    @ReactMethod
+    fun isIgnoringBatteryOptimizations(promise: Promise) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val powerManager =
+                    reactContext.getSystemService(Context.POWER_SERVICE) as PowerManager
+                promise.resolve(
+                    powerManager.isIgnoringBatteryOptimizations(reactContext.packageName)
+                )
             } else {
                 promise.resolve(true)
             }

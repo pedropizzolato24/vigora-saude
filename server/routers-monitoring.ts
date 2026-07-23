@@ -59,6 +59,60 @@ function isSosRateLimited(openId: string): boolean {
   return false;
 }
 
+/**
+ * Push aos cuidadores vinculados quando o monitorado (com o app VIVO) confirma
+ * um alarme como perdido em confirmEvent. É o par em tempo real do push que o
+ * Passo 4 do monitoring-job faz quando o app MORREU — nunca disparam para o
+ * mesmo evento: confirmEvent seta warningSent=true e o Passo 4 só pega
+ * warningSent=false. Sem estado de saúde no payload (só "não respondeu").
+ *
+ * Idempotência vem de fora: só é chamado quando updateAlarmEventStatusByAlarmId
+ * de fato transicionou o evento (retry/re-chamada não re-empurra). Best-effort:
+ * uma falha aqui não pode derrubar o confirm do cliente.
+ *
+ * ⚠️ Só cobre o caminho "cliente vivo". Ver a NOTA DE DESIGN em
+ * db-monitoring.ts (warningSent): um terceiro canal exigiria flags por-canal.
+ */
+async function pushMissedAlarmToCaregivers(
+  monitoredOpenId: string,
+  scheduledAt: Date
+): Promise<void> {
+  try {
+    const caregivers = await getActiveCaregiversForMonitored(monitoredOpenId);
+    if (caregivers.length === 0) return;
+    const tokens = await getPushTokensForOpenIds(
+      caregivers.map((c) => c.caregiverOpenId)
+    );
+    if (tokens.length === 0) return;
+
+    // Nome do monitorado para o cuidador saber DE QUEM é o alarme (um cuidador
+    // pode seguir mais de uma pessoa). Falha ao ler o nome não aborta o push.
+    let name = "A pessoa que você acompanha";
+    try {
+      const data = await getUserData(monitoredOpenId);
+      const anamnesis = (data?.anamnesis ?? null) as { fullName?: string } | null;
+      if (anamnesis?.fullName) name = anamnesis.fullName;
+    } catch {
+      // mantém o nome genérico
+    }
+
+    const scheduledStr = scheduledAt.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    await sendExpoPush(
+      tokens.map((t) => t.token),
+      {
+        title: "⚠️ Alarme não respondido — Vigora",
+        body: `${name} não respondeu ao alarme das ${scheduledStr}. Toque para ver os detalhes.`,
+        data: { type: "missed_alarm", url: "/(caregiver-tabs)/alerts" },
+      }
+    );
+  } catch (err) {
+    console.warn("[Monitoring] push de alarme perdido ao cuidador falhou:", err);
+  }
+}
+
 export const monitoringRouter = router({
   /**
    * DEPRECATED (compat com clientes antigos): contatos e nome agora vivem no
@@ -93,6 +147,8 @@ export const monitoringRouter = router({
         lastDeviceId: z.string().max(64).optional(),
         appVersion: z.string().optional(),
         lastLocation: z.string().optional(),
+        /** Telemetria Android: isenção de otimização de bateria ativa. */
+        batteryExempt: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -100,6 +156,7 @@ export const monitoringRouter = router({
         appVersion: input.appVersion,
         lastDeviceId: input.lastDeviceId ?? input.deviceId,
         lastLocation: input.lastLocation,
+        batteryExempt: input.batteryExempt,
       });
       return { success: true, timestamp: new Date().toISOString() };
     }),
@@ -152,12 +209,19 @@ export const monitoringRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      await updateAlarmEventStatusByAlarmId(
+      const scheduledAt = new Date(input.scheduledAt);
+      const transitioned = await updateAlarmEventStatusByAlarmId(
         ctx.user.openId,
         input.alarmId,
-        new Date(input.scheduledAt),
+        scheduledAt,
         input.status
       );
+      // App vivo confirmando "perdido": empurra o push ao cuidador AQUI, no
+      // mesmo instante em que warningSent=true é setado (senão o Passo 4 nunca
+      // dispara e o cuidador não é avisado). Só na transição real → idempotente.
+      if (input.status === "missed" && transitioned) {
+        await pushMissedAlarmToCaregivers(ctx.user.openId, scheduledAt);
+      }
       return { success: true };
     }),
 

@@ -11,6 +11,7 @@
  * 4. Detect "not_sent" alarms when device comes back online
  */
 import { AppState, AppStateStatus, Platform } from "react-native";
+import { isIgnoringBatteryOptimizations } from "expo-alarm-countdown";
 import { getDeviceId } from "./device-id";
 import { getApiBaseUrl } from "@/constants/oauth";
 import { Alarm } from "./app-context";
@@ -189,10 +190,15 @@ let appStateSubscription: { remove: () => void } | null = null;
 async function sendHeartbeat(location?: string): Promise<void> {
   // deviceId é só metadado de liveness (lastDeviceId) — nunca chave de posse.
   const deviceId = await getDeviceId();
+  // Telemetria: reporta a isenção de bateria (Android). undefined fora do
+  // Android → JSON.stringify descarta a chave e o servidor preserva o valor.
+  const batteryExempt =
+    Platform.OS === "android" ? await isIgnoringBatteryOptimizations() : undefined;
   await trpcMutation("monitoring.heartbeat", {
     lastDeviceId: deviceId,
     appVersion: "1.0.0",
     lastLocation: location,
+    batteryExempt,
   });
   console.log("[Monitoring] Heartbeat sent");
 }
