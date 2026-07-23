@@ -11,11 +11,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Auth from "@/lib/_core/auth";
 import { clearPendingInvite, getPendingInvite } from "@/lib/pending-invite";
+import { hasCompletedCaregiverOnboarding } from "@/lib/caregiver-onboarding-flag";
 import { getApiBaseUrl } from "@/constants/oauth";
 import { identifyUser } from "@/lib/purchases";
 
 const LOGIN_COMPLETED_KEY = "vigora_login_completed";
-const CAREGIVER_ONBOARDING_KEY = "vigora_caregiver_onboarding_completed";
 
 export type Nav = { replace: (href: string) => void };
 
@@ -130,6 +130,9 @@ export async function completeServerLogin(
     return;
   }
 
-  const flag = await AsyncStorage.getItem(CAREGIVER_ONBOARDING_KEY);
-  router.replace(getNextRoute(result.user.userType, flag === "true"));
+  // Flag de onboarding do cuidador é POR CONTA (openId) — a chave global antiga
+  // não é mais escrita, então lê-la mandava o cuidador ao onboarding a CADA
+  // login. Ver lib/caregiver-onboarding-flag.ts.
+  const onboardingDone = await hasCompletedCaregiverOnboarding(result.user.openId);
+  router.replace(getNextRoute(result.user.userType, onboardingDone));
 }

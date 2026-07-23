@@ -45,6 +45,10 @@ const SOS_WINDOW_MS = 60_000;
 const SOS_LIMIT = 5;
 const sosRateLimit = new Map<string, number[]>();
 
+// Mesmo id usado pelo check-in diário no cliente (lib/checkin-*) e no
+// monitoring-job (Passos 3/4). O push ao cuidador ramifica por ele.
+const CHECKIN_ALARM_ID = "checkin-daily";
+
 function isSosRateLimited(openId: string): boolean {
   const now = Date.now();
   const recent = (sosRateLimit.get(openId) ?? []).filter(
@@ -57,6 +61,100 @@ function isSosRateLimited(openId: string): boolean {
   recent.push(now);
   sosRateLimit.set(openId, recent);
   return false;
+}
+
+/**
+ * Rate limit por processo/conta para o push de alarme perdido ao cuidador.
+ * createEvent aceita alarmId/scheduledAt arbitrários do cliente autenticado —
+ * sem isto, um loop createEvent -> confirmEvent(missed) gera push ilimitado ao
+ * cuidador. 10 em 60s: acomoda uma rajada legítima (reconexão após offline
+ * confirmando vários alarmes pendentes de uma vez) e barra o abuso sustentado.
+ * Só o PUSH é limitado — o evento em si sempre é gravado (histórico correto).
+ */
+const MISSED_ALARM_PUSH_WINDOW_MS = 60_000;
+const MISSED_ALARM_PUSH_LIMIT = 10;
+const missedAlarmPushRateLimit = new Map<string, number[]>();
+
+function isMissedAlarmPushRateLimited(openId: string): boolean {
+  const now = Date.now();
+  const recent = (missedAlarmPushRateLimit.get(openId) ?? []).filter(
+    (ts) => now - ts < MISSED_ALARM_PUSH_WINDOW_MS
+  );
+  if (recent.length >= MISSED_ALARM_PUSH_LIMIT) {
+    missedAlarmPushRateLimit.set(openId, recent);
+    return true;
+  }
+  recent.push(now);
+  missedAlarmPushRateLimit.set(openId, recent);
+  return false;
+}
+
+/**
+ * Push aos cuidadores vinculados quando o monitorado (com o app VIVO) confirma
+ * um alarme como perdido em confirmEvent. É o par em tempo real do push que o
+ * Passo 4 do monitoring-job faz quando o app MORREU — nunca disparam para o
+ * mesmo evento: confirmEvent seta warningSent=true e o Passo 4 só pega
+ * warningSent=false. Sem estado de saúde no payload (só "não respondeu").
+ *
+ * Idempotência vem de fora: só é chamado quando updateAlarmEventStatusByAlarmId
+ * de fato transicionou o evento (retry/re-chamada não re-empurra). Best-effort:
+ * uma falha aqui não pode derrubar o confirm do cliente.
+ *
+ * ⚠️ Só cobre o caminho "cliente vivo". Ver a NOTA DE DESIGN em
+ * db-monitoring.ts (warningSent): um terceiro canal exigiria flags por-canal.
+ */
+async function pushMissedAlarmToCaregivers(
+  monitoredOpenId: string,
+  alarmId: string,
+  scheduledAt: Date
+): Promise<void> {
+  try {
+    const caregivers = await getActiveCaregiversForMonitored(monitoredOpenId);
+    if (caregivers.length === 0) return;
+    const tokens = await getPushTokensForOpenIds(
+      caregivers.map((c) => c.caregiverOpenId)
+    );
+    if (tokens.length === 0) return;
+
+    // Nome do monitorado para o cuidador saber DE QUEM é o alarme (um cuidador
+    // pode seguir mais de uma pessoa). Falha ao ler o nome não aborta o push.
+    let name = "A pessoa que você acompanha";
+    try {
+      const data = await getUserData(monitoredOpenId);
+      const anamnesis = (data?.anamnesis ?? null) as { fullName?: string } | null;
+      if (anamnesis?.fullName) name = anamnesis.fullName;
+    } catch {
+      // mantém o nome genérico
+    }
+
+    const scheduledStr = scheduledAt.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    // Check-in e alarme de medicação têm cópia/tipo de push DIFERENTES — e no
+    // servidor, branches de escalação distintos (Passo 3 missed_checkin vs
+    // Passo 4 missed_alarm). Como confirmEvent é compartilhado pelos dois fluxos
+    // (o timeout do check-in também chama confirmAlarmMissed), sem ramificar aqui
+    // o check-in saía como "missed_alarm" (texto errado) e, pior, o warningSent=true
+    // ainda suprimia o missed_checkin do Passo 3.
+    const message =
+      alarmId === CHECKIN_ALARM_ID
+        ? {
+            title: "⚠️ Check-in não respondido — Vigora",
+            body: `${name} não respondeu ao check-in das ${scheduledStr}. Toque para ver os detalhes.`,
+            data: { type: "missed_checkin", url: "/(caregiver-tabs)/alerts" },
+          }
+        : {
+            title: "⚠️ Alarme não respondido — Vigora",
+            body: `${name} não respondeu ao alarme das ${scheduledStr}. Toque para ver os detalhes.`,
+            data: { type: "missed_alarm", url: "/(caregiver-tabs)/alerts" },
+          };
+
+    await sendExpoPush(tokens.map((t) => t.token), message);
+  } catch (err) {
+    console.warn("[Monitoring] push de alarme perdido ao cuidador falhou:", err);
+  }
 }
 
 export const monitoringRouter = router({
@@ -93,6 +191,8 @@ export const monitoringRouter = router({
         lastDeviceId: z.string().max(64).optional(),
         appVersion: z.string().optional(),
         lastLocation: z.string().optional(),
+        /** Telemetria Android: isenção de otimização de bateria ativa. */
+        batteryExempt: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -100,6 +200,7 @@ export const monitoringRouter = router({
         appVersion: input.appVersion,
         lastDeviceId: input.lastDeviceId ?? input.deviceId,
         lastLocation: input.lastLocation,
+        batteryExempt: input.batteryExempt,
       });
       return { success: true, timestamp: new Date().toISOString() };
     }),
@@ -152,12 +253,24 @@ export const monitoringRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      await updateAlarmEventStatusByAlarmId(
+      const scheduledAt = new Date(input.scheduledAt);
+      const transitioned = await updateAlarmEventStatusByAlarmId(
         ctx.user.openId,
         input.alarmId,
-        new Date(input.scheduledAt),
+        scheduledAt,
         input.status
       );
+      // App vivo confirmando "perdido": empurra o push ao cuidador AQUI, no
+      // mesmo instante em que warningSent=true é setado (senão o Passo 4 nunca
+      // dispara e o cuidador não é avisado). Só na transição real → idempotente.
+      // Rate limit só no PUSH — o evento em si é sempre gravado corretamente.
+      if (
+        input.status === "missed" &&
+        transitioned &&
+        !isMissedAlarmPushRateLimited(ctx.user.openId)
+      ) {
+        await pushMissedAlarmToCaregivers(ctx.user.openId, input.alarmId, scheduledAt);
+      }
       return { success: true };
     }),
 

@@ -27,8 +27,14 @@ import {
   revokeServerLink,
   type ServerLink,
 } from './caregiver-link-service';
+import * as Auth from './_core/auth';
 
-const STORAGE_KEY = 'vigora_caregiver_state';
+// Cache POR CONTA (openId): sem escopo, o vínculo de um cuidador vazava para a
+// próxima conta no mesmo aparelho — conta nova/sem vínculo aparecia "vinculada"
+// com dados placeholder. Mesma abordagem do tema e da flag de onboarding.
+const STORAGE_PREFIX = 'vigora_caregiver_state';
+const cacheKeyFor = (openId: string | null): string | null =>
+  openId ? `${STORAGE_PREFIX}_${openId}` : null;
 
 interface RedeemOptions {
   displayName?: string;
@@ -72,6 +78,10 @@ export function CaregiverProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(caregiverReducer, DEFAULT_CAREGIVER_STATE);
   const [loaded, setLoaded] = useState(false);
 
+  // Conta ativa (openId). undefined = ainda não resolvida no mount; depois vira
+  // string (logado) ou null (deslogado). Chaveia o cache e detecta troca de conta.
+  const activeOpenIdRef = useRef<string | null | undefined>(undefined);
+
   // Track the latest link so clearLinkedMonitored can read it without being
   // re-created on every state change.
   const linkRef = useRef(state.linkedMonitored);
@@ -85,8 +95,15 @@ export function CaregiverProvider({ children }: { children: React.ReactNode }) {
   //   - not authed yet -> keep the cache (initial mount runs before login)
   //   - network error  -> keep the cache (offline-first)
   const refreshLink = useCallback(async () => {
+    // Epoch capturado no início: se a conta trocar enquanto fetchMyLink está em
+    // voo (chamado tanto no mount/troca de conta quanto por callers externos,
+    // como a caregiver-tabs layout), aplicar o resultado agora seria o vínculo
+    // da conta VELHA vazando para a conta ativa nova (mesma classe de corrida do
+    // loadForAccount, espelha reconcileFromCloud em app-context.tsx).
+    const epoch = activeOpenIdRef.current;
     try {
       const link = await fetchMyLink();
+      if (activeOpenIdRef.current !== epoch) return;
       if (link) {
         dispatch({ type: 'SET_LINK', payload: mapServerLink(link) });
       } else {
@@ -98,40 +115,82 @@ export function CaregiverProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      // 1. Hydrate from the local cache first (offline-first).
+  // Hidrata o estado a partir do cache DA CONTA informada (offline-first). Conta
+  // sem cache (nova/sem vínculo) ou deslogada -> DEFAULT: é o que impede o
+  // vínculo de uma conta anterior de aparecer numa conta nova/sem vínculo.
+  const loadForAccount = useCallback(async (openId: string | null) => {
+    const key = cacheKeyFor(openId);
+    let next: CaregiverState = DEFAULT_CAREGIVER_STATE;
+    if (key) {
       try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        let raw = await AsyncStorage.getItem(key);
+        // Migração única da chave global antiga (pré-escopo por-conta): se esta
+        // conta ainda não tem cache próprio, adota o global uma vez — sem isto,
+        // um cuidador já logado no upgrade veria "sem vínculo" ao abrir offline
+        // até o primeiro refreshLink. Consome de uma vez (apaga na leitura) para
+        // não vazar para o próximo cuidador no aparelho; a persist effect regrava
+        // sob a chave por-openId.
+        if (!raw) {
+          const legacy = await AsyncStorage.getItem(STORAGE_PREFIX);
+          if (legacy) {
+            await AsyncStorage.removeItem(STORAGE_PREFIX).catch(() => {});
+            raw = legacy;
+          }
+        }
         if (raw) {
           const parsed = JSON.parse(raw) as Partial<CaregiverState>;
-          dispatch({
-            type: 'LOAD',
-            payload: {
-              linkedMonitored: parsed.linkedMonitored ?? null,
-              notificationPrefs: {
-                ...DEFAULT_CAREGIVER_STATE.notificationPrefs,
-                ...(parsed.notificationPrefs ?? {}),
-              },
+          next = {
+            linkedMonitored: parsed.linkedMonitored ?? null,
+            notificationPrefs: {
+              ...DEFAULT_CAREGIVER_STATE.notificationPrefs,
+              ...(parsed.notificationPrefs ?? {}),
             },
-          });
+          };
         }
       } catch {
         // ignore parse errors — start with defaults
-      } finally {
-        setLoaded(true);
       }
+    }
+    // Se a conta trocou durante o(s) await(s) acima, este load é de uma conta já
+    // superada — aplicá-lo (e depois persisti-lo sob a chave nova) reabriria o
+    // vazamento entre contas que esta mudança conserta. Descarta. Espelha o
+    // loadFor de lib/app-context.tsx.
+    if (activeOpenIdRef.current !== openId) return;
+    dispatch({ type: 'LOAD', payload: next });
+  }, []);
 
-      // 2. Reconcile with the server. If the user isn't authenticated yet (app
-      // just opened, pre-login), this is a no-op — the caregiver tabs layout
-      // calls refreshLink() again once login completes.
-      await refreshLink();
+  useEffect(() => {
+    (async () => {
+      const user = await Auth.getUserInfo().catch(() => null);
+      // Só resolve pelo mount se a subscription não resolveu antes (login
+      // durante o mount); em qualquer caso libera o loaded para persistir.
+      if (activeOpenIdRef.current === undefined) {
+        activeOpenIdRef.current = user?.openId ?? null;
+        await loadForAccount(activeOpenIdRef.current);
+        // Reconcilia com o servidor. Pré-login é no-op — a caregiver-tabs layout
+        // chama refreshLink() de novo quando a auth estiver disponível.
+        await refreshLink();
+      }
+      setLoaded(true);
     })();
-  }, [refreshLink]);
+
+    // Troca de conta no mesmo aparelho (login/criação/logout): recarrega o cache
+    // da nova conta (DEFAULT se não houver) e reconcilia com o servidor. Sem
+    // isto, o vínculo da conta anterior vazava — conta nova/sem vínculo aparecia
+    // "vinculada". Espelha lib/app-context.tsx (subscribeActiveUser).
+    const unsubscribe = Auth.subscribeActiveUser((openId) => {
+      const next = openId ?? null;
+      if (next === activeOpenIdRef.current) return;
+      activeOpenIdRef.current = next;
+      loadForAccount(next).then(() => refreshLink());
+    });
+    return unsubscribe;
+  }, [loadForAccount, refreshLink]);
 
   useEffect(() => {
     if (!loaded) return;
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
+    const key = cacheKeyFor(activeOpenIdRef.current ?? null);
+    if (key) AsyncStorage.setItem(key, JSON.stringify(state)).catch(() => {});
   }, [state, loaded]);
 
   const redeemInvite = useCallback<CaregiverContextValue['redeemInvite']>(async (code, opts) => {

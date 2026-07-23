@@ -13,7 +13,6 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FormKeyboardView } from '@/components/form-keyboard-view';
 import { useColors } from '@/hooks/use-colors';
 import { useAppContext } from '@/lib/app-context';
@@ -21,6 +20,7 @@ import * as Auth from '@/lib/_core/auth';
 import { trpc } from '@/lib/trpc';
 import { clearPendingInvite, getPendingInvite } from '@/lib/pending-invite';
 import { getNextRoute } from '@/lib/auth-session';
+import { hasCompletedCaregiverOnboarding } from '@/lib/caregiver-onboarding-flag';
 
 type UserType = 'caregiver' | 'monitored';
 
@@ -138,13 +138,13 @@ export default function RegisterScreen() {
 
       // Roteia pelo tipo de conta: cuidador vai para o fluxo de cuidador (não
       // para o layout do monitorado). Antes ia sempre para /(tabs), o que
-      // mandava cuidadores recém-cadastrados para a tela errada.
-      const caregiverOnboardingDone = await AsyncStorage.getItem(
-        'vigora_caregiver_onboarding_completed',
-      );
-      router.replace(
-        getNextRoute(updated.userType, caregiverOnboardingDone === 'true'),
-      );
+      // mandava cuidadores recém-cadastrados para a tela errada. A flag de
+      // onboarding é POR CONTA (openId) — a chave global antiga não é mais
+      // escrita. Recém-cadastrado nunca fez o onboarding, então cai no fluxo.
+      const caregiverOnboardingDone = existing?.openId
+        ? await hasCompletedCaregiverOnboarding(existing.openId)
+        : false;
+      router.replace(getNextRoute(updated.userType, caregiverOnboardingDone));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao salvar cadastro.';
       setError(message);
@@ -152,6 +152,14 @@ export default function RegisterScreen() {
   };
 
   const loading = completeRegistration.isPending;
+
+  // Escape do beco sem saída: /register é alcançado por replace (sem back
+  // stack) e com gesto desabilitado, então sem isto o usuário fica preso —
+  // inclusive quem tocou "Continuar sem conta" e caiu aqui. Volta ao login.
+  const handleBack = () => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.replace('/login');
+  };
 
   return (
     <FormKeyboardView
@@ -167,6 +175,17 @@ export default function RegisterScreen() {
         ]}
         keyboardShouldPersistTaps="handled"
       >
+        <Pressable
+          onPress={handleBack}
+          hitSlop={8}
+          accessibilityLabel="Voltar"
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.backButton, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <MaterialIcons name="arrow-back" size={24} color={colors.foreground} />
+          <Text style={[styles.backButtonText, { color: colors.foreground }]}>Voltar</Text>
+        </Pressable>
+
         <View style={[styles.iconCircle, { backgroundColor: colors.primary }]}>
           <MaterialIcons name="person-add" size={48} color={colors.onPrimary} />
         </View>
@@ -368,6 +387,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     alignItems: 'center',
     gap: 16,
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 44,
+    paddingVertical: 8,
+    paddingRight: 12,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   iconCircle: {
     width: 96,

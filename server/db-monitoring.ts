@@ -27,7 +27,12 @@ import {
  */
 export async function recordHeartbeat(
   openId: string,
-  meta?: { appVersion?: string; lastDeviceId?: string; lastLocation?: string }
+  meta?: {
+    appVersion?: string;
+    lastDeviceId?: string;
+    lastLocation?: string;
+    batteryExempt?: boolean;
+  }
 ): Promise<void> {
   const db = await getDb();
   if (!db) return;
@@ -36,6 +41,10 @@ export async function recordHeartbeat(
   const locationFields = meta?.lastLocation
     ? { lastLocation: meta.lastLocation, lastLocationAt: now }
     : {};
+  // Só grava quando o cliente informou (Android). undefined = sem info (iOS/
+  // clientes antigos) → preserva o último valor conhecido em vez de zerá-lo.
+  const batteryFields =
+    meta?.batteryExempt === undefined ? {} : { batteryExempt: meta.batteryExempt };
 
   await db
     .insert(accountLiveness)
@@ -45,6 +54,7 @@ export async function recordHeartbeat(
       appVersion: meta?.appVersion ?? null,
       lastDeviceId: meta?.lastDeviceId ?? null,
       ...locationFields,
+      ...batteryFields,
     })
     .onDuplicateKeyUpdate({
       set: {
@@ -52,6 +62,7 @@ export async function recordHeartbeat(
         appVersion: meta?.appVersion ?? null,
         lastDeviceId: meta?.lastDeviceId ?? null,
         ...locationFields,
+        ...batteryFields,
       },
     });
 }
@@ -120,14 +131,21 @@ export async function updateAlarmEventStatus(
     .where(eq(alarmEvents.id, id));
 }
 
+/**
+ * Aplica um novo status ao evento de alarme casado por (openId, alarmId,
+ * scheduledAt). Retorna o evento efetivamente transicionado, ou `null` quando
+ * nada foi atualizado (sem DB, ou nenhum candidato casou — ex.: retry após a
+ * transição já ter ocorrido). O caller usa esse retorno para agir SÓ na
+ * transição real e ficar idempotente (ver o push ao cuidador em confirmEvent).
+ */
 export async function updateAlarmEventStatusByAlarmId(
   openId: string,
   alarmId: string,
   scheduledAt: Date,
   status: "responded" | "missed" | "not_sent"
-): Promise<void> {
+): Promise<{ id: number } | null> {
   const db = await getDb();
-  if (!db) return;
+  if (!db) return null;
 
   // Janela máxima entre o evento e a referência (o scheduledAt canônico do
   // disparo). Impede que uma confirmação atrasada de HOJE consuma o evento
@@ -155,17 +173,46 @@ export async function updateAlarmEventStatusByAlarmId(
     );
 
   const target = pickPendingEvent(candidates, scheduledAt, MAX_MATCH_WINDOW_MS);
-  if (!target) return;
+  if (!target) return null;
 
   // When the client confirms a missed event it has already escalated client-side.
   // Set warningSent=true so Step 3 of the monitoring job doesn't double-escalate.
   // (Ao virar "responded" o evento sai do filtro de missed, então não re-escala.)
+  //
+  // ⚠️ NOTA DE DESIGN — este UM booleano coordena exatamente DOIS caminhos de
+  // escalação: (1) cliente vivo (aqui + push ao cuidador em confirmEvent) e
+  // (2) backstop do servidor (Passo 4 do monitoring-job, que só pega
+  // warningSent=false). Enquanto forem só esses dois, o flag único basta para
+  // não duplicar. Se um TERCEIRO caminho/canal for adicionado, o flag único
+  // deixa de ser suficiente — será preciso trocar por flags por-canal
+  // (ex.: whatsappSent / caregiverPushed) aqui, no Passo 4 e em confirmEvent.
   const warningSent = status === "missed";
 
-  await db
+  // Claim atômica: condiciona o UPDATE ao CONJUNTO de status aceito na seleção
+  // (statusesToConsider), não ao valor exato lido. Duas chamadas concorrentes
+  // (ex.: retry + original de confirmEvent) podem selecionar o mesmo candidato
+  // pendente antes de qualquer commit; sem o guard, as duas "transicionariam" e
+  // o caller mandaria push duplicado ao cuidador — só a que vence a corrida
+  // afeta a linha (affectedRows>0). Mesmo padrão de consumeInviteByCode
+  // (db-links.ts). Usar o CONJUNTO (em vez de eq ao status exato lido) importa
+  // para "responded": ele existe para corrigir um not_sent/missed que o job
+  // marcou prematuramente — exigir o valor exato quebraria essa correção se o
+  // job virar o status entre o SELECT e este UPDATE (ex.: pending->missed no
+  // limite do grace period), descartando uma resposta real do usuário. Para
+  // "missed"/"not_sent" o conjunto é só ['pending'], então o efeito é idêntico
+  // ao guard exato — a proteção contra push duplicado permanece intacta.
+  const res = await db
     .update(alarmEvents)
     .set({ status, resolvedAt: new Date(), warningSent })
-    .where(eq(alarmEvents.id, target.id));
+    .where(
+      and(eq(alarmEvents.id, target.id), inArray(alarmEvents.status, statusesToConsider))
+    );
+
+  const affected =
+    (res as { affectedRows?: number }).affectedRows ??
+    (res as Array<{ affectedRows?: number }>)[0]?.affectedRows ??
+    0;
+  return affected > 0 ? { id: target.id } : null;
 }
 
 /**

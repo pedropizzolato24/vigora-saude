@@ -15,7 +15,7 @@ import { trpc } from '@/lib/trpc';
 
 // Push `data.type` values sent by the server monitoring job. Gating on these
 // keeps this handler from reacting to unrelated notifications (e.g. alarms).
-const CAREGIVER_PUSH_TYPES = ['monitoring_warning', 'missed_checkin', 'sos'];
+const CAREGIVER_PUSH_TYPES = ['monitoring_warning', 'missed_checkin', 'missed_alarm', 'sos'];
 const DEFAULT_ROUTE = '/(caregiver-tabs)/alerts';
 
 export function CaregiverPushInitializer() {

@@ -126,6 +126,11 @@ export const accountLiveness = mysqlTable("account_liveness", {
   lastLocationAt: timestamp("lastLocationAt"),
   lastDeviceId: varchar("lastDeviceId", { length: 64 }),
   appVersion: varchar("appVersion", { length: 32 }),
+  // Telemetria (Android): isenção de otimização de bateria ativa no último
+  // sinal. null = sem informação (iOS/clientes antigos). Mede a fração da base
+  // vulnerável ao modo de falha "app morto em background = alarme não toca" e
+  // é o gancho para, no futuro, alertar o cuidador de um monitorado vulnerável.
+  batteryExempt: boolean("batteryExempt"),
 });
 
 export type AccountLiveness = typeof accountLiveness.$inferSelect;
