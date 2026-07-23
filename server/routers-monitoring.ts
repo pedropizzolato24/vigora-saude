@@ -64,6 +64,32 @@ function isSosRateLimited(openId: string): boolean {
 }
 
 /**
+ * Rate limit por processo/conta para o push de alarme perdido ao cuidador.
+ * createEvent aceita alarmId/scheduledAt arbitrários do cliente autenticado —
+ * sem isto, um loop createEvent -> confirmEvent(missed) gera push ilimitado ao
+ * cuidador. 10 em 60s: acomoda uma rajada legítima (reconexão após offline
+ * confirmando vários alarmes pendentes de uma vez) e barra o abuso sustentado.
+ * Só o PUSH é limitado — o evento em si sempre é gravado (histórico correto).
+ */
+const MISSED_ALARM_PUSH_WINDOW_MS = 60_000;
+const MISSED_ALARM_PUSH_LIMIT = 10;
+const missedAlarmPushRateLimit = new Map<string, number[]>();
+
+function isMissedAlarmPushRateLimited(openId: string): boolean {
+  const now = Date.now();
+  const recent = (missedAlarmPushRateLimit.get(openId) ?? []).filter(
+    (ts) => now - ts < MISSED_ALARM_PUSH_WINDOW_MS
+  );
+  if (recent.length >= MISSED_ALARM_PUSH_LIMIT) {
+    missedAlarmPushRateLimit.set(openId, recent);
+    return true;
+  }
+  recent.push(now);
+  missedAlarmPushRateLimit.set(openId, recent);
+  return false;
+}
+
+/**
  * Push aos cuidadores vinculados quando o monitorado (com o app VIVO) confirma
  * um alarme como perdido em confirmEvent. É o par em tempo real do push que o
  * Passo 4 do monitoring-job faz quando o app MORREU — nunca disparam para o
@@ -237,7 +263,12 @@ export const monitoringRouter = router({
       // App vivo confirmando "perdido": empurra o push ao cuidador AQUI, no
       // mesmo instante em que warningSent=true é setado (senão o Passo 4 nunca
       // dispara e o cuidador não é avisado). Só na transição real → idempotente.
-      if (input.status === "missed" && transitioned) {
+      // Rate limit só no PUSH — o evento em si é sempre gravado corretamente.
+      if (
+        input.status === "missed" &&
+        transitioned &&
+        !isMissedAlarmPushRateLimited(ctx.user.openId)
+      ) {
         await pushMissedAlarmToCaregivers(ctx.user.openId, input.alarmId, scheduledAt);
       }
       return { success: true };

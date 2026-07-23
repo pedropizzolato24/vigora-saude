@@ -95,8 +95,15 @@ export function CaregiverProvider({ children }: { children: React.ReactNode }) {
   //   - not authed yet -> keep the cache (initial mount runs before login)
   //   - network error  -> keep the cache (offline-first)
   const refreshLink = useCallback(async () => {
+    // Epoch capturado no início: se a conta trocar enquanto fetchMyLink está em
+    // voo (chamado tanto no mount/troca de conta quanto por callers externos,
+    // como a caregiver-tabs layout), aplicar o resultado agora seria o vínculo
+    // da conta VELHA vazando para a conta ativa nova (mesma classe de corrida do
+    // loadForAccount, espelha reconcileFromCloud em app-context.tsx).
+    const epoch = activeOpenIdRef.current;
     try {
       const link = await fetchMyLink();
+      if (activeOpenIdRef.current !== epoch) return;
       if (link) {
         dispatch({ type: 'SET_LINK', payload: mapServerLink(link) });
       } else {

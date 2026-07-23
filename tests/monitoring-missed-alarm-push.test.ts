@@ -133,3 +133,42 @@ describe("confirmEvent — push ao cuidador em alarme perdido (app vivo)", () =>
     expect(push.sendExpoPush).not.toHaveBeenCalled();
   });
 });
+
+describe("confirmEvent — rate limit do push de alarme perdido ao cuidador", () => {
+  // openIds próprios (não "vovo") para não herdar contagem das describes acima
+  // — o limitador é estado de módulo (Map por processo), não resetado por teste.
+
+  it("limita o push após N chamadas rápidas para a MESMA conta (evento sempre gravado)", async () => {
+    const caller = appRouter.createCaller(makeCtx(makeUser("rl-conta-1")));
+    for (let i = 0; i < 12; i++) {
+      const result = await caller.monitoring.confirmEvent({
+        alarmId: `a${i}`,
+        scheduledAt: new Date().toISOString(),
+        status: "missed",
+      });
+      expect(result.success).toBe(true); // o evento em si sempre "grava" (mock)
+    }
+    // Limite é 10 — as 2 últimas chamadas não geram push, mas confirmEvent segue OK.
+    expect(push.sendExpoPush).toHaveBeenCalledTimes(10);
+  });
+
+  it("o limite é POR CONTA — uma conta diferente não é afetada", async () => {
+    const contaA = appRouter.createCaller(makeCtx(makeUser("rl-conta-2")));
+    for (let i = 0; i < 10; i++) {
+      await contaA.monitoring.confirmEvent({
+        alarmId: `a${i}`,
+        scheduledAt: new Date().toISOString(),
+        status: "missed",
+      });
+    }
+    expect(push.sendExpoPush).toHaveBeenCalledTimes(10);
+
+    const contaB = appRouter.createCaller(makeCtx(makeUser("rl-conta-3")));
+    await contaB.monitoring.confirmEvent({
+      alarmId: "b1",
+      scheduledAt: new Date().toISOString(),
+      status: "missed",
+    });
+    expect(push.sendExpoPush).toHaveBeenCalledTimes(11);
+  });
+});

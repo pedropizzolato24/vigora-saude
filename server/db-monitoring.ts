@@ -188,16 +188,25 @@ export async function updateAlarmEventStatusByAlarmId(
   // (ex.: whatsappSent / caregiverPushed) aqui, no Passo 4 e em confirmEvent.
   const warningSent = status === "missed";
 
-  // Claim atômica: condiciona o UPDATE ao status que foi LIDO. Duas chamadas
-  // concorrentes (ex.: retry + original de confirmEvent) podem selecionar o
-  // mesmo candidato pendente antes de qualquer commit; sem o guard de status,
-  // as duas "transicionariam" e o caller mandaria push duplicado ao cuidador.
-  // Só a que vence a corrida afeta a linha (affectedRows>0). Mesmo padrão de
-  // consumeInviteByCode (db-links.ts).
+  // Claim atômica: condiciona o UPDATE ao CONJUNTO de status aceito na seleção
+  // (statusesToConsider), não ao valor exato lido. Duas chamadas concorrentes
+  // (ex.: retry + original de confirmEvent) podem selecionar o mesmo candidato
+  // pendente antes de qualquer commit; sem o guard, as duas "transicionariam" e
+  // o caller mandaria push duplicado ao cuidador — só a que vence a corrida
+  // afeta a linha (affectedRows>0). Mesmo padrão de consumeInviteByCode
+  // (db-links.ts). Usar o CONJUNTO (em vez de eq ao status exato lido) importa
+  // para "responded": ele existe para corrigir um not_sent/missed que o job
+  // marcou prematuramente — exigir o valor exato quebraria essa correção se o
+  // job virar o status entre o SELECT e este UPDATE (ex.: pending->missed no
+  // limite do grace period), descartando uma resposta real do usuário. Para
+  // "missed"/"not_sent" o conjunto é só ['pending'], então o efeito é idêntico
+  // ao guard exato — a proteção contra push duplicado permanece intacta.
   const res = await db
     .update(alarmEvents)
     .set({ status, resolvedAt: new Date(), warningSent })
-    .where(and(eq(alarmEvents.id, target.id), eq(alarmEvents.status, target.status)));
+    .where(
+      and(eq(alarmEvents.id, target.id), inArray(alarmEvents.status, statusesToConsider))
+    );
 
   const affected =
     (res as { affectedRows?: number }).affectedRows ??
