@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -147,6 +148,46 @@ class ExpoAlarmCountdownModule(private val reactContext: ReactApplicationContext
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                    data = Uri.parse("package:${reactContext.packageName}")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                reactContext.startActivity(intent)
+            }
+            promise.resolve(null)
+        } catch (e: Exception) {
+            promise.reject("open_settings_failed", e.message, e)
+        }
+    }
+
+    /**
+     * Android 14+ (API 34): whether USE_FULL_SCREEN_INTENT is granted. Deixou de
+     * ser auto-concedida no install para apps fora da categoria alarme/chamada
+     * da Play Store — sem ela a notificação do alarme cai para heads-up em vez de
+     * abrir a tela cheia sozinha (o diferencial do dead man's switch). Sempre true
+     * abaixo do 34, onde a permissão é concedida no install.
+     */
+    @ReactMethod
+    fun canUseFullScreenIntent(promise: Promise) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                promise.resolve(NotificationManagerCompat.from(reactContext).canUseFullScreenIntent())
+            } else {
+                promise.resolve(true)
+            }
+        } catch (e: Exception) {
+            // Fail-open: se não dá para checar, não incomoda o usuário
+            promise.resolve(true)
+        }
+    }
+
+    /**
+     * Opens the system "Full-screen notifications" screen for THIS app (Android 14+).
+     */
+    @ReactMethod
+    fun openFullScreenIntentSettings(promise: Promise) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
                     data = Uri.parse("package:${reactContext.packageName}")
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }

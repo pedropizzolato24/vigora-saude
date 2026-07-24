@@ -11,7 +11,7 @@
  *   still works as a secondary trigger.
  */
 
-import { NativeModules, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { Alarm } from './app-context';
 
 // Lazy import to avoid crashing on web/iOS where the native module is not linked
@@ -273,19 +273,3 @@ export async function stopNativeAlarm(): Promise<void> {
 
 /** Whether native alarm module is available on this platform */
 export const isNativeAlarmAvailable = Platform.OS === 'android' && scheduleAlarmNative !== null;
-
-/**
- * Android 14+ diagnostic: checks whether USE_FULL_SCREEN_INTENT is actually
- * granted (NotificationManagerCompat.canUseFullScreenIntent). Without it, the
- * alarm notification silently downgrades to heads-up instead of opening
- * alarm-ring.tsx automatically. Returns null on iOS/web or if the check fails.
- */
-export async function canUseFullScreenIntent(): Promise<boolean | null> {
-  if (Platform.OS !== 'android') return null;
-  try {
-    return await NativeModules.ExpoAlarmModule.canUseFullScreenIntent();
-  } catch (e) {
-    console.warn('[NativeAlarm] canUseFullScreenIntent check failed:', e);
-    return null;
-  }
-}

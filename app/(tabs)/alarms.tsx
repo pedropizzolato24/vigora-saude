@@ -31,7 +31,7 @@ import { generateId, useAppContext, type Alarm } from '@/lib/app-context';
 import { scheduleFullAlarm, cancelFullAlarm } from '@/lib/alarm-sync';
 import { openBatteryOptimizationSettings } from '@/lib/battery-optimization';
 import { oemBatteryHint } from '@/lib/_core/oem-battery-hint';
-import { canScheduleExactAlarms, isIgnoringBatteryOptimizations, openExactAlarmSettings } from 'expo-alarm-countdown';
+import { canScheduleExactAlarms, isIgnoringBatteryOptimizations, openExactAlarmSettings, canUseFullScreenIntent, openFullScreenIntentSettings } from 'expo-alarm-countdown';
 import { useRouter } from 'expo-router';
 import { MAX_ALARMS } from '@/components/pro-limits';
 
@@ -41,6 +41,9 @@ let exactAlarmPromptShown = false;
 // Mesma lógica para o aviso de otimização de bateria (a isenção continua sendo
 // re-checada a cada visita — só o diálogo não re-aparece na mesma sessão).
 let batteryPromptShown = false;
+// Mesma lógica para o aviso de "Notificações em tela cheia" (Android 14+): a
+// permissão continua sendo re-checada a cada visita — só o diálogo não re-aparece.
+let fullScreenPromptShown = false;
 // Um aviso de configuração por sessão: os efeitos de bateria e de alarmes
 // exatos disparam quase juntos no mount e o AppDialog é único — sem este gate o
 // segundo showDialog sobrescreve o primeiro e engole um dos avisos em silêncio.
@@ -164,6 +167,36 @@ export default function AlarmsScreen() {
         buttons: [
           { text: 'Agora não', style: 'cancel' },
           { text: 'Abrir configurações', onPress: () => { openExactAlarmSettings(); } },
+        ],
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Android 14+: sem a permissão "Notificações em tela cheia" a notificação do
+  // alarme cai para heads-up e a tela cheia (alarm-ring) só abre se o usuário
+  // tocar nela — em vez de abrir sozinha como um alarme nativo. Ela deixou de ser
+  // concedida no install para apps fora da categoria alarme/chamada da Play Store.
+  // Mesmo padrão dos avisos acima: re-checa a cada visita e avisa 1x por sessão.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    let cancelled = false;
+    (async () => {
+      const granted = await canUseFullScreenIntent();
+      if (granted || cancelled || fullScreenPromptShown || alarmSetupPromptShownThisSession) return;
+      fullScreenPromptShown = true;
+      alarmSetupPromptShownThisSession = true;
+      showDialog({
+        title: 'Para o alarme abrir em tela cheia',
+        message:
+          'Para o alarme abrir a tela inteira sozinho (e não só uma notificação), o Vigora precisa da permissão "Notificações em tela cheia". Toque em "Abrir configurações" e ative a chave para o Vigora.',
+        variant: 'warning',
+        buttons: [
+          { text: 'Agora não', style: 'cancel' },
+          { text: 'Abrir configurações', onPress: () => { openFullScreenIntentSettings(); } },
         ],
       });
     })();

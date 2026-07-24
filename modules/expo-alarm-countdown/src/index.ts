@@ -95,3 +95,31 @@ export async function openExactAlarmSettings(): Promise<void> {
     console.warn('[ExpoAlarmCountdown] openExactAlarmSettings failed:', e);
   }
 }
+
+/**
+ * Android 14+: whether USE_FULL_SCREEN_INTENT is granted. Sem ela a notificação
+ * do alarme cai para heads-up em vez de abrir a tela cheia sozinha. Always true
+ * on other platforms/versions. Fail-open (true) when the native module is
+ * unavailable (Expo Go), como canScheduleExactAlarms.
+ */
+export async function canUseFullScreenIntent(): Promise<boolean> {
+  if (Platform.OS !== 'android') return true;
+  try {
+    return await ExpoAlarmCountdown.canUseFullScreenIntent();
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Android 14+: opens the system "Full-screen notifications" screen for this app.
+ * No-op on other platforms/versions.
+ */
+export async function openFullScreenIntentSettings(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  try {
+    await ExpoAlarmCountdown.openFullScreenIntentSettings();
+  } catch (e) {
+    console.warn('[ExpoAlarmCountdown] openFullScreenIntentSettings failed:', e);
+  }
+}
