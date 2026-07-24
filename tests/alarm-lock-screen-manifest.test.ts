@@ -66,3 +66,74 @@ describe("plugin expo-alarm-countdown — alarme na tela de bloqueio", () => {
     expect(activity.$["android:showWhenLocked"]).toBeUndefined();
   });
 });
+
+/** MainActivity.kt como o prebuild do Expo 54 a gera (trecho relevante). */
+const MAIN_ACTIVITY_KT = `package com.vigora.saude
+import expo.modules.splashscreen.SplashScreenManager
+
+import android.os.Build
+import android.os.Bundle
+
+import com.facebook.react.ReactActivity
+
+class MainActivity : ReactActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    SplashScreenManager.registerOnActivity(this)
+    super.onCreate(null)
+  }
+
+  override fun getMainComponentName(): String = "main"
+}
+`;
+
+/** Roda só o mod de MainActivity do plugin sobre um fonte de fixture. */
+async function applyMainActivityMod(contents: string, language = "kt") {
+  const config: any = (plugin as any)({ name: "Vigora", slug: "vigora-saude" }, {});
+  const result = await config.mods.android.mainActivity({
+    modResults: { contents, language },
+    modRequest: {},
+    name: "Vigora",
+    slug: "vigora-saude",
+  });
+  return result.modResults.contents as string;
+}
+
+describe("plugin expo-alarm-countdown — showWhenLocked no lançamento da activity", () => {
+  it("aplica o flag antes de super.onCreate, e só para o launch do alarme", async () => {
+    const src = await applyMainActivityMod(MAIN_ACTIVITY_KT);
+
+    // O flag tem de valer na criação da janela: a chamada precisa vir ANTES
+    // de super.onCreate, senão o Android já decidiu esconder atrás do keyguard.
+    const callIndex = src.indexOf("applyAlarmLockScreenFlag(intent)\n");
+    const superIndex = src.indexOf("super.onCreate(null)");
+    expect(callIndex).toBeGreaterThan(-1);
+    expect(callIndex).toBeLessThan(superIndex);
+
+    // Escopado ao alarme — sem isso o app inteiro passaria por cima da lock screen.
+    expect(src).toContain('contains("alarm-ring")');
+    expect(src).toContain("setShowWhenLocked(true)");
+    // Relaunch com o processo vivo (singleTask) não passa por onCreate.
+    expect(src).toContain("override fun onNewIntent(intent: Intent)");
+    expect(src).toContain("import android.content.Intent");
+  });
+
+  it("é idempotente — não injeta duas vezes", async () => {
+    const once = await applyMainActivityMod(MAIN_ACTIVITY_KT);
+    const twice = await applyMainActivityMod(once);
+
+    expect(twice).toBe(once);
+    expect(twice.split("private fun applyAlarmLockScreenFlag").length - 1).toBe(1);
+  });
+
+  it("falha o build se o template do prebuild mudar (em vez de quebrar calado)", async () => {
+    await expect(
+      applyMainActivityMod("class MainActivity : ReactActivity() {\n}\n")
+    ).rejects.toThrow(/import android\.os\.Build/);
+  });
+
+  it("falha se a MainActivity não for Kotlin", async () => {
+    await expect(applyMainActivityMod(MAIN_ACTIVITY_KT, "java")).rejects.toThrow(
+      /esperado Kotlin/
+    );
+  });
+});
