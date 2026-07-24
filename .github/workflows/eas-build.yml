@@ -58,7 +58,11 @@ jobs:
           # estourando a RAM do runner de forma não-determinística — mesmo commit
           # já falhou e passou sem nenhuma mudança. Em .properties a última
           # ocorrência da chave vence, então basta anexar.
-          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m" >> android/gradle.properties
+          # \n inicial é obrigatório: o gradle.properties do prebuild termina em
+          # "android.minSdkVersion=24" SEM newline final; sem o \n o append gruda
+          # e vira "24org.gradle.jvmargs=..." (quebra o Integer.parseInt do
+          # expo-root-project na avaliação do projeto).
+          printf '\norg.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m\n' >> android/gradle.properties
 
       - name: Bundle JavaScript (debug standalone)
         if: ${{ github.event.inputs.build_type == 'debug' }}
