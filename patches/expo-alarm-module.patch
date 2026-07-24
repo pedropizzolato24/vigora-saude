@@ -40,6 +40,36 @@ index 455375ae411fa22e853dbd8c945124690e703e18..86eb3dc3bf18fb147635e7b0f792cc90
          Calendar calendar = Calendar.getInstance();
          int currentDay = calendar.get(Calendar.DAY_OF_WEEK);
          for (Date date : dates) {
+diff --git a/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java b/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
+index 552911d58dbc4123c3eff79031d88bd8e4dc1ed9..4b1f9ebd604a83731847fc6b44d2cd8dab991bc3 100644
+--- a/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
++++ b/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
+@@ -5,6 +5,7 @@ import android.os.Build;
+ 
+ import androidx.annotation.NonNull;
+ import androidx.annotation.Nullable;
++import androidx.core.app.NotificationManagerCompat;
+ 
+ import com.facebook.react.bridge.Promise;
+ import com.facebook.react.bridge.ReactApplicationContext;
+@@ -46,6 +47,17 @@ public class ExpoAlarmModuleModule extends ReactContextBaseJavaModule {
+     promise.resolve(Manager.getActiveAlarm());
+   }
+ 
++  // Android 14+ (API 34): USE_FULL_SCREEN_INTENT deixou de ser auto-concedida
++  // no install para apps fora da categoria alarme/chamada aprovada pela Play
++  // Store. Sem a concessão, notification.setFullScreenIntent() é silenciosamente
++  // rebaixada para heads-up, mesmo com o aparelho bloqueado. Este check existe
++  // pra diagnosticar isso em runtime antes de decidir se precisamos direcionar
++  // o usuário pra Ajustes (ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).
++  @ReactMethod
++  public void canUseFullScreenIntent (Promise promise) {
++    promise.resolve(NotificationManagerCompat.canUseFullScreenIntent(reactContext));
++  }
++
+   @ReactMethod
+   public void set (ReadableMap details, Promise promise) {
+ 
 diff --git a/android/src/main/java/com/expoalarmmodule/Helper.java b/android/src/main/java/com/expoalarmmodule/Helper.java
 index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..3d7739011bdb9a60bd31eaae75de7a286f0f8265 100644
 --- a/android/src/main/java/com/expoalarmmodule/Helper.java
