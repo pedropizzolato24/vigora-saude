@@ -8,7 +8,7 @@ import { useAppContext } from '@/lib/app-context';
 import { clearAlarmTimeout } from '@/lib/alarm-timeout-manager';
 import { escalateAlarmToContacts, type EscalationResult } from '@/lib/alarm-escalation';
 import { saveAlarmTimer, clearAlarmTimer, loadAlarmTimer } from '@/lib/alarm-timer-store';
-import { isNativeAlarmAvailable } from '@/lib/native-alarm-manager';
+import { isNativeAlarmAvailable, canUseFullScreenIntent } from '@/lib/native-alarm-manager';
 import { createPendingAlarmEvent } from '@/lib/monitoring-service';
 import { nextAlarmFireMs, lastAlarmFireMs } from '@/lib/alarm-fire-times';
 import { updateAlarmWidgetOnFire } from '@/lib/update-widgets';
@@ -105,6 +105,16 @@ export function AlarmNotificationHandler() {
   const pendingAlarms = useRef<Set<string>>(new Set());
   const navigatedAlarms = useRef<Set<string>>(new Set());
   const escalationTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  // DIAGNÓSTICO Android 14+: confirma se USE_FULL_SCREEN_INTENT está de fato
+  // concedida neste aparelho. Remover depois de validar em campo (S20 FE/S23).
+  useEffect(() => {
+    canUseFullScreenIntent().then((granted) => {
+      if (granted !== null) {
+        console.log(`[FullScreenIntent] canUseFullScreenIntent = ${granted}`);
+      }
+    });
+  }, []);
 
   /**
    * Shared alarm-fired handler - called when an alarm fires (foreground or background).

@@ -51,6 +51,19 @@ jobs:
           EXPO_PUBLIC_LINK_HOST: app.vigorasaude.com
           EXPO_PUBLIC_LINK_BASE_URL: https://app.vigorasaude.com
 
+      - name: Aumenta o heap do Gradle (evita OOM flaky no packaging do release)
+        run: |
+          # android/ é regenerado pelo prebuild acima; sobrescreve o -Xmx padrão
+          # (2g). :app:packageRelease (IncrementalSplitterRunnable, 2 ABIs) vinha
+          # estourando a RAM do runner de forma não-determinística — mesmo commit
+          # já falhou e passou sem nenhuma mudança. Em .properties a última
+          # ocorrência da chave vence, então basta anexar.
+          # \n inicial é obrigatório: o gradle.properties do prebuild termina em
+          # "android.minSdkVersion=24" SEM newline final; sem o \n o append gruda
+          # e vira "24org.gradle.jvmargs=..." (quebra o Integer.parseInt do
+          # expo-root-project na avaliação do projeto).
+          printf '\norg.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m\n' >> android/gradle.properties
+
       - name: Bundle JavaScript (debug standalone)
         if: ${{ github.event.inputs.build_type == 'debug' }}
         run: |
