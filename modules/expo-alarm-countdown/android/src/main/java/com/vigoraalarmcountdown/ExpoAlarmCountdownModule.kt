@@ -1,6 +1,7 @@
 package com.vigoraalarmcountdown
 
 import android.app.AlarmManager
+import android.app.KeyguardManager
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
@@ -10,6 +11,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.facebook.react.bridge.Promise
@@ -196,6 +198,60 @@ class ExpoAlarmCountdownModule(private val reactContext: ReactApplicationContext
             promise.resolve(null)
         } catch (e: Exception) {
             promise.reject("open_settings_failed", e.message, e)
+        }
+    }
+
+    /**
+     * Ativa a exibição da Activity atual por cima da lock screen. Chamado ao
+     * montar a tela de alarme — escopado a ela (via setShowWhenLocked em
+     * runtime, não um flag fixo no manifesto) para que o resto do app
+     * continue respeitando a lock screen normalmente.
+     */
+    @ReactMethod
+    fun enterAlarmLockScreenMode(promise: Promise) {
+        try {
+            val activity = reactContext.currentActivity
+            if (activity != null) {
+                activity.runOnUiThread {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                        activity.setShowWhenLocked(true)
+                    } else {
+                        activity.window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
+                    }
+                }
+            }
+            promise.resolve(null)
+        } catch (e: Exception) {
+            promise.resolve(null)
+        }
+    }
+
+    /**
+     * Desfaz o enterAlarmLockScreenMode. Se o aparelho ainda estiver
+     * bloqueado, manda a Activity para trás — o usuário volta para a lock
+     * screen real em vez da tela inicial do app.
+     */
+    @ReactMethod
+    fun exitAlarmLockScreenMode(promise: Promise) {
+        try {
+            val activity = reactContext.currentActivity
+            if (activity != null) {
+                activity.runOnUiThread {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                        activity.setShowWhenLocked(false)
+                    } else {
+                        activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
+                    }
+                    val keyguardManager =
+                        activity.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+                    if (keyguardManager?.isKeyguardLocked == true) {
+                        activity.moveTaskToBack(true)
+                    }
+                }
+            }
+            promise.resolve(null)
+        } catch (e: Exception) {
+            promise.resolve(null)
         }
     }
 

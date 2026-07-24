@@ -46,17 +46,22 @@ const withAndroidSettings = (config) => {
 
 /**
  * O alvo do setFullScreenIntent do alarme é a MainActivity (app de activity
- * única do Expo Router). Sem estes dois atributos o Android até lança a
- * activity quando o alarme toca, mas o keyguard a cobre: o idoso vê só a
- * notificação na tela de bloqueio — que era exatamente o sintoma relatado.
+ * única do Expo Router). Sem turnScreenOn o Android até lança a activity
+ * quando o alarme toca, mas a tela não acende — o idoso só veria algo ao
+ * apertar o botão de energia.
  *
- * showWhenLocked → desenha por cima da tela de bloqueio
- * turnScreenOn   → acende a tela (exige TURN_SCREEN_ON no targetSdk 35+)
+ * turnScreenOn não tem implicação de segurança (só acende a tela; exige
+ * TURN_SCREEN_ON no targetSdk 35+), por isso fica fixo no manifesto.
+ * showWhenLocked (desenhar por cima da lock screen) NÃO entra aqui de
+ * propósito — é ativado em runtime só enquanto a tela de alarme está
+ * montada (native-alarm-manager / alarm-ring.tsx via
+ * enterAlarmLockScreenMode/exitAlarmLockScreenMode). Fixar no manifesto
+ * faria o app inteiro ignorar a lock screen do sistema sempre que aberto
+ * com o aparelho bloqueado (qualquer notificação, não só o alarme).
  */
 const withLockScreenAlarm = (config) => {
   return withAndroidManifest(config, (mod) => {
     const activity = AndroidConfig.Manifest.getMainActivityOrThrow(mod.modResults);
-    activity.$['android:showWhenLocked'] = 'true';
     activity.$['android:turnScreenOn'] = 'true';
     return mod;
   });

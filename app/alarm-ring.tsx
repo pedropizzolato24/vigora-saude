@@ -31,6 +31,7 @@ import { useAccessibility } from '@/lib/accessibility-context';
 import { useColors } from '@/hooks/use-colors';
 import { escalateAlarmToContacts } from '@/lib/alarm-escalation';
 import { stopNativeAlarm, snoozeNativeAlarm } from '@/lib/native-alarm-manager';
+import { enterAlarmLockScreenMode, exitAlarmLockScreenMode } from 'expo-alarm-countdown';
 import { PulseView } from '@/components/animated-components';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { loadAlarmTimer, clearAlarmTimer } from '@/lib/alarm-timer-store';
@@ -131,6 +132,19 @@ export default function AlarmRingScreen() {
       },
     });
   }, [alarm, state.settings, player]);
+
+  // Mostra a tela por cima da lock screen enquanto o alarme está ativo —
+  // escopado a esta tela (não um flag fixo no app inteiro). Ao desmontar
+  // (dismiss, soneca ou voltar), exitAlarmLockScreenMode manda a Activity de
+  // volta pra lock screen real se o aparelho ainda estiver bloqueado, em vez
+  // de deixar a tela inicial do app visível por cima dela.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    enterAlarmLockScreenMode();
+    return () => {
+      exitAlarmLockScreenMode();
+    };
+  }, []);
 
   // Start audio, vibration, and speech on mount
   useEffect(() => {

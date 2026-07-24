@@ -3,9 +3,15 @@ import { AndroidConfig } from "@expo/config-plugins";
 import plugin from "@/modules/expo-alarm-countdown/app.plugin.js";
 
 /**
- * O full-screen intent do alarme aponta para a MainActivity. Sem showWhenLocked
- * o keyguard cobre a activity e o idoso vê só a notificação — bug relatado no
- * S23 mesmo com a permissão USE_FULL_SCREEN_INTENT concedida.
+ * O full-screen intent do alarme aponta para a MainActivity. Sem turnScreenOn
+ * a activity é lançada mas a tela não acende — o idoso só veria algo ao
+ * apertar o botão de energia.
+ *
+ * showWhenLocked (desenhar por cima da lock screen) NÃO é fixado aqui de
+ * propósito — vira runtime-only (enterAlarmLockScreenMode/
+ * exitAlarmLockScreenMode em app/alarm-ring.tsx), senão o app inteiro
+ * ignoraria a lock screen do sistema em qualquer abertura com o aparelho
+ * bloqueado, não só durante o alarme.
  */
 function manifestWithMainActivity() {
   return {
@@ -43,12 +49,12 @@ async function applyManifestMod(androidManifest: any) {
 }
 
 describe("plugin expo-alarm-countdown — alarme na tela de bloqueio", () => {
-  it("marca a MainActivity com showWhenLocked e turnScreenOn", async () => {
+  it("marca a MainActivity com turnScreenOn, mas NÃO com showWhenLocked", async () => {
     const result = await applyManifestMod(manifestWithMainActivity());
     const activity = AndroidConfig.Manifest.getMainActivityOrThrow(result);
 
-    expect(activity.$["android:showWhenLocked"]).toBe("true");
     expect(activity.$["android:turnScreenOn"]).toBe("true");
+    expect(activity.$["android:showWhenLocked"]).toBeUndefined();
   });
 
   it("é idempotente — aplicar duas vezes não duplica nem altera o valor", async () => {
@@ -56,7 +62,7 @@ describe("plugin expo-alarm-countdown — alarme na tela de bloqueio", () => {
     const twice = await applyManifestMod(once);
     const activity = AndroidConfig.Manifest.getMainActivityOrThrow(twice);
 
-    expect(activity.$["android:showWhenLocked"]).toBe("true");
     expect(activity.$["android:turnScreenOn"]).toBe("true");
+    expect(activity.$["android:showWhenLocked"]).toBeUndefined();
   });
 });
