@@ -41,7 +41,7 @@ index 455375ae411fa22e853dbd8c945124690e703e18..86eb3dc3bf18fb147635e7b0f792cc90
          int currentDay = calendar.get(Calendar.DAY_OF_WEEK);
          for (Date date : dates) {
 diff --git a/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java b/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
-index 552911d58dbc4123c3eff79031d88bd8e4dc1ed9..4b1f9ebd604a83731847fc6b44d2cd8dab991bc3 100644
+index 552911d58dbc4123c3eff79031d88bd8e4dc1ed9..c28efcc9029c27d0fa046de3bb75176ec959d60b 100644
 --- a/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
 +++ b/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
 @@ -5,6 +5,7 @@ import android.os.Build;
@@ -64,7 +64,7 @@ index 552911d58dbc4123c3eff79031d88bd8e4dc1ed9..4b1f9ebd604a83731847fc6b44d2cd8d
 +  // o usuário pra Ajustes (ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).
 +  @ReactMethod
 +  public void canUseFullScreenIntent (Promise promise) {
-+    promise.resolve(NotificationManagerCompat.canUseFullScreenIntent(reactContext));
++    promise.resolve(NotificationManagerCompat.from(reactContext).canUseFullScreenIntent());
 +  }
 +
    @ReactMethod
