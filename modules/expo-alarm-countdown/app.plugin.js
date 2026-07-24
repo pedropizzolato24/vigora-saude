@@ -1,4 +1,10 @@
-const { withAppBuildGradle, withPodfile, createRunOncePlugin } = require('@expo/config-plugins');
+const {
+  withAppBuildGradle,
+  withPodfile,
+  withAndroidManifest,
+  AndroidConfig,
+  createRunOncePlugin,
+} = require('@expo/config-plugins');
 
 /**
  * Expo Config Plugin for expo-alarm-countdown
@@ -38,9 +44,28 @@ const withAndroidSettings = (config) => {
   });
 };
 
+/**
+ * O alvo do setFullScreenIntent do alarme é a MainActivity (app de activity
+ * única do Expo Router). Sem estes dois atributos o Android até lança a
+ * activity quando o alarme toca, mas o keyguard a cobre: o idoso vê só a
+ * notificação na tela de bloqueio — que era exatamente o sintoma relatado.
+ *
+ * showWhenLocked → desenha por cima da tela de bloqueio
+ * turnScreenOn   → acende a tela (exige TURN_SCREEN_ON no targetSdk 35+)
+ */
+const withLockScreenAlarm = (config) => {
+  return withAndroidManifest(config, (mod) => {
+    const activity = AndroidConfig.Manifest.getMainActivityOrThrow(mod.modResults);
+    activity.$['android:showWhenLocked'] = 'true';
+    activity.$['android:turnScreenOn'] = 'true';
+    return mod;
+  });
+};
+
 const withExpoAlarmCountdown = (config) => {
   config = withAndroidModule(config);
   config = withAndroidSettings(config);
+  config = withLockScreenAlarm(config);
   return config;
 };
 

@@ -65,6 +65,9 @@ const config: ExpoConfig = {
       "POST_NOTIFICATIONS",
       "SCHEDULE_EXACT_ALARM",
       "USE_FULL_SCREEN_INTENT",
+      // Exigida a partir do targetSdk 35 para o android:turnScreenOn da
+      // MainActivity — sem ela o alarme não acende a tela do aparelho.
+      "TURN_SCREEN_ON",
       "VIBRATE",
       "WAKE_LOCK",
       "ACCESS_FINE_LOCATION",
