@@ -1,7 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import { startMonitoringScheduler, getMonitoringHealth } from "../monitoring-job";
-import { checkDatabase } from "../db";
+import { checkDatabase, runPendingMigrations } from "../db";
 import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { corsMiddleware } from "./cors";
@@ -20,6 +20,11 @@ import { renderInviteLanding } from "../invite-landing";
 
 async function startServer() {
   assertRequiredSecrets();
+
+  // Antes de abrir a porta: schema divergente do código é exatamente o que
+  // desarmou o dead man's switch por 27h em 24/07. Se falhar, o catch lá
+  // embaixo derruba o processo e o deploy é marcado como falho.
+  await runPendingMigrations();
 
   const app = express();
   const server = createServer(app);
