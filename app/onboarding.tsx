@@ -16,6 +16,8 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import * as Auth from '@/lib/_core/auth';
+import { hasCompletedCaregiverOnboarding } from '@/lib/caregiver-onboarding-flag';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
 import {
@@ -138,7 +140,20 @@ export default function OnboardingScreen() {
     if (Platform.OS !== 'web') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
-    router.replace('/login');
+    // Se já existe sessão (ex.: o onboarding só apareceu no boot seguinte ao
+    // primeiro login), concluir os slides não pode exigir um SEGUNDO login —
+    // roteia pelo estado real da conta, espelhando o OnboardingGate.
+    const user = await Auth.getUserInfo().catch(() => null);
+    if (!user) {
+      router.replace('/login');
+    } else if (!user.userType) {
+      router.replace('/register');
+    } else if (user.userType === 'caregiver') {
+      const caregiverOnboardingDone = await hasCompletedCaregiverOnboarding(user.openId);
+      router.replace(caregiverOnboardingDone ? '/(caregiver-tabs)' : '/caregiver-onboarding');
+    } else {
+      router.replace('/(tabs)');
+    }
   };
 
   const handleRequestForegroundLocation = async () => {

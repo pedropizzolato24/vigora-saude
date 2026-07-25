@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { Appearance, View, useColorScheme as useSystemColorScheme } from "react-native";
+import { Appearance, View } from "react-native";
 import { colorScheme as nativewindColorScheme, vars } from "nativewind";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -14,22 +14,21 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 // Tema é POR CONTA (feedback do beta): cada usuário guarda o seu, chaveado pelo
-// openId. Deslogado (ou sem preferência salva), o app segue o tema do sistema —
-// assim a escolha de uma conta não vaza para a tela de login nem para a próxima
-// conta neste aparelho.
+// openId. Deslogado (ou sem preferência salva), o padrão é o modo CLARO —
+// público 60+ com o modo escuro do sistema ligado abria o app escuro no
+// primeiro uso (item 3.2 do feedback de testes). Quem quiser escuro liga na
+// tela de aparência; a escolha de uma conta não vaza para a próxima.
 const THEME_KEY_PREFIX = 'vigora_theme_pref';
+const DEFAULT_SCHEME: ColorScheme = 'light';
 function themeKeyFor(openId: string | null): string | null {
   return openId ? `${THEME_KEY_PREFIX}:${openId}` : null;
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = useSystemColorScheme() ?? "light";
-  const [colorScheme, setColorSchemeState] = useState<ColorScheme>(systemScheme);
+  const [colorScheme, setColorSchemeState] = useState<ColorScheme>(DEFAULT_SCHEME);
   // openId da conta ativa (null = deslogado). Em ref para o setColorScheme gravar
   // sob a chave certa sem virar dependência do callback.
   const activeOpenId = useRef<string | null>(null);
-  const systemSchemeRef = useRef<ColorScheme>(systemScheme);
-  systemSchemeRef.current = systemScheme;
 
   const applyScheme = useCallback((scheme: ColorScheme) => {
     setColorSchemeState(scheme);
@@ -47,11 +46,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Aplica o tema da conta (openId): a preferência salva dela ou, se não houver,
-  // o tema do sistema. Deslogado (openId null) também segue o sistema.
+  // o padrão claro. Deslogado (openId null) também fica no claro.
   const loadThemeForUser = useCallback(async (openId: string | null) => {
     activeOpenId.current = openId;
     const key = themeKeyFor(openId);
-    let next: ColorScheme = systemSchemeRef.current;
+    let next: ColorScheme = DEFAULT_SCHEME;
     if (key) {
       try {
         const saved = await AsyncStorage.getItem(key);
@@ -86,12 +85,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       unsubscribe();
     };
   }, [loadThemeForUser]);
-
-  // Deslogado, segue mudanças de tema do sistema em tempo real (ex.: usuário ativa
-  // o modo escuro do Android na própria tela de login).
-  useEffect(() => {
-    if (activeOpenId.current === null) applyScheme(systemScheme);
-  }, [systemScheme, applyScheme]);
 
   const themeVariables = useMemo(
     () =>
