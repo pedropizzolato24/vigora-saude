@@ -130,7 +130,7 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
                     accessibilityLabel={action.label}
                     style={({ pressed }) => [
                       styles.actionRow,
-                      { backgroundColor: colors.surface, borderColor: colors.border },
+                      { backgroundColor: colors.surface, borderColor: colors.border, minHeight: fs.touch(64) },
                       pressed && { opacity: 0.8 },
                     ]}
                   >
@@ -152,7 +152,7 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
               accessibilityLabel="Fechar assistente"
               style={({ pressed }) => [
                 styles.closeBtn,
-                { borderColor: colors.muted, backgroundColor: colors.surface },
+                { borderColor: colors.muted, backgroundColor: colors.surface, minHeight: fs.touch(54) },
                 pressed && { opacity: 0.8 },
               ]}
             >
@@ -227,7 +227,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderRadius: 16,
     padding: 12,
-    minHeight: 64,
   },
   actionIcon: {
     width: 48,
@@ -242,7 +241,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   closeBtn: {
-    minHeight: 54,
     borderRadius: 14,
     borderWidth: 2,
     alignItems: 'center',

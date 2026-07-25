@@ -245,7 +245,6 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   forgotButton: {
-    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
