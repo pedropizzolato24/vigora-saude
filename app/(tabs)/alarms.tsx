@@ -764,7 +764,7 @@ export default function AlarmsScreen() {
           onPress={() => setHistoryVisible(true)}
           style={({ pressed }) => [
             styles.historyLinkBtn,
-            { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.75 : 1 },
+            { backgroundColor: colors.surface, borderColor: colors.border, minHeight: fs.touch(40), opacity: pressed ? 0.75 : 1 },
           ]}
           accessibilityRole="button"
           accessibilityLabel="Histórico de alarmes"
@@ -808,7 +808,7 @@ export default function AlarmsScreen() {
           <Text style={[styles.emptyTitle, { color: colors.foreground, fontSize: fs.lg, fontFamily: BrandFonts.body }]}>
             Nenhum lembrete configurado
           </Text>
-          <Text style={[styles.emptySubtext, { color: colors.muted, fontSize: fs.sm }]}>
+          <Text style={[styles.emptySubtext, { color: colors.muted, fontSize: fs.sm, lineHeight: fs.scaled(22) }]}>
             Adicione seu primeiro lembrete de medicação abaixo.
           </Text>
         </View>
@@ -836,7 +836,7 @@ export default function AlarmsScreen() {
           onPress={openAddModal}
           style={({ pressed }) => [
             styles.addBtn,
-            { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
+            { backgroundColor: colors.primary, minHeight: fs.touch(56), opacity: pressed ? 0.85 : 1 },
           ]}
           accessibilityRole="button"
           accessibilityLabel="Adicionar lembrete de medicação"
@@ -917,6 +917,7 @@ export default function AlarmsScreen() {
                               {
                                 backgroundColor: selected ? colors.primary : colors.surface,
                                 borderColor: selected ? colors.primary : colors.border,
+                                minHeight: fs.touch(44),
                               },
                             ]}
                             accessibilityRole="button"
@@ -981,6 +982,7 @@ export default function AlarmsScreen() {
                             {
                               backgroundColor: form.repeat === opt.value ? colors.primary : colors.surface,
                               borderColor: form.repeat === opt.value ? colors.primary : colors.border,
+                              minHeight: fs.touch(44),
                             },
                           ]}
                           accessibilityRole="radio"
@@ -1026,6 +1028,7 @@ export default function AlarmsScreen() {
                                   {
                                     backgroundColor: selected ? colors.primary : colors.background,
                                     borderColor: selected ? colors.primary : colors.border,
+                                    minHeight: fs.touch(52),
                                   },
                                 ]}
                                 accessibilityRole="checkbox"
@@ -1101,7 +1104,7 @@ export default function AlarmsScreen() {
                       onPress={() => handleDelete(editingAlarm.id)}
                       style={({ pressed }) => [
                         styles.deleteAlarmBtn,
-                        { borderColor: colors.error, backgroundColor: pressed ? colors.errorLight : colors.background },
+                        { borderColor: colors.error, backgroundColor: pressed ? colors.errorLight : colors.background, minHeight: fs.touch(52) },
                       ]}
                       accessibilityRole="button"
                       accessibilityLabel="Excluir este lembrete"
@@ -1150,7 +1153,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    minHeight: 40,
   },
   historyLinkText: {
     fontWeight: '600',
@@ -1198,7 +1200,6 @@ const styles = StyleSheet.create({
   },
   emptySubtext: {
     textAlign: 'center',
-    lineHeight: 22,
   },
   addBtnContainer: {
     paddingHorizontal: 16,
@@ -1211,7 +1212,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     borderRadius: 14,
-    minHeight: 56,
   },
   addBtnText: {
     fontWeight: '700',
@@ -1313,7 +1313,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1.5,
-    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1340,7 +1339,6 @@ const styles = StyleSheet.create({
   },
   weekdayBtn: {
     flex: 1,
-    height: 52,
     borderRadius: 10,
     borderWidth: 1.5,
     alignItems: 'center',
@@ -1364,7 +1362,6 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1.5,
     borderRadius: 14,
-    minHeight: 52,
     marginTop: 8,
   },
   deleteAlarmBtnText: {

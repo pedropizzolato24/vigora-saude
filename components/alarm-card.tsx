@@ -108,7 +108,7 @@ export function AlarmCard({ alarm, onEdit, onToggle, onTest }: AlarmCardProps) {
           onPress={(e) => { e.stopPropagation?.(); onTest(alarm); }}
           style={({ pressed }) => [
             styles.testBtn,
-            { borderColor: colors.success, backgroundColor: colors.background },
+            { borderColor: colors.success, backgroundColor: colors.background, minHeight: fs.touch(44) },
             pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] },
           ]}
           accessibilityRole="button"
@@ -128,7 +128,7 @@ export function AlarmCard({ alarm, onEdit, onToggle, onTest }: AlarmCardProps) {
           onPress={(e) => { e.stopPropagation?.(); onToggle(alarm); }}
           style={({ pressed }) => [
             styles.toggleBtn,
-            { backgroundColor: colors.background, borderColor: colors.border },
+            { backgroundColor: colors.background, borderColor: colors.border, minHeight: fs.touch(36) },
             pressed && { opacity: 0.7 },
           ]}
           accessibilityRole="switch"
@@ -212,7 +212,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     minWidth: 72,
-    minHeight: 44,
   },
   testBtnText: {
     fontWeight: '700',
@@ -237,7 +236,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    minHeight: 36,
   },
   toggleBtnText: {
     fontWeight: '600',

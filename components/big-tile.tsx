@@ -38,6 +38,7 @@ export function BigTile({
           backgroundColor: colors.surface,
           borderColor: colors.border,
           shadowColor: colors.foreground,
+          minHeight: fs.touch(132),
         },
         pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
       ]}
@@ -90,7 +91,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderRadius: 18,
     padding: 14,
-    minHeight: 132,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 12,

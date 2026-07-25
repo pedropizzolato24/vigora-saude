@@ -101,7 +101,7 @@ export function WizardStep({
             style={({ pressed }) => [
               styles.button,
               styles.ghostButton,
-              { borderColor: colors.muted, backgroundColor: colors.surface },
+              { borderColor: colors.muted, backgroundColor: colors.surface, minHeight: fs.touch(56) },
               pressed && { opacity: 0.8 },
             ]}
           >
@@ -124,7 +124,7 @@ export function WizardStep({
           style={({ pressed }) => [
             styles.button,
             styles.primaryButton,
-            { backgroundColor: colors.primary },
+            { backgroundColor: colors.primary, minHeight: fs.touch(56) },
             nextDisabled && { opacity: 0.5 },
             pressed && !nextDisabled && { opacity: 0.9 },
           ]}
@@ -180,7 +180,6 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
-    minHeight: 56,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 14,

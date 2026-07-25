@@ -1,30 +1,10 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { useAppContext } from '@/lib/app-context';
+import { BASE_SIZES, SCALE_FACTORS, touchTargetFor } from '@/lib/_core/font-scale';
 
-// --- Scale Factors ----------------------------------------------------------
-
-const SCALE_FACTORS = {
-  small: 0.85,
-  medium: 1.0,
-  large: 1.2,
-} as const;
-
-export type FontSizeKey = 'small' | 'medium' | 'large';
+export type { FontSizeKey } from '@/lib/_core/font-scale';
 
 // --- Scaled Font Sizes ------------------------------------------------------
-// Base sizes (at "medium") for common text roles
-
-const BASE_SIZES = {
-  xs: 11,
-  sm: 13,
-  base: 15,
-  md: 16,
-  lg: 18,
-  xl: 20,
-  '2xl': 22,
-  '3xl': 26,
-  '4xl': 32,
-} as const;
 
 export type ScaledFontSizes = {
   scale: number;
@@ -39,6 +19,14 @@ export type ScaledFontSizes = {
   '4xl': number;
   /** Apply scale to any arbitrary font size */
   scaled: (size: number) => number;
+  /**
+   * Altura mínima de um alvo de toque (botão, input, chip) NA ESCALA ATUAL.
+   * O mínimo deixa de ser um número único para todo o app e passa a ser um por
+   * escala: sem isso o texto encolhia/crescia mas a caixa ficava parada, e
+   * telas com botão dimensionado por padding escalavam enquanto telas com
+   * altura fixa não. O piso de 44px continua valendo em qualquer escala.
+   */
+  touch: (base: number) => number;
 };
 
 // --- Context ----------------------------------------------------------------
@@ -54,6 +42,7 @@ export function FontSizeProvider({ children }: { children: React.ReactNode }) {
     const result: Record<string, number | ((s: number) => number)> = {
       scale: factor,
       scaled: (size: number) => Math.round(size * factor),
+      touch: (base: number) => touchTargetFor(base, factor),
     };
     for (const [key, base] of Object.entries(BASE_SIZES)) {
       result[key] = Math.round(base * factor);

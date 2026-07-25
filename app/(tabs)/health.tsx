@@ -129,7 +129,7 @@ function BigMetricRow({ type, latestValue, unit, onAnnotate, colors, fs }: BigMe
         accessibilityLabel={`Anotar ${cfg.title}`}
         style={({ pressed }) => [
           styles.annotateBtn,
-          { backgroundColor: colors.primaryLight, opacity: pressed ? 0.75 : 1 },
+          { backgroundColor: colors.primaryLight, minHeight: fs.touch(48), opacity: pressed ? 0.75 : 1 },
         ]}
       >
         <MaterialIcons name="add" size={16} color={colors.primary} />
@@ -249,7 +249,7 @@ export default function HealthScreen() {
           onPress={() => handleDelete(item.id)}
           accessibilityRole="button"
           accessibilityLabel="Excluir registro"
-          style={({ pressed }) => [styles.deleteBtn, pressed && { opacity: 0.6 }]}
+          style={({ pressed }) => [styles.deleteBtn, { minHeight: fs.touch(44) }, pressed && { opacity: 0.6 }]}
         >
           <MaterialIcons name="delete-outline" size={20} color={colors.error} />
         </Pressable>
@@ -623,7 +623,7 @@ export default function HealthScreen() {
           <Text style={[styles.emptyTitle, { color: colors.foreground, fontSize: fs.lg, fontFamily: BrandFonts.body }]}>
             Nenhum registro ainda
           </Text>
-          <Text style={[styles.emptySubtext, { color: colors.muted, fontSize: fs.base, fontFamily: BrandFonts.body }]}>
+          <Text style={[styles.emptySubtext, { color: colors.muted, fontSize: fs.base, lineHeight: fs.scaled(22), fontFamily: BrandFonts.body }]}>
             Use "+ Anotar" em qualquer métrica acima para registrar seu primeiro valor.
           </Text>
         </View>
@@ -691,6 +691,7 @@ export default function HealthScreen() {
                             {
                               backgroundColor: selected ? colors.primaryLight : colors.surface,
                               borderColor: selected ? colors.primary : colors.border,
+                              minHeight: fs.touch(56),
                               opacity: pressed ? 0.8 : 1,
                             },
                           ]}
@@ -820,7 +821,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
-    minHeight: 48,
     justifyContent: 'center',
   },
   annotateBtnText: { fontWeight: '700' },
@@ -857,7 +857,7 @@ const styles = StyleSheet.create({
   historyValue: { fontWeight: '700' },
   historyUnit: {},
   historyTime: {},
-  deleteBtn: { padding: 8, minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  deleteBtn: { padding: 8, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
   // Empty state
   emptyState: {
     flex: 1,
@@ -867,7 +867,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyTitle: { fontWeight: '700', textAlign: 'center' },
-  emptySubtext: { textAlign: 'center', lineHeight: 22 },
+  emptySubtext: { textAlign: 'center' },
   // Wizard Modal
   modal: { flex: 1 },
   modalHeader: {
@@ -890,7 +890,6 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
     borderWidth: 1.5,
-    minHeight: 56,
   },
   typeCardIcon: {
     width: 44,
