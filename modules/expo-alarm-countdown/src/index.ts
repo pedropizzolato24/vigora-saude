@@ -84,6 +84,22 @@ export async function isIgnoringBatteryOptimizations(): Promise<boolean> {
 }
 
 /**
+ * Android 6+: abre o diálogo do sistema de isenção de bateria direto para este
+ * app (sem passar pela lista genérica, que na One UI filtra apps e escondia o
+ * Vigora). Retorna true se o diálogo foi disparado; false quando indisponível
+ * (plataforma/versão/módulo ausente) — o chamador cai para a lista genérica.
+ */
+export async function requestIgnoreBatteryOptimizations(): Promise<boolean> {
+  if (Platform.OS !== 'android') return false;
+  try {
+    return (await ExpoAlarmCountdown.requestIgnoreBatteryOptimizations()) === true;
+  } catch (e) {
+    console.warn('[ExpoAlarmCountdown] requestIgnoreBatteryOptimizations failed:', e);
+    return false;
+  }
+}
+
+/**
  * Android 12+: opens the system "Alarms & reminders" screen for this app.
  * No-op on other platforms/versions.
  */

@@ -143,6 +143,33 @@ class ExpoAlarmCountdownModule(private val reactContext: ReactApplicationContext
     }
 
     /**
+     * Abre o diálogo do sistema "Permitir que o app ignore a otimização de
+     * bateria?" direto para ESTE app (ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).
+     * Na One UI (ex.: S10) a lista genérica IGNORE_BATTERY_OPTIMIZATION_SETTINGS
+     * filtra os apps e o Vigora nem aparecia para o usuário isentar — o diálogo
+     * direto dispensa navegar pela lista. Resolve true se o diálogo foi
+     * disparado; false abaixo do API 23 (sem Doze). Exige a permissão
+     * REQUEST_IGNORE_BATTERY_OPTIMIZATIONS (declarada em app.config.ts).
+     */
+    @ReactMethod
+    fun requestIgnoreBatteryOptimizations(promise: Promise) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:${reactContext.packageName}")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                reactContext.startActivity(intent)
+                promise.resolve(true)
+            } else {
+                promise.resolve(false)
+            }
+        } catch (e: Exception) {
+            promise.reject("request_ignore_battery_failed", e.message, e)
+        }
+    }
+
+    /**
      * Opens the system "Alarms & reminders" screen for THIS app (Android 12+).
      */
     @ReactMethod

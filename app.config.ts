@@ -70,6 +70,10 @@ const config: ExpoConfig = {
       "TURN_SCREEN_ON",
       "VIBRATE",
       "WAKE_LOCK",
+      // Diálogo direto de isenção de bateria (dead man's switch: sem a isenção,
+      // OEMs agressivos matam o app e o alarme não toca). A lista genérica da
+      // One UI filtra os apps e o Vigora nem aparecia nela (S10).
+      "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
       "ACCESS_FINE_LOCATION",
       "ACCESS_COARSE_LOCATION",
       "ACCESS_BACKGROUND_LOCATION",

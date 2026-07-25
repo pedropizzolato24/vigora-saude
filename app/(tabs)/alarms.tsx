@@ -133,12 +133,12 @@ export default function AlarmsScreen() {
       showDialog({
         title: 'Para o alarme tocar sempre',
         message:
-          'Alguns celulares desligam apps em segundo plano, o que pode impedir o alarme de tocar. Toque em "Abrir configurações" e desative a otimização de bateria para o Vigora.' +
+          'Alguns celulares desligam apps em segundo plano, o que pode impedir o alarme de tocar. Toque em "Continuar" e depois em "Permitir" quando o Android perguntar.' +
           (hint ? `\n\n${hint}` : ''),
         variant: 'warning',
         buttons: [
           { text: 'Agora não', style: 'cancel' },
-          { text: 'Abrir configurações', onPress: () => openBatteryOptimizationSettings() },
+          { text: 'Continuar', onPress: () => openBatteryOptimizationSettings() },
         ],
       });
     })();
