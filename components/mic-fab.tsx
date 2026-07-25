@@ -32,10 +32,12 @@ const QUICK_ACTIONS: QuickAction[] = [
 
 /**
  * Assistente rápido: abre um painel com as ações mais usadas, guiado por voz
- * (TTS). O ícone é de atendimento/ajuda, não de microfone: o botão nunca
- * escutou comando de voz, e o microfone prometia uma função que não existe
- * (feedback do teste). Reconhecimento de fala real exigiria um módulo nativo
- * (ex: expo-speech-recognition) e um novo build.
+ * (TTS). O ícone é de ajuda (ponto de interrogação), não de microfone: o
+ * botão nunca escutou comando de voz, e o microfone prometia uma função que
+ * não existe (feedback do teste). Usa "help" em vez de "support-agent" para
+ * não se confundir com o ícone da tela de FAQ/Ajuda. Reconhecimento de fala
+ * real exigiria um módulo nativo (ex: expo-speech-recognition) e um novo
+ * build.
  */
 export function MicFab({ bottomOffset, onPress }: MicFabProps) {
   const colors = useColors();
@@ -92,7 +94,7 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
           pressed && { opacity: 0.9 },
         ]}
       >
-        <MaterialIcons name="support-agent" size={30} color={colors.onPrimary} />
+        <MaterialIcons name="help" size={30} color={colors.onPrimary} />
       </PressableScale>
 
       <Modal
@@ -109,7 +111,7 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
           >
             <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
               <View style={[styles.micBadge, { backgroundColor: colors.primaryLight }]}>
-                <MaterialIcons name="support-agent" size={26} color={colors.primary} />
+                <MaterialIcons name="help" size={26} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.sheetTitle, { color: colors.foreground, fontSize: fs.lg }]}>

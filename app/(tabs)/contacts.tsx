@@ -240,22 +240,14 @@ export default function ContactsScreen() {
   if (isAccessibilityMode) {
     return (
       <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
-        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: ac.bar }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-            <ScreenHeaderBack />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Quem te ajuda numa emergência?</Text>
-              <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>{state.emergencyContacts.length} contato(s)</Text>
-            </View>
+        {/* Header — voltar + título; a ação de adicionar fica na barra
+            inferior, igual ao modo normal (nada de ações no topo). */}
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: ac.bar }}>
+          <ScreenHeaderBack />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Quem te ajuda numa emergência?</Text>
+            <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>{state.emergencyContacts.length} contato(s)</Text>
           </View>
-          <Pressable
-            onPress={openAddModal}
-            style={({ pressed }) => [{ backgroundColor: ac.emergency, width: as_.touchTarget, height: as_.touchTarget, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: ac.emergency, opacity: pressed ? 0.8 : 1 }]}
-            accessibilityRole="button"
-            accessibilityLabel="Adicionar contato de emergência"
-          >
-            <MaterialIcons name="add" size={36} color={ac.onEmergency} />
-          </Pressable>
         </View>
 
         <View style={{ margin: 12, padding: 16, backgroundColor: ac.emergency + '20', borderRadius: 16, borderWidth: 2, borderColor: ac.emergency, flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
@@ -269,16 +261,7 @@ export default function ContactsScreen() {
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 20 }}>
             <MaterialIcons name="people" size={80} color={ac.muted} />
             <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.foreground, textAlign: 'center' }}>Nenhum contato</Text>
-            <Text style={{ fontSize: af.md, color: ac.muted, textAlign: 'center', lineHeight: af.md * 1.5 }}>Adicione contatos para serem avisados em uma emergência.</Text>
-            <Pressable
-              onPress={openAddModal}
-              style={({ pressed }) => [{ backgroundColor: ac.emergency, borderRadius: 20, paddingVertical: as_.buttonPadding, paddingHorizontal: 32, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 3, borderColor: ac.emergency, opacity: pressed ? 0.85 : 1 }]}
-              accessibilityRole="button"
-              accessibilityLabel="Adicionar contato de emergência"
-            >
-              <MaterialIcons name="add" size={32} color={ac.onEmergency} />
-              <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.onEmergency }}>Adicionar Contato</Text>
-            </Pressable>
+            <Text style={{ fontSize: af.md, color: ac.muted, textAlign: 'center', lineHeight: af.md * 1.5 }}>Toque no botão abaixo para adicionar contatos que serão avisados em uma emergência.</Text>
           </View>
         ) : (
           <FlatList
@@ -315,6 +298,36 @@ export default function ContactsScreen() {
             showsVerticalScrollIndicator={false}
           />
         )}
+
+        {/* Adicionar — barra inferior, mesma posição do modo normal */}
+        <View style={{
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          borderTopWidth: 2,
+          borderTopColor: ac.border,
+          backgroundColor: ac.bar,
+        }}>
+          <Pressable
+            onPress={openAddModal}
+            style={({ pressed }) => [{
+              backgroundColor: ac.emergency,
+              borderRadius: 20,
+              minHeight: as_.touchTarget,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 12,
+              borderWidth: 3,
+              borderColor: ac.emergency,
+              opacity: pressed ? 0.85 : 1,
+            }]}
+            accessibilityRole="button"
+            accessibilityLabel="Adicionar contato de emergência"
+          >
+            <MaterialIcons name="add" size={32} color={ac.onEmergency} />
+            <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.onEmergency }}>Adicionar Contato</Text>
+          </Pressable>
+        </View>
 
         {/* Simplified add/edit modal — a11y mode */}
         <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setModalVisible(false)}>
