@@ -342,7 +342,16 @@ export default function AlarmRingScreen() {
     updateAlarmWidgetOnDismiss(state.alarms).catch(() => {});
 
     router.replace('/(tabs)/alarms');
-  }, [alarmId, player, dispatch, router]);
+    // `alarm` e `state.alarms` PRECISAM estar aqui: no cold start (alarme toca
+    // com o app morto) a tela monta antes do AsyncStorage carregar, então
+    // `alarm` é undefined no primeiro render. Sem eles nas deps o callback
+    // ficava congelado com esse undefined — o `if (alarm)` acima nunca passava,
+    // o servidor jamais recebia "responded" e o evento ficava pendente até o
+    // job marcá-lo como perdido, escalando para a família um alarme que o idoso
+    // TINHA respondido. (updateAlarmWidgetOnDismiss recebia [] pelo mesmo
+    // motivo.) handleSnooze já dependia de `alarm` — por isso só o dismiss
+    // falhava.
+  }, [alarmId, alarm, state.alarms, player, dispatch, router]);
 
   // Soneca: conta como respondido AGORA (idoso interagiu = vivo), mas re-arma um
   // disparo em 5 min. Se a soneca for ignorada, o evento +5min vira "perdido" no
