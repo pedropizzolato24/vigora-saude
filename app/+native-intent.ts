@@ -18,6 +18,8 @@ export function redirectSystemPath({
     // `vigora://alarm-ring?uid=<uid>`. Roteamos direto para a tela do alarme com
     // o alarmId extraído — sem depender do getAlarmState no cold start (Android
     // antigo dava tela preta → home). uid: vigora_<id> | _wd<n> | _snooze.
+    // O botão "Soneca" da notificação usa o mesmo deep link com &snooze=1 —
+    // repassado para a tela executar a soneca automaticamente.
     if (path.includes("alarm-ring")) {
       const queryIndex = path.indexOf("?");
       const query = queryIndex >= 0 ? path.slice(queryIndex + 1) : "";
@@ -26,7 +28,8 @@ export function redirectSystemPath({
         const uid = decodeURIComponent(uidMatch[1]);
         const m = uid.match(/^vigora_(.+?)(?:_wd\d+|_snooze)?$/);
         const alarmId = m ? m[1] : uid;
-        return `/alarm-ring?alarmId=${encodeURIComponent(alarmId)}`;
+        const snooze = /(?:^|&)snooze=1(?:&|$)/.test(query) ? '&snooze=1' : '';
+        return `/alarm-ring?alarmId=${encodeURIComponent(alarmId)}${snooze}`;
       }
     }
   } catch {

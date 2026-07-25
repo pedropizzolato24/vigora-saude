@@ -60,7 +60,7 @@ function buildSpeechText(alarmDescription?: string, alarmTime?: string): string 
 
 export default function AlarmRingScreen() {
   const router = useRouter();
-  const { alarmId, expiresAt: expiresAtParam } = useLocalSearchParams<{ alarmId: string; expiresAt?: string }>();
+  const { alarmId, expiresAt: expiresAtParam, snooze: snoozeParam } = useLocalSearchParams<{ alarmId: string; expiresAt?: string; snooze?: string }>();
   const { state, dispatch } = useAppContext();
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac } = useAccessibility();
   const colors = useColors();
@@ -398,6 +398,17 @@ export default function AlarmRingScreen() {
 
     router.replace(postAlarmRoute as never);
   }, [alarmId, alarm, player, dispatch, router, postAlarmRoute]);
+
+  // Botão "Soneca" da notificação: chega como deep link &snooze=1 (a action
+  // nativa abre o app em vez de reagendar em Java — ver native-alarm-manager).
+  // Executa a soneca assim que o alarme carrega do estado; `alarm` na dep é
+  // essencial no cold start (a tela monta antes do AsyncStorage carregar).
+  const autoSnoozedRef = useRef(false);
+  useEffect(() => {
+    if (snoozeParam !== '1' || autoSnoozedRef.current || !alarm) return;
+    autoSnoozedRef.current = true;
+    handleSnooze();
+  }, [snoozeParam, alarm, handleSnooze]);
 
   const handleSpeakAgain = useCallback(async () => {
     const speaking = await Speech.isSpeakingAsync();
