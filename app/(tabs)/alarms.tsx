@@ -398,42 +398,20 @@ export default function AlarmsScreen() {
   if (isAccessibilityMode) {
     return (
       <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
-        {/* Header */}
+        {/* Header — só título; a ação de adicionar fica na barra inferior,
+            igual ao modo normal (nada de ações no topo). */}
         <View style={{
           paddingHorizontal: 20,
           paddingTop: insets.top + 12,
           paddingBottom: 16,
           borderBottomWidth: 2,
           borderBottomColor: ac.border,
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
           backgroundColor: ac.bar,
         }}>
-          <View>
-            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Remédios</Text>
-            <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>
-              {state.alarms.length} lembrete(s) configurado(s)
-            </Text>
-          </View>
-          <Pressable
-            onPress={openAddModal}
-            style={({ pressed }) => [{
-              backgroundColor: ac.primary,
-              width: as_.touchTarget,
-              height: as_.touchTarget,
-              borderRadius: 20,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderWidth: 3,
-              borderColor: ac.primary,
-              opacity: pressed ? 0.8 : 1,
-            }]}
-            accessibilityRole="button"
-            accessibilityLabel="Adicionar lembrete"
-          >
-            <MaterialIcons name="add" size={36} color={ac.onPrimary} />
-          </Pressable>
+          <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Remédios</Text>
+          <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>
+            {state.alarms.length} lembrete(s) configurado(s)
+          </Text>
         </View>
 
         {sortedAlarms.length === 0 ? (
@@ -443,28 +421,8 @@ export default function AlarmsScreen() {
               Nenhum lembrete
             </Text>
             <Text style={{ fontSize: af.md, color: ac.muted, textAlign: 'center', lineHeight: af.md * 1.5 }}>
-              Toque no botão + para adicionar um lembrete de medicação.
+              Toque no botão abaixo para adicionar um lembrete de medicação.
             </Text>
-            <Pressable
-              onPress={openAddModal}
-              style={({ pressed }) => [{
-                backgroundColor: ac.primary,
-                borderRadius: 20,
-                paddingVertical: as_.buttonPadding,
-                paddingHorizontal: 32,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-                borderWidth: 3,
-                borderColor: ac.primary,
-                opacity: pressed ? 0.85 : 1,
-              }]}
-              accessibilityRole="button"
-              accessibilityLabel="Adicionar lembrete de medicação"
-            >
-              <MaterialIcons name="add" size={32} color={ac.onPrimary} />
-              <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.onPrimary }}>Adicionar Lembrete</Text>
-            </Pressable>
           </View>
         ) : (
           <FlatList
@@ -519,6 +477,36 @@ export default function AlarmsScreen() {
             showsVerticalScrollIndicator={false}
           />
         )}
+
+        {/* Adicionar — barra inferior, mesma posição do modo normal */}
+        <View style={{
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          borderTopWidth: 2,
+          borderTopColor: ac.border,
+          backgroundColor: ac.bar,
+        }}>
+          <Pressable
+            onPress={openAddModal}
+            style={({ pressed }) => [{
+              backgroundColor: ac.primary,
+              borderRadius: 20,
+              minHeight: as_.touchTarget,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 12,
+              borderWidth: 3,
+              borderColor: ac.primary,
+              opacity: pressed ? 0.85 : 1,
+            }]}
+            accessibilityRole="button"
+            accessibilityLabel="Adicionar lembrete de medicação"
+          >
+            <MaterialIcons name="add" size={32} color={ac.onPrimary} />
+            <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.onPrimary }}>Adicionar Lembrete</Text>
+          </Pressable>
+        </View>
 
         {/* Simplified Modal for Accessibility Mode */}
         <Modal
