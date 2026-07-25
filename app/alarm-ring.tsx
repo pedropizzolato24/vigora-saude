@@ -38,6 +38,7 @@ import { loadAlarmTimer, clearAlarmTimer } from '@/lib/alarm-timer-store';
 import { lastAlarmFireMs } from '@/lib/alarm-fire-times';
 import { updateAlarmWidgetOnDismiss } from '@/lib/update-widgets';
 import { confirmAlarmResponded, confirmAlarmMissed, createPendingAlarmEvent } from '@/lib/monitoring-service';
+import * as Auth from '@/lib/_core/auth';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
 const COUNTDOWN_SECONDS = 30;
@@ -82,6 +83,18 @@ export default function AlarmRingScreen() {
   // Marca que o alarme foi respondido, para não retomar o som do alarme depois
   // que a fala termina/para (o handler onDone/onStopped roda de forma assíncrona).
   const dismissedRef = useRef(false);
+
+  // Rota de saída pós-resposta depende do TIPO da conta logada: um cuidador que
+  // tocou numa notificação de alarme atrasada (agendada pela conta monitorada
+  // que usou o aparelho antes) não pode ser jogado no fluxo do monitorado.
+  const [postAlarmRoute, setPostAlarmRoute] = useState<string>('/(tabs)/alarms');
+  useEffect(() => {
+    Auth.getUserInfo()
+      .then((u) => {
+        if (u?.userType === 'caregiver') setPostAlarmRoute('/(caregiver-tabs)');
+      })
+      .catch(() => {});
+  }, []);
 
   // scheduledAt canônico (hora real do disparo) — usado para casar com o evento
   // pré-registrado no servidor. Confirmar com new Date() não batia e o alarme
@@ -341,7 +354,7 @@ export default function AlarmRingScreen() {
     // Atualiza widget Android para mostrar o próximo alarme pendente
     updateAlarmWidgetOnDismiss(state.alarms).catch(() => {});
 
-    router.replace('/(tabs)/alarms');
+    router.replace(postAlarmRoute as never);
     // `alarm` e `state.alarms` PRECISAM estar aqui: no cold start (alarme toca
     // com o app morto) a tela monta antes do AsyncStorage carregar, então
     // `alarm` é undefined no primeiro render. Sem eles nas deps o callback
@@ -351,7 +364,7 @@ export default function AlarmRingScreen() {
     // TINHA respondido. (updateAlarmWidgetOnDismiss recebia [] pelo mesmo
     // motivo.) handleSnooze já dependia de `alarm` — por isso só o dismiss
     // falhava.
-  }, [alarmId, alarm, state.alarms, player, dispatch, router]);
+  }, [alarmId, alarm, state.alarms, player, dispatch, router, postAlarmRoute]);
 
   // Soneca: conta como respondido AGORA (idoso interagiu = vivo), mas re-arma um
   // disparo em 5 min. Se a soneca for ignorada, o evento +5min vira "perdido" no
@@ -383,8 +396,8 @@ export default function AlarmRingScreen() {
       createPendingAlarmEvent(alarm, fireAt).catch(() => {});
     }
 
-    router.replace('/(tabs)/alarms');
-  }, [alarmId, alarm, player, dispatch, router]);
+    router.replace(postAlarmRoute as never);
+  }, [alarmId, alarm, player, dispatch, router, postAlarmRoute]);
 
   const handleSpeakAgain = useCallback(async () => {
     const speaking = await Speech.isSpeakingAsync();
