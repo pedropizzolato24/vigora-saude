@@ -30,10 +30,11 @@ const QUICK_ACTIONS: QuickAction[] = [
 ];
 
 /**
- * Assistente rápido: o toque no microfone abre um painel com as ações mais
- * usadas, guiado por voz (TTS). Reconhecimento de fala real exige um módulo
- * nativo (ex: expo-speech-recognition) e um novo build — quando for adicionado,
- * basta trocar o conteúdo deste painel pela escuta do comando.
+ * Assistente rápido: abre um painel com as ações mais usadas, guiado por voz
+ * (TTS). O ícone é de atendimento/ajuda, não de microfone: o botão nunca
+ * escutou comando de voz, e o microfone prometia uma função que não existe
+ * (feedback do teste). Reconhecimento de fala real exigiria um módulo nativo
+ * (ex: expo-speech-recognition) e um novo build.
  */
 export function MicFab({ bottomOffset, onPress }: MicFabProps) {
   const colors = useColors();
@@ -89,7 +90,7 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
           pressed && { opacity: 0.9, transform: [{ scale: 0.95 }] },
         ]}
       >
-        <MaterialIcons name="mic" size={28} color={colors.onPrimary} />
+        <MaterialIcons name="support-agent" size={30} color={colors.onPrimary} />
       </Pressable>
 
       <Modal
@@ -106,7 +107,7 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
           >
             <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
               <View style={[styles.micBadge, { backgroundColor: colors.primaryLight }]}>
-                <MaterialIcons name="mic" size={24} color={colors.primary} />
+                <MaterialIcons name="support-agent" size={26} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.sheetTitle, { color: colors.foreground, fontSize: fs.lg }]}>
