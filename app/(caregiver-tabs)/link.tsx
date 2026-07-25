@@ -16,6 +16,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { FormKeyboardView } from '@/components/form-keyboard-view';
+import { ScreenHeaderBack } from '@/components/screen-header-back';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { useAccessibility } from '@/lib/accessibility-context';
@@ -150,7 +151,10 @@ export default function LinkScreen() {
             { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 },
           ]}
         >
-          <Text style={[styles.title, { color: c.foreground, fontSize: sz.title, fontFamily: BrandFonts.body }]}>Falta pouco</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <ScreenHeaderBack fallbackRoute="/(caregiver-tabs)" />
+            <Text style={[styles.title, { color: c.foreground, fontSize: sz.title, fontFamily: BrandFonts.body, flex: 1 }]}>Falta pouco</Text>
+          </View>
           <Text style={[styles.subtitle, { color: c.muted, fontSize: sz.subtitle, fontFamily: BrandFonts.body }]}>
             Como você quer chamar essa pessoa no app?
           </Text>
@@ -221,7 +225,10 @@ export default function LinkScreen() {
         { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 },
       ]}
     >
-      <Text style={[styles.title, { color: c.foreground, fontSize: sz.title, fontFamily: BrandFonts.body }]}>Vincular pessoa acompanhada</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+        <ScreenHeaderBack fallbackRoute="/(caregiver-tabs)" />
+        <Text style={[styles.title, { color: c.foreground, fontSize: sz.title, fontFamily: BrandFonts.body, flex: 1 }]}>Vincular pessoa acompanhada</Text>
+      </View>
       <Text style={[styles.subtitle, { color: c.muted, fontSize: sz.subtitle, fontFamily: BrandFonts.body }]}>
         A pessoa que você vai acompanhar gera um código no app dela (em "Convidar cuidador"). Digite o
         código aqui ou escaneie o QR que aparece na tela dela.

@@ -16,6 +16,7 @@ import {
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
+import { ScreenHeaderBack } from '@/components/screen-header-back';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
@@ -126,9 +127,12 @@ export default function LocationScreen() {
   if (isAccessibilityMode) {
     return (
       <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
-        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar }}>
-          <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Localização</Text>
-          <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Compartilhe sua posição</Text>
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <ScreenHeaderBack />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Localização</Text>
+            <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Compartilhe sua posição</Text>
+          </View>
         </View>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           {/* Privacy note */}
@@ -191,11 +195,14 @@ export default function LocationScreen() {
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
-        <View>
-          <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'] }]}>Localização</Text>
-          <Text style={[styles.subtitle, { color: colors.muted, fontSize: fs.sm }]}>
-            Compartilhe sua posição
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+          <ScreenHeaderBack />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'] }]}>Localização</Text>
+            <Text style={[styles.subtitle, { color: colors.muted, fontSize: fs.sm }]}>
+              Compartilhe sua posição
+            </Text>
+          </View>
         </View>
         <View style={[styles.headerIcon, { backgroundColor: colors.successLight }]}>
           <MaterialIcons name="location-on" size={24} color={colors.success} />

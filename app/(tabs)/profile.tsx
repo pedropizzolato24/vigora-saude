@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 import { ScreenContainer } from '@/components/screen-container';
+import { ScreenHeaderBack } from '@/components/screen-header-back';
 import { FormKeyboardView } from '@/components/form-keyboard-view';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
@@ -216,7 +217,8 @@ export default function ProfileScreen() {
       <>
       <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
         {/* Título apenas — salvar fica no botão grande no fim da tela */}
-        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <ScreenHeaderBack />
           <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Meu Perfil</Text>
         </View>
         <FormKeyboardView style={{ flex: 1 }}>
@@ -301,7 +303,8 @@ export default function ProfileScreen() {
   return (
     <ScreenContainer edges={['left', 'right']}>
       {/* Título apenas — salvar fica no botão grande no fim da tela */}
-      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12, flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+        <ScreenHeaderBack />
         <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: fs['2xl'] }]}>Meu Perfil</Text>
       </View>
 

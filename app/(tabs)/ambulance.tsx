@@ -14,6 +14,7 @@ import {
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ScreenContainer } from '@/components/screen-container';
+import { ScreenHeaderBack } from '@/components/screen-header-back';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
@@ -125,9 +126,12 @@ export default function AmbulanceScreen() {
     return (
       <>
       <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
-        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar }}>
-          <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Ambulância</Text>
-          <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Acione atendimento de emergência</Text>
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <ScreenHeaderBack />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Ambulância</Text>
+            <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Acione atendimento de emergência</Text>
+          </View>
         </View>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }} showsVerticalScrollIndicator={false}>
           {/* Emergency banner */}
@@ -198,11 +202,14 @@ export default function AmbulanceScreen() {
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
-        <View>
-          <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'] }]}>Ambulância</Text>
-          <Text style={[styles.subtitle, { color: colors.muted, fontSize: fs.sm }]}>
-            Acione atendimento de emergência
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+          <ScreenHeaderBack />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'] }]}>Ambulância</Text>
+            <Text style={[styles.subtitle, { color: colors.muted, fontSize: fs.sm }]}>
+              Acione atendimento de emergência
+            </Text>
+          </View>
         </View>
         <View style={[styles.headerIcon, { backgroundColor: colors.emergencyLight }]}>
           <MaterialIcons name="local-hospital" size={24} color={colors.emergency} />
