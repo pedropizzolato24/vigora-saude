@@ -459,6 +459,22 @@ export default function ContactsScreen() {
           <Text style={[styles.emptySubtext, { color: colors.muted, fontSize: fs.sm, lineHeight: fs.scaled(22) }]}>
             Adicione contatos de emergência para que sejam notificados em caso de SOS.
           </Text>
+          {/* Importar da agenda — atalho no corpo da tela, não na barra de
+              ações (lá disputava atenção com "Adicionar contato"). */}
+          <Pressable
+            onPress={handleImportFromDevice}
+            style={({ pressed }) => [
+              styles.importListBtn,
+              { borderColor: colors.border, backgroundColor: colors.surface, minHeight: fs.touch(48), paddingHorizontal: 20, opacity: pressed ? 0.75 : 1 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Importar contato da agenda do celular"
+          >
+            <MaterialIcons name="contacts" size={18} color={colors.primary} />
+            <Text style={[styles.importListBtnText, { color: colors.primary, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
+              Importar da agenda
+            </Text>
+          </Pressable>
         </View>
       ) : (
         <FlatList
@@ -477,7 +493,7 @@ export default function ContactsScreen() {
         />
       )}
 
-      {/* Add + import — full width, min 56dp */}
+      {/* Adicionar — ação única da barra inferior */}
       <View style={[styles.addBtnContainer, { borderTopColor: colors.border, backgroundColor: colors.bar }]}>
         <Pressable
           onPress={openAddModal}
@@ -491,20 +507,6 @@ export default function ContactsScreen() {
           <MaterialIcons name="add" size={22} color={colors.onEmergency} />
           <Text style={[styles.addBtnText, { color: colors.onEmergency, fontSize: fs.md, fontFamily: BrandFonts.body }]}>
             Adicionar contato
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={handleImportFromDevice}
-          style={({ pressed }) => [
-            styles.importListBtn,
-            { borderColor: colors.border, backgroundColor: colors.surface, minHeight: fs.touch(48), opacity: pressed ? 0.75 : 1 },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Importar contato da agenda do celular"
-        >
-          <MaterialIcons name="contacts" size={18} color={colors.primary} />
-          <Text style={[styles.importListBtnText, { color: colors.primary, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
-            Importar da agenda
           </Text>
         </Pressable>
       </View>
@@ -1041,7 +1043,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    gap: 8,
   },
   addBtn: {
     flexDirection: 'row',
