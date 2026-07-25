@@ -18,6 +18,10 @@ export default function TabLayout() {
         tabBar={() => <CustomTabBar />}
         screenOptions={{
           headerShown: false,
+          // Troca de aba com cross-fade: sem isso a tela aparece cortada, o que
+          // dava a impressão de app "duro" (feedback do teste). É a navegação
+          // mais usada pelo monitorado, então é onde o ganho aparece.
+          animation: 'fade',
           tabBarStyle: {
             height: tabBarHeight,
             backgroundColor: colors.background,

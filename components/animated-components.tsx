@@ -5,7 +5,7 @@ import { Animated, ViewProps, Easing, AccessibilityInfo } from 'react-native';
  * Respects the OS reduce-motion preference (iOS "Reduce Motion" / Android "Remove animations").
  * When true, all enter/exit animations skip to their final state instantly.
  */
-function useReducedMotion(): boolean {
+export function useReducedMotion(): boolean {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduced);

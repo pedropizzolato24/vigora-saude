@@ -20,6 +20,7 @@ import { AppToast, useAppToast } from '@/components/app-toast';
 import { FormKeyboardView } from '@/components/form-keyboard-view';
 import { WizardStep } from '@/components/wizard-step';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { PressableScale } from '@/components/pressable-scale';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ContactCard } from '@/components/contact-card';
@@ -495,7 +496,7 @@ export default function ContactsScreen() {
 
       {/* Adicionar — ação única da barra inferior */}
       <View style={[styles.addBtnContainer, { borderTopColor: colors.border, backgroundColor: colors.bar }]}>
-        <Pressable
+        <PressableScale
           onPress={openAddModal}
           style={({ pressed }) => [
             styles.addBtn,
@@ -508,7 +509,7 @@ export default function ContactsScreen() {
           <Text style={[styles.addBtnText, { color: colors.onEmergency, fontSize: fs.md, fontFamily: BrandFonts.body }]}>
             Adicionar contato
           </Text>
-        </Pressable>
+        </PressableScale>
       </View>
 
       {/* Wizard Modal — new contact */}

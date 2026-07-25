@@ -1,6 +1,7 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PressableScale } from '@/components/pressable-scale';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { BrandFonts } from '@/lib/_core/theme';
@@ -94,7 +95,7 @@ export function WizardStep({
           do próprio style, zerando-o com o teclado fechado. */}
       <View style={[styles.buttonRow, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         {secondaryAction ? (
-          <Pressable
+          <PressableScale
             onPress={secondaryAction}
             accessibilityRole="button"
             accessibilityLabel={secondaryA11yLabel}
@@ -113,10 +114,10 @@ export function WizardStep({
             >
               {secondaryLabel}
             </Text>
-          </Pressable>
+          </PressableScale>
         ) : null}
 
-        <Pressable
+        <PressableScale
           onPress={onNext}
           disabled={nextDisabled}
           accessibilityRole="button"
@@ -137,7 +138,7 @@ export function WizardStep({
           >
             {primaryLabel}
           </Text>
-        </Pressable>
+        </PressableScale>
       </View>
     </View>
   );

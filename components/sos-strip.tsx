@@ -1,6 +1,7 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { PressableScale } from '@/components/pressable-scale';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { BrandFonts } from '@/lib/_core/theme';
@@ -14,8 +15,9 @@ export function SosStrip({ onPress }: SosStripProps) {
   const fs = useFontSize();
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
+      scaleTo={0.98}
       accessibilityRole="button"
       accessibilityLabel="Botão de emergência. Segure três segundos para chamar ajuda."
       style={({ pressed }) => [
@@ -25,7 +27,7 @@ export function SosStrip({ onPress }: SosStripProps) {
           borderBottomColor: colors.emergencyDark,
           shadowColor: colors.emergency,
         },
-        pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+        pressed && { opacity: 0.9 },
       ]}
     >
       <MaterialIcons name="warning" size={36} color={colors.onEmergency} />
@@ -47,7 +49,7 @@ export function SosStrip({ onPress }: SosStripProps) {
           Toque para chamar ajuda
         </Text>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

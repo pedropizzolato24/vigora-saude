@@ -20,6 +20,7 @@ import { FormKeyboardView } from '@/components/form-keyboard-view';
 import { WheelPicker, wheelColumnMetrics } from '@/components/wheel-picker';
 import { WizardStep } from '@/components/wizard-step';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { PressableScale } from '@/components/pressable-scale';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AlarmCard } from '@/components/alarm-card';
@@ -820,7 +821,7 @@ export default function AlarmsScreen() {
 
       {/* Add button — full width, min 56dp */}
       <View style={[styles.addBtnContainer, { borderTopColor: colors.border, backgroundColor: colors.bar }]}>
-        <Pressable
+        <PressableScale
           onPress={openAddModal}
           style={({ pressed }) => [
             styles.addBtn,
@@ -833,7 +834,7 @@ export default function AlarmsScreen() {
           <Text style={[styles.addBtnText, { color: colors.onPrimary, fontSize: fs.md, fontFamily: BrandFonts.body }]}>
             Adicionar lembrete
           </Text>
-        </Pressable>
+        </PressableScale>
       </View>
 
       {/* Wizard Modal */}

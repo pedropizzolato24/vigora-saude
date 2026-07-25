@@ -45,6 +45,8 @@ export default function CaregiverTabLayout() {
         tabBar={() => <CaregiverTabBar />}
         screenOptions={{
           headerShown: false,
+          // Mesmo cross-fade das abas do monitorado.
+          animation: 'fade',
           tabBarStyle: {
             height: tabBarHeight,
             backgroundColor: colors.background,

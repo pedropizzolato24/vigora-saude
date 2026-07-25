@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { PressableScale } from '@/components/pressable-scale';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { BrandFonts } from '@/lib/_core/theme';
@@ -75,8 +76,9 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
 
   return (
     <>
-      <Pressable
+      <PressableScale
         onPress={onPress ?? openSheet}
+        scaleTo={0.92}
         accessibilityRole="button"
         accessibilityLabel="Assistente rápido. Toque para ver atalhos do app."
         style={({ pressed }) => [
@@ -87,11 +89,11 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
             shadowColor: colors.primary,
             borderColor: colors.onPrimary,
           },
-          pressed && { opacity: 0.9, transform: [{ scale: 0.95 }] },
+          pressed && { opacity: 0.9 },
         ]}
       >
         <MaterialIcons name="support-agent" size={30} color={colors.onPrimary} />
-      </Pressable>
+      </PressableScale>
 
       <Modal
         visible={sheetVisible}
@@ -123,7 +125,7 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
               {QUICK_ACTIONS.map((action) => {
                 const tone = tokenColors[action.colorToken];
                 return (
-                  <Pressable
+                  <PressableScale
                     key={action.route}
                     onPress={() => handleAction(action)}
                     accessibilityRole="button"
@@ -141,7 +143,7 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
                       {action.label}
                     </Text>
                     <MaterialIcons name="chevron-right" size={24} color={colors.muted} />
-                  </Pressable>
+                  </PressableScale>
                 );
               })}
             </View>

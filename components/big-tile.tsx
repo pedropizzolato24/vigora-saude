@@ -1,6 +1,7 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { PressableScale } from '@/components/pressable-scale';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { BrandFonts } from '@/lib/_core/theme';
@@ -28,8 +29,9 @@ export function BigTile({
   const fs = useFontSize();
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
+      scaleTo={0.98}
       accessibilityRole="button"
       accessibilityLabel={title}
       style={({ pressed }) => [
@@ -40,7 +42,7 @@ export function BigTile({
           shadowColor: colors.foreground,
           minHeight: fs.touch(132),
         },
-        pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+        pressed && { opacity: 0.9 },
       ]}
     >
       <View style={styles.topRow}>
@@ -77,7 +79,7 @@ export function BigTile({
           </Text>
         ) : null}
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

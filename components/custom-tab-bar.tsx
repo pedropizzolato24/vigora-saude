@@ -1,9 +1,10 @@
 import * as Haptics from 'expo-haptics';
 import { usePathname, useRouter } from 'expo-router';
 import React from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { PressableScale } from '@/components/pressable-scale';
 import { useColors } from '@/hooks/use-colors';
 import { useAppContext } from '@/lib/app-context';
 import { useAccessibility } from '@/lib/accessibility-context';
@@ -70,8 +71,9 @@ export function CustomTabBar() {
         const iconSize = isAccessibilityMode ? 34 : 30;
         const labelSize = isAccessibilityMode ? 15 : 13;
         return (
-          <Pressable
+          <PressableScale
             key={tab.label}
+            scaleTo={0.9}
             onPress={() => handlePress(tab)}
             style={({ pressed }) => [
               styles.tab,
@@ -121,7 +123,7 @@ export function CustomTabBar() {
             >
               {tab.label}
             </Text>
-          </Pressable>
+          </PressableScale>
         );
       })}
     </View>
