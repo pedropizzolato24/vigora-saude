@@ -421,6 +421,18 @@ export async function releaseWarning(id: number): Promise<void> {
   await db.delete(warningLog).where(eq(warningLog.id, id));
 }
 
+/**
+ * Avisos da conta, MAIS RECENTES PRIMEIRO.
+ *
+ * Era ASC — e com `limit` isso devolvia os avisos mais ANTIGOS. O Passo 2 do
+ * monitoring-job usa esta lista (limit 10) para deduplicar ("já avisei neste
+ * nível nas últimas MIN_WARNING_INTERVAL_HOURS?"). Passando de 10 linhas no
+ * log, os avisos recentes nunca apareciam na janela, a dedup nunca casava e o
+ * MESMO aviso saía a cada rodada do job — push no cuidador a cada 5 minutos
+ * (feedback 27/07). Mesmo bug que já havia sido corrigido em
+ * getAlarmEventHistory; aqui tem o agravante de se auto-alimentar: cada reenvio
+ * insere mais uma linha e afunda ainda mais os avisos recentes.
+ */
 export async function getWarningHistory(openId: string, limit = 20) {
   const db = await getDb();
   if (!db) return [];
@@ -428,7 +440,7 @@ export async function getWarningHistory(openId: string, limit = 20) {
     .select()
     .from(warningLog)
     .where(eq(warningLog.openId, openId))
-    .orderBy(warningLog.sentAt)
+    .orderBy(desc(warningLog.sentAt))
     .limit(limit);
 }
 
