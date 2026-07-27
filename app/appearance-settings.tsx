@@ -73,8 +73,23 @@ export default function AppearanceSettingsScreen() {
         ],
       });
     } else {
-      if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      updateSetting('accessibilityMode', false);
+      // Mesma confirmação da tela de Configurações: desativar por toque
+      // acidental tirava o idoso do layout grande sem aviso.
+      showDialog({
+        title: 'Desativar Modo de Acessibilidade?',
+        message: 'O app volta ao layout normal:\n\n* Fontes e botões menores\n* Mais informações por tela\n\nVocê pode ativar de novo a qualquer momento nesta mesma tela.',
+        variant: 'warning',
+        buttons: [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Desativar',
+            onPress: () => {
+              if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              updateSetting('accessibilityMode', false);
+            },
+          },
+        ],
+      });
     }
   };
 
