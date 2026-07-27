@@ -73,18 +73,13 @@ Os builds são executados na nuvem do Expo. Você receberá um link para acompan
 
 ---
 
-### Passo 5 — Configurar o eas.json para Submit (opcional)
+### Passo 5 — Configurar o eas.json para Submit
 
-Para automatizar o envio às lojas, edite o `eas.json` com suas credenciais:
+O `eas.json` já traz o submit do **Android** configurado:
 
 ```json
 "submit": {
   "production": {
-    "ios": {
-      "appleId": "seu@email.com",
-      "ascAppId": "1234567890",
-      "appleTeamId": "ABCDE12345"
-    },
     "android": {
       "serviceAccountKeyPath": "./google-service-account.json",
       "track": "internal"
@@ -93,10 +88,37 @@ Para automatizar o envio às lojas, edite o `eas.json` com suas credenciais:
 }
 ```
 
+Para o **iOS**, acrescente o bloco correspondente com suas credenciais:
+
+```json
+"ios": {
+  "appleId": "seu@email.com",
+  "ascAppId": "1234567890",
+  "appleTeamId": "ABCDE12345"
+}
+```
+
 Depois execute:
 ```bash
 eas submit --profile production --platform all
 ```
+
+> **Versionamento:** o `eas.json` usa `appVersionSource: "remote"` com `autoIncrement` no profile de produção — o `versionCode`/`buildNumber` é gerenciado pelo EAS, não pelo `app.config.ts`. Não incremente à mão.
+
+---
+
+### Passo 6 — Google OAuth por profile
+
+O Client ID Android do Google depende do SHA-1 do certificado de assinatura, que é **diferente** entre debug e release. Por isso o `eas.json` fixa um `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` por profile:
+
+| Profile | Certificado | Client ID |
+|---|---|---|
+| `development` / `simulator` | debug | `...-cm5s8hs0rare5smst57l1gbin9obt0u1` |
+| `preview` / `production` | release (upload/Play App Signing) | `...-iv01adn3g5di03k6ukp9n02mri393s6n` |
+
+Ambos precisam estar cadastrados no Google Cloud com o SHA-1 correspondente, e o servidor aceita os dois como audience válida. Se o login Google falhar com `redirect_uri_mismatch` ou `invalid_grant`, é quase sempre SHA-1 ausente no Google Cloud.
+
+> No build Android de release, o bundle JS é gerado pelo passo do **Gradle** — as variáveis `EXPO_PUBLIC_*` precisam estar no env daquele passo (ver `.github/workflows/eas-build.yml`), senão saem vazias no app mesmo estando definidas em outro lugar.
 
 ---
 
@@ -126,7 +148,7 @@ No projeto criado, clique em **+ New App**:
 - Package Name: `com.vigora.saude`
 - Copie a **Public API Key** gerada
 
-> **Importante:** Atualize a API Key em `lib/purchases.ts` e na variável de ambiente `EXPO_PUBLIC_REVENUECAT_API_KEY` substituindo o valor de teste pela chave de produção antes do lançamento.
+> **Importante:** a chave é lida **apenas** de `EXPO_PUBLIC_REVENUECAT_API_KEY` — `lib/purchases.ts` não tem chave hardcoded, e não deve ganhar uma. Use a chave **pública** por plataforma (`goog_*` no Android, `appl_*` no iOS); a secret `sk_*` jamais pode entrar no bundle do app.
 
 ---
 
@@ -174,29 +196,34 @@ Em **Paywalls** → **+ New Paywall**:
 
 2. **Personalize as cores** (clique em cada elemento):
 
-| Elemento | Cor sugerida |
+| Elemento | Cor da marca |
 |---|---|
-| Cor primária / CTA | `#0a7ea4` |
-| Fundo | `#ffffff` |
-| Texto principal | `#11181C` |
-| Texto secundário | `#687076` |
-| Destaque do plano anual | `#0a7ea4` |
+| Cor primária / CTA | `#1E4D8C` (azul profundo) |
+| Fundo | `#F4EFE5` (creme) |
+| Superfície dos cards | `#FFFFFF` |
+| Texto principal | `#0E1417` |
+| Texto secundário | `#5B636A` |
+| Destaque do plano anual | `#C96442` (terracota) |
 
 3. **Personalize os textos:**
-   - **Título:** `Vigora Saúde Pro`
-   - **Subtítulo:** `Cuide da sua saúde sem limites`
+   - **Título:** `Vigora Pro`
+   - **Subtítulo:** `Tranquilidade para quem você ama`
    - **Descrição do Lifetime:** `Acesso vitalício — pague uma vez, use para sempre`
-   - **Descrição do Anual:** `Melhor custo-benefício — economize 57%`
+   - **Descrição do Anual:** `Melhor custo-benefício`
    - **Descrição do Mensal:** `Comece agora, cancele quando quiser`
    - **Botão CTA:** `Assinar agora`
    - **Texto de restauração:** `Restaurar compras`
 
 4. **Features (lista de benefícios):**
-   - ✓ Contatos de emergência ilimitados
-   - ✓ Alarmes de medicação ilimitados
-   - ✓ Exportação PDF da ficha médica
-   - ✓ Monitoramento contínuo de alarmes
+   - ✓ Alertas automáticos aos seus contatos de emergência
+   - ✓ Cuidadores avisados na hora, pelo app
+   - ✓ Lembretes de medicação com confirmação
+   - ✓ Seus dados salvos na sua conta, mesmo se trocar de celular
    - ✓ Suporte prioritário
+
+> **Atenção — linguagem.** O paywall é material de marketing e está sujeito às mesmas linhas vermelhas do resto do app: nada de "controla a pressão", "previne quedas", "trata", "diagnostica", "garante segurança" ou "substitui consulta médica". Use linguagem de bem-estar e segurança. Ver `docs/strategy/regulatory-context.md`.
+
+> **Atenção — o app não bloqueia recursos por plano.** Contatos, alarmes, PDF e monitoramento são liberados para todos (`components/pro-limits.ts`). Os benefícios acima descrevem o produto, não recursos destravados pela assinatura — não escreva "ilimitado" em oposição a um plano gratuito limitado que não existe.
 
 5. **Vincule ao Offering:** Selecione `default`
 
@@ -249,7 +276,10 @@ eas build:list
 |---|---|
 | App Name | Vigora |
 | Bundle ID / Package | `com.vigora.saude` |
-| URL Scheme (deep link) | `vigora://` |
-| Versão atual | 1.0.0 |
+| URL Schemes (deep link) | `vigora://` e `com.vigora.saude://` (este último usado no redirect do OAuth Google) |
+| Callback do OAuth Google | `com.vigora.saude:/oauthredirect` |
+| Link universal de convite | `https://<EXPO_PUBLIC_LINK_HOST>/convite/<token>` |
+| Versão atual | 1.0.0 (`versionCode`/`buildNumber` remotos via EAS) |
 | Entitlement | `Vigora Saúde Pro` |
 | Offering padrão | `default` |
+| API de produção | `https://api.vigorasaude.com` |

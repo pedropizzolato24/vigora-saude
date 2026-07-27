@@ -86,7 +86,7 @@ Este documento descreve o processo de desenvolvimento do Vigora, incluindo decis
 2. Inicialização com API key via `EXPO_PUBLIC_REVENUECAT_API_KEY`.
 3. Criação de Entitlement "Vigora Saúde Pro" no painel RevenueCat.
 4. Configuração de 3 produtos (Lifetime, Yearly, Monthly).
-5. Implementação de ProGate, ProBanner, ProLimitBadge com `FREE_LIMITS` (contatos: 3, alarmes: 5).
+5. Implementação de ProGate, ProBanner, ProLimitBadge com `FREE_LIMITS` (contatos: 3, alarmes: 5). *(Superado: os limites por plano e os componentes de gate foram removidos — ver Sprint 15.)*
 6. Paywall nativo do RevenueCat (template Health, em português).
 7. Customer Center para gerenciamento de assinatura.
 
@@ -226,7 +226,7 @@ SELECT cron.schedule('check-missed-alarms', '*/2 * * * *', ...);
 **Funcionalidades Implementadas:**
 1. Tela `app/login.tsx` — entrada por email/senha ou OAuth (Google/Apple).
 2. Tela `app/register.tsx` — cadastro com seleção de tipo de usuário (`caregiver` | `monitored`).
-3. `app/oauth/callback.tsx` — recebe o redirect OAuth, troca `code` por JWT no servidor, roteia por `userType`.
+3. `app/oauth/callback.tsx` — recebe o redirect OAuth, troca `code` por JWT no servidor, roteia por `userType`. *(Hoje é `app/oauthredirect.tsx`, alimentado por `app/+native-intent.ts` — ver Sprint 16.)*
 4. `lib/_core/auth.ts` — `getSessionToken`, `setSessionToken`, `getUserInfo` usando `expo-secure-store` (nativo) ou `localStorage` (web).
 5. Tipo `User` com campos: `openId`, `name`, `email`, `userType`, `birthDate`, `bloodType`, `loginMethod`.
 6. `app/(tabs)/profile.tsx` — tela de perfil com edição de nome, data de nascimento e tipo sanguíneo.
@@ -302,7 +302,7 @@ SELECT cron.schedule('check-missed-alarms', '*/2 * * * *', ...);
 - **Email/Phone:** Cuidador insere email ou telefone da pessoa monitorada.
 - **QR:** Cuidador escaneia QR code exibido no dispositivo da pessoa monitorada.
 
-**Estado Inicial (Shell):** Links criados no wizard ficam com `status: 'pending'`. A sincronização real cuidador↔monitorado será implementada em versão futura quando a infraestrutura server-side estiver pronta.
+**Estado Inicial (Shell):** Links criados no wizard ficam com `status: 'pending'`. A sincronização real cuidador↔monitorado será implementada em versão futura quando a infraestrutura server-side estiver pronta. *(Concluído: o `link` router, os convites single-use e o push em tempo real ao cuidador foram implementados — ver Sprint 17.)*
 
 **Roteamento pós-login:**
 ```
@@ -317,6 +317,110 @@ login → oauth/callback → userType === 'caregiver'
 - Estado do cuidador precisando ser testável sem React → Reducer extraído para `caregiver-state.ts` separado do contexto.
 
 **Resultado:** Caregiver shell completo com UI funcional. 6 testes do reducer passando. 17 commits no feature branch.
+
+---
+
+### Sprint 14: Migração do Dead Man's Switch para o Railway (Supabase removido)
+
+**Objetivo:** eliminar o segundo backend e consolidar o dead man's switch no servidor próprio.
+
+**Mudanças:**
+1. `server/monitoring-job.ts` — job em processo (`setInterval` 5 min) substituindo a Edge Function + `pg_cron`.
+2. Schema migrado para MySQL/Drizzle; `lib/supabase.ts` e `lib/supabase-sync.ts` deletados.
+3. Cascata de alertas simplificada: WhatsApp (contatos) **+** push Expo (cuidadores). Email e SMS removidos — dois canais confiáveis valem mais que quatro meio configurados.
+
+**Resultado:** um backend só. Menos superfície de configuração, menos modos de falha silenciosa.
+
+---
+
+### Sprint 15: Auditoria de Simplificação e Remoção dos Limites por Plano
+
+**Objetivo:** remover complexidade acumulada e resolver uma contradição de produto.
+
+**Mudanças:**
+1. **43 remoções** de código morto (~−2.100 linhas, −3 dependências): componentes de template, exports sem chamador, contextos não usados (`menu-context`, `sidebar-menu`), constantes órfãs.
+2. **Limites por plano removidos.** `ProGate`/`ProBanner`/`ProLimitBadge`/`useProFeature` deletados; `components/pro-limits.ts` passa a ser a fonte única com tudo `Infinity`/`true`. A monetização virou trial de 14 dias + banners, não bloqueio de recurso.
+3. **Linha ANVISA:** removida a classificação "Normal/Atenção/Crítico" do relatório de saúde e a função `getHealthStatus`. Interpretar métrica caracterizaria dispositivo médico.
+
+**Decisão:** bloquear recurso de segurança atrás de paywall é ruim de produto **e** ruim de risco. Um idoso com o alarme desligado porque o filho não renovou a assinatura é exatamente o cenário que o app existe para evitar.
+
+---
+
+### Sprint 16: Login Multi-Provedor
+
+**Objetivo:** parar de exigir conta Google de um público que muitas vezes não sabe a senha dela.
+
+**Funcionalidades:**
+1. **Apple** (`expo-apple-authentication`), atrás de `EXPO_PUBLIC_APPLE_SIGNIN_ENABLED` — o entitlement não é provisionado por Apple ID gratuito, então fica desligado em dev.
+2. **E-mail + senha** com código de confirmação e recuperação, via Resend.
+3. **Telefone** com OTP entregue por WhatsApp (mesmo token do dead man's switch).
+4. **Conta anônima** — "Continuar sem conta". O app funciona inteiro; logar depois vira *upgrade* que anexa o provedor à mesma conta.
+5. `GET /api/auth/methods` — o app esconde botões cuja infraestrutura não está configurada, em vez de mostrar um botão que dá 503.
+6. Tabelas `auth_identities` e `auth_codes`; `users.email` vira **único** (chave canônica de vínculo).
+
+**Desafios:**
+- O redirect do OAuth Google no Android voltava em `vigora://oauthredirect`, path que o Expo Router não reconhecia ("Unmatched Route") → `app/+native-intent.ts` roteia o deep link cru para `app/oauthredirect.tsx`.
+- Cold start durante o login perdia o PKCE → `code_verifier` e `redirectUri` passaram a ser persistidos antes de sair do app.
+- Debug e release têm SHA-1 diferentes → dois Client IDs Android, fixados por profile no `eas.json` e ambos aceitos pelo servidor.
+
+---
+
+### Sprint 17: Posse por Conta (`openId`) no Monitoramento
+
+**Objetivo:** corrigir o modelo de posse do dead man's switch, que amarrava tudo ao aparelho.
+
+**Problema:** `app_users`, `synced_alarms` e `device_heartbeat` eram chaveadas por `deviceId`. Trocar de celular, reinstalar ou usar dois aparelhos quebrava o monitoramento — e o `deviceId` como chave de posse era enumerável.
+
+**Mudanças:**
+1. `account_liveness` substitui as três tabelas: liveness é da **conta**; qualquer aparelho que pingar mantém a pessoa "viva". `lastDeviceId` vira metadado.
+2. `monitoring.register` e `monitoring.syncAlarms` viram stubs de compatibilidade — a agenda autoritativa de alarmes é `user_data.alarms`.
+3. Estado local passa a ser por conta (`vigora_app_state:<openId>`) — sem isso, alarmes vazavam entre contas no mesmo aparelho.
+4. Migrations `0010`/`0011`. Spec em `docs/design/2026-07-12-monitoring-account-ownership.md`.
+5. Aviso por inatividade passou a exigir um evento **não confirmado**, eliminando falso alarme.
+6. Vínculo cuidador↔monitorado saiu do shell: `link` router completo (convites single-use por código/QR/link universal), push Expo em tempo real e revogação dos dois lados.
+
+---
+
+### Sprint 18: Sessão Deslizante
+
+**Objetivo:** corrigir a causa-raiz de "histórico vazio e dead man's switch morto" relatada em campo.
+
+**Problema:** o JWT tinha TTL de 7 dias e não havia refresh. Passado o prazo, heartbeat, sync e eventos passavam a dar 401 — **silenciosamente**. O app parecia funcionar; o monitoramento estava desarmado.
+
+**Solução:** `auth.refresh` a cada abertura do app (`lib/session-refresh.ts`) com sessão de 30 dias, mais tratamento **global** de 401 que derruba a sessão e leva ao login. O token anterior expira naturalmente, sem revogação, para não competir com requests em voo.
+
+**Lição:** falha silenciosa em caminho crítico de segurança é pior que falha ruidosa. O sintoma visível (histórico vazio) estava a três camadas do defeito real (TTL).
+
+---
+
+### Sprint 19: Compatibilidade Android 14+ e Confiabilidade dos Alarmes
+
+**Objetivo:** fazer o alarme tocar em aparelhos reais de idosos — Samsung/Xiaomi com otimização agressiva de bateria.
+
+**Mudanças:**
+1. `USE_FULL_SCREEN_INTENT` com checagem de `canUseFullScreenIntent()` em runtime e prompt de permissão.
+2. `showWhenLocked`/`turnScreenOn` aplicados **no lançamento da activity do alarme**, escopados àquela tela — não à `MainActivity`.
+3. Isenção de otimização de bateria: diálogo nativo direto, rotas por OEM (Samsung One UI, Xiaomi) e telemetria no heartbeat (`accountLiveness.batteryExempt`).
+4. Prompt de alarme exato (Android 12+); módulo nativo blindado contra variações de versão/OEM.
+5. Soneca de volta na notificação, via deep link `vigora://alarm-ring?...&snooze=1`, sem furar o dead man's switch.
+6. **Bug corrigido:** alarme diário reagendava +7 dias em vez de +1 ao ser dispensado.
+7. **Bug corrigido:** alarme respondido nunca chegava ao servidor (closure velha capturando estado obsoleto).
+
+---
+
+### Sprint 20: Incidente de Produção — Migration Não Aplicada
+
+**Objetivo:** entender e prevenir 27 horas de dead man's switch desarmado em produção.
+
+**Problema:** a migration `0012` nunca foi aplicada no deploy. O job do monitoramento falhava em toda iteração, e ninguém percebeu por mais de um dia.
+
+**Solução:**
+1. `migrate()` no boot do servidor (`server/db.ts`), com isolamento de erro por passo.
+2. `GET /api/health` como health check **profundo**: responde **503** quando o banco está inacessível ou o job está parado/falhando — não 200 com um campo `ok: false` que nenhum monitor lê.
+
+**Pendência:** ninguém observa o `/api/health` ainda. O endpoint existe; o alarme sobre ele, não.
+
+**Lição:** um job de segurança que falha em silêncio é indistinguível de um que não existe. A instrumentação precisa vir junto com o job, não depois do incidente.
 
 ---
 
@@ -406,6 +510,8 @@ login → oauth/callback → userType === 'caregiver'
 
 ### Desafio 2: Supabase Quebrando App Quando Não Configurado
 
+> **Registro histórico:** o Supabase foi removido no Sprint 14. O padrão sobreviveu: hoje `isEmailServiceConfigured()` / `isPhoneLoginConfigured()` fazem o mesmo para Resend e para o template OTP do WhatsApp, e `GET /api/auth/methods` faz o app esconder o botão em vez de oferecer um caminho que dá 503.
+
 **Solução:** Lazy init com `isSupabaseConfigured()` — o cliente só é criado quando as env vars estão presentes.
 
 ---
@@ -454,12 +560,12 @@ export default defineConfig({
 
 | Métrica | Valor |
 |---|---|
-| Tempo Total de Desenvolvimento | 15 semanas |
-| Sprints Concluídas | 13 |
-| Arquivos de Teste | 20 |
-| Telas Implementadas | 14+ (tabs + caregiver-tabs + modais) |
-| Componentes Reutilizáveis | 25+ |
-| TypeScript Errors (novos) | 0 |
+| Sprints Concluídas | 20 |
+| Arquivos de Teste | 38 (290 testes) |
+| Telas Implementadas | ~33 rotas (11 abas + 4 abas do cuidador + fluxos + modais) |
+| Componentes Reutilizáveis | 39 |
+| Migrations aplicadas | 0000 → 0012 |
+| TypeScript Errors (novos) | 0 (o pré-existente em `lib/storageProxy.ts` é tolerado) |
 
 ---
 
@@ -471,34 +577,48 @@ export default defineConfig({
 
 **3. Usar env vars para todos os secrets.** Nunca hardcode API keys, mesmo que sejam de teste.
 
-**4. Implementar fallbacks graceful para serviços externos.** O Supabase e o servidor principal devem falhar silenciosamente para não quebrar o app offline.
+**4. Fallback graceful para serviço externo, sim — falha silenciosa em caminho crítico, não.** O app deve continuar funcionando offline se o servidor cair. Mas o dead man's switch *desarmado* precisa gritar: foi exatamente a falha silenciosa (sessão expirada no Sprint 18, migration não aplicada no Sprint 20) que produziu os dois piores incidentes do projeto.
 
-**5. Separar responsabilidades por plataforma.** O bugfix de notificações duplicadas mostrou a importância de tratar Android e iOS separadamente quando o comportamento nativo difere.
+**5. Separar responsabilidades por plataforma.** O bugfix de notificações duplicadas mostrou a importância de tratar Android e iOS separadamente quando o comportamento nativo difere. Android 14+ (Sprint 19) reforçou: cada versão e cada OEM é um caso.
 
-**6. Extrair lógica de estado de contextos React.** O caregiver reducer separado do provider permitiu testes unitários limpos sem mocking de React.
+**6. Extrair lógica de estado de contextos React.** O caregiver reducer separado do provider permitiu testes unitários limpos sem mocking de React. O mesmo padrão foi aplicado depois em `pro-limits.ts`, `alarm-fire-times.ts`, `app-lock-core.ts` e `font-scale.ts`.
 
-**7. Escolher o backend certo para cada dado.** Dados operacionais leves (dead man's switch) → Supabase grátis. Dados de usuário sensíveis (anamnese, saúde) → servidor próprio com auth JWT.
+**7. Um backend só.** A divisão "dados leves no Supabase, dados sensíveis no servidor próprio" (Sprint 9) parecia econômica e virou dois lugares para configurar errado. Consolidar no Railway (Sprint 14) removeu uma classe inteira de falha.
+
+**8. Posse de dado é por conta, não por aparelho.** Amarrar monitoramento ao `deviceId` (Sprint 17) quebrava em troca de celular e reinstalação, e criava um identificador enumerável. `openId` como chave única resolveu correção e segurança de uma vez.
+
+**9. Recurso de segurança não vai atrás de paywall.** Bloquear alarme ou monitoramento por plano (Sprint 6) criava o cenário que o app existe para evitar. Removido no Sprint 15.
+
+**10. Não interpretar métrica de saúde.** A classificação "Normal/Atenção/Crítico" era tecnicamente trivial e regulatoriamente cara — cruza a linha da ANVISA para dispositivo médico. Removida no Sprint 15.
 
 ---
 
 ## Roadmap Futuro
 
-### v2.0 (Q3 2026)
+### Antes do lançamento
+
+- [ ] Produtos RevenueCat migrados da Test Store para App Store / Google Play
+- [ ] Monitor externo observando `GET /api/health` (hoje ninguém olha)
+- [ ] Secrets de assinatura configurados para os builds de release
+- [ ] Beta com usuários idosos reais
+
+### v2.0 (Q4 2026)
 
 - [ ] Integração com wearables (Apple Watch, Wear OS)
 - [ ] Notificações push personalizadas baseadas em métricas de saúde
-- [ ] Suporte multilíngue (EN, ES, PT)
-- [ ] Sincronização caregiver↔monitorado em tempo real (server-side)
+- [ ] Suporte multilíngue (EN, ES)
 
-### v3.0 (Q1 2027)
+### v3.0 (em avaliação)
 
-- [ ] IA para recomendações de saúde personalizadas
 - [ ] Integração com prontuário eletrônico
-- [ ] Telemedicina (consultas com médicos)
 - [ ] Integração com IoT (medidores de pressão, glicosímetro)
+- [ ] ~~IA para recomendações de saúde~~ — **bloqueado por avaliação regulatória.** Recomendação clínica caracteriza dispositivo médico (ANVISA); só entra com o enquadramento resolvido primeiro.
+- [ ] ~~Telemedicina~~ — mesma restrição.
 
 ---
 
 ## Conclusão
 
-O desenvolvimento do Vigora evoluiu de um MVP básico de alarmes para um ecossistema completo com autenticação de conta, cloud backup, dead man's switch, monetização e suporte a dois perfis de usuário (monitorado e cuidador). As principais lições — documentar decisões, testar cedo, usar env vars, implementar fallbacks graceful e extrair lógica testável — serão aplicadas em todos os desenvolvimentos futuros do projeto.
+O desenvolvimento do Vigora evoluiu de um MVP básico de alarmes para um ecossistema completo com login multi-provedor, cloud backup por conta, dead man's switch com posse por `openId`, check-in diário, bloqueio do app, widgets, monetização e dois perfis de usuário (monitorado e cuidador).
+
+As lições mais caras vieram dos incidentes, não das features: uma sessão expirando em silêncio e uma migration não aplicada desarmaram o recurso central do produto sem nenhum sinal visível. O que distingue este app de um app comum de saúde é que a falha dele é invisível por construção — só se descobre no dia em que alguém precisava e ninguém foi avisado. Toda decisão de engenharia daqui pra frente é medida por esse critério.

@@ -40,11 +40,11 @@ Para os produtos `yearly` e `monthly`, crie um **Subscription Group** chamado `V
 
 ### 2.3 Configurar Preços Sugeridos
 
-| Produto | Preço sugerido (BRL) | Equivalente mensal |
+| Produto | Preço (BRL) | Equivalente mensal |
 |---|---|---|
-| `lifetime` | R$ 149,90 | — |
-| `yearly` | R$ 79,90/ano | R$ 6,66/mês |
-| `monthly` | R$ 12,90/mês | R$ 12,90/mês |
+| `lifetime` | R$ 299,90 | — |
+| `yearly` | R$ 199,90/ano | R$ 16,66/mês |
+| `monthly` | R$ 19,90/mês | R$ 19,90/mês |
 
 ### 2.4 Configurar App Store Server Notifications
 
@@ -128,13 +128,16 @@ Acesse [app.revenuecat.com](https://app.revenuecat.com).
 
 4. Marque o offering como **Current** (padrão)
 
+> **Armadilha conhecida:** produtos criados apenas na **Test Store** do RevenueCat não são entregues ao SDK em builds reais — o paywall abre e mostra "Sem conexão" / "Planos indisponíveis". Os produtos precisam existir na App Store Connect e no Google Play e estar vinculados no painel RC. Sintoma idêntico ao de chave de API ausente, então cheque os dois.
+
 ### 4.5 Configurar o Paywall (RevenueCat Paywalls)
 
 1. Acesse **Paywalls** → **+ New Paywall**
 2. Selecione o template desejado (recomendado: **Blaze** para 3 planos)
 3. Personalize com as cores do Vigora:
-   - Primary: `#0a7ea4`
-   - Background: `#ffffff`
+   - Primary: `#1E4D8C` (azul profundo)
+   - Background: `#F4EFE5` (creme)
+   - Accent: `#C96442` (terracota)
 4. Vincule ao offering `default`
 5. Publique o paywall
 
@@ -198,8 +201,9 @@ O entitlement é verificado em `lib/purchases.ts`:
 ```typescript
 export const ENTITLEMENT_PRO = "Vigora Saúde Pro";
 
-export async function hasProAccess(customerInfo: CustomerInfo): Promise<boolean> {
-  return customerInfo.entitlements.active[ENTITLEMENT_PRO] !== undefined;
+export function hasProAccess(customerInfo: CustomerInfo | null): boolean {
+  if (!customerInfo) return false;
+  return typeof customerInfo.entitlements.active[ENTITLEMENT_PRO] !== "undefined";
 }
 ```
 
@@ -216,39 +220,33 @@ function MyScreen() {
 
 ---
 
-## 7. Limites do Plano Gratuito
+## 7. Política de Acesso — Sem Bloqueio por Plano
 
-Centralizados em `components/pro-limits.ts` (re-exportados por `pro-gate.tsx`). O app **não bloqueia recursos por plano** — a monetização é por assinatura após o trial de 14 dias:
+O app **não bloqueia recursos por plano**. A monetização é por assinatura após o **trial de 14 dias** (`TRIAL_DAYS` em `context/purchases-context.tsx`), via `TrialBanner` / `ExpiredBanner` / paywall — nunca por restrição de funcionalidade. A fonte única de verdade é `components/pro-limits.ts`, um módulo puro que UI e testes importam:
 
 ```typescript
 export const FREE_LIMITS = {
   CONTACTS: Infinity,   // sem limite por plano
-  ALARMS: Infinity,     // sem limite por plano (teto técnico MAX_ALARMS = 24, do agendador)
+  ALARMS: Infinity,     // sem limite por plano
   PDF_EXPORT: true,     // liberado para todos
   MONITORING: true,     // liberado para todos
-};
+} as const;
+
+/** Teto técnico de alarmes simultâneos (limite do agendador, não do plano). */
+export const MAX_ALARMS = 24;
 ```
 
-Para adicionar novos recursos premium, use os componentes disponíveis:
+Os componentes `ProGate` / `ProBanner` / `ProLimitBadge` / `useProFeature` foram **removidos** junto com os limites por plano — não existe mais `components/pro-gate.tsx`. Sobrou o `ProUpsellModal`, usado como convite à assinatura.
+
+Para consultar o estado da assinatura em qualquer tela:
 
 ```typescript
-import { ProGate, ProBanner, ProLimitBadge, useProFeature } from '@/components/pro-gate';
+import { usePurchases } from '@/hooks/use-purchases';
 
-// Bloquear renderização
-<ProGate fallback={<ProBanner title="Recurso Pro" description="..." />}>
-  <RecursoPremium />
-</ProGate>
-
-// Bloquear ação
-const { requirePro } = useProFeature();
-const handleAction = () => {
-  if (!requirePro()) return; // Abre paywall automaticamente
-  // ... lógica premium
-};
-
-// Mostrar limite de uso
-<ProLimitBadge current={count} limit={FREE_LIMITS.CONTACTS} label="contatos" />
+const { isPro, isTrialActive, trialDaysLeft } = usePurchases();
 ```
+
+> Se um recurso realmente precisar virar premium no futuro, reintroduza o gate deliberadamente — e atualize este documento junto. Alterar `FREE_LIMITS` sozinho não bloqueia nada, porque nenhum componente lê esses valores como gate hoje.
 
 ---
 
@@ -256,7 +254,7 @@ const handleAction = () => {
 
 Antes de publicar o app nas lojas, verifique:
 
-- [ ] Produtos criados na App Store Connect e Google Play Console
+- [ ] Produtos criados na App Store Connect e Google Play Console — **nas lojas reais, não só na Test Store**
 - [ ] Entitlement `Vigora Saúde Pro` criado no RevenueCat com os 3 produtos vinculados
 - [ ] Offering `default` criado com os 3 pacotes (`$rc_lifetime`, `$rc_annual`, `$rc_monthly`)
 - [ ] Paywall configurado e publicado no RevenueCat

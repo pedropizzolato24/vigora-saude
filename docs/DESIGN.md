@@ -6,15 +6,24 @@ O azul profundo carrega 30-60% da superfície em componentes de ação. Fundo cr
 
 ## Palette
 
-- Background: #F4EFE5 (creme)
-- Primary: #1E4D8C (azul profundo)
-- Accent: #C96442 (terracota)
-- Warning: #F0C24A (âmbar)
-- Foreground: #0E1417 (dark)
-- Muted: #5B636A
-- Border: #D8D1C2
-- Success: #0F8A4A
-- Emergency: #D6161C (dead man's switch — max legibility, não suavizar)
+O app tem tema claro **e** escuro; todo token existe nos dois. Fonte de verdade: `theme.config.js` (consumido via `useColors()` ou classes NativeWind). **Nunca hardcode hex na UI.**
+
+| Token | Light | Dark |
+|---|---|---|
+| `background` | `#F4EFE5` (creme) | `#0E1417` |
+| `surface` | `#FFFFFF` | `#1A1714` (warm dark) |
+| `bar` (barras sup./inf.) | `#EBE2CD` | `#151C20` |
+| `primary` (azul profundo) | `#1E4D8C` | `#4A7EC4` |
+| `accent` (terracota) | `#C96442` | `#D4784A` |
+| `foreground` | `#0E1417` | `#F4EFE5` |
+| `muted` | `#5B636A` | `#8A9298` |
+| `border` | `#D8D1C2` | `#2D2722` |
+| `success` | `#0F8A4A` | `#2CB966` |
+| `warning` (âmbar) | `#F0C24A` | `#F5D06E` |
+| `error` | `#D6161C` | `#F04040` |
+| `emergency` (dead man's switch — não suavizar) | `#D6161C` | `#F04040` |
+
+Complementares: `on*` (texto sobre fundo colorido), `*Light` (fundos ghost com alpha) e `emergencyDark` (`#9E0F14`, sombra 3D do botão SOS).
 
 ## Typography
 
@@ -22,13 +31,23 @@ O azul profundo carrega 30-60% da superfície em componentes de ação. Fundo cr
 - Body: Plus Jakarta Sans — todo texto de interface
 - Mono: Space Mono — timestamps, dados numéricos de saúde
 
-## Font Sizes (minimum)
+## Font Sizes
 
-- Body: 15px | Accessible: 18px
-- Button: 16px
-- Title: 20px
-- H2: 28px
-- H1: 44px
+Tamanhos base na escala `medium` (`lib/_core/font-scale.ts`); o usuário escolhe `small` (×0,85), `medium` (×1,0) ou `large` (×1,2).
+
+| Papel | Base | `large` |
+|---|---|---|
+| `xs` / `sm` | 11 / 13px | 13 / 16px |
+| `base` (corpo) | 15px | 18px |
+| `md` (botão) | 16px | 19px |
+| `lg` | 18px | 22px |
+| `xl` (título) | 20px | 24px |
+| `2xl` / `3xl` | 22 / 26px | 26 / 31px |
+| `4xl` | 32px | 38px |
+
+## Touch Targets
+
+Piso absoluto de **44px** em qualquer escala; no modo acessível, ≥60px. A caixa escala junto com o texto (`touchTargetFor(base, scale)`) — texto crescendo dentro de botão parado é bug, não estilo.
 
 ## Spacing Scale
 
