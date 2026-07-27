@@ -256,7 +256,14 @@ async function sendPushToCaregivers(
 ): Promise<number> {
   if (caregiverOpenIds.length === 0) return 0;
   const tokens = await getPushTokensForOpenIds(caregiverOpenIds);
-  if (tokens.length === 0) return 0;
+  // Mesmo motivo do aviso em routers-monitoring.ts: cuidador vinculado sem
+  // token = escalação silenciosamente sem destino. Sem openId no log (LGPD).
+  if (tokens.length === 0) {
+    console.warn(
+      `[Monitoring] escalação: ${caregiverOpenIds.length} cuidador(es) vinculado(s), 0 push tokens — push NÃO enviado.`
+    );
+    return 0;
+  }
   return sendExpoPush(tokens.map((t) => t.token), { title, body, data });
 }
 
