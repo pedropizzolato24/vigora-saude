@@ -19,6 +19,7 @@ import { useAppContext } from '@/lib/app-context';
 import * as Auth from '@/lib/_core/auth';
 import { trpc } from '@/lib/trpc';
 import { clearPendingInvite, getPendingInvite } from '@/lib/pending-invite';
+import { clearRegisterDraft, loadRegisterDraft, saveRegisterDraft } from '@/lib/register-draft';
 import { getNextRoute } from '@/lib/auth-session';
 import { hasCompletedCaregiverOnboarding } from '@/lib/caregiver-onboarding-flag';
 
@@ -54,18 +55,39 @@ export default function RegisterScreen() {
   const [userType, setUserType] = useState<UserType | null>(null);
   const [healthConsent, setHealthConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
   const { dispatch } = useAppContext();
 
   const completeRegistration = trpc.auth.completeRegistration.useMutation();
 
+  // Perfil do servidor primeiro, rascunho local por cima: o que o usuário
+  // digitou vale mais do que o que veio do provedor de login.
   useEffect(() => {
-    Auth.getUserInfo().then((u) => {
+    (async () => {
+      const [u, draft] = await Promise.all([Auth.getUserInfo(), loadRegisterDraft()]);
       if (u?.name) setName(u.name);
       if (u?.phone) setPhone(formatPhone(u.phone));
       if (u?.birthDate) setBirthDate(u.birthDate);
       if (u?.bloodType) setBloodType(u.bloodType);
-    });
+      if (draft) {
+        setName(draft.name);
+        setPhone(draft.phone);
+        setBirthDate(draft.birthDate);
+        setBloodType(draft.bloodType);
+        setUserType(draft.userType);
+        setHealthConsent(draft.healthConsent);
+      }
+      setHydrated(true);
+    })();
   }, []);
+
+  // Rascunho persistido a cada mudança: fechar o app no meio do cadastro não
+  // perde o preenchimento, e é o que o gate de startup usa para decidir entre
+  // voltar ao formulário ou ao login (ver lib/register-draft.ts).
+  useEffect(() => {
+    if (!hydrated) return;
+    saveRegisterDraft({ name, phone, birthDate, bloodType, userType, healthConsent });
+  }, [hydrated, name, phone, birthDate, bloodType, userType, healthConsent]);
 
   const handleSubmit = async () => {
     setError(null);
@@ -127,6 +149,9 @@ export default function RegisterScreen() {
           bloodType: updated.bloodType,
         });
       }
+
+      // Cadastro concluído: o rascunho não serve mais para nada.
+      await clearRegisterDraft();
 
       // Resume a pending invite link (the monitored just finished registering).
       const pendingInvite = await getPendingInvite();

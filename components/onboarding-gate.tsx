@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Auth from '@/lib/_core/auth';
 import { setPendingInvite } from '@/lib/pending-invite';
 import { hasCompletedCaregiverOnboarding } from '@/lib/caregiver-onboarding-flag';
+import { hasRegisterDraft } from '@/lib/register-draft';
 
 const ONBOARDING_KEY = 'vigora_onboarding_completed';
 const LOGIN_COMPLETED_KEY = 'vigora_login_completed';
@@ -16,7 +17,8 @@ const LOGIN_COMPLETED_KEY = 'vigora_login_completed';
  *   onboarding not done                          → /onboarding (first time)
  *   onboarding done, never logged in before      → /onboarding (so user sees slides → login)
  *   onboarding done, logged in before, no user   → /login (returning user, session gone)
- *   authenticated but userType is null           → /register (registration incomplete)
+ *   authenticated, userType null, form em branco → /login (nada a retomar)
+ *   authenticated, userType null, form iniciado  → /register (retoma o rascunho)
  *   authenticated, userType 'caregiver', onboarding flag absent → /caregiver-onboarding
  *   authenticated, userType 'caregiver', onboarding flag present → /(caregiver-tabs)
  *   authenticated, userType 'monitored'         → stay on /(tabs)
@@ -78,8 +80,11 @@ export function OnboardingGate() {
         }
 
         if (!user.userType) {
-          // Logged in but never finished the registration form
-          router.replace('/register');
+          // Entrou (inclusive "Continuar sem conta") mas não concluiu o cadastro.
+          // Só volta ao formulário quando há algo escrito nele; com tudo em
+          // branco o app abria direto no /register e o usuário tinha que tocar
+          // em "Voltar" para chegar ao login.
+          router.replace((await hasRegisterDraft()) ? '/register' : '/login');
           return;
         }
 
