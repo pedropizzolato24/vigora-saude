@@ -42,8 +42,14 @@ import { getPushTokensForOpenIds } from "./db-push";
 import { sendExpoPush } from "./push";
 import type { EmergencyContactRecord } from "../drizzle/schema";
 
-// Grace period: how long after scheduledAt we wait before resolving a pending event
-const GRACE_PERIOD_MINUTES = 15;
+// Grace period: how long after scheduledAt we wait before resolving a pending event.
+// Precisa cobrir só o caminho feliz do cliente: countdown máximo de 60s
+// (timerDuration) + retries de rede do confirmEvent (~1min no pior caso).
+// 5min cobre com folga; os 15min antigos empurravam o alerta ao cuidador para
+// 15–20min depois do horário (grace + cadência do job) — tempo demais para um
+// dead man's switch. Resposta tardia real ainda corrige o status depois
+// (updateAlarmEventStatusByAlarmId aceita 'responded' sobre missed/not_sent).
+const GRACE_PERIOD_MINUTES = 5;
 
 // Heartbeat threshold: if the account hasn't pinged in this many minutes, it's considered offline
 const OFFLINE_THRESHOLD_MINUTES = 30;
@@ -315,10 +321,15 @@ export async function runMonitoringJob(): Promise<void> {
       // o dono do evento ruim.
       try {
         const liveness = await getAccountLiveness(event.openId);
+        // Vida DEPOIS do horário do disparo. Sem sinal a partir de scheduledAt,
+        // não há evidência de que o alarme sequer tocou (celular desligado, sem
+        // bateria, sem conexão) → 'not_sent'. O critério antigo (heartbeat até
+        // 30min ANTES do horário) classificava "desligou o celular 1min antes
+        // do alarme" como 'missed' — e o cuidador recebia "não respondeu ao
+        // alarme", que é falso.
         const accountOnline =
           liveness &&
-          liveness.lastSeenAt.getTime() >
-            event.scheduledAt.getTime() - OFFLINE_THRESHOLD_MINUTES * 60 * 1000;
+          liveness.lastSeenAt.getTime() >= event.scheduledAt.getTime();
 
         if (!accountOnline) {
           await updateAlarmEventStatus(event.id, "not_sent");
@@ -529,13 +540,18 @@ export async function runMonitoringJob(): Promise<void> {
   }
 
   try {
-    // -- Step 4: Escalate missed MEDICATION alarms (account online, unanswered) --
+    // -- Step 4: Escalate unanswered MEDICATION alarms (missed | not_sent) ------
     // Backstop do dead man's switch para quando a escalação no cliente não rodou
     // (app morreu logo após o disparo). warningSent=true é setado pelo cliente
     // quando ELE escala (confirmAlarmMissed), então aqui só caem os que ninguém
-    // alertou. 'not_sent' (offline) fica para o Passo 2. Look-back 48h.
+    // alertou. 'not_sent' (sem sinal de vida após o horário) também escala AQUI
+    // — antes ficava só para a escada de inatividade do Passo 2 (30min+), e o
+    // cuidador de um celular desligado esperava meia hora pelo primeiro aviso.
+    // A cópia distingue: 'missed' = "não respondeu"; 'not_sent' = "não foi
+    // entregue — celular pode estar desligado" (nunca acusar de não responder
+    // um alarme que não tocou). Look-back 48h.
     const missedAlarms = await getMissedMedicationEvents("checkin-daily", EVENT_LOOKBACK_HOURS);
-    console.log(`[Monitor] Found ${missedAlarms.length} missed medication alarms to escalate`);
+    console.log(`[Monitor] Found ${missedAlarms.length} unanswered medication alarms to escalate`);
 
     for (const event of missedAlarms) {
       const { userName, contacts } = await getAccountProfile(event.openId);
@@ -551,11 +567,16 @@ export async function runMonitoringJob(): Promise<void> {
         minute: "2-digit",
       });
       const desc = event.alarmDescription || "alarme de medicamento";
-      const message =
-        `⚠️ ALARME NÃO RESPONDIDO - Vigora\n\n` +
-        `${name} não confirmou o alarme "${desc}" previsto para ${scheduledStr}.\n\n` +
-        `Por favor, entre em contato para verificar se está tudo bem.\n\n` +
-        `- Enviado automaticamente pelo Vigora`;
+      const notSent = event.status === "not_sent";
+      const message = notSent
+        ? `⚠️ ALARME NÃO ENTREGUE - Vigora\n\n` +
+          `O alarme "${desc}" de ${name}, previsto para ${scheduledStr}, não pôde ser entregue — o celular pode estar desligado, sem bateria ou sem conexão.\n\n` +
+          `Por favor, entre em contato para verificar se está tudo bem.\n\n` +
+          `- Enviado automaticamente pelo Vigora`
+        : `⚠️ ALARME NÃO RESPONDIDO - Vigora\n\n` +
+          `${name} não confirmou o alarme "${desc}" previsto para ${scheduledStr}.\n\n` +
+          `Por favor, entre em contato para verificar se está tudo bem.\n\n` +
+          `- Enviado automaticamente pelo Vigora`;
 
       let totalSent = 0;
       for (const contact of contacts) {
@@ -569,13 +590,15 @@ export async function runMonitoringJob(): Promise<void> {
 
       const pushed = await sendPushToCaregivers(
         caregiverOpenIds,
-        "⚠️ Alarme não respondido — Vigora",
-        `${name} não respondeu ao alarme das ${scheduledStr}. Toque para ver os detalhes.`,
+        notSent ? "⚠️ Alarme não entregue — Vigora" : "⚠️ Alarme não respondido — Vigora",
+        notSent
+          ? `O celular de ${name} pode estar desligado ou sem conexão — o alarme das ${scheduledStr} não foi entregue. Toque para ver os detalhes.`
+          : `${name} não respondeu ao alarme das ${scheduledStr}. Toque para ver os detalhes.`,
         { type: "missed_alarm", url: "/(caregiver-tabs)/alerts" }
       );
 
       await markEventWarningSent(event.id);
-      console.log(`[Monitor] Step 4: escalated missed alarm ${event.id}, ${totalSent} contacts reached, ${pushed} caregiver push(es) delivered`);
+      console.log(`[Monitor] Step 4: escalated ${event.status} alarm ${event.id}, ${totalSent} contacts reached, ${pushed} caregiver push(es) delivered`);
     }
   } catch (error) {
     recordFailure("Passo 4 (alarmes de medicação perdidos)", error);

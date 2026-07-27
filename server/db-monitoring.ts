@@ -8,7 +8,7 @@
  *
  * Handles: account liveness (heartbeat), alarm events, warning log, retention.
  */
-import { and, desc, eq, gte, inArray, lt, lte, ne } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, lt, lte, ne } from "drizzle-orm";
 import { getDb } from "./db";
 import { pickPendingEvent } from "./_core/pick-pending-event";
 import {
@@ -114,6 +114,44 @@ export async function createAlarmEvent(data: InsertAlarmEvent): Promise<number> 
     )
     .limit(1);
   if (existing.length > 0) return existing[0].id;
+
+  // Um único pending FUTURO por (openId, alarmId). O cliente pré-registra o
+  // PRÓXIMO disparo a cada sync; editar o horário do alarme mudava o
+  // scheduledAt e ACUMULAVA pendings — e cada um expirava depois e escalava um
+  // "alarme perdido" de um horário que não existe mais. Reaproveita a linha
+  // futura existente (e apaga duplicatas herdadas). Pendings com scheduledAt
+  // no PASSADO ficam intocados: são disparos reais esperando o monitoring-job
+  // resolver — apagá-los desarmaria o switch.
+  const now = new Date();
+  if ((data.scheduledAt as Date).getTime() > now.getTime()) {
+    const futurePendings = await db
+      .select({ id: alarmEvents.id })
+      .from(alarmEvents)
+      .where(
+        and(
+          eq(alarmEvents.openId, data.openId),
+          eq(alarmEvents.alarmId, data.alarmId),
+          eq(alarmEvents.status, "pending"),
+          gt(alarmEvents.scheduledAt, now)
+        )
+      );
+    if (futurePendings.length > 0) {
+      const [keep, ...extras] = futurePendings;
+      await db
+        .update(alarmEvents)
+        .set({
+          scheduledAt: data.scheduledAt as Date,
+          alarmDescription: data.alarmDescription,
+        })
+        .where(eq(alarmEvents.id, keep.id));
+      if (extras.length > 0) {
+        await db
+          .delete(alarmEvents)
+          .where(inArray(alarmEvents.id, extras.map((e) => e.id)));
+      }
+      return keep.id;
+    }
+  }
 
   const result = await db.insert(alarmEvents).values(data);
   return (result as any).insertId as number;
@@ -259,12 +297,14 @@ export async function getMissedCheckinEvents(alarmId: string, lookbackHours: num
 }
 
 /**
- * Eventos de alarme de MEDICAÇÃO (não check-in) que ficaram "missed" — ou seja,
- * a conta estava ONLINE no horário (Passo 1 marca "missed" só se online) e
- * o usuário não respondeu — e ainda não foram escalados pelo servidor
+ * Eventos de alarme de MEDICAÇÃO (não check-in) que expiraram sem resposta —
+ * "missed" (havia sinal de vida após o horário, ninguém respondeu) ou
+ * "not_sent" (sem sinal de vida após o horário: celular desligado/sem conexão,
+ * o alarme provavelmente nem tocou) — e ainda não foram escalados pelo servidor
  * (warningSent=false). Backstop do dead man's switch para quando a escalação no
- * cliente não completou (app morreu após o disparo). 'not_sent' (offline) NÃO
- * entra aqui — esse caso é coberto pelo aviso de conta offline (Passo 2).
+ * cliente não completou. O Passo 4 usa o status para escolher a cópia certa
+ * ("não respondeu" vs "não foi entregue"); a escada de inatividade do Passo 2
+ * segue existindo como reforço progressivo (30min/2h/6h).
  */
 export async function getMissedMedicationEvents(checkinAlarmId: string, lookbackHours: number) {
   const db = await getDb();
@@ -276,7 +316,7 @@ export async function getMissedMedicationEvents(checkinAlarmId: string, lookback
     .where(
       and(
         ne(alarmEvents.alarmId, checkinAlarmId),
-        eq(alarmEvents.status, "missed"),
+        inArray(alarmEvents.status, ["missed", "not_sent"]),
         eq(alarmEvents.warningSent, false),
         gte(alarmEvents.scheduledAt, cutoff)
       )
