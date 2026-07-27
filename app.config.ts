@@ -1,5 +1,6 @@
 // Load environment variables with proper priority (system > .env)
 import "./scripts/load-env.js";
+import { existsSync } from "node:fs";
 import type { ExpoConfig } from "expo/config";
 import type { WithAndroidWidgetsParams } from 'react-native-android-widget';
 
@@ -25,6 +26,22 @@ const linkHost = process.env.EXPO_PUBLIC_LINK_HOST?.trim() || undefined;
 // falhar/ser removida. Ligue (EXPO_PUBLIC_APPLE_SIGNIN_ENABLED=true) só no
 // build de produção, quando a conta paga já tiver a capability ativa.
 const appleSignIn = process.env.EXPO_PUBLIC_APPLE_SIGNIN_ENABLED === "true";
+
+// FCM (Firebase Cloud Messaging) — OBRIGATÓRIO para push no Android fora do
+// Expo Go. Sem o google-services.json, getExpoPushTokenAsync() lança, o token
+// do cuidador nunca é registrado e o push de alarme perdido não sai (o evento
+// ainda vira 'missed' e o WhatsApp ainda é enviado — só o push some).
+// O arquivo NÃO vai no git (contém o sender id do projeto Firebase): local via
+// ./google-services.json, CI via secret escrito nesse caminho antes do prebuild.
+// Ausente ⇒ campo omitido, para o prebuild não quebrar em quem não o tem.
+const googleServicesFile =
+  process.env.GOOGLE_SERVICES_JSON?.trim() || "./google-services.json";
+const hasGoogleServices = existsSync(googleServicesFile);
+if (!hasGoogleServices) {
+  console.warn(
+    `[app.config] ${googleServicesFile} ausente — o build Android NÃO terá push (FCM). Ver docs/claude/alarmes.md.`
+  );
+}
 
 const config: ExpoConfig = {
   name: env.appName,
@@ -61,6 +78,7 @@ const config: ExpoConfig = {
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
     package: env.androidPackage,
+    ...(hasGoogleServices ? { googleServicesFile } : {}),
     permissions: [
       "POST_NOTIFICATIONS",
       "SCHEDULE_EXACT_ALARM",

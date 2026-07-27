@@ -42,6 +42,22 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Sem isto o APK sai sem FCM e o push ao cuidador (alarme perdido) nunca
+      # chega: getExpoPushTokenAsync lança no aparelho e o token não é registrado.
+      # Precisa vir ANTES do prebuild — é ele que aplica o plugin do Google Services.
+      - name: Injeta google-services.json (FCM)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::error::Secret GOOGLE_SERVICES_JSON ausente — o APK sairia sem push (FCM)."
+            exit 1
+          fi
+          printf '%s' "$GOOGLE_SERVICES_JSON" > google-services.json
+          node -e "JSON.parse(require('fs').readFileSync('google-services.json','utf8'))" \
+            || { echo "::error::GOOGLE_SERVICES_JSON não é JSON válido"; exit 1; }
+          echo "OK: google-services.json escrito"
+
       - name: Expo Prebuild (gera projeto Android nativo)
         run: npx expo prebuild --platform android --non-interactive
         env:

@@ -35,6 +35,9 @@ yarn-error.*
 .env.*
 !.env.example
 
+# credenciais FCM (push Android) — local; no CI vem do secret GOOGLE_SERVICES_JSON
+google-services.json
+
 # typescript
 *.tsbuildinfo
 
