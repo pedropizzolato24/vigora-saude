@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
+import { Collapsible, COLLAPSE_DURATION, FadeInView } from '@/components/animated-components';
 import { FormKeyboardView } from '@/components/form-keyboard-view';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
@@ -99,11 +100,14 @@ function CollapsibleSection({
           color={colors.muted}
         />
       </Pressable>
-      {open && (
+      {/* O painel desliza para baixo; o conteúdo só aparece depois de aberto. */}
+      <Collapsible open={open}>
         <View style={[styles.sectionContent, { borderTopColor: colors.border }]}>
-          {children}
+          <FadeInView delay={COLLAPSE_DURATION} duration={220}>
+            {children}
+          </FadeInView>
         </View>
-      )}
+      </Collapsible>
     </View>
   );
 }
@@ -434,8 +438,23 @@ export default function SettingsScreen() {
         ],
       });
     } else {
-      if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      updateSetting('accessibilityMode', false);
+      // Desativar também confirma: um toque acidental tirava o idoso do layout
+      // grande sem aviso nenhum.
+      showDialog({
+        title: 'Desativar Modo de Acessibilidade?',
+        message: 'O app volta ao layout normal:\n\n* Fontes e botões menores\n* Mais informações por tela\n\nVocê pode ativar de novo a qualquer momento nesta mesma tela.',
+        variant: 'warning',
+        buttons: [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Desativar',
+            onPress: () => {
+              if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              updateSetting('accessibilityMode', false);
+            },
+          },
+        ],
+      });
     }
   };
 
