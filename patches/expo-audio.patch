@@ -1,0 +1,25 @@
+diff --git a/android/src/main/java/expo/modules/audio/AudioPlayer.kt b/android/src/main/java/expo/modules/audio/AudioPlayer.kt
+index 320062e6217ddf28d290d3456fb037ea4a947a1d..c93774d644a10cd8c088c595577f0dfa570fbb36 100644
+--- a/android/src/main/java/expo/modules/audio/AudioPlayer.kt
++++ b/android/src/main/java/expo/modules/audio/AudioPlayer.kt
+@@ -43,7 +43,19 @@ class AudioPlayer(
+ ) : SharedRef<ExoPlayer>(
+   ExoPlayer.Builder(context)
+     .setLooper(context.mainLooper)
+-    .setAudioAttributes(AudioAttributes.DEFAULT, false)
++    // Vigora: alarme toca no STREAM_ALARM, não no de mídia.
++    // AudioAttributes.DEFAULT = USAGE_MEDIA, então o alarme em tela cheia saía
++    // no volume de MÍDIA enquanto a notificação (expo-alarm-module,
++    // setAudioStreamType=STREAM_ALARM) saía no volume de ALARME. Com a mídia
++    // baixa, o alarme ficava mudo justamente na tela cheia — que é onde o idoso
++    // precisa ouvir. Não há opção em JS (AudioMode não expõe usage), daí o patch.
++    .setAudioAttributes(
++      AudioAttributes.Builder()
++        .setUsage(C.USAGE_ALARM)
++        .setContentType(C.AUDIO_CONTENT_TYPE_SONIFICATION)
++        .build(),
++      false
++    )
+     .setSeekForwardIncrementMs(SEEK_JUMP_INTERVAL_MS)
+     .setSeekBackIncrementMs(SEEK_JUMP_INTERVAL_MS)
+     .build(),

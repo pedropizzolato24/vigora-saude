@@ -27,6 +27,8 @@ import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
 import { useAppContext } from '@/lib/app-context';
+import { shouldVibrate } from '@/lib/_core/alarm-vibration';
+import { loadCurrentAppStateRaw } from '@/lib/app-state-storage';
 import { useAccessibility } from '@/lib/accessibility-context';
 import { useColors } from '@/hooks/use-colors';
 import { escalateAlarmToContacts } from '@/lib/alarm-escalation';
@@ -181,8 +183,19 @@ export default function AlarmRingScreen() {
             try { player.volume = (state.settings.alarmVolume ?? 80) / 100; } catch {}
           }, 100);
 
-          // Vibrate in a repeating pattern
-          Vibration.vibrate([0, 500, 500, 500], true);
+          // Vibração respeita as DUAS chaves: a global (Configurações) e a do
+          // alarme (formulário). Antes vibrava incondicionalmente — desligar em
+          // qualquer uma delas não tinha efeito nenhum (feedback 27/07).
+          // Lê do storage pelo mesmo motivo do timerDuration abaixo: no disparo
+          // a frio o state ainda não hidratou e os defaults (true) venceriam.
+          const vibrationOk = await shouldVibrate(
+            { globalEnabled: state.settings.vibrationEnabled, alarmEnabled: alarm?.vibration },
+            alarmId,
+            loadCurrentAppStateRaw
+          );
+          if (vibrationOk) {
+            Vibration.vibrate([0, 500, 500, 500], true);
+          }
 
           // Curto atraso para o som iniciar, então fala. Guardado em ref para
           // ser cancelado se o usuário desligar antes de começar (#8).
