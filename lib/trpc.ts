@@ -36,15 +36,32 @@ export function createTRPCClient() {
         // 403 NÃO desloga (é "proibido desta ação", não "sessão inválida"):
         // ver isSessionExpiredStatus.
         async fetch(url, options) {
-          const res = await fetch(url, {
-            ...options,
-            credentials: "include",
-          });
-          const Auth = await import("@/lib/_core/auth");
-          if (Auth.isSessionExpiredStatus(res.status)) {
-            Auth.handleUnauthorized().catch(() => {});
+          // Diagnóstico (item 2 do feedback 27/07): o cuidador via 10–20s até os
+          // dados carregarem. Loga o nome do procedure e o tempo de rede — só
+          // isso, nunca o payload (dados de saúde, LGPD).
+          const t0 = Date.now();
+          const procedures =
+            String(url).split("/api/trpc/")[1]?.split("?")[0] ?? "?";
+          try {
+            const res = await fetch(url, {
+              ...options,
+              credentials: "include",
+            });
+            console.log(`[Perf] trpc ${procedures}: ${Date.now() - t0}ms (${res.status})`);
+            const Auth = await import("@/lib/_core/auth");
+            if (Auth.isSessionExpiredStatus(res.status)) {
+              Auth.handleUnauthorized().catch(() => {});
+            }
+            return res;
+          } catch (err) {
+            // Falha de rede é candidata #1 para o "às vezes 10–20s": o retry do
+            // react-query só começa DEPOIS que esta promise rejeita.
+            console.log(
+              `[Perf] trpc ${procedures}: FALHOU após ${Date.now() - t0}ms —`,
+              err instanceof Error ? err.message : String(err)
+            );
+            throw err;
           }
-          return res;
         },
       }),
     ],

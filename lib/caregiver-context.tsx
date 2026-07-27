@@ -28,6 +28,7 @@ import {
   type ServerLink,
 } from './caregiver-link-service';
 import * as Auth from './_core/auth';
+import { perfSpan } from './_core/perf';
 
 // Cache POR CONTA (openId): sem escopo, o vínculo de um cuidador vazava para a
 // próxima conta no mesmo aparelho — conta nova/sem vínculo aparecia "vinculada"
@@ -101,8 +102,13 @@ export function CaregiverProvider({ children }: { children: React.ReactNode }) {
     // da conta VELHA vazando para a conta ativa nova (mesma classe de corrida do
     // loadForAccount, espelha reconcileFromCloud em app-context.tsx).
     const epoch = activeOpenIdRef.current;
+    // Diagnóstico (item 2): a home do cuidador só DISPARA getMonitoredData
+    // depois que este link resolve (`enabled: !!linked`) — as duas chamadas são
+    // serializadas, então este tempo entra inteiro na espera do usuário.
+    const endRefresh = perfSpan('refreshLink (bloqueia getMonitoredData)');
     try {
       const link = await fetchMyLink();
+      endRefresh();
       if (activeOpenIdRef.current !== epoch) return;
       if (link) {
         dispatch({ type: 'SET_LINK', payload: mapServerLink(link) });
@@ -110,6 +116,7 @@ export function CaregiverProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'CLEAR_LINK' });
       }
     } catch (err) {
+      endRefresh();
       if (err instanceof NotAuthenticatedError) return; // not logged in yet
       // network error: keep the cached link; nothing else to do
     }

@@ -6,6 +6,7 @@ import * as Auth from '@/lib/_core/auth';
 import { setPendingInvite } from '@/lib/pending-invite';
 import { hasCompletedCaregiverOnboarding } from '@/lib/caregiver-onboarding-flag';
 import { hasRegisterDraft } from '@/lib/register-draft';
+import { perfMark, perfSpan } from '@/lib/_core/perf';
 
 const ONBOARDING_KEY = 'vigora_onboarding_completed';
 const LOGIN_COMPLETED_KEY = 'vigora_login_completed';
@@ -43,12 +44,16 @@ export function OnboardingGate() {
     }
 
     (async () => {
+      perfMark('OnboardingGate: início da decisão de rota');
+      const endGate = perfSpan('OnboardingGate total');
       try {
         // Cold-start robustness: if the app was opened via an invite link, stash
         // the token now so it survives the funnel even if pathname hasn't
         // resolved to /convite yet and we redirect to /login below.
         try {
+          const endLink = perfSpan('  getInitialURL');
           const initialUrl = await Linking.getInitialURL();
+          endLink();
           const match = initialUrl?.match(/\/convite\/([^/?#]+)/);
           if (match?.[1]) await setPendingInvite(decodeURIComponent(match[1]));
           // Cold-start via Google OAuth redirect: let app/oauthredirect.tsx own
@@ -61,11 +66,13 @@ export function OnboardingGate() {
           // best-effort
         }
 
+        const endFlags = perfSpan('  flags + getUserInfo');
         const [onboardingDone, loginCompleted, user] = await Promise.all([
           AsyncStorage.getItem(ONBOARDING_KEY),
           AsyncStorage.getItem(LOGIN_COMPLETED_KEY),
           Auth.getUserInfo(),
         ]);
+        endFlags();
 
         if (!onboardingDone || (!loginCompleted && !user)) {
           // Never done onboarding OR never logged in → full funnel: slides → login
@@ -99,6 +106,7 @@ export function OnboardingGate() {
       } catch {
         // On error, don't block app startup
       } finally {
+        endGate();
         setChecked(true);
       }
     })();
