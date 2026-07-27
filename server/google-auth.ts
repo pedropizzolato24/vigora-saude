@@ -28,7 +28,8 @@ interface GoogleTokenPayload {
  * deploy pode sobrescrever/estender via EXPO_PUBLIC_GOOGLE_*_CLIENT_ID.
  */
 const KNOWN_GOOGLE_CLIENT_IDS = [
-  "39705729598-iv01adn3g5di03k6ukp9n02mri393s6n.apps.googleusercontent.com", // android
+  "39705729598-iv01adn3g5di03k6ukp9n02mri393s6n.apps.googleusercontent.com", // android (release)
+  "39705729598-cm5s8hs0rare5smst57l1gbin9obt0u1.apps.googleusercontent.com", // android (debug — builds de teste via CI/EAS)
   "39705729598-0q57pbi4hmfd231rkbld2ftgh9eqcidg.apps.googleusercontent.com", // ios
   "39705729598-q49ldjevjp58hg9tvre49tphuo076s08.apps.googleusercontent.com", // web
 ];
