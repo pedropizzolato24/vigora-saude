@@ -1,0 +1,31 @@
+diff --git a/android/src/main/java/expo/modules/speech/SpeechModule.kt b/android/src/main/java/expo/modules/speech/SpeechModule.kt
+index 33b9587f76c644510842134a97010385d1ffde8a..67ce3557b1457aad4a08eace553bff51d8015b6c 100644
+--- a/android/src/main/java/expo/modules/speech/SpeechModule.kt
++++ b/android/src/main/java/expo/modules/speech/SpeechModule.kt
+@@ -1,5 +1,6 @@
+ package expo.modules.speech
+ 
++import android.media.AudioManager
+ import android.os.Bundle
+ import android.speech.tts.TextToSpeech
+ import android.speech.tts.UtteranceProgressListener
+@@ -123,10 +124,18 @@ class SpeechModule : Module() {
+         ?.let(textToSpeech::setVoice)
+     }
+ 
++    // Vigora: a fala do alarme sai no STREAM_ALARM, não no de mídia.
++    // Sem params, o TextToSpeech do Android usa STREAM_MUSIC — a voz do alarme
++    // em tela cheia ficava muda junto com o som (mesmo motivo do patch de
++    // expo-audio), enquanto a notificação tocava no volume de alarme.
++    val params = Bundle().apply {
++      putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_ALARM)
++    }
++
+     textToSpeech.speak(
+       text,
+       TextToSpeech.QUEUE_ADD,
+-      null,
++      params,
+       id
+     )
+   }

@@ -11,6 +11,7 @@ import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { getDevicePushToken } from '@/lib/push-registration';
+import { setPushUnavailable } from '@/lib/push-status';
 import { trpc } from '@/lib/trpc';
 
 // Push `data.type` values sent by the server monitoring job. Gating on these
@@ -27,14 +28,24 @@ export function CaregiverPushInitializer() {
   useEffect(() => {
     if (registered.current) return;
     registered.current = true;
+    // Web nunca teve push aqui — avisar "indisponível" lá seria só ruído.
+    if (Platform.OS === 'web') return;
 
     (async () => {
+      // Falhar aqui = este cuidador não recebe NENHUM alerta em tempo real.
+      // Marcamos o estado para a home avisar, em vez de sair calado (causa-raiz
+      // do "alarme perdido não notificou o cuidador": build Android sem FCM).
       const result = await getDevicePushToken();
-      if (!result) return;
+      if (!result) {
+        setPushUnavailable(true);
+        return;
+      }
       try {
         await register.mutateAsync(result);
+        setPushUnavailable(false);
         console.log('[Push] Caregiver push token registered');
       } catch (err) {
+        setPushUnavailable(true);
         console.warn('[Push] Failed to register push token:', err);
       }
     })();

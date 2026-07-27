@@ -8,7 +8,7 @@
  *
  * Handles: account liveness (heartbeat), alarm events, warning log, retention.
  */
-import { and, desc, eq, gte, inArray, lt, lte, ne } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, lt, lte, min, ne } from "drizzle-orm";
 import { getDb } from "./db";
 import { pickPendingEvent } from "./_core/pick-pending-event";
 import {
@@ -79,20 +79,6 @@ export async function getAccountLiveness(openId: string) {
   return rows[0] ?? null;
 }
 
-/** Returns all accounts whose last sign of life is older than `thresholdMinutes`. */
-export async function getInactiveAccounts(thresholdMinutes: number) {
-  const db = await getDb();
-  // Fail-closed: a DB outage must NOT look like "0 inactive accounts, all good"
-  // — that would silently disarm the dead man's switch. Throw so the job's
-  // catch records the failure and /api/health turns unhealthy.
-  if (!db) throw new Error("DATABASE_UNAVAILABLE");
-  const cutoff = new Date(Date.now() - thresholdMinutes * 60 * 1000);
-  return db
-    .select()
-    .from(accountLiveness)
-    .where(lte(accountLiveness.lastSeenAt, cutoff));
-}
-
 // --- Alarm Events -------------------------------------------------------------
 
 export async function createAlarmEvent(data: InsertAlarmEvent): Promise<number> {
@@ -114,6 +100,44 @@ export async function createAlarmEvent(data: InsertAlarmEvent): Promise<number> 
     )
     .limit(1);
   if (existing.length > 0) return existing[0].id;
+
+  // Um único pending FUTURO por (openId, alarmId). O cliente pré-registra o
+  // PRÓXIMO disparo a cada sync; editar o horário do alarme mudava o
+  // scheduledAt e ACUMULAVA pendings — e cada um expirava depois e escalava um
+  // "alarme perdido" de um horário que não existe mais. Reaproveita a linha
+  // futura existente (e apaga duplicatas herdadas). Pendings com scheduledAt
+  // no PASSADO ficam intocados: são disparos reais esperando o monitoring-job
+  // resolver — apagá-los desarmaria o switch.
+  const now = new Date();
+  if ((data.scheduledAt as Date).getTime() > now.getTime()) {
+    const futurePendings = await db
+      .select({ id: alarmEvents.id })
+      .from(alarmEvents)
+      .where(
+        and(
+          eq(alarmEvents.openId, data.openId),
+          eq(alarmEvents.alarmId, data.alarmId),
+          eq(alarmEvents.status, "pending"),
+          gt(alarmEvents.scheduledAt, now)
+        )
+      );
+    if (futurePendings.length > 0) {
+      const [keep, ...extras] = futurePendings;
+      await db
+        .update(alarmEvents)
+        .set({
+          scheduledAt: data.scheduledAt as Date,
+          alarmDescription: data.alarmDescription,
+        })
+        .where(eq(alarmEvents.id, keep.id));
+      if (extras.length > 0) {
+        await db
+          .delete(alarmEvents)
+          .where(inArray(alarmEvents.id, extras.map((e) => e.id)));
+      }
+      return keep.id;
+    }
+  }
 
   const result = await db.insert(alarmEvents).values(data);
   return (result as any).insertId as number;
@@ -259,12 +283,14 @@ export async function getMissedCheckinEvents(alarmId: string, lookbackHours: num
 }
 
 /**
- * Eventos de alarme de MEDICAÇÃO (não check-in) que ficaram "missed" — ou seja,
- * a conta estava ONLINE no horário (Passo 1 marca "missed" só se online) e
- * o usuário não respondeu — e ainda não foram escalados pelo servidor
+ * Eventos de alarme de MEDICAÇÃO (não check-in) que expiraram sem resposta —
+ * "missed" (havia sinal de vida após o horário, ninguém respondeu) ou
+ * "not_sent" (sem sinal de vida após o horário: celular desligado/sem conexão,
+ * o alarme provavelmente nem tocou) — e ainda não foram escalados pelo servidor
  * (warningSent=false). Backstop do dead man's switch para quando a escalação no
- * cliente não completou (app morreu após o disparo). 'not_sent' (offline) NÃO
- * entra aqui — esse caso é coberto pelo aviso de conta offline (Passo 2).
+ * cliente não completou. O Passo 4 usa o status para escolher a cópia certa
+ * ("não respondeu" vs "não foi entregue"); a escada de inatividade do Passo 2
+ * segue existindo como reforço progressivo (30min/2h/6h).
  */
 export async function getMissedMedicationEvents(checkinAlarmId: string, lookbackHours: number) {
   const db = await getDb();
@@ -276,7 +302,7 @@ export async function getMissedMedicationEvents(checkinAlarmId: string, lookback
     .where(
       and(
         ne(alarmEvents.alarmId, checkinAlarmId),
-        eq(alarmEvents.status, "missed"),
+        inArray(alarmEvents.status, ["missed", "not_sent"]),
         eq(alarmEvents.warningSent, false),
         gte(alarmEvents.scheduledAt, cutoff)
       )
@@ -284,32 +310,45 @@ export async function getMissedMedicationEvents(checkinAlarmId: string, lookback
 }
 
 /**
- * True se a conta tem algum evento esperado que expirou SEM confirmação
- * ('missed' | 'not_sent') dentro da janela de look-back. Gate do Passo 2 do
- * monitoring-job: inatividade sozinha (logout, desinstalação, app em segundo
- * plano) não é sinal de perigo — só escala havendo evento não confirmado.
- * Fail-closed como getInactiveAccounts: sem DB, lança em vez de responder
- * "false" e silenciar o switch.
+ * Contas com pelo menos um evento esperado NÃO confirmado ('missed' |
+ * 'not_sent') na janela de look-back, com a idade do MAIS ANTIGO deles.
+ *
+ * É o sinal que move a escada de escalação (Passo 2). Substituiu
+ * `getInactiveAccounts` (removida) nesse papel porque "sem heartbeat" media a coisa
+ * errada: o heartbeat só corre com o app em primeiro plano, então um idoso
+ * que responde ao alarme e fecha o app fica "offline" para sempre — e, pior,
+ * um que deixa o app ABERTO e não responde nunca entrava na lista, e a
+ * família nunca era avisada. Já a idade do evento não confirmado é um sinal
+ * real: o servidor sabe quando aquela resposta era esperada.
+ *
+ * Retorna o `oldestUnconfirmedAt` (o disparo mais antigo sem confirmação) —
+ * é dele que sai a "idade" que define o nível do aviso.
  */
-export async function hasUnconfirmedEvents(
-  openId: string,
-  lookbackHours: number
-): Promise<boolean> {
+export async function getAccountsWithUnconfirmedEvents(lookbackHours: number) {
   const db = await getDb();
+  // Fail-closed: sem DB, lança em vez de responder
+  // "nenhuma conta em perigo" e silenciar o switch.
   if (!db) throw new Error("DATABASE_UNAVAILABLE");
   const cutoff = new Date(Date.now() - lookbackHours * 60 * 60 * 1000);
   const rows = await db
-    .select({ id: alarmEvents.id })
+    .select({
+      openId: alarmEvents.openId,
+      oldestUnconfirmedAt: min(alarmEvents.scheduledAt),
+    })
     .from(alarmEvents)
     .where(
       and(
-        eq(alarmEvents.openId, openId),
         inArray(alarmEvents.status, ["missed", "not_sent"]),
         gte(alarmEvents.scheduledAt, cutoff)
       )
     )
-    .limit(1);
-  return rows.length > 0;
+    .groupBy(alarmEvents.openId);
+
+  return rows.flatMap((r) =>
+    r.oldestUnconfirmedAt
+      ? [{ openId: r.openId, oldestUnconfirmedAt: new Date(r.oldestUnconfirmedAt) }]
+      : []
+  );
 }
 
 export async function markEventWarningSent(id: number): Promise<void> {
@@ -381,6 +420,18 @@ export async function releaseWarning(id: number): Promise<void> {
   await db.delete(warningLog).where(eq(warningLog.id, id));
 }
 
+/**
+ * Avisos da conta, MAIS RECENTES PRIMEIRO.
+ *
+ * Era ASC — e com `limit` isso devolvia os avisos mais ANTIGOS. O Passo 2 do
+ * monitoring-job usa esta lista (limit 10) para deduplicar ("já avisei neste
+ * nível nas últimas MIN_WARNING_INTERVAL_HOURS?"). Passando de 10 linhas no
+ * log, os avisos recentes nunca apareciam na janela, a dedup nunca casava e o
+ * MESMO aviso saía a cada rodada do job — push no cuidador a cada 5 minutos
+ * (feedback 27/07). Mesmo bug que já havia sido corrigido em
+ * getAlarmEventHistory; aqui tem o agravante de se auto-alimentar: cada reenvio
+ * insere mais uma linha e afunda ainda mais os avisos recentes.
+ */
 export async function getWarningHistory(openId: string, limit = 20) {
   const db = await getDb();
   if (!db) return [];
@@ -388,7 +439,7 @@ export async function getWarningHistory(openId: string, limit = 20) {
     .select()
     .from(warningLog)
     .where(eq(warningLog.openId, openId))
-    .orderBy(warningLog.sentAt)
+    .orderBy(desc(warningLog.sentAt))
     .limit(limit);
 }
 

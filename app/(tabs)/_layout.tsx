@@ -16,6 +16,10 @@ export default function TabLayout() {
     <View style={{ flex: 1 }}>
       <Tabs
         tabBar={() => <CustomTabBar />}
+        // As telas secundárias (Perfil, Contatos, Ajuda...) são abas fora do menu
+        // inferior. Com o padrão ('firstRoute') o botão voltar sempre caía no
+        // Início; com 'history' ele volta para a tela de onde o usuário veio.
+        backBehavior="history"
         screenOptions={{
           headerShown: false,
           // Troca de aba com cross-fade: sem isso a tela aparece cortada, o que

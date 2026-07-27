@@ -152,7 +152,9 @@
       "@esbuild-kit/core-utils>esbuild": ">=0.25.0 <0.26.0"
     },
     "patchedDependencies": {
-      "expo-alarm-module": "patches/expo-alarm-module.patch"
+      "expo-alarm-module": "patches/expo-alarm-module.patch",
+      "expo-audio": "patches/expo-audio.patch",
+      "expo-speech": "patches/expo-speech.patch"
     }
   },
   "expo": {

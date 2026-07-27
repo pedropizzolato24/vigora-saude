@@ -3,7 +3,7 @@
  *
  * Full-screen alarm experience:
  * - Plays alarm sound on loop for up to 30 seconds
- * - Pulsing alarm icon
+ * - Halo que cresce e some ao redor do ícone (o ícone em si fica parado)
  * - Shows alarm name and description
  * - Reads alarm name and description aloud via expo-speech (pt-BR)
  * - "Ouvir novamente" button to replay speech
@@ -27,12 +27,14 @@ import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
 import { useAppContext } from '@/lib/app-context';
+import { shouldVibrate } from '@/lib/_core/alarm-vibration';
+import { loadCurrentAppStateRaw } from '@/lib/app-state-storage';
 import { useAccessibility } from '@/lib/accessibility-context';
 import { useColors } from '@/hooks/use-colors';
 import { escalateAlarmToContacts } from '@/lib/alarm-escalation';
 import { stopNativeAlarm, snoozeNativeAlarm } from '@/lib/native-alarm-manager';
 import { enterAlarmLockScreenMode, exitAlarmLockScreenMode } from 'expo-alarm-countdown';
-import { PulseView } from '@/components/animated-components';
+import { RippleHalo } from '@/components/animated-components';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { loadAlarmTimer, clearAlarmTimer } from '@/lib/alarm-timer-store';
 import { lastAlarmFireMs } from '@/lib/alarm-fire-times';
@@ -181,8 +183,19 @@ export default function AlarmRingScreen() {
             try { player.volume = (state.settings.alarmVolume ?? 80) / 100; } catch {}
           }, 100);
 
-          // Vibrate in a repeating pattern
-          Vibration.vibrate([0, 500, 500, 500], true);
+          // Vibração respeita as DUAS chaves: a global (Configurações) e a do
+          // alarme (formulário). Antes vibrava incondicionalmente — desligar em
+          // qualquer uma delas não tinha efeito nenhum (feedback 27/07).
+          // Lê do storage pelo mesmo motivo do timerDuration abaixo: no disparo
+          // a frio o state ainda não hidratou e os defaults (true) venceriam.
+          const vibrationOk = await shouldVibrate(
+            { globalEnabled: state.settings.vibrationEnabled, alarmEnabled: alarm?.vibration },
+            alarmId,
+            loadCurrentAppStateRaw
+          );
+          if (vibrationOk) {
+            Vibration.vibrate([0, 500, 500, 500], true);
+          }
 
           // Curto atraso para o som iniciar, então fala. Guardado em ref para
           // ser cancelado se o usuário desligar antes de começar (#8).
@@ -433,6 +446,7 @@ export default function AlarmRingScreen() {
   const urgentThreshold = Math.ceil(configuredDuration * 0.3);
   const isUrgent = secondsLeft <= urgentThreshold && secondsLeft > 0;
   const isExpired = secondsLeft === 0;
+  const alarmColor = isExpired ? colors.error : isUrgent ? colors.warning : colors.primary;
 
   // --- Accessibility Mode ---------------------------------------------------
   if (isAccessibilityMode) {
@@ -443,18 +457,22 @@ export default function AlarmRingScreen() {
       >
         {/* Icon */}
         <View style={styles.topSection}>
-          <PulseView active minScale={0.85} maxScale={1.15} duration={800}>
+          <RippleHalo size={180} color={alarmColor}>
             <View
               style={[
                 styles.iconCircle,
-                { width: 180, height: 180, borderRadius: 90 },
-                isUrgent && styles.iconCircleUrgent,
-                isExpired && styles.iconCircleExpired,
+                {
+                  width: 180,
+                  height: 180,
+                  borderRadius: 90,
+                  backgroundColor: alarmColor,
+                  shadowColor: alarmColor,
+                },
               ]}
             >
               <MaterialIcons name="alarm" size={88} color="#FFFFFF" />
             </View>
-          </PulseView>
+          </RippleHalo>
           <Text style={[styles.alarmLabel, { color: ac.muted, fontSize: af.sm + 2, letterSpacing: 3 }]}>
             ALARME
           </Text>
@@ -563,15 +581,12 @@ export default function AlarmRingScreen() {
   // --- Normal Mode ----------------------------------------------------------
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
-      {/* Top section: pulsing icon */}
+      {/* Top section: ícone parado com halo pulsando por trás */}
       <View style={styles.topSection}>
-        <PulseView active minScale={0.85} maxScale={1.15} duration={800}>
+        <RippleHalo size={160} color={alarmColor}>
           <View style={[
             styles.iconCircle,
-            {
-              backgroundColor: isExpired ? colors.error : isUrgent ? colors.warning : colors.primary,
-              shadowColor: isExpired ? colors.error : isUrgent ? colors.warning : colors.primary,
-            },
+            { backgroundColor: alarmColor, shadowColor: alarmColor },
           ]}>
             <MaterialIcons
               name="alarm"
@@ -579,7 +594,7 @@ export default function AlarmRingScreen() {
               color={colors.onPrimary}
             />
           </View>
-        </PulseView>
+        </RippleHalo>
 
         <Text style={styles.alarmLabel}>ALARME</Text>
       </View>
@@ -690,8 +705,6 @@ const styles = StyleSheet.create({
     shadowRadius: 30,
     elevation: 20,
   },
-  iconCircleUrgent: {},
-  iconCircleExpired: {},
   alarmLabel: {
     fontSize: 13,
     fontWeight: '700',

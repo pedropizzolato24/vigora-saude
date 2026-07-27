@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
-import { FadeInView, StaggeredItem } from '@/components/animated-components';
+import { Collapsible, COLLAPSE_DURATION, FadeInView } from '@/components/animated-components';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
@@ -214,9 +214,9 @@ export function HelpScreen({ onBack }: { onBack?: () => void } = {}) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
-  // A abertura anima pelos próprios itens (StaggeredItem/FadeInView) em vez de
-  // LayoutAnimation: na nova arquitetura ela é no-op/instável, e era por isso
-  // que a cascata abria seca.
+  // A abertura usa Collapsible (altura animada) em vez de LayoutAnimation: na
+  // nova arquitetura ela é no-op/instável, e era por isso que a cascata abria
+  // seca. As perguntas entram escalonadas depois que o painel termina de abrir.
   const toggleSection = (title: string) => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -360,15 +360,15 @@ export function HelpScreen({ onBack }: { onBack?: () => void } = {}) {
                 />
               </TouchableOpacity>
 
-              {/* Section Items */}
-              {isSectionOpen && (
+              {/* Section Items — o painel desliza e só então as perguntas entram */}
+              <Collapsible open={isSectionOpen}>
                 <View style={[styles.sectionContent, { borderTopColor: colors.border }]}>
                   {section.items.map((item, idx) => {
                     const itemKey = `${section.title}-${idx}`;
                     const isItemOpen = expandedItems[itemKey] ?? false;
 
                     return (
-                      <StaggeredItem key={itemKey} index={idx} staggerDelay={45}>
+                      <FadeInView key={itemKey} delay={COLLAPSE_DURATION + idx * 45} duration={280}>
                         <TouchableOpacity
                           onPress={() => toggleItem(itemKey)}
                           style={[
@@ -397,11 +397,11 @@ export function HelpScreen({ onBack }: { onBack?: () => void } = {}) {
                             </Text>
                           </FadeInView>
                         )}
-                      </StaggeredItem>
+                      </FadeInView>
                     );
                   })}
                 </View>
-              )}
+              </Collapsible>
             </View>
           );
         })}

@@ -1,24 +1,27 @@
 /**
  * monitoring-job.inactivity.test.ts
  *
- * Falso alarme por inatividade (Anexo B do spec
- * docs/design/2026-07-12-monitoring-account-ownership.md):
- * o Passo 2 do dead man's switch não pode escalar aos contatos por PURA
- * ausência de heartbeat — logout, desinstalação ou app em segundo plano não
- * são sinal de perigo. Só escala quando há um evento esperado NÃO confirmado
- * ('missed' | 'not_sent') na janela de look-back.
+ * Passo 2 — a escada de escalação é ancorada na IDADE DO EVENTO não confirmado,
+ * não na ausência de heartbeat.
  *
- * Modelo por CONTA (openId): liveness em account_liveness, contatos/nome em
- * user_data — o job nunca toca em deviceId.
+ * O critério antigo ("conta sem heartbeat há 30min E tem evento não
+ * confirmado") media a coisa errada nos dois sentidos, porque o heartbeat só
+ * corre com o app em primeiro plano:
+ *  - RUÍDO: quem responde ao alarme e fecha o app fica "offline" para sempre.
+ *  - BURACO: quem deixa o app ABERTO e não responde nunca entrava na lista de
+ *    inativos, e a família NUNCA era avisada.
+ *
+ * O gate anti-falso-alarme do Anexo B (spec 2026-07-12) continua valendo e fica
+ * ainda mais forte: sem evento não confirmado não há escalação — agora por
+ * construção da query, não por um `if` posterior.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../server/db-monitoring", () => ({
   getExpiredPendingEvents: vi.fn(async () => []),
-  getInactiveAccounts: vi.fn(async () => []),
+  getAccountsWithUnconfirmedEvents: vi.fn(async () => []),
   getAccountLiveness: vi.fn(async () => null),
   getWarningHistory: vi.fn(async () => []),
-  hasUnconfirmedEvents: vi.fn(async () => false),
   claimWarning: vi.fn(async () => 1),
   updateWarningResult: vi.fn(async () => undefined),
   releaseWarning: vi.fn(async () => undefined),
@@ -56,16 +59,7 @@ import * as db from "../server/db-monitoring";
 import * as accountDb from "../server/db";
 import * as whatsapp from "../server/whatsapp";
 
-const THREE_HOURS_AGO = new Date(Date.now() - 3 * 60 * 60 * 1000);
-
-const inactiveAccount = {
-  openId: "user-1",
-  lastSeenAt: THREE_HOURS_AGO,
-  lastLocation: null,
-  lastLocationAt: null,
-  lastDeviceId: "dev-1",
-  appVersion: null,
-} as any;
+const hoursAgo = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000);
 
 const accountData = {
   openId: "user-1",
@@ -77,7 +71,6 @@ const accountData = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(db.getInactiveAccounts).mockResolvedValue([inactiveAccount]);
   vi.mocked(db.claimWarning).mockResolvedValue(1);
   vi.mocked(accountDb.getUserData).mockResolvedValue(accountData);
   vi.mocked(accountDb.getUserByOpenId).mockResolvedValue({ name: "Seu José" } as any);
@@ -85,9 +78,9 @@ beforeEach(() => {
   vi.mocked(whatsapp.sendWhatsAppMessage).mockResolvedValue({ success: true } as any);
 });
 
-describe("Passo 2 — escalação por inatividade gateada por evento não confirmado", () => {
-  it("NÃO escala conta inativa sem evento não confirmado (falso alarme)", async () => {
-    vi.mocked(db.hasUnconfirmedEvents).mockResolvedValue(false);
+describe("Passo 2 — escalação ancorada no evento não confirmado", () => {
+  it("NÃO escala quando não há evento não confirmado (sem falso alarme)", async () => {
+    vi.mocked(db.getAccountsWithUnconfirmedEvents).mockResolvedValue([]);
 
     await runMonitoringJob();
 
@@ -97,13 +90,71 @@ describe("Passo 2 — escalação por inatividade gateada por evento não confir
     expect(db.getMissedCheckinEvents).toHaveBeenCalled();
   });
 
-  it("ESCALA conta inativa COM evento não confirmado (perigo real preservado)", async () => {
-    vi.mocked(db.hasUnconfirmedEvents).mockResolvedValue(true);
+  it("ESCALA com evento não confirmado mesmo com heartbeat FRESCO (fecha o buraco do app aberto)", async () => {
+    vi.mocked(db.getAccountsWithUnconfirmedEvents).mockResolvedValue([
+      { openId: "user-1", oldestUnconfirmedAt: hoursAgo(3) },
+    ]);
+    // Heartbeat AGORA — no critério antigo isto tirava a conta da lista de
+    // inativos e a família nunca era avisada, mesmo com o alarme sem resposta.
+    vi.mocked(db.getAccountLiveness).mockResolvedValue({
+      openId: "user-1",
+      lastSeenAt: new Date(),
+      lastLocation: null,
+    } as any);
 
     await runMonitoringJob();
 
     expect(db.claimWarning).toHaveBeenCalledTimes(1);
     expect(vi.mocked(db.claimWarning).mock.calls[0][0].openId).toBe("user-1");
     expect(whatsapp.sendWhatsAppMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("o nível vem da idade do evento, não do último heartbeat", async () => {
+    vi.mocked(db.getAccountsWithUnconfirmedEvents).mockResolvedValue([
+      { openId: "user-1", oldestUnconfirmedAt: hoursAgo(7) },
+    ]);
+
+    await runMonitoringJob();
+
+    // 7h sem resposta => nível 3 (limiar de 6h)
+    expect(db.claimWarning).toHaveBeenCalledWith(
+      expect.objectContaining({ openId: "user-1", level: 3 })
+    );
+  });
+
+  it("evento recente demais (abaixo de 30min) ainda não escala", async () => {
+    vi.mocked(db.getAccountsWithUnconfirmedEvents).mockResolvedValue([
+      { openId: "user-1", oldestUnconfirmedAt: hoursAgo(0.2) },
+    ]);
+
+    await runMonitoringJob();
+
+    expect(db.claimWarning).not.toHaveBeenCalled();
+  });
+
+  it("dedup: não reenvia o mesmo nível dentro da janela mínima", async () => {
+    vi.mocked(db.getAccountsWithUnconfirmedEvents).mockResolvedValue([
+      { openId: "user-1", oldestUnconfirmedAt: hoursAgo(7) },
+    ]);
+    vi.mocked(db.getWarningHistory).mockResolvedValue([
+      { level: 3, sentAt: new Date(Date.now() - 10 * 60 * 1000) },
+    ] as any);
+
+    await runMonitoringJob();
+
+    expect(db.claimWarning).not.toHaveBeenCalled();
+    expect(whatsapp.sendWhatsAppMessage).not.toHaveBeenCalled();
+  });
+
+  it("a mensagem fala do alarme sem resposta, nunca de 'sem atividade no app'", async () => {
+    vi.mocked(db.getAccountsWithUnconfirmedEvents).mockResolvedValue([
+      { openId: "user-1", oldestUnconfirmedAt: hoursAgo(3) },
+    ]);
+
+    await runMonitoringJob();
+
+    const message = vi.mocked(whatsapp.sendWhatsAppMessage).mock.calls[0][1];
+    expect(message).toContain("sem responder aos alarmes");
+    expect(message).not.toContain("sem atividade");
   });
 });

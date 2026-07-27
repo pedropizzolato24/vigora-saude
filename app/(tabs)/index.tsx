@@ -98,6 +98,12 @@ export default function DashboardScreen() {
     router.push(route as any);
   };
 
+  // Card do próximo remédio: abre o alarme que ele está mostrando. Sem nenhum
+  // alarme cadastrado, leva à lista para o usuário criar o primeiro.
+  const openNextAlarm = () => {
+    navigate(nextAlarm ? `/(tabs)/alarms?alarmId=${nextAlarm.id}` : '/(tabs)/alarms');
+  };
+
   // --- MODO ACESSÍVEL --------------------------------------------------------
   if (isAccessibilityMode) {
     const ac = a11yColors;
@@ -177,14 +183,24 @@ export default function DashboardScreen() {
           </Pressable>
 
           {/* Próximo alarme */}
-          <View style={{
-            backgroundColor: colors.surface,
-            borderRadius: as_.cardRadius,
-            padding: 20,
-            borderWidth: 1,
-            borderColor: colors.border,
-            gap: 6,
-          }}>
+          <Pressable
+            onPress={openNextAlarm}
+            style={({ pressed }) => [{
+              backgroundColor: colors.surface,
+              borderRadius: as_.cardRadius,
+              padding: 20,
+              borderWidth: 1,
+              borderColor: colors.border,
+              gap: 6,
+              opacity: pressed ? 0.85 : 1,
+            }]}
+            accessibilityRole="button"
+            accessibilityLabel={
+              nextAlarm
+                ? `Próximo alarme às ${nextAlarm.time}, ${nextAlarm.description}. Toque para ver o alarme.`
+                : 'Nenhum alarme configurado. Toque para criar um.'
+            }
+          >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <MaterialIcons name="alarm" size={32} color={colors.primary} />
               <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: af.lg, fontWeight: '800', color: colors.foreground }}>
@@ -197,7 +213,7 @@ export default function DashboardScreen() {
             <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: af.md, color: colors.muted }}>
               {nextAlarm ? nextAlarm.description : 'Nenhum alarme configurado'}
             </Text>
-          </View>
+          </Pressable>
 
           <View style={{ gap: 14 }}>
             <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: af.lg, fontWeight: '800', color: colors.foreground }}>
@@ -461,7 +477,16 @@ export default function DashboardScreen() {
         </View>
 
         {/* Próximo remédio card */}
-        <View style={[styles.nextAlarmCard, { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.warning }]}>
+        <Pressable
+          onPress={openNextAlarm}
+          style={({ pressed }) => [styles.nextAlarmCard, { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.warning, opacity: pressed ? 0.85 : 1 }]}
+          accessibilityRole="button"
+          accessibilityLabel={
+            nextAlarm
+              ? `Próximo remédio às ${nextAlarm.time}, ${nextAlarm.description}. Toque para ver o alarme.`
+              : 'Nenhum lembrete configurado. Toque para criar um.'
+          }
+        >
           <Text style={[styles.nextAlarmLabel, { color: colors.muted, fontFamily: 'PlusJakartaSans', fontSize: fs.sm }]}>
             PRÓXIMO REMÉDIO
           </Text>
@@ -471,7 +496,7 @@ export default function DashboardScreen() {
           <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: fs.base, color: colors.muted }}>
             {nextAlarm ? nextAlarm.description : 'Nenhum lembrete configurado'}
           </Text>
-        </View>
+        </Pressable>
 
         {/* Rede de apoio */}
         {caregivers.length > 0 ? (

@@ -43,6 +43,9 @@ export default function CaregiverTabLayout() {
       <CaregiverPushInitializer />
       <Tabs
         tabBar={() => <CaregiverTabBar />}
+        // Mesmo motivo das abas do monitorado: voltar deve retornar à tela
+        // anterior, não pular para o Início.
+        backBehavior="history"
         screenOptions={{
           headerShown: false,
           // Mesmo cross-fade das abas do monitorado.

@@ -1,6 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CaregiverEmptyState } from '@/components/caregiver-empty-state';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
@@ -11,8 +11,15 @@ import { useCaregiverContext } from '@/lib/caregiver-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FadeInView, ScaleInView, StaggeredItem } from '@/components/animated-components';
 import { trpc } from '@/lib/trpc';
+import { usePushUnavailable } from '@/lib/push-status';
 import type { Alarm, HealthMetric } from '@/lib/app-context';
 import { formatMetricValue, isRecent, latestMetric, metricTypeLabel, nextAlarm, relativeTime } from '@/lib/caregiver-format';
+
+// Janela do contador de alertas na home. Um alarme perdido precisa saltar aos
+// olhos ao abrir o app — o push pode não ter chegado (aparelho sem FCM, sem
+// permissão, notificação dispensada). Some sozinho depois de 24h, sem precisar
+// de estado de "já vi" para manter sincronizado.
+const ALERT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function initialsOf(name: string): string {
   return name
@@ -29,9 +36,17 @@ export default function CaregiverHomeScreen() {
   const { state } = useCaregiverContext();
   const linked = state.linkedMonitored;
 
+  const pushUnavailable = usePushUnavailable();
+
   const monitored = trpc.link.getMonitoredData.useQuery(undefined, { enabled: !!linked });
   const data = monitored.data;
   const loading = monitored.isLoading;
+
+  const alerts = trpc.link.getMonitoredAlerts.useQuery(undefined, { enabled: !!linked });
+  const cutoff = Date.now() - ALERT_WINDOW_MS;
+  const recentAlertCount =
+    (alerts.data?.events ?? []).filter((e) => e.scheduledAt >= cutoff).length +
+    (alerts.data?.warnings ?? []).filter((w) => w.sentAt >= cutoff).length;
 
   const alarms = (data?.alarms ?? []) as Alarm[];
   const metrics = (data?.healthMetrics ?? []) as HealthMetric[];
@@ -96,6 +111,20 @@ export default function CaregiverHomeScreen() {
         </View>
 
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 16, gap: 12 }} showsVerticalScrollIndicator={false}>
+          {pushUnavailable ? (
+            <Pressable
+              onPress={() => Linking.openSettings()}
+              accessibilityRole="button"
+              accessibilityLabel="Notificações indisponíveis. Abrir as configurações do aparelho."
+              style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: ac.surface, borderColor: ac.warning, borderWidth: 3, borderRadius: 16, padding: 18, minHeight: 72, opacity: pressed ? 0.85 : 1 }]}
+            >
+              <MaterialIcons name="notifications-off" size={28} color={ac.warning} />
+              <Text style={{ flex: 1, color: ac.warning, fontSize: af.base, fontWeight: '700', fontFamily: BrandFonts.body, lineHeight: af.base * 1.4 }}>
+                Notificações indisponíveis neste aparelho. Confira a tela de Alertas. Toque para abrir as configurações.
+              </Text>
+            </Pressable>
+          ) : null}
+
           <View style={{ backgroundColor: ac.primary, borderRadius: 20, padding: 20, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
             <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: ac.onPrimary + '22', alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ color: ac.onPrimary, fontSize: af.xl, fontWeight: '800', fontFamily: BrandFonts.body }}>{initialsOf(linked.displayName)}</Text>
@@ -115,13 +144,22 @@ export default function CaregiverHomeScreen() {
           <Pressable
             onPress={() => router.push('/(caregiver-tabs)/alerts')}
             accessibilityRole="button"
-            accessibilityLabel="Alertas recentes"
-            style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: ac.surface, borderColor: ac.border, borderWidth: 2, borderRadius: 16, padding: 18, minHeight: 72, opacity: pressed ? 0.85 : 1 }]}
+            accessibilityLabel={
+              recentAlertCount > 0
+                ? `Alertas recentes, ${recentAlertCount} nas últimas 24 horas`
+                : 'Alertas recentes'
+            }
+            style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: ac.surface, borderColor: recentAlertCount > 0 ? ac.error : ac.border, borderWidth: 2, borderRadius: 16, padding: 18, minHeight: 72, opacity: pressed ? 0.85 : 1 }]}
           >
-            <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: ac.primary + '15', alignItems: 'center', justifyContent: 'center' }}>
-              <MaterialIcons name="notifications" size={28} color={ac.primary} />
+            <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: (recentAlertCount > 0 ? ac.error : ac.primary) + '15', alignItems: 'center', justifyContent: 'center' }}>
+              <MaterialIcons name="notifications" size={28} color={recentAlertCount > 0 ? ac.error : ac.primary} />
             </View>
             <Text style={{ flex: 1, color: ac.foreground, fontSize: af.md, fontWeight: '800', fontFamily: BrandFonts.body }}>Alertas recentes</Text>
+            {recentAlertCount > 0 ? (
+              <View style={{ minWidth: 34, height: 34, borderRadius: 17, paddingHorizontal: 9, backgroundColor: ac.error, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: ac.onEmergency, fontSize: af.base, fontWeight: '800', fontFamily: BrandFonts.body }}>{recentAlertCount}</Text>
+              </View>
+            ) : null}
             <MaterialIcons name="chevron-right" size={28} color={ac.muted} />
           </Pressable>
         </ScrollView>
@@ -145,6 +183,25 @@ export default function CaregiverHomeScreen() {
             {linked.displayName}
           </Text>
         </FadeInView>
+
+        {/* Push indisponível: o cuidador PRECISA saber que não receberá alertas
+            em tempo real — senão confia num canal que não existe. */}
+        {pushUnavailable ? (
+          <Pressable
+            onPress={() => Linking.openSettings()}
+            accessibilityRole="button"
+            accessibilityLabel="Notificações indisponíveis. Abrir as configurações do aparelho."
+            style={({ pressed }) => [
+              styles.pushWarning,
+              { backgroundColor: colors.warningLight, borderColor: colors.warning, opacity: pressed ? 0.85 : 1 },
+            ]}
+          >
+            <MaterialIcons name="notifications-off" size={20} color={colors.warningDark} />
+            <Text style={[styles.pushWarningText, { color: colors.warningDark, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
+              Notificações indisponíveis neste aparelho. Você não vai receber alertas em tempo real — confira a tela de Alertas. Toque para abrir as configurações.
+            </Text>
+          </Pressable>
+        ) : null}
 
         {/* Person card — ScaleInView: card "materializa" com escala suave */}
         <ScaleInView delay={60} duration={300}>
@@ -194,13 +251,25 @@ export default function CaregiverHomeScreen() {
             },
           ]}
           accessibilityRole="button"
+          accessibilityLabel={
+            recentAlertCount > 0
+              ? `Alertas recentes, ${recentAlertCount} nas últimas 24 horas`
+              : 'Alertas recentes'
+          }
         >
-          <View style={[styles.alertIconWrap, { backgroundColor: colors.primaryLight }]}>
-            <MaterialIcons name="notifications" size={20} color={colors.primary} />
+          <View style={[styles.alertIconWrap, { backgroundColor: recentAlertCount > 0 ? colors.errorLight : colors.primaryLight }]}>
+            <MaterialIcons name="notifications" size={20} color={recentAlertCount > 0 ? colors.error : colors.primary} />
           </View>
           <Text style={[styles.alertsLinkText, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>
             Alertas recentes
           </Text>
+          {recentAlertCount > 0 ? (
+            <View style={[styles.badge, { backgroundColor: colors.error }]}>
+              <Text style={[styles.badgeText, { color: colors.onEmergency, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
+                {recentAlertCount}
+              </Text>
+            </View>
+          ) : null}
           <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
         </Pressable>
       </ScrollView>
@@ -335,5 +404,30 @@ const styles = StyleSheet.create({
   alertsLinkText: {
     flex: 1,
     fontWeight: '600',
+  },
+  badge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    paddingHorizontal: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    fontWeight: '700',
+  },
+  pushWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    minHeight: 44,
+  },
+  pushWarningText: {
+    flex: 1,
+    fontWeight: '600',
+    lineHeight: 19,
   },
 });

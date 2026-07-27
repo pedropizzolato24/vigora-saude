@@ -5,6 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Auth from '@/lib/_core/auth';
 import { setPendingInvite } from '@/lib/pending-invite';
 import { hasCompletedCaregiverOnboarding } from '@/lib/caregiver-onboarding-flag';
+import { hasRegisterDraft } from '@/lib/register-draft';
+import { perfMark, perfSpan } from '@/lib/_core/perf';
 
 const ONBOARDING_KEY = 'vigora_onboarding_completed';
 const LOGIN_COMPLETED_KEY = 'vigora_login_completed';
@@ -16,7 +18,8 @@ const LOGIN_COMPLETED_KEY = 'vigora_login_completed';
  *   onboarding not done                          → /onboarding (first time)
  *   onboarding done, never logged in before      → /onboarding (so user sees slides → login)
  *   onboarding done, logged in before, no user   → /login (returning user, session gone)
- *   authenticated but userType is null           → /register (registration incomplete)
+ *   authenticated, userType null, form em branco → /login (nada a retomar)
+ *   authenticated, userType null, form iniciado  → /register (retoma o rascunho)
  *   authenticated, userType 'caregiver', onboarding flag absent → /caregiver-onboarding
  *   authenticated, userType 'caregiver', onboarding flag present → /(caregiver-tabs)
  *   authenticated, userType 'monitored'         → stay on /(tabs)
@@ -41,12 +44,16 @@ export function OnboardingGate() {
     }
 
     (async () => {
+      perfMark('OnboardingGate: início da decisão de rota');
+      const endGate = perfSpan('OnboardingGate total');
       try {
         // Cold-start robustness: if the app was opened via an invite link, stash
         // the token now so it survives the funnel even if pathname hasn't
         // resolved to /convite yet and we redirect to /login below.
         try {
+          const endLink = perfSpan('  getInitialURL');
           const initialUrl = await Linking.getInitialURL();
+          endLink();
           const match = initialUrl?.match(/\/convite\/([^/?#]+)/);
           if (match?.[1]) await setPendingInvite(decodeURIComponent(match[1]));
           // Cold-start via Google OAuth redirect: let app/oauthredirect.tsx own
@@ -59,11 +66,13 @@ export function OnboardingGate() {
           // best-effort
         }
 
+        const endFlags = perfSpan('  flags + getUserInfo');
         const [onboardingDone, loginCompleted, user] = await Promise.all([
           AsyncStorage.getItem(ONBOARDING_KEY),
           AsyncStorage.getItem(LOGIN_COMPLETED_KEY),
           Auth.getUserInfo(),
         ]);
+        endFlags();
 
         if (!onboardingDone || (!loginCompleted && !user)) {
           // Never done onboarding OR never logged in → full funnel: slides → login
@@ -78,8 +87,11 @@ export function OnboardingGate() {
         }
 
         if (!user.userType) {
-          // Logged in but never finished the registration form
-          router.replace('/register');
+          // Entrou (inclusive "Continuar sem conta") mas não concluiu o cadastro.
+          // Só volta ao formulário quando há algo escrito nele; com tudo em
+          // branco o app abria direto no /register e o usuário tinha que tocar
+          // em "Voltar" para chegar ao login.
+          router.replace((await hasRegisterDraft()) ? '/register' : '/login');
           return;
         }
 
@@ -94,6 +106,7 @@ export function OnboardingGate() {
       } catch {
         // On error, don't block app startup
       } finally {
+        endGate();
         setChecked(true);
       }
     })();

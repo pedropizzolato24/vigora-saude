@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, ViewProps, Easing, AccessibilityInfo } from 'react-native';
+import { Animated, View, ViewProps, Easing, AccessibilityInfo, StyleProp, ViewStyle } from 'react-native';
 
 /**
  * Respects the OS reduce-motion preference (iOS "Reduce Motion" / Android "Remove animations").
@@ -182,6 +182,155 @@ export function PulseView({
   return (
     <Animated.View style={[{ transform: [{ scale }] }, style]} {...props}>
       {children}
+    </Animated.View>
+  );
+}
+
+// --- Ripple Halo ------------------------------------------------------------
+// Onda circular que nasce atrás do conteúdo, cresce para fora e some. O
+// conteúdo (ex.: o ícone do despertador) fica PARADO — pulsar o ícone inteiro
+// junto passava tensão/urgência na tela de alarme (feedback do teste).
+
+interface RippleHaloProps {
+  /** Diâmetro da onda em repouso — normalmente o mesmo do círculo de baixo. */
+  size: number;
+  color: string;
+  active?: boolean;
+  /** Até onde a onda cresce antes de sumir. */
+  maxScale?: number;
+  /** Opacidade máxima da onda. Baixa de propósito: o efeito é discreto. */
+  maxOpacity?: number;
+  duration?: number;
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+}
+
+export function RippleHalo({
+  size,
+  color,
+  active = true,
+  maxScale = 1.45,
+  maxOpacity = 0.28,
+  duration = 2400,
+  children,
+  style,
+}: RippleHaloProps) {
+  const reduceMotion = useReducedMotion();
+  const progress = useRef(new Animated.Value(0)).current;
+  const animating = active && !reduceMotion;
+
+  useEffect(() => {
+    if (!animating) {
+      progress.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.timing(progress, {
+        toValue: 1,
+        duration,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.quad),
+      })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [animating, duration, progress]);
+
+  // Sobe do zero no começo e volta a zero no fim: o loop reinicia invisível,
+  // então não há "pulo" quando a onda recomeça.
+  const opacity = progress.interpolate({
+    inputRange: [0, 0.2, 1],
+    outputRange: [0, maxOpacity, 0],
+  });
+  const scale = progress.interpolate({ inputRange: [0, 1], outputRange: [1, maxScale] });
+
+  return (
+    <View style={[{ alignItems: 'center', justifyContent: 'center' }, style]}>
+      {animating ? (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+            backgroundColor: color,
+            opacity,
+            transform: [{ scale }],
+          }}
+        />
+      ) : null}
+      {children}
+    </View>
+  );
+}
+
+// --- Collapsible ------------------------------------------------------------
+// Abre/fecha o conteúdo deslizando a altura em vez de aparecer seco. A altura
+// real é medida por um filho absoluto (não influencia a altura do container),
+// então a animação sempre vai de 0 até o tamanho certo do conteúdo.
+
+/** Duração do slide. Exportada para o conteúdo entrar logo APÓS a abertura. */
+export const COLLAPSE_DURATION = 260;
+
+interface CollapsibleProps {
+  open: boolean;
+  duration?: number;
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+}
+
+export function Collapsible({ open, duration = COLLAPSE_DURATION, children, style }: CollapsibleProps) {
+  const reduceMotion = useReducedMotion();
+  // Continua montado durante o fechamento para a altura poder animar até 0.
+  const [visible, setVisible] = useState(open);
+  const [contentHeight, setContentHeight] = useState(0);
+  const anim = useRef(new Animated.Value(open ? 1 : 0)).current;
+
+  useEffect(() => {
+    if (open) setVisible(true);
+  }, [open]);
+
+  useEffect(() => {
+    if (!visible) return;
+    if (reduceMotion) {
+      anim.setValue(open ? 1 : 0);
+      if (!open) setVisible(false);
+      return;
+    }
+    // Sem a altura medida ainda não dá para animar — o onLayout dispara este
+    // efeito de novo assim que ela chega.
+    if (open && contentHeight === 0) return;
+    const animation = Animated.timing(anim, {
+      toValue: open ? 1 : 0,
+      duration,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    });
+    animation.start(({ finished }) => {
+      if (finished && !open) setVisible(false);
+    });
+    return () => animation.stop();
+  }, [open, visible, contentHeight, duration, reduceMotion, anim]);
+
+  if (!visible) return null;
+
+  return (
+    <Animated.View
+      style={[
+        {
+          overflow: 'hidden',
+          height: anim.interpolate({ inputRange: [0, 1], outputRange: [0, contentHeight] }),
+        },
+        style,
+      ]}
+    >
+      <View
+        style={{ position: 'absolute', left: 0, right: 0 }}
+        onLayout={(e) => setContentHeight(e.nativeEvent.layout.height)}
+      >
+        {children}
+      </View>
     </Animated.View>
   );
 }

@@ -5,29 +5,32 @@
  * 1. Detect alarm events that expired without confirmation
  *    -> If the account was offline (no heartbeat): mark as "not_sent"
  *    -> If the account was online but user didn't respond: mark as "missed"
- * 2. Check for accounts that went offline AND have an unconfirmed alarm event
- *    in the look-back window (inactivity alone is NOT a danger signal)
+ * 2. Escalate accounts with an unconfirmed alarm/check-in event, by how long
+ *    the expected answer has been missing
  *    -> Send progressive warning messages to emergency contacts via WhatsApp
  *
  * Tudo chaveado por CONTA (openId): a pergunta do switch é "esta PESSOA está
- * respondendo?", não "este aparelho está ligado?". Qualquer aparelho da conta
- * que pingar mantém a conta viva. Ver
+ * respondendo?", não "este aparelho está ligado?". Ver
  * docs/design/2026-07-12-monitoring-account-ownership.md.
  *
- * Warning escalation levels:
- *   Level 1 (30min) -> Aviso leve: conta sem atividade
- *   Level 2 (2h)    -> Preocupação moderada: múltiplos alarmes perdidos
+ * A escada do Passo 2 mede a idade do EVENTO não confirmado, não a ausência de
+ * heartbeat — o heartbeat só corre com o app em primeiro plano e media a coisa
+ * errada nos dois sentidos (ruído para quem responde e fecha o app; silêncio
+ * total para quem deixa o app aberto e não responde). Ver docs/claude/alarmes.md.
+ *
+ * Warning escalation levels (horas desde que a resposta era esperada):
+ *   Level 1 (30min) -> Aviso leve: um alarme sem confirmação
+ *   Level 2 (2h)    -> Preocupação moderada
  *   Level 3 (6h+)   -> Alerta sério: possível emergência
  */
 import {
   claimWarning,
   getAccountLiveness,
+  getAccountsWithUnconfirmedEvents,
   getExpiredPendingEvents,
-  getInactiveAccounts,
   getMissedCheckinEvents,
   getMissedMedicationEvents,
   getWarningHistory,
-  hasUnconfirmedEvents,
   markEventWarningSent,
   purgeStaleData,
   releaseWarning,
@@ -42,18 +45,22 @@ import { getPushTokensForOpenIds } from "./db-push";
 import { sendExpoPush } from "./push";
 import type { EmergencyContactRecord } from "../drizzle/schema";
 
-// Grace period: how long after scheduledAt we wait before resolving a pending event
-const GRACE_PERIOD_MINUTES = 15;
-
-// Heartbeat threshold: if the account hasn't pinged in this many minutes, it's considered offline
-const OFFLINE_THRESHOLD_MINUTES = 30;
+// Grace period: how long after scheduledAt we wait before resolving a pending event.
+// Precisa cobrir só o caminho feliz do cliente: countdown máximo de 60s
+// (timerDuration) + retries de rede do confirmEvent (~1min no pior caso).
+// 5min cobre com folga; os 15min antigos empurravam o alerta ao cuidador para
+// 15–20min depois do horário (grace + cadência do job) — tempo demais para um
+// dead man's switch. Resposta tardia real ainda corrige o status depois
+// (updateAlarmEventStatusByAlarmId aceita 'responded' sobre missed/not_sent).
+const GRACE_PERIOD_MINUTES = 5;
 
 // Look-back (horas) compartilhado por toda escalação orientada a evento:
-// gate do Passo 2 e Passos 3/4. Evento mais velho que isso não escala mais —
-// uma instalação abandonada para de avisar a família em vez de avisar para sempre.
+// Passos 2, 3 e 4. Evento mais velho que isso não escala mais — uma instalação
+// abandonada para de avisar a família em vez de avisar para sempre.
 const EVENT_LOOKBACK_HOURS = 48;
 
-// Warning thresholds in hours (fractional allowed, e.g. 0.5 = 30 min)
+// Limiares da escada, em horas desde que a resposta era ESPERADA (não desde o
+// último heartbeat). Fracionário permitido: 0.5 = 30 min.
 const WARNING_LEVELS = [
   { level: 1, hours: 0.5, label: "aviso leve" },
   { level: 2, hours: 2,   label: "preocupação moderada" },
@@ -113,12 +120,12 @@ export function shouldRetryWarning(totalSent: number, pushed: number): boolean {
   return totalSent === 0 && pushed === 0;
 }
 
-function formatOfflineDuration(offlineHours: number): string {
-  if (offlineHours < 1) {
-    const minutes = Math.round(offlineHours * 60);
+function formatOfflineDuration(unansweredHours: number): string {
+  if (unansweredHours < 1) {
+    const minutes = Math.round(unansweredHours * 60);
     return `${minutes} minutos`;
   }
-  const hours = Math.round(offlineHours);
+  const hours = Math.round(unansweredHours);
   return `${hours} hora${hours !== 1 ? "s" : ""}`;
 }
 
@@ -151,33 +158,34 @@ async function getAccountProfile(openId: string): Promise<{
 function buildWarningMessage(
   userName: string,
   level: number,
-  offlineHours: number,
+  unansweredHours: number,
   locationUrl?: string
 ): string {
   const name = userName || "O usuário do Vigora";
-  const duration = formatOfflineDuration(offlineHours);
+  const duration = formatOfflineDuration(unansweredHours);
 
   let header: string;
   let body: string;
 
+  // A escada fala do ALARME sem resposta, não de uso do app: "sem atividade no
+  // aplicativo" descrevia algo esperado (responder e fechar o app) e soava como
+  // alarme falso para quem recebe. O que exige ação é a resposta que não veio.
   if (level === 1) {
     header = "⚠️ AVISO - Vigora";
     body =
-      `${name} está sem atividade no aplicativo há aproximadamente ${duration}.\n\n` +
-      `Os alarmes de medicamento/saúde não estão sendo confirmados. ` +
-      `Isso pode indicar que o celular está desligado, sem bateria ou sem conexão.\n\n` +
+      `${name} não confirmou um alarme de saúde previsto há aproximadamente ${duration}.\n\n` +
+      `Isso pode indicar que o celular está desligado, sem bateria ou sem conexão — ` +
+      `ou que a pessoa não conseguiu responder.\n\n` +
       `Recomendamos entrar em contato para verificar se está tudo bem.`;
   } else if (level === 2) {
     header = "⚠️⚠️ ATENÇÃO - Vigora";
     body =
-      `${name} está sem atividade há aproximadamente ${duration}.\n\n` +
-      `Múltiplos alarmes de saúde não foram confirmados. ` +
+      `${name} está sem responder aos alarmes de saúde há aproximadamente ${duration}.\n\n` +
       `Por favor, tente entrar em contato com urgência.`;
   } else {
     header = "🚨 ALERTA SÉRIO - Vigora";
     body =
-      `${name} está sem atividade há mais de ${duration}.\n\n` +
-      `Todos os alarmes de saúde do período ficaram sem resposta. ` +
+      `${name} está sem responder aos alarmes de saúde há mais de ${duration}.\n\n` +
       `Esta situação requer atenção imediata. ` +
       `Considere acionar serviços de emergência se não conseguir contato.`;
   }
@@ -192,17 +200,17 @@ function buildWarningMessage(
   return message;
 }
 
-/** Short push title for an offline warning, by escalation level. */
+/** Short push title for an unanswered-alarm warning, by escalation level. */
 function buildWarningPushTitle(level: number): string {
   if (level === 1) return "⚠️ Aviso — Vigora";
   if (level === 2) return "⚠️ Atenção — Vigora";
   return "🚨 Alerta sério — Vigora";
 }
 
-/** Short push body summarizing the offline duration. */
-function buildWarningPushBody(userName: string, offlineHours: number): string {
+/** Short push body: há quanto tempo a resposta esperada não vem. */
+function buildWarningPushBody(userName: string, unansweredHours: number): string {
   const name = userName || "A pessoa que você acompanha";
-  return `${name} está sem atividade no app há ${formatOfflineDuration(offlineHours)}. Toque para ver os detalhes.`;
+  return `${name} está sem responder aos alarmes há ${formatOfflineDuration(unansweredHours)}. Toque para ver os detalhes.`;
 }
 
 /**
@@ -256,7 +264,14 @@ async function sendPushToCaregivers(
 ): Promise<number> {
   if (caregiverOpenIds.length === 0) return 0;
   const tokens = await getPushTokensForOpenIds(caregiverOpenIds);
-  if (tokens.length === 0) return 0;
+  // Mesmo motivo do aviso em routers-monitoring.ts: cuidador vinculado sem
+  // token = escalação silenciosamente sem destino. Sem openId no log (LGPD).
+  if (tokens.length === 0) {
+    console.warn(
+      `[Monitoring] escalação: ${caregiverOpenIds.length} cuidador(es) vinculado(s), 0 push tokens — push NÃO enviado.`
+    );
+    return 0;
+  }
   return sendExpoPush(tokens.map((t) => t.token), { title, body, data });
 }
 
@@ -264,10 +279,10 @@ async function sendPushToCaregivers(
  * Determine the appropriate warning level based on offline hours.
  * Returns null if no warning should be sent yet.
  */
-function getWarningLevel(offlineHours: number): number | null {
+function getWarningLevel(unansweredHours: number): number | null {
   let level: number | null = null;
   for (const threshold of WARNING_LEVELS) {
-    if (offlineHours >= threshold.hours) {
+    if (unansweredHours >= threshold.hours) {
       level = threshold.level;
     }
   }
@@ -308,10 +323,15 @@ export async function runMonitoringJob(): Promise<void> {
       // o dono do evento ruim.
       try {
         const liveness = await getAccountLiveness(event.openId);
+        // Vida DEPOIS do horário do disparo. Sem sinal a partir de scheduledAt,
+        // não há evidência de que o alarme sequer tocou (celular desligado, sem
+        // bateria, sem conexão) → 'not_sent'. O critério antigo (heartbeat até
+        // 30min ANTES do horário) classificava "desligou o celular 1min antes
+        // do alarme" como 'missed' — e o cuidador recebia "não respondeu ao
+        // alarme", que é falso.
         const accountOnline =
           liveness &&
-          liveness.lastSeenAt.getTime() >
-            event.scheduledAt.getTime() - OFFLINE_THRESHOLD_MINUTES * 60 * 1000;
+          liveness.lastSeenAt.getTime() >= event.scheduledAt.getTime();
 
         if (!accountOnline) {
           await updateAlarmEventStatus(event.id, "not_sent");
@@ -333,28 +353,29 @@ export async function runMonitoringJob(): Promise<void> {
   }
 
   try {
-    // -- Step 2: Check for accounts needing warning messages -------------------
-    const inactiveAccounts = await getInactiveAccounts(OFFLINE_THRESHOLD_MINUTES);
-    console.log(`[Monitor] Found ${inactiveAccounts.length} inactive accounts`);
+    // -- Step 2: Escalation ladder over UNCONFIRMED EVENTS ----------------------
+    // A escada é ancorada na idade do evento esperado que ficou sem resposta —
+    // NÃO na ausência de heartbeat. O heartbeat só corre com o app em primeiro
+    // plano, então ele media a coisa errada nos dois sentidos: quem responde ao
+    // alarme e fecha o app ficava "offline" para sempre (ruído), e quem deixa o
+    // app ABERTO sem responder nunca entrava na lista de inativos — a família
+    // NUNCA era avisada (buraco). Um heartbeat de fundo não resolveria: o
+    // WorkManager tem mínimo de 15min e o Doze pode não executá-lo, justamente
+    // no cenário noturno em que o switch mais importa.
+    //
+    // O heartbeat segue vivo para o que ele de fato sustenta: classificar
+    // missed vs not_sent no Passo 1 e mostrar "visto por último" ao cuidador.
+    const accountsAtRisk = await getAccountsWithUnconfirmedEvents(EVENT_LOOKBACK_HOURS);
+    console.log(`[Monitor] Found ${accountsAtRisk.length} accounts with unconfirmed events`);
 
-    for (const account of inactiveAccounts) {
-      const offlineMs = now.getTime() - account.lastSeenAt.getTime();
-      const offlineHours = offlineMs / (1000 * 60 * 60);
+    for (const account of accountsAtRisk) {
+      // Idade do disparo mais antigo sem confirmação — os limiares (30min/2h/6h)
+      // passam a contar a partir da hora em que a resposta era esperada.
+      const unansweredHours =
+        (now.getTime() - account.oldestUnconfirmedAt.getTime()) / (1000 * 60 * 60);
 
-      const warningLevel = getWarningLevel(offlineHours);
+      const warningLevel = getWarningLevel(unansweredHours);
       if (warningLevel === null) continue;
-
-      // Gate anti-falso-alarme (Anexo B do spec 2026-07-12): inatividade
-      // sozinha não é perigo — logout, desinstalação ou app em segundo plano
-      // escalavam à família sem nenhum alarme perdido. Só escala se um
-      // alarme/check-in esperado expirou SEM confirmação na janela de look-back.
-      const danger = await hasUnconfirmedEvents(account.openId, EVENT_LOOKBACK_HOURS);
-      if (!danger) {
-        console.log(
-          `[Monitor] Account ${account.openId}: inactive but no unconfirmed events, skipping (no false alarm)`
-        );
-        continue;
-      }
 
       // Check if we already sent a warning at this level recently
       const warnings = await getWarningHistory(account.openId, 10);
@@ -384,10 +405,13 @@ export async function runMonitoringJob(): Promise<void> {
         continue;
       }
 
-      // Build location URL if available (last fix stored on the liveness row)
+      // Build location URL if available (last fix stored on the liveness row).
+      // A escada não depende mais da linha de liveness para decidir escalar, mas
+      // a última localização conhecida ainda ajuda quem vai atrás da pessoa.
       let locationUrl: string | undefined;
-      if (account.lastLocation) {
-        const [lat, lng] = account.lastLocation.split(",");
+      const liveness = await getAccountLiveness(account.openId);
+      if (liveness?.lastLocation) {
+        const [lat, lng] = liveness.lastLocation.split(",");
         if (lat && lng) {
           locationUrl = `https://maps.google.com/?q=${lat},${lng}`;
         }
@@ -400,19 +424,22 @@ export async function runMonitoringJob(): Promise<void> {
       const claimId = await claimWarning({
         openId: account.openId,
         level: warningLevel,
-        offlineHours,
+        // A coluna se chama offlineHours por herança (a escada media ausência
+        // de heartbeat); o valor agora é há quanto tempo a resposta esperada
+        // não vem. Renomear a coluna exigiria migração sem ganho funcional.
+        offlineHours: unansweredHours,
         locationIncluded: !!locationUrl,
       });
 
       const message = buildWarningMessage(
         userName,
         warningLevel,
-        offlineHours,
+        unansweredHours,
         locationUrl
       );
 
       console.log(
-        `[Monitor] Sending level ${warningLevel} warning for account ${account.openId} (${offlineHours}h offline)`
+        `[Monitor] Sending level ${warningLevel} warning for account ${account.openId} (${unansweredHours}h sem resposta)`
       );
       console.log(`[Monitor] WhatsApp configured: ${isWhatsAppApiConfigured()}`);
 
@@ -438,7 +465,7 @@ export async function runMonitoringJob(): Promise<void> {
 
       // In-app push to linked caregivers (real-time companion to WhatsApp).
       const pushTitle = buildWarningPushTitle(warningLevel);
-      const pushBody = buildWarningPushBody(userName, offlineHours);
+      const pushBody = buildWarningPushBody(userName, unansweredHours);
       const pushed = await sendPushToCaregivers(caregiverOpenIds, pushTitle, pushBody, {
         type: "monitoring_warning",
         level: warningLevel,
@@ -522,13 +549,18 @@ export async function runMonitoringJob(): Promise<void> {
   }
 
   try {
-    // -- Step 4: Escalate missed MEDICATION alarms (account online, unanswered) --
+    // -- Step 4: Escalate unanswered MEDICATION alarms (missed | not_sent) ------
     // Backstop do dead man's switch para quando a escalação no cliente não rodou
     // (app morreu logo após o disparo). warningSent=true é setado pelo cliente
     // quando ELE escala (confirmAlarmMissed), então aqui só caem os que ninguém
-    // alertou. 'not_sent' (offline) fica para o Passo 2. Look-back 48h.
+    // alertou. 'not_sent' (sem sinal de vida após o horário) também escala AQUI
+    // — antes ficava só para a escada de inatividade do Passo 2 (30min+), e o
+    // cuidador de um celular desligado esperava meia hora pelo primeiro aviso.
+    // A cópia distingue: 'missed' = "não respondeu"; 'not_sent' = "não foi
+    // entregue — celular pode estar desligado" (nunca acusar de não responder
+    // um alarme que não tocou). Look-back 48h.
     const missedAlarms = await getMissedMedicationEvents("checkin-daily", EVENT_LOOKBACK_HOURS);
-    console.log(`[Monitor] Found ${missedAlarms.length} missed medication alarms to escalate`);
+    console.log(`[Monitor] Found ${missedAlarms.length} unanswered medication alarms to escalate`);
 
     for (const event of missedAlarms) {
       const { userName, contacts } = await getAccountProfile(event.openId);
@@ -544,11 +576,16 @@ export async function runMonitoringJob(): Promise<void> {
         minute: "2-digit",
       });
       const desc = event.alarmDescription || "alarme de medicamento";
-      const message =
-        `⚠️ ALARME NÃO RESPONDIDO - Vigora\n\n` +
-        `${name} não confirmou o alarme "${desc}" previsto para ${scheduledStr}.\n\n` +
-        `Por favor, entre em contato para verificar se está tudo bem.\n\n` +
-        `- Enviado automaticamente pelo Vigora`;
+      const notSent = event.status === "not_sent";
+      const message = notSent
+        ? `⚠️ ALARME NÃO ENTREGUE - Vigora\n\n` +
+          `O alarme "${desc}" de ${name}, previsto para ${scheduledStr}, não pôde ser entregue — o celular pode estar desligado, sem bateria ou sem conexão.\n\n` +
+          `Por favor, entre em contato para verificar se está tudo bem.\n\n` +
+          `- Enviado automaticamente pelo Vigora`
+        : `⚠️ ALARME NÃO RESPONDIDO - Vigora\n\n` +
+          `${name} não confirmou o alarme "${desc}" previsto para ${scheduledStr}.\n\n` +
+          `Por favor, entre em contato para verificar se está tudo bem.\n\n` +
+          `- Enviado automaticamente pelo Vigora`;
 
       let totalSent = 0;
       for (const contact of contacts) {
@@ -562,13 +599,15 @@ export async function runMonitoringJob(): Promise<void> {
 
       const pushed = await sendPushToCaregivers(
         caregiverOpenIds,
-        "⚠️ Alarme não respondido — Vigora",
-        `${name} não respondeu ao alarme das ${scheduledStr}. Toque para ver os detalhes.`,
+        notSent ? "⚠️ Alarme não entregue — Vigora" : "⚠️ Alarme não respondido — Vigora",
+        notSent
+          ? `O celular de ${name} pode estar desligado ou sem conexão — o alarme das ${scheduledStr} não foi entregue. Toque para ver os detalhes.`
+          : `${name} não respondeu ao alarme das ${scheduledStr}. Toque para ver os detalhes.`,
         { type: "missed_alarm", url: "/(caregiver-tabs)/alerts" }
       );
 
       await markEventWarningSent(event.id);
-      console.log(`[Monitor] Step 4: escalated missed alarm ${event.id}, ${totalSent} contacts reached, ${pushed} caregiver push(es) delivered`);
+      console.log(`[Monitor] Step 4: escalated ${event.status} alarm ${event.id}, ${totalSent} contacts reached, ${pushed} caregiver push(es) delivered`);
     }
   } catch (error) {
     recordFailure("Passo 4 (alarmes de medicação perdidos)", error);

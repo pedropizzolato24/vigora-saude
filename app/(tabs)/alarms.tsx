@@ -33,7 +33,7 @@ import { scheduleFullAlarm, cancelFullAlarm } from '@/lib/alarm-sync';
 import { openBatteryOptimizationSettings } from '@/lib/battery-optimization';
 import { oemBatteryHint } from '@/lib/_core/oem-battery-hint';
 import { canScheduleExactAlarms, isIgnoringBatteryOptimizations, openExactAlarmSettings, canUseFullScreenIntent, openFullScreenIntentSettings } from 'expo-alarm-countdown';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MAX_ALARMS } from '@/components/pro-limits';
 
 // Evita repetir o aviso de "Alarmes e lembretes" a cada visita à aba na mesma
@@ -103,6 +103,7 @@ export default function AlarmsScreen() {
   const fs = useFontSize();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { alarmId: focusAlarmId } = useLocalSearchParams<{ alarmId?: string }>();
   const { state, dispatch } = useAppContext();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingAlarm, setEditingAlarm] = useState<Alarm | null>(null);
@@ -292,6 +293,19 @@ export default function AlarmsScreen() {
     setWizardStep(1);
     setModalVisible(true);
   };
+
+  // Abre direto um alarme quando a tela é chamada com ?alarmId= (card "próximo
+  // remédio" da tela inicial). Consome o parâmetro para não reabrir o modal ao
+  // voltar para a aba depois.
+  useEffect(() => {
+    if (!focusAlarmId) return;
+    const target = state.alarms.find((a) => a.id === focusAlarmId);
+    // Sem o alarme em mãos ainda (AsyncStorage carregando) o parâmetro fica de
+    // pé e o efeito roda de novo quando a lista chegar.
+    if (!target) return;
+    router.setParams({ alarmId: undefined });
+    openEditModal(target);
+  }, [focusAlarmId, state.alarms]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const openEditModal = (alarm: Alarm) => {
     setEditingAlarm(alarm);

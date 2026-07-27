@@ -37,6 +37,7 @@ import {
 import type { EdgeInsets, Rect } from "react-native-safe-area-context";
 
 import { trpc, createTRPCClient } from "@/lib/trpc";
+import { perfMark } from "@/lib/_core/perf";
 import { initializePurchases } from "@/lib/purchases";
 import { PurchasesProvider } from "@/context/purchases-context";
 
@@ -54,12 +55,21 @@ export default function RootLayout() {
   const [insets] = useState<EdgeInsets>(initialInsets);
   const [frame] = useState<Rect>(initialFrame);
 
-  useFonts({
+  const [fontsLoaded] = useFonts({
     'Fraunces-Italic': require('../assets/fonts/Fraunces-Variable.ttf'),
     'PlusJakartaSans': require('../assets/fonts/PlusJakartaSans-Variable.ttf'),
     'SpaceMono-Regular': require('../assets/fonts/SpaceMono-Regular.ttf'),
     'SpaceMono-Bold': require('../assets/fonts/SpaceMono-Bold.ttf'),
   });
+
+  // Diagnóstico do splash longo (item 2 do feedback 27/07): quanto do tempo até
+  // a primeira tela é fonte, quanto é provider, quanto é rede.
+  useEffect(() => {
+    perfMark('RootLayout: primeiro render');
+  }, []);
+  useEffect(() => {
+    if (fontsLoaded) perfMark('fontes carregadas');
+  }, [fontsLoaded]);
 
   // Initialize RevenueCat SDK on app startup
   useEffect(() => {

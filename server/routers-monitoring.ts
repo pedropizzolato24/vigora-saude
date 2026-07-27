@@ -114,7 +114,15 @@ async function pushMissedAlarmToCaregivers(
     const tokens = await getPushTokensForOpenIds(
       caregivers.map((c) => c.caregiverOpenId)
     );
-    if (tokens.length === 0) return;
+    // Cuidador vinculado E SEM token = o alerta não chega a ninguém em tempo
+    // real (ele só veria abrindo a tela de Alertas). Sair calado aqui escondeu
+    // por semanas um app Android buildado sem FCM. Sem openId no log (LGPD).
+    if (tokens.length === 0) {
+      console.warn(
+        `[Monitoring] alarme perdido: ${caregivers.length} cuidador(es) vinculado(s), 0 push tokens — push NÃO enviado. Cliente sem FCM/permissão de notificação?`
+      );
+      return;
+    }
 
     // Nome do monitorado para o cuidador saber DE QUEM é o alarme (um cuidador
     // pode seguir mais de uma pessoa). Falha ao ler o nome não aborta o push.

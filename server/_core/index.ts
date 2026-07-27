@@ -133,6 +133,21 @@ async function startServer() {
     res.status(ok ? 200 : 503).json({ ok, db, monitoringJob, timestamp: Date.now() });
   });
 
+  // Diagnóstico (item 2 do feedback 27/07): com o tempo gasto DENTRO do
+  // servidor aqui e o tempo total medido no cliente ([Perf] trpc ...), a
+  // diferença é rede/fila. Só método, caminho, status e duração — nunca corpo
+  // nem query string (podem carregar dados de saúde; LGPD).
+  app.use("/api/trpc", (req, res, next) => {
+    const t0 = Date.now();
+    res.on("finish", () => {
+      const ms = Date.now() - t0;
+      const path = req.path.replace(/^\//, "") || "?";
+      const slow = ms > 1000 ? " SLOW" : "";
+      console.log(`[Perf] ${req.method} ${path} ${res.statusCode} ${ms}ms${slow}`);
+    });
+    next();
+  });
+
   // tRPC endpoints: 120 requests/minute/IP. Authenticated calls also
   // pass through per-procedure logic; this is the outer envelope.
   app.use(
