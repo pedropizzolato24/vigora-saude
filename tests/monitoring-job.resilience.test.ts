@@ -16,10 +16,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../server/db-monitoring", () => ({
   getExpiredPendingEvents: vi.fn(async () => []),
-  getInactiveAccounts: vi.fn(async () => []),
+  getAccountsWithUnconfirmedEvents: vi.fn(async () => []),
   getAccountLiveness: vi.fn(async () => null),
   getWarningHistory: vi.fn(async () => []),
-  hasUnconfirmedEvents: vi.fn(async () => false),
   claimWarning: vi.fn(async () => 1),
   updateWarningResult: vi.fn(async () => undefined),
   releaseWarning: vi.fn(async () => undefined),
@@ -70,7 +69,7 @@ const evento = (id: number) =>
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(db.getExpiredPendingEvents).mockResolvedValue([]);
-  vi.mocked(db.getInactiveAccounts).mockResolvedValue([]);
+  vi.mocked(db.getAccountsWithUnconfirmedEvents).mockResolvedValue([]);
   vi.mocked(db.getAccountLiveness).mockResolvedValue(null);
   vi.mocked(db.getMissedCheckinEvents).mockResolvedValue([]);
   vi.mocked(db.getMissedMedicationEvents).mockResolvedValue([]);
@@ -88,7 +87,7 @@ describe("monitoring-job — isolamento de falha por passo", () => {
 
     // Era exatamente isto que não acontecia: o Passo 1 abortava e os Passos
     // 2, 3 e 4 nunca eram alcançados.
-    expect(db.getInactiveAccounts).toHaveBeenCalled();
+    expect(db.getAccountsWithUnconfirmedEvents).toHaveBeenCalled();
     expect(db.getMissedCheckinEvents).toHaveBeenCalled();
     expect(db.getMissedMedicationEvents).toHaveBeenCalled();
   });

@@ -18,10 +18,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../server/db-monitoring", () => ({
   getExpiredPendingEvents: vi.fn(async () => []),
-  getInactiveAccounts: vi.fn(async () => []),
+  getAccountsWithUnconfirmedEvents: vi.fn(async () => []),
   getAccountLiveness: vi.fn(async () => null),
   getWarningHistory: vi.fn(async () => []),
-  hasUnconfirmedEvents: vi.fn(async () => false),
   claimWarning: vi.fn(async () => 1),
   updateWarningResult: vi.fn(async () => undefined),
   releaseWarning: vi.fn(async () => undefined),
