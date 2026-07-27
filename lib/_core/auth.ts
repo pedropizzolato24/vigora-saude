@@ -71,6 +71,19 @@ export function subscribeSessionExpired(listener: SessionExpiredListener): () =>
 export async function handleUnauthorized(): Promise<void> {
   if (handlingUnauthorized) return;
   handlingUnauthorized = true;
+  // 401 sem sessão estabelecida NÃO é "sessão expirada": numa instalação virgem
+  // as chamadas de startup (cloud pull/heartbeat) disparam sem token, o servidor
+  // responde 401 e o redirect para /login atropelava o funil de onboarding
+  // (item 3 do feedback de testes). Sem user info e sem token, não há o que
+  // limpar nem para onde "voltar" — só ignora.
+  const [user, token] = await Promise.all([
+    getUserInfo().catch(() => null),
+    getSessionToken().catch(() => null),
+  ]);
+  if (!user && !token) {
+    handlingUnauthorized = false;
+    return;
+  }
   try {
     await removeSessionToken();
     await clearUserInfo();

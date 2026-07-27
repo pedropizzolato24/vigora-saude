@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 import { ScreenContainer } from '@/components/screen-container';
+import { ScreenHeaderBack } from '@/components/screen-header-back';
 import { FormKeyboardView } from '@/components/form-keyboard-view';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
@@ -216,7 +217,8 @@ export default function ProfileScreen() {
       <>
       <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
         {/* Título apenas — salvar fica no botão grande no fim da tela */}
-        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <ScreenHeaderBack />
           <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Meu Perfil</Text>
         </View>
         <FormKeyboardView style={{ flex: 1 }}>
@@ -301,7 +303,8 @@ export default function ProfileScreen() {
   return (
     <ScreenContainer edges={['left', 'right']}>
       {/* Título apenas — salvar fica no botão grande no fim da tela */}
-      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12, flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+        <ScreenHeaderBack />
         <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: fs['2xl'] }]}>Meu Perfil</Text>
       </View>
 
@@ -321,7 +324,7 @@ export default function ProfileScreen() {
               <MaterialIcons name="camera-alt" size={18} color={colors.onPrimary} />
             </View>
           </TouchableOpacity>
-          <Text style={[styles.avatarHint, { color: colors.muted }]}>
+          <Text style={[styles.avatarHint, { color: colors.muted, fontSize: fs.sm }]}>
             Toque para alterar a foto
           </Text>
         </View>
@@ -331,11 +334,11 @@ export default function ProfileScreen() {
           <Text style={[styles.sectionTitle, { color: colors.foreground, fontSize: fs.lg }]}>Informações pessoais</Text>
 
           <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.muted }]}>Nome completo</Text>
+            <Text style={[styles.label, { color: colors.muted, fontSize: fs.sm }]}>Nome completo</Text>
             <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.background }]}>
               <MaterialIcons name="person" size={20} color={colors.muted} style={styles.inputIcon} />
               <TextInput
-                style={[styles.input, { color: colors.foreground }]}
+                style={[styles.input, { color: colors.foreground, fontSize: fs.md, height: fs.touch(48) }]}
                 value={name}
                 onChangeText={(t) => { setName(t); }}
                 placeholder="Seu nome completo"
@@ -345,11 +348,11 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.muted }]}>Data de nascimento</Text>
+            <Text style={[styles.label, { color: colors.muted, fontSize: fs.sm }]}>Data de nascimento</Text>
             <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.background }]}>
               <MaterialIcons name="cake" size={20} color={colors.muted} style={styles.inputIcon} />
               <TextInput
-                style={[styles.input, { color: colors.foreground }]}
+                style={[styles.input, { color: colors.foreground, fontSize: fs.md, height: fs.touch(48) }]}
                 value={birthDate}
                 onChangeText={formatBirthDate}
                 placeholder="DD/MM/AAAA"
@@ -361,11 +364,11 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.muted }]}>Telefone</Text>
+            <Text style={[styles.label, { color: colors.muted, fontSize: fs.sm }]}>Telefone</Text>
             <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.background }]}>
               <MaterialIcons name="phone" size={20} color={colors.muted} style={styles.inputIcon} />
               <TextInput
-                style={[styles.input, { color: colors.foreground }]}
+                style={[styles.input, { color: colors.foreground, fontSize: fs.md, height: fs.touch(48) }]}
                 value={phone}
                 onChangeText={formatPhone}
                 placeholder="(00) 00000-0000"
@@ -395,13 +398,14 @@ export default function ProfileScreen() {
                   {
                     backgroundColor: bloodType === type ? colors.emergency : colors.surface,
                     borderColor: bloodType === type ? colors.emergency : colors.border,
+                    minHeight: fs.touch(48),
                   },
                 ]}
               >
                 <Text
                   style={[
                     styles.bloodTypeBtnText,
-                    { color: bloodType === type ? colors.onEmergency : colors.foreground },
+                    { color: bloodType === type ? colors.onEmergency : colors.foreground, fontSize: fs.md },
                   ]}
                 >
                   {type}
@@ -416,10 +420,10 @@ export default function ProfileScreen() {
           onPress={handleSave}
           accessibilityRole="button"
           accessibilityLabel="Salvar perfil"
-          style={[styles.saveButton, { backgroundColor: colors.success }]}
+          style={[styles.saveButton, { backgroundColor: colors.success, minHeight: fs.touch(56) }]}
         >
           <MaterialIcons name="save" size={22} color={colors.onSuccess} />
-          <Text style={[styles.saveButtonText, { color: colors.onSuccess }]}>Salvar Perfil</Text>
+          <Text style={[styles.saveButtonText, { color: colors.onSuccess, fontSize: fs.scaled(17) }]}>Salvar Perfil</Text>
         </TouchableOpacity>
 
         {/* Logout — destrutivo, contorno vermelho */}
@@ -427,10 +431,10 @@ export default function ProfileScreen() {
           onPress={handleLogout}
           accessibilityRole="button"
           accessibilityLabel="Sair da conta"
-          style={[styles.logoutButton, { borderColor: colors.error, backgroundColor: colors.surface }]}
+          style={[styles.logoutButton, { borderColor: colors.error, backgroundColor: colors.surface, minHeight: fs.touch(56) }]}
         >
           <MaterialIcons name="logout" size={22} color={colors.error} />
-          <Text style={[styles.saveButtonText, { color: colors.error }]}>Sair da Conta</Text>
+          <Text style={[styles.saveButtonText, { color: colors.error, fontSize: fs.scaled(17) }]}>Sair da Conta</Text>
         </TouchableOpacity>
 
         <View style={{ height: 100 }} />
@@ -448,7 +452,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerTitle: {
-    fontSize: 22,
     fontWeight: '700',
   },
   scrollContent: {
@@ -485,7 +488,6 @@ const styles = StyleSheet.create({
     borderWidth: 3,
   },
   avatarHint: {
-    fontSize: 13,
     marginTop: 8,
   },
   formSection: {
@@ -495,7 +497,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   sectionTitle: {
-    fontSize: 17,
     fontWeight: '700',
     marginBottom: 16,
   },
@@ -503,7 +504,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    fontSize: 13,
     fontWeight: '600',
     marginBottom: 6,
   },
@@ -520,8 +520,6 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontSize: 16,
-    height: 48,
   },
   bloodTypeGrid: {
     flexDirection: 'row',
@@ -530,7 +528,6 @@ const styles = StyleSheet.create({
   },
   bloodTypeBtn: {
     width: '22%' as any,
-    minHeight: 48,
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1.5,
@@ -538,14 +535,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   bloodTypeBtnText: {
-    fontSize: 16,
     fontWeight: '700',
   },
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 56,
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 14,
@@ -556,7 +551,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 56,
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 14,
@@ -565,7 +559,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   saveButtonText: {
-    fontSize: 17,
     fontWeight: '700',
   },
 });

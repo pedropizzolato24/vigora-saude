@@ -20,7 +20,9 @@ import { AppToast, useAppToast } from '@/components/app-toast';
 import { FormKeyboardView } from '@/components/form-keyboard-view';
 import { WizardStep } from '@/components/wizard-step';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { PressableScale } from '@/components/pressable-scale';
 import { ScreenContainer } from '@/components/screen-container';
+import { ScreenHeaderBack } from '@/components/screen-header-back';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ContactCard } from '@/components/contact-card';
 import { useColors } from '@/hooks/use-colors';
@@ -238,19 +240,14 @@ export default function ContactsScreen() {
   if (isAccessibilityMode) {
     return (
       <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
-        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: ac.bar }}>
-          <View>
+        {/* Header — voltar + título; a ação de adicionar fica na barra
+            inferior, igual ao modo normal (nada de ações no topo). */}
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: ac.bar }}>
+          <ScreenHeaderBack />
+          <View style={{ flex: 1 }}>
             <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Quem te ajuda numa emergência?</Text>
             <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>{state.emergencyContacts.length} contato(s)</Text>
           </View>
-          <Pressable
-            onPress={openAddModal}
-            style={({ pressed }) => [{ backgroundColor: ac.emergency, width: as_.touchTarget, height: as_.touchTarget, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: ac.emergency, opacity: pressed ? 0.8 : 1 }]}
-            accessibilityRole="button"
-            accessibilityLabel="Adicionar contato de emergência"
-          >
-            <MaterialIcons name="add" size={36} color={ac.onEmergency} />
-          </Pressable>
         </View>
 
         <View style={{ margin: 12, padding: 16, backgroundColor: ac.emergency + '20', borderRadius: 16, borderWidth: 2, borderColor: ac.emergency, flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
@@ -264,16 +261,7 @@ export default function ContactsScreen() {
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 20 }}>
             <MaterialIcons name="people" size={80} color={ac.muted} />
             <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.foreground, textAlign: 'center' }}>Nenhum contato</Text>
-            <Text style={{ fontSize: af.md, color: ac.muted, textAlign: 'center', lineHeight: af.md * 1.5 }}>Adicione contatos para serem avisados em uma emergência.</Text>
-            <Pressable
-              onPress={openAddModal}
-              style={({ pressed }) => [{ backgroundColor: ac.emergency, borderRadius: 20, paddingVertical: as_.buttonPadding, paddingHorizontal: 32, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 3, borderColor: ac.emergency, opacity: pressed ? 0.85 : 1 }]}
-              accessibilityRole="button"
-              accessibilityLabel="Adicionar contato de emergência"
-            >
-              <MaterialIcons name="add" size={32} color={ac.onEmergency} />
-              <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.onEmergency }}>Adicionar Contato</Text>
-            </Pressable>
+            <Text style={{ fontSize: af.md, color: ac.muted, textAlign: 'center', lineHeight: af.md * 1.5 }}>Toque no botão abaixo para adicionar contatos que serão avisados em uma emergência.</Text>
           </View>
         ) : (
           <FlatList
@@ -310,6 +298,36 @@ export default function ContactsScreen() {
             showsVerticalScrollIndicator={false}
           />
         )}
+
+        {/* Adicionar — barra inferior, mesma posição do modo normal */}
+        <View style={{
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          borderTopWidth: 2,
+          borderTopColor: ac.border,
+          backgroundColor: ac.bar,
+        }}>
+          <Pressable
+            onPress={openAddModal}
+            style={({ pressed }) => [{
+              backgroundColor: ac.emergency,
+              borderRadius: 20,
+              minHeight: as_.touchTarget,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 12,
+              borderWidth: 3,
+              borderColor: ac.emergency,
+              opacity: pressed ? 0.85 : 1,
+            }]}
+            accessibilityRole="button"
+            accessibilityLabel="Adicionar contato de emergência"
+          >
+            <MaterialIcons name="add" size={32} color={ac.onEmergency} />
+            <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.onEmergency }}>Adicionar Contato</Text>
+          </Pressable>
+        </View>
 
         {/* Simplified add/edit modal — a11y mode */}
         <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setModalVisible(false)}>
@@ -430,6 +448,7 @@ export default function ContactsScreen() {
     <ScreenContainer edges={["left", "right"]}>
       {/* Header — só título, sem botões (ações ficam no corpo/rodapé) */}
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
+        <ScreenHeaderBack />
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'], fontFamily: BrandFonts.body }]}>
             Quem podemos avisar?
@@ -443,7 +462,7 @@ export default function ContactsScreen() {
       {/* Emergency warning banner — prominent */}
       <View style={[styles.warningBanner, { backgroundColor: colors.emergencyLight, borderColor: colors.emergency }]}>
         <MaterialIcons name="warning" size={22} color={colors.emergency} />
-        <Text style={[styles.warningText, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>
+        <Text style={[styles.warningText, { color: colors.foreground, fontSize: fs.base, lineHeight: fs.scaled(22), fontFamily: BrandFonts.body }]}>
           <Text style={{ fontWeight: '700', color: colors.emergency }}>Atenção: </Text>
           Estas pessoas serão avisadas pelo WhatsApp se você não responder ao alarme de segurança. Confirme que elas concordaram em receber esses alertas.
         </Text>
@@ -456,9 +475,25 @@ export default function ContactsScreen() {
           <Text style={[styles.emptyTitle, { color: colors.foreground, fontSize: fs.lg, fontFamily: BrandFonts.body }]}>
             Nenhum contato cadastrado
           </Text>
-          <Text style={[styles.emptySubtext, { color: colors.muted, fontSize: fs.sm }]}>
+          <Text style={[styles.emptySubtext, { color: colors.muted, fontSize: fs.sm, lineHeight: fs.scaled(22) }]}>
             Adicione contatos de emergência para que sejam notificados em caso de SOS.
           </Text>
+          {/* Importar da agenda — atalho no corpo da tela, não na barra de
+              ações (lá disputava atenção com "Adicionar contato"). */}
+          <Pressable
+            onPress={handleImportFromDevice}
+            style={({ pressed }) => [
+              styles.importListBtn,
+              { borderColor: colors.border, backgroundColor: colors.surface, minHeight: fs.touch(48), paddingHorizontal: 20, opacity: pressed ? 0.75 : 1 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Importar contato da agenda do celular"
+          >
+            <MaterialIcons name="contacts" size={18} color={colors.primary} />
+            <Text style={[styles.importListBtnText, { color: colors.primary, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
+              Importar da agenda
+            </Text>
+          </Pressable>
         </View>
       ) : (
         <FlatList
@@ -477,13 +512,13 @@ export default function ContactsScreen() {
         />
       )}
 
-      {/* Add + import — full width, min 56dp */}
+      {/* Adicionar — ação única da barra inferior */}
       <View style={[styles.addBtnContainer, { borderTopColor: colors.border, backgroundColor: colors.bar }]}>
-        <Pressable
+        <PressableScale
           onPress={openAddModal}
           style={({ pressed }) => [
             styles.addBtn,
-            { backgroundColor: colors.emergency, opacity: pressed ? 0.85 : 1 },
+            { backgroundColor: colors.emergency, minHeight: fs.touch(56), opacity: pressed ? 0.85 : 1 },
           ]}
           accessibilityRole="button"
           accessibilityLabel="Adicionar contato de emergência"
@@ -492,21 +527,7 @@ export default function ContactsScreen() {
           <Text style={[styles.addBtnText, { color: colors.onEmergency, fontSize: fs.md, fontFamily: BrandFonts.body }]}>
             Adicionar contato
           </Text>
-        </Pressable>
-        <Pressable
-          onPress={handleImportFromDevice}
-          style={({ pressed }) => [
-            styles.importListBtn,
-            { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.75 : 1 },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Importar contato da agenda do celular"
-        >
-          <MaterialIcons name="contacts" size={18} color={colors.primary} />
-          <Text style={[styles.importListBtnText, { color: colors.primary, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
-            Importar da agenda
-          </Text>
-        </Pressable>
+        </PressableScale>
       </View>
 
       {/* Wizard Modal — new contact */}
@@ -555,6 +576,7 @@ export default function ContactsScreen() {
                             {
                               backgroundColor: selected ? colors.emergency : colors.surface,
                               borderColor: selected ? colors.emergency : colors.border,
+                              minHeight: fs.touch(80),
                             },
                           ]}
                           accessibilityRole="radio"
@@ -628,7 +650,7 @@ export default function ContactsScreen() {
                     onPress={handleImportFromDevice}
                     style={({ pressed }) => [
                       styles.importBtn,
-                      { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.75 : 1 },
+                      { backgroundColor: colors.surface, borderColor: colors.border, minHeight: fs.touch(48), opacity: pressed ? 0.75 : 1 },
                     ]}
                     accessibilityRole="button"
                     accessibilityLabel="Importar contato da agenda do celular"
@@ -683,7 +705,7 @@ export default function ContactsScreen() {
                           PRÉVIA DA MENSAGEM
                         </Text>
                       </View>
-                      <Text style={[styles.previewText, { color: colors.foreground, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
+                      <Text style={[styles.previewText, { color: colors.foreground, fontSize: fs.sm, lineHeight: fs.scaled(22), fontFamily: BrandFonts.body }]}>
                         🚨 <Text style={{ fontWeight: '700' }}>Alerta Vigora</Text>{'\n\n'}
                         {form.name.trim() || '[nome]'}, o usuário do Vigora não respondeu ao alarme de segurança.{'\n\n'}
                         Por favor, entre em contato ou verifique se está bem.
@@ -866,7 +888,7 @@ export default function ContactsScreen() {
               style={({ pressed }) => [
                 styles.modalActionBtn,
                 styles.modalActionGhost,
-                { borderColor: colors.muted, backgroundColor: colors.surface },
+                { borderColor: colors.muted, backgroundColor: colors.surface, minHeight: fs.touch(56) },
                 pressed && { opacity: 0.8 },
               ]}
             >
@@ -881,7 +903,7 @@ export default function ContactsScreen() {
               style={({ pressed }) => [
                 styles.modalActionBtn,
                 styles.modalActionPrimary,
-                { backgroundColor: colors.success },
+                { backgroundColor: colors.success, minHeight: fs.touch(56) },
                 pressed && { opacity: 0.9 },
               ]}
             >
@@ -943,7 +965,7 @@ export default function ContactsScreen() {
                 onPress={() => handleSelectDeviceContact(item)}
                 style={({ pressed }) => [
                   styles.deviceContactRow,
-                  { borderBottomColor: colors.border, opacity: pressed ? 0.7 : 1 },
+                  { borderBottomColor: colors.border, minHeight: fs.touch(64), opacity: pressed ? 0.7 : 1 },
                 ]}
                 accessibilityRole="button"
                 accessibilityLabel={`Adicionar ${item.name}`}
@@ -984,7 +1006,7 @@ export default function ContactsScreen() {
               style={({ pressed }) => [
                 styles.modalActionBtn,
                 styles.modalActionGhost,
-                { borderColor: colors.muted, backgroundColor: colors.surface },
+                { borderColor: colors.muted, backgroundColor: colors.surface, minHeight: fs.touch(56) },
                 pressed && { opacity: 0.8 },
               ]}
             >
@@ -1025,7 +1047,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1.5,
   },
-  warningText: { flex: 1, lineHeight: 22 },
+  warningText: { flex: 1 },
   listContent: { padding: 16, paddingBottom: 32 },
   emptyState: {
     flex: 1,
@@ -1035,12 +1057,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyTitle: { fontSize: 20, fontWeight: '700', textAlign: 'center' },
-  emptySubtext: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
+  emptySubtext: { textAlign: 'center' },
   addBtnContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    gap: 8,
   },
   addBtn: {
     flexDirection: 'row',
@@ -1048,7 +1069,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     borderRadius: 14,
-    minHeight: 56,
   },
   addBtnText: { fontWeight: '700' },
   importListBtn: {
@@ -1058,7 +1078,6 @@ const styles = StyleSheet.create({
     gap: 8,
     borderRadius: 12,
     borderWidth: 1.5,
-    minHeight: 48,
   },
   importListBtnText: { fontWeight: '600' },
   modal: { flex: 1 },
@@ -1078,7 +1097,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   modalActionBtn: {
-    minHeight: 56,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1108,7 +1126,6 @@ const styles = StyleSheet.create({
   relationOption: {
     width: '30%',
     flexGrow: 1,
-    minHeight: 80,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
@@ -1170,7 +1187,6 @@ const styles = StyleSheet.create({
   },
   previewText: {
     padding: 14,
-    lineHeight: 22,
   },
   searchBar: {
     flexDirection: 'row',

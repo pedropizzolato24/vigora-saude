@@ -19,6 +19,7 @@ import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
 import { ScreenContainer } from '@/components/screen-container';
+import { ScreenHeaderBack } from '@/components/screen-header-back';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/use-colors';
 import { useAppContext } from '@/lib/app-context';
@@ -442,7 +443,8 @@ export default function SettingsScreen() {
   if (isAccessibilityMode) {
     return (
       <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
-        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <ScreenHeaderBack />
           <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Configurações</Text>
         </View>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
@@ -761,9 +763,12 @@ export default function SettingsScreen() {
   return (
     <ScreenContainer edges={["left", "right"]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
-        <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: fs['2xl'] }]}>Configurações</Text>
-        <Text style={[styles.headerSubtitle, { color: colors.muted, fontSize: fs.sm }]}>Personalize sua experiência</Text>
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12, flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+        <ScreenHeaderBack />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: fs['2xl'] }]}>Configurações</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.muted, fontSize: fs.sm }]}>Personalize sua experiência</Text>
+        </View>
       </View>
 
       <FormKeyboardView style={{ flex: 1 }}>
@@ -794,7 +799,7 @@ export default function SettingsScreen() {
             gap: 10,
           }}>
             <MaterialIcons name="accessibility-new" size={22} color={colors.onPrimary} />
-            <Text style={{ fontSize: 13, fontWeight: '800', color: colors.onPrimary, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+            <Text style={{ fontSize: fs.sm, fontWeight: '800', color: colors.onPrimary, letterSpacing: 0.5, textTransform: 'uppercase' }}>
               {settings.accessibilityMode ? 'Modo de Acessibilidade - Ativado' : 'Modo de Acessibilidade'}
             </Text>
           </View>
@@ -817,10 +822,10 @@ export default function SettingsScreen() {
               />
             </View>
             <View style={{ flex: 1, gap: 6 }}>
-              <Text style={{ fontSize: 18, fontWeight: '900', color: settings.accessibilityMode ? colors.onPrimary : colors.primary, lineHeight: 22 }}>
+              <Text style={{ fontSize: fs.lg, fontWeight: '900', color: settings.accessibilityMode ? colors.onPrimary : colors.primary, lineHeight: fs.scaled(22) }}>
                 {settings.accessibilityMode ? 'Ativado' : 'Para idosos e pessoas com\ndificuldades visuais'}
               </Text>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: settings.accessibilityMode ? colors.onPrimary + 'BB' : colors.muted, lineHeight: 18 }}>
+              <Text style={{ fontSize: fs.sm, fontWeight: '500', color: settings.accessibilityMode ? colors.onPrimary + 'BB' : colors.muted, lineHeight: fs.scaled(18) }}>
                 {settings.accessibilityMode
                   ? 'Fontes maiores, alto contraste e interface simplificada'
                   : 'Fontes maiores * Alto contraste * Botões maiores'}
@@ -975,13 +980,13 @@ export default function SettingsScreen() {
                       styles.fontSizeBtnText,
                       {
                         color: settings.speechRate === opt.value ? colors.onPrimary : colors.foreground,
-                        fontSize: 13,
+                        fontSize: fs.sm,
                       },
                     ]}
                   >
                     {opt.label}
                   </Text>
-                  <Text style={{ fontSize: 11, color: settings.speechRate === opt.value ? colors.onPrimary + 'BB' : colors.muted }}>
+                  <Text style={{ fontSize: fs.xs, color: settings.speechRate === opt.value ? colors.onPrimary + 'BB' : colors.muted }}>
                     {opt.sublabel}
                   </Text>
                 </Pressable>
@@ -1015,14 +1020,14 @@ export default function SettingsScreen() {
                       styles.fontSizeBtnText,
                       {
                         color: settings.timerDuration === opt.value ? colors.onPrimary : colors.foreground,
-                        fontSize: 15,
+                        fontSize: fs.base,
                         fontWeight: '700',
                       },
                     ]}
                   >
                     {opt.label}
                   </Text>
-                  <Text style={{ fontSize: 11, color: settings.timerDuration === opt.value ? colors.onPrimary + 'BB' : colors.muted }}>
+                  <Text style={{ fontSize: fs.xs, color: settings.timerDuration === opt.value ? colors.onPrimary + 'BB' : colors.muted }}>
                     {opt.sublabel}
                   </Text>
                 </Pressable>
@@ -1311,7 +1316,7 @@ export default function SettingsScreen() {
                 opacity: pressed ? 0.7 : 1,
               }]}
             >
-              <Text style={{ color: colors.onPrimary, fontSize: 12, fontWeight: '600' }}>Configurar</Text>
+              <Text style={{ color: colors.onPrimary, fontSize: fs.xs, fontWeight: '600' }}>Configurar</Text>
             </Pressable>
           </View>
           <Divider colors={colors} />
@@ -1369,7 +1374,7 @@ export default function SettingsScreen() {
                 size={16}
                 color={state.missedAlarmCount > 0 ? colors.warning : colors.success}
               />
-              <Text style={[styles.missedBannerText, { color: colors.foreground }]}>
+              <Text style={[styles.missedBannerText, { color: colors.foreground, fontSize: fs.sm, lineHeight: fs.scaled(18) }]}>
                 {state.missedAlarmCount > 0
                   ? `${state.missedAlarmCount} alarme(s) não respondido(s)`
                   : 'Nenhum alarme não respondido'}
@@ -1384,7 +1389,7 @@ export default function SettingsScreen() {
                 }}
                 style={({ pressed }) => [styles.resetBtn, { opacity: pressed ? 0.7 : 1 }]}
               >
-                <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>Resetar contador</Text>
+                <Text style={{ color: colors.primary, fontSize: fs.scaled(14), fontWeight: '600' }}>Resetar contador</Text>
               </Pressable>
             )}
           </View>
@@ -1401,6 +1406,7 @@ export default function SettingsScreen() {
             <TextInput
               style={[
                 styles.messageInput,
+                { fontSize: fs.scaled(14), lineHeight: fs.scaled(20), minHeight: fs.touch(80) },
                 {
                   color: colors.foreground,
                   backgroundColor: colors.background,
@@ -1567,7 +1573,7 @@ export default function SettingsScreen() {
               <MaterialIcons name="delete-forever" size={20} color={colors.error} />
               <Text style={[styles.dangerButtonText, { color: colors.error }]}>Limpar Todos os Dados</Text>
             </Pressable>
-            <Text style={[styles.dangerHint, { color: colors.muted }]}>
+            <Text style={[styles.dangerHint, { color: colors.muted, fontSize: fs.xs, lineHeight: fs.scaled(18) }]}>
               Remove alarmes, contatos, anamnese e histórico de saúde permanentemente.
             </Text>
             <Pressable
@@ -1585,7 +1591,7 @@ export default function SettingsScreen() {
                 {isDeleting ? 'Excluindo...' : 'Excluir minha conta'}
               </Text>
             </Pressable>
-            <Text style={[styles.dangerHint, { color: colors.muted }]}>
+            <Text style={[styles.dangerHint, { color: colors.muted, fontSize: fs.xs, lineHeight: fs.scaled(18) }]}>
               Apaga sua conta e todos os dados dos nossos servidores (LGPD, Art. 18). Esta ação é permanente.
             </Text>
           </View>
@@ -1657,8 +1663,8 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  headerTitle: { fontSize: 28, fontWeight: '800' },
-  headerSubtitle: { fontSize: 14, marginTop: 2 },
+  headerTitle: { fontWeight: '800' },
+  headerSubtitle: { marginTop: 2 },
   content: { padding: 16, gap: 12 },
 
   // Section Card
@@ -1705,8 +1711,8 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
-  settingLabel: { fontSize: 15, fontWeight: '500' },
-  settingSubLabel: { fontSize: 13, marginTop: 1 },
+  settingLabel: { fontWeight: '500' },
+  settingSubLabel: { marginTop: 1 },
 
   // Divider
   divider: { height: StyleSheet.hairlineWidth, marginHorizontal: 16 },
@@ -1718,7 +1724,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  volumeValue: { fontSize: 20, fontWeight: '700' },
+  volumeValue: { fontWeight: '700' },
   volumeBarBg: { height: 8, borderRadius: 4, overflow: 'hidden' },
   volumeBarFill: { height: '100%', borderRadius: 4 },
   volumeControls: { flexDirection: 'row', gap: 10 },
@@ -1731,7 +1737,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
   },
-  volumeBtnText: { fontSize: 14, fontWeight: '600' },
+  volumeBtnText: { fontWeight: '600' },
 
   // Threshold
   thresholdSection: { padding: 16 },
@@ -1756,7 +1762,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  thresholdValue: { fontSize: 24, fontWeight: '800' },
+  thresholdValue: { fontWeight: '800' },
   missedBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1765,7 +1771,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
   },
-  missedBannerText: { flex: 1, fontSize: 13, lineHeight: 18 },
+  missedBannerText: { flex: 1 },
   resetBtn: { alignItems: 'center', paddingVertical: 8, marginTop: 4 },
 
   // Emergency Message
@@ -1774,9 +1780,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     padding: 12,
-    fontSize: 14,
-    lineHeight: 20,
-    minHeight: 80,
     textAlignVertical: 'top',
   },
 
@@ -1821,7 +1824,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   flagEmoji: { fontSize: 24 },
-  languageLabel: { flex: 1, fontSize: 15, fontWeight: '500' },
+  languageLabel: { flex: 1, fontWeight: '500' },
 
   // Storage
   storageInfo: { padding: 16, gap: 10 },
@@ -1830,8 +1833,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  storageLabel: { fontSize: 14, fontWeight: '500' },
-  storageValue: { fontSize: 14, fontWeight: '600' },
+  storageLabel: { fontWeight: '500' },
+  storageValue: { fontWeight: '600' },
 
   // Danger Zone
   dangerZone: { padding: 16, gap: 8 },
@@ -1844,8 +1847,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
   },
-  dangerButtonText: { fontSize: 15, fontWeight: '600' },
-  dangerHint: { fontSize: 12, textAlign: 'center', lineHeight: 18 },
+  dangerButtonText: { fontWeight: '600' },
+  dangerHint: { textAlign: 'center' },
 
   // Footer
   footerSection: {

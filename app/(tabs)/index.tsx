@@ -394,7 +394,7 @@ export default function DashboardScreen() {
               Bem-vindo ao
             </Text>
           )}
-          <Text style={[styles.appName, { color: colors.primary, fontFamily: 'Fraunces-Italic', fontStyle: 'italic', fontSize: fs.scaled(28) }]}>
+          <Text style={[styles.appName, { color: colors.primary, fontFamily: 'Fraunces-Italic', fontStyle: 'italic', fontSize: fs.scaled(28), lineHeight: fs.scaled(34) }]}>
             {state.profile.name || 'Vigora'}
           </Text>
         </View>
@@ -402,7 +402,7 @@ export default function DashboardScreen() {
           {isPro && (
             <View style={[styles.proBadge, { backgroundColor: colors.successLight }]}>
               <MaterialIcons name="verified" size={13} color={colors.success} />
-              <Text style={{ fontFamily: 'PlusJakartaSans', color: colors.success, fontSize: 11, fontWeight: '700' }}>PRO</Text>
+              <Text style={{ fontFamily: 'PlusJakartaSans', color: colors.success, fontSize: fs.xs, fontWeight: '700' }}>PRO</Text>
             </View>
           )}
           <MonitoringStatusBadge accessible={false} />
@@ -477,7 +477,7 @@ export default function DashboardScreen() {
         {caregivers.length > 0 ? (
           <Pressable
             onPress={() => navigate('/(tabs)/invite-caregiver')}
-            style={({ pressed }) => [styles.supportNetworkCard, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [styles.supportNetworkCard, { backgroundColor: colors.surface, borderColor: colors.border, minHeight: fs.touch(48), opacity: pressed ? 0.85 : 1 }]}
             accessibilityRole="button"
             accessibilityLabel={`${caregivers.length} ${caregivers.length === 1 ? 'pessoa te acompanhando' : 'pessoas te acompanhando'}. Toque para ver.`}
           >
@@ -508,7 +508,7 @@ export default function DashboardScreen() {
         ) : (
           <Pressable
             onPress={() => navigate('/(tabs)/invite-caregiver')}
-            style={({ pressed }) => [styles.supportNetworkCard, { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [styles.supportNetworkCard, { backgroundColor: colors.surface, borderColor: colors.border, minHeight: fs.touch(48), opacity: pressed ? 0.85 : 1 }]}
             accessibilityRole="button"
             accessibilityLabel="Convide um familiar para te acompanhar. Toque para convidar."
           >
@@ -525,7 +525,7 @@ export default function DashboardScreen() {
         {/* Aviso legal */}
         <View style={[styles.warningBanner, { backgroundColor: colors.warningLight, borderColor: colors.warning + '40' }]}>
           <MaterialIcons name="info" size={18} color={colors.warningDark} />
-          <Text style={[styles.warningText, { color: colors.warningDark, fontFamily: 'PlusJakartaSans', fontSize: fs.xs }]}>
+          <Text style={[styles.warningText, { color: colors.warningDark, fontFamily: 'PlusJakartaSans', fontSize: fs.xs, lineHeight: fs.scaled(18) }]}>
             <Text style={{ fontWeight: '700' }}>Emergências graves: </Text>
             ligue para o SAMU (192) ou Bombeiros (193). Este app é um suporte, não substitui serviços de emergência.
           </Text>
@@ -568,10 +568,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   appName: {
-    fontSize: 28,
     fontWeight: '700',
     letterSpacing: -0.5,
-    lineHeight: 34,
   },
   proBadge: {
     flexDirection: 'row',
@@ -611,8 +609,6 @@ const styles = StyleSheet.create({
   },
   warningText: {
     flex: 1,
-    fontSize: 12,
-    lineHeight: 18,
   },
   supportNetworkCard: {
     borderRadius: 16,
@@ -621,7 +617,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    minHeight: 48,
   },
   avatarRow: {
     flexDirection: 'row',

@@ -26,6 +26,7 @@ import {
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAccessibility } from '@/lib/accessibility-context';
 import { useColors } from '@/hooks/use-colors';
+import { useFontSize } from '@/lib/font-size-context';
 
 // --- Tipos -------------------------------------------------------------------
 
@@ -200,6 +201,7 @@ export function AppDialog({
   onDismiss,
 }: AppDialogProps) {
   const colors = useColors();
+  const fs = useFontSize();
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac } = useAccessibility();
 
   const scaleAnim = useRef(new Animated.Value(0.88)).current;
@@ -398,13 +400,13 @@ export function AppDialog({
           </View>
 
           {/* Título */}
-          <Text style={[styles.title, { color: isSos ? colors.onEmergency : colors.foreground }]}>
+          <Text style={[styles.title, { color: isSos ? colors.onEmergency : colors.foreground, fontSize: fs.scaled(17), lineHeight: fs.scaled(22) }]}>
             {title}
           </Text>
 
           {/* Mensagem */}
           {message ? (
-            <Text style={[styles.message, { color: isSos ? '#FFAAAA' : colors.muted }]}>
+            <Text style={[styles.message, { color: isSos ? '#FFAAAA' : colors.muted, fontSize: fs.base, lineHeight: fs.scaled(21) }]}>
               {message}
             </Text>
           ) : null}
@@ -436,7 +438,7 @@ export function AppDialog({
                   <Text
                     style={[
                       styles.optionLabel,
-                      { color: opt.destructive ? colors.error : colors.foreground },
+                      { color: opt.destructive ? colors.error : colors.foreground, fontSize: fs.base },
                     ]}
                   >
                     {opt.label}
@@ -468,6 +470,7 @@ export function AppDialog({
                     key={i}
                     style={[
                       styles.button,
+                      { minHeight: fs.touch(44) },
                       isPrimary
                         ? { backgroundColor: btnColor }
                         : {
@@ -484,7 +487,7 @@ export function AppDialog({
                     <Text
                       style={[
                         styles.buttonText,
-                        { color: isPrimary ? '#fff' : (isSos ? '#FF8888' : colors.muted) },
+                        { color: isPrimary ? '#fff' : (isSos ? '#FF8888' : colors.muted), fontSize: fs.base },
                       ]}
                     >
                       {btn.text}
@@ -556,16 +559,12 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   title: {
-    fontSize: 17,
     fontWeight: '700',
-    lineHeight: 22,
     textAlign: 'center',
     paddingHorizontal: 20,
     paddingBottom: 8,
   },
   message: {
-    fontSize: 14,
-    lineHeight: 20,
     paddingHorizontal: 20,
     paddingBottom: 16,
     textAlign: 'center',
@@ -590,7 +589,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   optionLabel: {
-    fontSize: 15,
     fontWeight: '500',
   },
   buttonsRow: {
@@ -608,10 +606,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
   },
   buttonText: {
-    fontSize: 15,
     fontWeight: '600',
   },
 

@@ -282,31 +282,57 @@ export async function runMonitoringJob(): Promise<void> {
   jobHealth.lastRunAt = now.getTime();
   console.log(`[Monitor] Running monitoring job at ${now.toISOString()}`);
 
+  // Cada passo roda isolado. Em 24/07/2026 uma query quebrada logo no início do
+  // Passo 1 (account_liveness sem a coluna batteryExempt, da migração 0012 que
+  // nunca foi aplicada) abortou o try único que envolvia os quatro e levou o job
+  // inteiro junto — o dead man's switch ficou 27h desarmado.
+  //
+  // Isolar NÃO afrouxa o alarme: todo passo que falha entra em `failures`, e o
+  // ciclo continua sendo contabilizado como falha no fim, então /api/health fica
+  // unhealthy exatamente como antes. A diferença é que os passos sadios rodam.
+  const failures: string[] = [];
+  const recordFailure = (passo: string, error: unknown) => {
+    failures.push(`${passo}: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`[Monitor] ${passo} falhou:`, error);
+  };
+
   try {
     // -- Step 1: Resolve expired pending alarm events --------------------------
     const expiredEvents = await getExpiredPendingEvents(GRACE_PERIOD_MINUTES);
     console.log(`[Monitor] Found ${expiredEvents.length} expired pending events`);
 
     for (const event of expiredEvents) {
-      const liveness = await getAccountLiveness(event.openId);
-      const accountOnline =
-        liveness &&
-        liveness.lastSeenAt.getTime() >
-          event.scheduledAt.getTime() - OFFLINE_THRESHOLD_MINUTES * 60 * 1000;
+      // Isolado por evento: uma linha problemática não pode travar a resolução
+      // de todas as outras. Esta é a fila que mantém o estado dos alarmes
+      // andando — se ela congela, o switch morre para todo mundo, não só para
+      // o dono do evento ruim.
+      try {
+        const liveness = await getAccountLiveness(event.openId);
+        const accountOnline =
+          liveness &&
+          liveness.lastSeenAt.getTime() >
+            event.scheduledAt.getTime() - OFFLINE_THRESHOLD_MINUTES * 60 * 1000;
 
-      if (!accountOnline) {
-        await updateAlarmEventStatus(event.id, "not_sent");
-        console.log(
-          `[Monitor] Event ${event.id} (alarm ${event.alarmId}) -> not_sent (account offline)`
-        );
-      } else {
-        await updateAlarmEventStatus(event.id, "missed");
-        console.log(
-          `[Monitor] Event ${event.id} (alarm ${event.alarmId}) -> missed (user didn't respond)`
-        );
+        if (!accountOnline) {
+          await updateAlarmEventStatus(event.id, "not_sent");
+          console.log(
+            `[Monitor] Event ${event.id} (alarm ${event.alarmId}) -> not_sent (account offline)`
+          );
+        } else {
+          await updateAlarmEventStatus(event.id, "missed");
+          console.log(
+            `[Monitor] Event ${event.id} (alarm ${event.alarmId}) -> missed (user didn't respond)`
+          );
+        }
+      } catch (error) {
+        recordFailure(`Passo 1 (evento ${event.id})`, error);
       }
     }
+  } catch (error) {
+    recordFailure("Passo 1 (resolver eventos vencidos)", error);
+  }
 
+  try {
     // -- Step 2: Check for accounts needing warning messages -------------------
     const inactiveAccounts = await getInactiveAccounts(OFFLINE_THRESHOLD_MINUTES);
     console.log(`[Monitor] Found ${inactiveAccounts.length} inactive accounts`);
@@ -437,7 +463,11 @@ export async function runMonitoringJob(): Promise<void> {
         `[Monitor] Warning sent: ${totalSent} contacts reached via WhatsApp, ${totalFailed} failed; ${pushed} caregiver push(es) delivered`
       );
     }
+  } catch (error) {
+    recordFailure("Passo 2 (avisos de inatividade)", error);
+  }
 
+  try {
     // -- Step 3: Escalate missed check-in events --------------------------------
     // Scoped to 'checkin-daily' to avoid cascading on every missed medication alarm.
     // warningSent=false means the client did not handle escalation (device was offline).
@@ -487,7 +517,11 @@ export async function runMonitoringJob(): Promise<void> {
       await markEventWarningSent(event.id);
       console.log(`[Monitor] Step 3: escalated check-in event ${event.id}, ${totalSent} contacts reached, ${pushed} caregiver push(es) delivered`);
     }
+  } catch (error) {
+    recordFailure("Passo 3 (check-ins perdidos)", error);
+  }
 
+  try {
     // -- Step 4: Escalate missed MEDICATION alarms (account online, unanswered) --
     // Backstop do dead man's switch para quando a escalação no cliente não rodou
     // (app morreu logo após o disparo). warningSent=true é setado pelo cliente
@@ -536,23 +570,30 @@ export async function runMonitoringJob(): Promise<void> {
       await markEventWarningSent(event.id);
       console.log(`[Monitor] Step 4: escalated missed alarm ${event.id}, ${totalSent} contacts reached, ${pushed} caregiver push(es) delivered`);
     }
+  } catch (error) {
+    recordFailure("Passo 4 (alarmes de medicação perdidos)", error);
+  }
 
+  if (failures.length === 0) {
     jobHealth.lastSuccessAt = Date.now();
     jobHealth.consecutiveFailures = 0;
     jobHealth.lastError = null;
     console.log(`[Monitor] Job completed successfully`);
-  } catch (error) {
-    jobHealth.consecutiveFailures += 1;
-    jobHealth.lastError = error instanceof Error ? error.message : String(error);
+    return;
+  }
+
+  // Um passo isolado que falhou ainda reprova o ciclo inteiro: sem isto,
+  // trocaríamos uma falha barulhenta por uma silenciosa e /api/health seguiria
+  // verde com o switch parcialmente morto.
+  jobHealth.consecutiveFailures += 1;
+  jobHealth.lastError = failures.join(" | ");
+  console.error(
+    `[Monitor] Job failed (${jobHealth.consecutiveFailures} consecutive): ${jobHealth.lastError}`
+  );
+  if (jobHealth.consecutiveFailures > MAX_HEALTHY_FAILURES) {
     console.error(
-      `[Monitor] Job failed (${jobHealth.consecutiveFailures} consecutive):`,
-      error
+      `[Monitor] 🚨 Dead man's switch job failed ${jobHealth.consecutiveFailures}x in a row — /api/health is now reporting UNHEALTHY. Investigate the monitoring scheduler/DB immediately.`
     );
-    if (jobHealth.consecutiveFailures > MAX_HEALTHY_FAILURES) {
-      console.error(
-        `[Monitor] 🚨 Dead man's switch job failed ${jobHealth.consecutiveFailures}x in a row — /api/health is now reporting UNHEALTHY. Investigate the monitoring scheduler/DB immediately.`
-      );
-    }
   }
 }
 

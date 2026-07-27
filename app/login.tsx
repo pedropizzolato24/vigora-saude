@@ -73,8 +73,10 @@ export default function LoginScreen() {
     email: false,
     phone: false,
   });
-  // Conta anônima ativa => esta tela está em modo "proteger conta": esconde o
-  // "Continuar sem conta" (seria circular) e os logins ANEXAM à conta atual.
+  // Conta anônima ativa => esta tela está em modo "proteger conta": mostra o
+  // hint de proteção e os logins ANEXAM à conta atual. O "Continuar sem conta"
+  // continua visível (feedback: sumir confundia quem voltava à tela) — tocar
+  // nele apenas reentra na MESMA conta (openId determinístico por aparelho).
   const [isAnonymous, setIsAnonymous] = useState(false);
 
   useEffect(() => {
@@ -353,29 +355,30 @@ export default function LoginScreen() {
         ) : null}
 
         {/* Continuar sem conta — o app funciona inteiro; login vira upgrade
-            opcional ("proteja sua conta"). Some quando a sessão atual JÁ é
-            anônima (esta tela vira o fluxo de proteger a conta). */}
-        {!isAnonymous ? (
-          <Pressable
-            onPress={handleAnonymousLogin}
-            disabled={loading}
-            style={({ pressed }) => [
-              styles.anonymousButton,
-              { opacity: pressed || loading ? 0.6 : 1 },
-            ]}
-            accessibilityLabel="Continuar sem conta"
-            accessibilityRole="button"
-          >
-            <Text style={[styles.anonymousButtonText, { color: colors.muted }]}>
-              Continuar sem conta
-            </Text>
-          </Pressable>
-        ) : (
+            opcional ("proteja sua conta"). Sempre visível: com sessão anônima
+            ativa, tocar reentra na mesma conta (signInAnonymously é
+            determinístico por aparelho) — sumir com o botão confundia quem
+            voltava para esta tela (item 5 do feedback). */}
+        <Pressable
+          onPress={handleAnonymousLogin}
+          disabled={loading}
+          style={({ pressed }) => [
+            styles.anonymousButton,
+            { opacity: pressed || loading ? 0.6 : 1 },
+          ]}
+          accessibilityLabel="Continuar sem conta"
+          accessibilityRole="button"
+        >
+          <Text style={[styles.anonymousButtonText, { color: colors.muted }]}>
+            Continuar sem conta
+          </Text>
+        </Pressable>
+        {isAnonymous ? (
           <Text style={[styles.linkHint, { color: colors.muted }]}>
             Entre com um dos métodos acima para proteger sua conta — seus dados
             continuam os mesmos.
           </Text>
-        )}
+        ) : null}
 
         <Text style={[styles.privacyNote, { color: colors.muted }]}>
           Ao entrar, você concorda com os Termos de Uso e Política de Privacidade.

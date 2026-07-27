@@ -1,6 +1,7 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PressableScale } from '@/components/pressable-scale';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { BrandFonts } from '@/lib/_core/theme';
@@ -94,14 +95,14 @@ export function WizardStep({
           do próprio style, zerando-o com o teclado fechado. */}
       <View style={[styles.buttonRow, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         {secondaryAction ? (
-          <Pressable
+          <PressableScale
             onPress={secondaryAction}
             accessibilityRole="button"
             accessibilityLabel={secondaryA11yLabel}
             style={({ pressed }) => [
               styles.button,
               styles.ghostButton,
-              { borderColor: colors.muted, backgroundColor: colors.surface },
+              { borderColor: colors.muted, backgroundColor: colors.surface, minHeight: fs.touch(56) },
               pressed && { opacity: 0.8 },
             ]}
           >
@@ -113,10 +114,10 @@ export function WizardStep({
             >
               {secondaryLabel}
             </Text>
-          </Pressable>
+          </PressableScale>
         ) : null}
 
-        <Pressable
+        <PressableScale
           onPress={onNext}
           disabled={nextDisabled}
           accessibilityRole="button"
@@ -124,7 +125,7 @@ export function WizardStep({
           style={({ pressed }) => [
             styles.button,
             styles.primaryButton,
-            { backgroundColor: colors.primary },
+            { backgroundColor: colors.primary, minHeight: fs.touch(56) },
             nextDisabled && { opacity: 0.5 },
             pressed && !nextDisabled && { opacity: 0.9 },
           ]}
@@ -137,7 +138,7 @@ export function WizardStep({
           >
             {primaryLabel}
           </Text>
-        </Pressable>
+        </PressableScale>
       </View>
     </View>
   );
@@ -180,7 +181,6 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
-    minHeight: 56,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 14,

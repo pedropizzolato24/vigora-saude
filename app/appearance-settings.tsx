@@ -201,7 +201,7 @@ export default function AppearanceSettingsScreen() {
                     accessibilityRole="radio"
                     accessibilityState={{ selected }}
                     accessibilityLabel={FONT_SIZE_LABELS[size]}
-                    style={({ pressed }) => [{ flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 10, borderWidth: 1.5, backgroundColor: selected ? colors.primary : colors.background, borderColor: selected ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+                    style={({ pressed }) => [{ flex: 1, minHeight: fs.touch(48), alignItems: 'center', justifyContent: 'center', borderRadius: 10, borderWidth: 1.5, backgroundColor: selected ? colors.primary : colors.background, borderColor: selected ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
                   >
                     <Text style={{ fontSize: size === 'small' ? 13 : size === 'medium' ? 15 : 17, fontWeight: '700', color: selected ? colors.onPrimary : colors.foreground }}>
                       {FONT_SIZE_LABELS[size]}

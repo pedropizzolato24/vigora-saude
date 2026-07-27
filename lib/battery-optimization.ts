@@ -1,19 +1,22 @@
 import { Linking, Platform } from 'react-native';
+import { requestIgnoreBatteryOptimizations } from 'expo-alarm-countdown';
 
 /**
- * Abre as configurações de otimização de bateria do Android.
+ * Pede a isenção de otimização de bateria do Android.
  *
  * OEMs agressivos (Samsung/Xiaomi) matam apps em segundo plano e impedem o
  * alarme de tocar mesmo com AlarmManager exato + foreground service. Isentar o
- * Vigora da otimização resolve. Usa Linking.sendIntent do core do RN — sem dep
- * nova e sem permission especial (abre a lista de apps).
+ * Vigora da otimização resolve.
  *
- * ponytail: abre a LISTA (IGNORE_BATTERY_OPTIMIZATION_SETTINGS); o diálogo
- * direto por-app (REQUEST_IGNORE_BATTERY_OPTIMIZATIONS) exige setData(package:)
- * que o sendIntent não passa — trocar por expo-intent-launcher se a UX exigir.
+ * Caminho principal: diálogo direto por-app (REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+ * via módulo próprio expo-alarm-countdown) — a lista genérica da One UI filtra
+ * os apps e o Vigora nem aparecia nela (feedback S10). Fallbacks: a lista
+ * (IGNORE_BATTERY_OPTIMIZATION_SETTINGS) e a página do próprio app.
  */
 export async function openBatteryOptimizationSettings(): Promise<void> {
   if (Platform.OS !== 'android') return;
+  const opened = await requestIgnoreBatteryOptimizations();
+  if (opened) return;
   try {
     await Linking.sendIntent('android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS');
   } catch {

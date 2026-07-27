@@ -14,6 +14,7 @@ import {
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
+import { ScreenHeaderBack } from '@/components/screen-header-back';
 import { HealthConsentGate } from '@/components/health-consent-gate';
 import { WizardStep } from '@/components/wizard-step';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -176,9 +177,12 @@ export default function AnamnesisScreen() {
     return (
       <>
       <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
-        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar }}>
-          <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Histórico médico</Text>
-          <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Histórico médico pessoal</Text>
+        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 12, paddingBottom: 16, borderBottomWidth: 2, borderBottomColor: ac.border, backgroundColor: ac.bar, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <ScreenHeaderBack />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Histórico médico</Text>
+            <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Histórico médico pessoal</Text>
+          </View>
         </View>
         <FormKeyboardView style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -243,6 +247,7 @@ export default function AnamnesisScreen() {
     <ScreenContainer edges={['left', 'right']}>
       {/* Header — só título; exportação fica no último passo do wizard */}
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
+        <ScreenHeaderBack />
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'], fontFamily: BrandFonts.body }]}>
             Histórico médico
@@ -278,7 +283,7 @@ export default function AnamnesisScreen() {
                   onChangeText={(v) => updateField('fullName', v)}
                   placeholder="Seu nome completo"
                   placeholderTextColor={colors.muted}
-                  style={[styles.textInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base }]}
+                  style={[styles.textInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base, minHeight: fs.touch(48) }]}
                   returnKeyType="next"
                   maxLength={80}
                   autoFocus
@@ -296,7 +301,7 @@ export default function AnamnesisScreen() {
                   placeholder="DD/MM/AAAA"
                   placeholderTextColor={colors.muted}
                   keyboardType="numeric"
-                  style={[styles.textInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base }]}
+                  style={[styles.textInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base, minHeight: fs.touch(48) }]}
                   returnKeyType="done"
                   maxLength={10}
                   accessibilityLabel="Data de nascimento"
@@ -320,6 +325,7 @@ export default function AnamnesisScreen() {
                         {
                           backgroundColor: form.gender === opt.value ? colors.primary : colors.surface,
                           borderColor: form.gender === opt.value ? colors.primary : colors.border,
+                          minHeight: fs.touch(48),
                           flex: 1,
                         },
                       ]}
@@ -367,7 +373,7 @@ export default function AnamnesisScreen() {
                   placeholderTextColor={colors.muted}
                   multiline
                   numberOfLines={3}
-                  style={[styles.textArea, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base }]}
+                  style={[styles.textArea, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base, minHeight: fs.touch(90) }]}
                   maxLength={300}
                   accessibilityLabel="Alergias"
                 />
@@ -384,7 +390,7 @@ export default function AnamnesisScreen() {
                   placeholderTextColor={colors.muted}
                   multiline
                   numberOfLines={3}
-                  style={[styles.textArea, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base }]}
+                  style={[styles.textArea, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base, minHeight: fs.touch(90) }]}
                   maxLength={300}
                   accessibilityLabel="Medicamentos em uso"
                 />
@@ -401,7 +407,7 @@ export default function AnamnesisScreen() {
                   placeholderTextColor={colors.muted}
                   multiline
                   numberOfLines={3}
-                  style={[styles.textArea, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base }]}
+                  style={[styles.textArea, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base, minHeight: fs.touch(90) }]}
                   maxLength={300}
                   accessibilityLabel="Doenças crônicas"
                 />
@@ -433,7 +439,7 @@ export default function AnamnesisScreen() {
                   placeholder="000 0000 0000 0000"
                   placeholderTextColor={colors.muted}
                   keyboardType="numeric"
-                  style={[styles.textInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base }]}
+                  style={[styles.textInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base, minHeight: fs.touch(48) }]}
                   returnKeyType="next"
                   maxLength={18}
                   accessibilityLabel="Número do SUS"
@@ -449,7 +455,7 @@ export default function AnamnesisScreen() {
                   onChangeText={(v) => updateField('healthPlanProvider', v)}
                   placeholder="Ex: Unimed, Bradesco Saúde, Amil..."
                   placeholderTextColor={colors.muted}
-                  style={[styles.textInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base }]}
+                  style={[styles.textInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base, minHeight: fs.touch(48) }]}
                   returnKeyType="next"
                   maxLength={60}
                   accessibilityLabel="Provedor do plano de saúde"
@@ -466,7 +472,7 @@ export default function AnamnesisScreen() {
                   placeholder="Número da carteirinha"
                   placeholderTextColor={colors.muted}
                   keyboardType="numeric"
-                  style={[styles.textInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base }]}
+                  style={[styles.textInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base, minHeight: fs.touch(48) }]}
                   returnKeyType="done"
                   maxLength={30}
                   accessibilityLabel="Número da carteirinha do plano"
@@ -478,7 +484,7 @@ export default function AnamnesisScreen() {
                 onPress={handleExport}
                 style={({ pressed }) => [
                   styles.exportBtn,
-                  { backgroundColor: colors.surface, borderColor: colors.primary, opacity: pressed ? 0.8 : 1 },
+                  { backgroundColor: colors.surface, borderColor: colors.primary, minHeight: fs.touch(52), opacity: pressed ? 0.8 : 1 },
                 ]}
                 accessibilityRole="button"
                 accessibilityLabel="Exportar histórico médico em PDF"
@@ -492,7 +498,7 @@ export default function AnamnesisScreen() {
               {/* Privacy Note */}
               <View style={[styles.privacyNote, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <MaterialIcons name="lock" size={16} color={colors.muted} />
-                <Text style={[styles.privacyText, { color: colors.muted, fontSize: fs.sm }]}>
+                <Text style={[styles.privacyText, { color: colors.muted, fontSize: fs.sm, lineHeight: fs.scaled(19) }]}>
                   Seus dados são armazenados apenas localmente neste dispositivo e nunca são enviados para servidores externos.
                 </Text>
               </View>
@@ -524,7 +530,6 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1.5,
     borderRadius: 12,
-    minHeight: 52,
     paddingHorizontal: 16,
   },
   exportBtnText: { fontWeight: '700' },
@@ -543,14 +548,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    minHeight: 48,
   },
   textArea: {
     borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    minHeight: 90,
     textAlignVertical: 'top',
   },
   genderOptions: { flexDirection: 'row', gap: 8 },
@@ -559,7 +562,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
-    minHeight: 48,
     justifyContent: 'center',
   },
   genderOptionText: { fontWeight: '500' },
@@ -571,5 +573,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
-  privacyText: { flex: 1, lineHeight: 19 },
+  privacyText: { flex: 1 },
 });

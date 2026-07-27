@@ -7,22 +7,16 @@ import {
   StyleSheet,
   Platform,
   Animated,
-  LayoutAnimation,
-  UIManager,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
+import { FadeInView, StaggeredItem } from '@/components/animated-components';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { useAccessibility } from '@/lib/accessibility-context';
-
-// Enable LayoutAnimation on Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 interface FAQItem {
   question: string;
@@ -220,11 +214,13 @@ export function HelpScreen({ onBack }: { onBack?: () => void } = {}) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
+  // A abertura anima pelos próprios itens (StaggeredItem/FadeInView) em vez de
+  // LayoutAnimation: na nova arquitetura ela é no-op/instável, e era por isso
+  // que a cascata abria seca.
   const toggleSection = (title: string) => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedSections((prev) => ({ ...prev, [title]: !prev[title] }));
   };
 
@@ -232,7 +228,6 @@ export function HelpScreen({ onBack }: { onBack?: () => void } = {}) {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedItems((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
@@ -373,7 +368,7 @@ export function HelpScreen({ onBack }: { onBack?: () => void } = {}) {
                     const isItemOpen = expandedItems[itemKey] ?? false;
 
                     return (
-                      <View key={itemKey}>
+                      <StaggeredItem key={itemKey} index={idx} staggerDelay={45}>
                         <TouchableOpacity
                           onPress={() => toggleItem(itemKey)}
                           style={[
@@ -396,13 +391,13 @@ export function HelpScreen({ onBack }: { onBack?: () => void } = {}) {
                         </TouchableOpacity>
 
                         {isItemOpen && (
-                          <View style={[styles.faqAnswer, { backgroundColor: colors.surface }]}>
+                          <FadeInView duration={200} style={[styles.faqAnswer, { backgroundColor: colors.surface }]}>
                             <Text style={[styles.faqAnswerText, { color: colors.foreground, fontSize: fs.base, lineHeight: fs.scaled(24) }]}>
                               {item.answer}
                             </Text>
-                          </View>
+                          </FadeInView>
                         )}
-                      </View>
+                      </StaggeredItem>
                     );
                   })}
                 </View>

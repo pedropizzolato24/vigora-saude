@@ -24,6 +24,7 @@ import {
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useColors } from '@/hooks/use-colors';
+import { useFontSize } from '@/lib/font-size-context';
 import { getAlarmHistory, getWarningLog } from '@/lib/monitoring-service';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -123,6 +124,7 @@ interface Props {
 
 export function AlarmHistorySheet({ visible, onClose }: Props) {
   const colors = useColors();
+  const fs = useFontSize();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<Tab>('events');
   const [events, setEvents] = useState<AlarmEvent[]>([]);
@@ -166,7 +168,7 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
       <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: insets.bottom }]}>
         {/* Header — só título; Fechar fica na barra inferior */}
         <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: Math.max(insets.top, 16) }]}>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+          <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: fs.lg }]}>
             Histórico de Alarmes
           </Text>
         </View>
@@ -174,16 +176,16 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
         {/* Summary cards */}
         <View style={styles.summaryRow}>
           <View style={[styles.summaryCard, { backgroundColor: colors.successLight }]}>
-            <Text style={[styles.summaryNum, { color: colors.success }]}>{respondedCount}</Text>
-            <Text style={[styles.summaryLabel, { color: colors.success }]}>Respondidos</Text>
+            <Text style={[styles.summaryNum, { color: colors.success, fontSize: fs.scaled(24) }]}>{respondedCount}</Text>
+            <Text style={[styles.summaryLabel, { color: colors.success, fontSize: fs.xs }]}>Respondidos</Text>
           </View>
           <View style={[styles.summaryCard, { backgroundColor: colors.errorLight }]}>
-            <Text style={[styles.summaryNum, { color: colors.error }]}>{missedCount}</Text>
-            <Text style={[styles.summaryLabel, { color: colors.error }]}>Perdidos</Text>
+            <Text style={[styles.summaryNum, { color: colors.error, fontSize: fs.scaled(24) }]}>{missedCount}</Text>
+            <Text style={[styles.summaryLabel, { color: colors.error, fontSize: fs.xs }]}>Perdidos</Text>
           </View>
           <View style={[styles.summaryCard, { backgroundColor: colors.warningLight }]}>
-            <Text style={[styles.summaryNum, { color: colors.warningDark }]}>{notSentCount}</Text>
-            <Text style={[styles.summaryLabel, { color: colors.warningDark }]}>Não confirmados</Text>
+            <Text style={[styles.summaryNum, { color: colors.warningDark, fontSize: fs.scaled(24) }]}>{notSentCount}</Text>
+            <Text style={[styles.summaryLabel, { color: colors.warningDark, fontSize: fs.xs }]}>Não confirmados</Text>
           </View>
         </View>
 
@@ -193,7 +195,7 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
             style={[styles.tab, activeTab === 'events' && { borderBottomColor: colors.primary, borderBottomWidth: 2 }]}
             onPress={() => setActiveTab('events')}
           >
-            <Text style={[styles.tabText, { color: activeTab === 'events' ? colors.primary : colors.muted }]}>
+            <Text style={[styles.tabText, { color: activeTab === 'events' ? colors.primary : colors.muted, fontSize: fs.scaled(14) }]}>
               Eventos ({events.length})
             </Text>
           </Pressable>
@@ -201,7 +203,7 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
             style={[styles.tab, activeTab === 'warnings' && { borderBottomColor: colors.primary, borderBottomWidth: 2 }]}
             onPress={() => setActiveTab('warnings')}
           >
-            <Text style={[styles.tabText, { color: activeTab === 'warnings' ? colors.primary : colors.muted }]}>
+            <Text style={[styles.tabText, { color: activeTab === 'warnings' ? colors.primary : colors.muted, fontSize: fs.scaled(14) }]}>
               Avisos ({warnings.length})
             </Text>
           </Pressable>
@@ -211,7 +213,7 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator color={colors.primary} size="large" />
-            <Text style={[styles.loadingText, { color: colors.muted }]}>Carregando histórico...</Text>
+            <Text style={[styles.loadingText, { color: colors.muted, fontSize: fs.scaled(14) }]}>Carregando histórico...</Text>
           </View>
         ) : (
           <ScrollView
@@ -228,7 +230,7 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
               events.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <MaterialIcons name="history" size={48} color={colors.muted} />
-                  <Text style={[styles.emptyText, { color: colors.muted }]}>
+                  <Text style={[styles.emptyText, { color: colors.muted, fontSize: fs.scaled(14), lineHeight: fs.scaled(20) }]}>
                     Nenhum evento registrado ainda.{'\n'}Os eventos aparecerão aqui quando os alarmes dispararem.
                   </Text>
                 </View>
@@ -241,15 +243,15 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
                       <View style={styles.eventContent}>
                         <View style={styles.eventRow}>
                           <MaterialIcons name={cfg.icon} size={16} color={cfg.color} />
-                          <Text style={[styles.eventStatus, { color: cfg.color }]}>{cfg.label}</Text>
-                          <Text style={[styles.eventTime, { color: colors.muted }]}>
+                          <Text style={[styles.eventStatus, { color: cfg.color, fontSize: fs.scaled(12) }]}>{cfg.label}</Text>
+                          <Text style={[styles.eventTime, { color: colors.muted, fontSize: fs.xs }]}>
                             {formatDate(event.scheduledAt)}
                           </Text>
                         </View>
-                        <Text style={[styles.eventDescription, { color: colors.foreground }]}>
+                        <Text style={[styles.eventDescription, { color: colors.foreground, fontSize: fs.scaled(14) }]}>
                           {event.alarmDescription || 'Alarme de Medicamento'}
                         </Text>
-                        <Text style={[styles.eventSubtext, { color: colors.muted }]}>
+                        <Text style={[styles.eventSubtext, { color: colors.muted, fontSize: fs.scaled(12), lineHeight: fs.scaled(16) }]}>
                           {cfg.description}
                         </Text>
                       </View>
@@ -261,7 +263,7 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
               warnings.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <MaterialIcons name="notifications-none" size={48} color={colors.muted} />
-                  <Text style={[styles.emptyText, { color: colors.muted }]}>
+                  <Text style={[styles.emptyText, { color: colors.muted, fontSize: fs.scaled(14), lineHeight: fs.scaled(20) }]}>
                     Nenhum aviso enviado ainda.{'\n'}Avisos são enviados quando o celular fica offline por mais de 24h.
                   </Text>
                 </View>
@@ -275,15 +277,15 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
                       <View style={styles.eventContent}>
                         <View style={styles.eventRow}>
                           <MaterialIcons name={cfg.icon} size={16} color={cfg.color} />
-                          <Text style={[styles.eventStatus, { color: cfg.color }]}>{cfg.label}</Text>
-                          <Text style={[styles.eventTime, { color: colors.muted }]}>
+                          <Text style={[styles.eventStatus, { color: cfg.color, fontSize: fs.scaled(12) }]}>{cfg.label}</Text>
+                          <Text style={[styles.eventTime, { color: colors.muted, fontSize: fs.xs }]}>
                             {formatDate(warning.sentAt)}
                           </Text>
                         </View>
-                        <Text style={[styles.eventDescription, { color: colors.foreground }]}>
+                        <Text style={[styles.eventDescription, { color: colors.foreground, fontSize: fs.scaled(14) }]}>
                           {warning.contactsReached} contato(s) notificado(s)
                         </Text>
-                        <Text style={[styles.eventSubtext, { color: colors.muted }]}>
+                        <Text style={[styles.eventSubtext, { color: colors.muted, fontSize: fs.scaled(12), lineHeight: fs.scaled(16) }]}>
                           Celular offline por ~{warning.offlineHours}h
                         </Text>
                       </View>
@@ -304,11 +306,11 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
             accessibilityLabel="Fechar histórico"
             style={({ pressed }) => [
               styles.closeFooterBtn,
-              { borderColor: colors.muted, backgroundColor: colors.surface },
+              { borderColor: colors.muted, backgroundColor: colors.surface, minHeight: fs.touch(54) },
               pressed && { opacity: 0.8 },
             ]}
           >
-            <Text style={[styles.closeFooterText, { color: colors.foreground }]}>Fechar</Text>
+            <Text style={[styles.closeFooterText, { color: colors.foreground, fontSize: fs.md }]}>Fechar</Text>
           </Pressable>
         </View>
       </View>
@@ -327,7 +329,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerTitle: {
-    fontSize: 18,
     fontWeight: '700',
   },
   footerBar: {
@@ -336,14 +337,12 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   closeFooterBtn: {
-    minHeight: 54,
     borderRadius: 14,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   closeFooterText: {
-    fontSize: 16,
     fontWeight: '800',
   },
   summaryRow: {
@@ -359,11 +358,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   summaryNum: {
-    fontSize: 24,
     fontWeight: '800',
   },
   summaryLabel: {
-    fontSize: 11,
     fontWeight: '600',
     marginTop: 2,
   },
@@ -379,7 +376,6 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   tabText: {
-    fontSize: 14,
     fontWeight: '600',
   },
   scrollView: {
@@ -393,9 +389,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 12,
   },
-  loadingText: {
-    fontSize: 14,
-  },
+  loadingText: {},
   emptyContainer: {
     alignItems: 'center',
     paddingTop: 60,
@@ -403,9 +397,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   emptyText: {
-    fontSize: 14,
     textAlign: 'center',
-    lineHeight: 20,
   },
   eventCard: {
     flexDirection: 'row',
@@ -431,19 +423,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   eventStatus: {
-    fontSize: 12,
     fontWeight: '700',
     flex: 1,
   },
-  eventTime: {
-    fontSize: 11,
-  },
+  eventTime: {},
   eventDescription: {
-    fontSize: 14,
     fontWeight: '600',
   },
-  eventSubtext: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
+  eventSubtext: {},
 });

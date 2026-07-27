@@ -31,12 +31,14 @@ import { useAccessibility } from '@/lib/accessibility-context';
 import { useColors } from '@/hooks/use-colors';
 import { escalateAlarmToContacts } from '@/lib/alarm-escalation';
 import { stopNativeAlarm, snoozeNativeAlarm } from '@/lib/native-alarm-manager';
+import { enterAlarmLockScreenMode, exitAlarmLockScreenMode } from 'expo-alarm-countdown';
 import { PulseView } from '@/components/animated-components';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { loadAlarmTimer, clearAlarmTimer } from '@/lib/alarm-timer-store';
 import { lastAlarmFireMs } from '@/lib/alarm-fire-times';
 import { updateAlarmWidgetOnDismiss } from '@/lib/update-widgets';
 import { confirmAlarmResponded, confirmAlarmMissed, createPendingAlarmEvent } from '@/lib/monitoring-service';
+import * as Auth from '@/lib/_core/auth';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
 const COUNTDOWN_SECONDS = 30;
@@ -58,7 +60,7 @@ function buildSpeechText(alarmDescription?: string, alarmTime?: string): string 
 
 export default function AlarmRingScreen() {
   const router = useRouter();
-  const { alarmId, expiresAt: expiresAtParam } = useLocalSearchParams<{ alarmId: string; expiresAt?: string }>();
+  const { alarmId, expiresAt: expiresAtParam, snooze: snoozeParam } = useLocalSearchParams<{ alarmId: string; expiresAt?: string; snooze?: string }>();
   const { state, dispatch } = useAppContext();
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac } = useAccessibility();
   const colors = useColors();
@@ -81,6 +83,18 @@ export default function AlarmRingScreen() {
   // Marca que o alarme foi respondido, para não retomar o som do alarme depois
   // que a fala termina/para (o handler onDone/onStopped roda de forma assíncrona).
   const dismissedRef = useRef(false);
+
+  // Rota de saída pós-resposta depende do TIPO da conta logada: um cuidador que
+  // tocou numa notificação de alarme atrasada (agendada pela conta monitorada
+  // que usou o aparelho antes) não pode ser jogado no fluxo do monitorado.
+  const [postAlarmRoute, setPostAlarmRoute] = useState<string>('/(tabs)/alarms');
+  useEffect(() => {
+    Auth.getUserInfo()
+      .then((u) => {
+        if (u?.userType === 'caregiver') setPostAlarmRoute('/(caregiver-tabs)');
+      })
+      .catch(() => {});
+  }, []);
 
   // scheduledAt canônico (hora real do disparo) — usado para casar com o evento
   // pré-registrado no servidor. Confirmar com new Date() não batia e o alarme
@@ -131,6 +145,19 @@ export default function AlarmRingScreen() {
       },
     });
   }, [alarm, state.settings, player]);
+
+  // Mostra a tela por cima da lock screen enquanto o alarme está ativo —
+  // escopado a esta tela (não um flag fixo no app inteiro). Ao desmontar
+  // (dismiss, soneca ou voltar), exitAlarmLockScreenMode manda a Activity de
+  // volta pra lock screen real se o aparelho ainda estiver bloqueado, em vez
+  // de deixar a tela inicial do app visível por cima dela.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    enterAlarmLockScreenMode();
+    return () => {
+      exitAlarmLockScreenMode();
+    };
+  }, []);
 
   // Start audio, vibration, and speech on mount
   useEffect(() => {
@@ -327,8 +354,17 @@ export default function AlarmRingScreen() {
     // Atualiza widget Android para mostrar o próximo alarme pendente
     updateAlarmWidgetOnDismiss(state.alarms).catch(() => {});
 
-    router.replace('/(tabs)/alarms');
-  }, [alarmId, player, dispatch, router]);
+    router.replace(postAlarmRoute as never);
+    // `alarm` e `state.alarms` PRECISAM estar aqui: no cold start (alarme toca
+    // com o app morto) a tela monta antes do AsyncStorage carregar, então
+    // `alarm` é undefined no primeiro render. Sem eles nas deps o callback
+    // ficava congelado com esse undefined — o `if (alarm)` acima nunca passava,
+    // o servidor jamais recebia "responded" e o evento ficava pendente até o
+    // job marcá-lo como perdido, escalando para a família um alarme que o idoso
+    // TINHA respondido. (updateAlarmWidgetOnDismiss recebia [] pelo mesmo
+    // motivo.) handleSnooze já dependia de `alarm` — por isso só o dismiss
+    // falhava.
+  }, [alarmId, alarm, state.alarms, player, dispatch, router, postAlarmRoute]);
 
   // Soneca: conta como respondido AGORA (idoso interagiu = vivo), mas re-arma um
   // disparo em 5 min. Se a soneca for ignorada, o evento +5min vira "perdido" no
@@ -360,8 +396,19 @@ export default function AlarmRingScreen() {
       createPendingAlarmEvent(alarm, fireAt).catch(() => {});
     }
 
-    router.replace('/(tabs)/alarms');
-  }, [alarmId, alarm, player, dispatch, router]);
+    router.replace(postAlarmRoute as never);
+  }, [alarmId, alarm, player, dispatch, router, postAlarmRoute]);
+
+  // Botão "Soneca" da notificação: chega como deep link &snooze=1 (a action
+  // nativa abre o app em vez de reagendar em Java — ver native-alarm-manager).
+  // Executa a soneca assim que o alarme carrega do estado; `alarm` na dep é
+  // essencial no cold start (a tela monta antes do AsyncStorage carregar).
+  const autoSnoozedRef = useRef(false);
+  useEffect(() => {
+    if (snoozeParam !== '1' || autoSnoozedRef.current || !alarm) return;
+    autoSnoozedRef.current = true;
+    handleSnooze();
+  }, [snoozeParam, alarm, handleSnooze]);
 
   const handleSpeakAgain = useCallback(async () => {
     const speaking = await Speech.isSpeakingAsync();

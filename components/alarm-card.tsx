@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { PressableScale } from '@/components/pressable-scale';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
@@ -33,8 +34,9 @@ export function AlarmCard({ alarm, onEdit, onToggle, onTest }: AlarmCardProps) {
   const fs = useFontSize();
 
   return (
-    <Pressable
+    <PressableScale
       onPress={() => onEdit(alarm)}
+      scaleTo={0.985}
       accessibilityRole="button"
       accessibilityLabel={`Lembrete ${alarm.time}${alarm.description ? ', ' + alarm.description : ''}. Toque para editar.`}
       style={({ pressed }) => [
@@ -104,19 +106,20 @@ export function AlarmCard({ alarm, onEdit, onToggle, onTest }: AlarmCardProps) {
         </View>
 
         {/* Test button — separate pressable so it doesn't trigger onEdit */}
-        <Pressable
+        <PressableScale
           onPress={(e) => { e.stopPropagation?.(); onTest(alarm); }}
+          scaleTo={0.94}
           style={({ pressed }) => [
             styles.testBtn,
-            { borderColor: colors.success, backgroundColor: colors.background },
-            pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] },
+            { borderColor: colors.success, backgroundColor: colors.background, minHeight: fs.touch(44) },
+            pressed && { opacity: 0.7 },
           ]}
           accessibilityRole="button"
           accessibilityLabel="Testar alarme"
         >
           <MaterialIcons name="play-arrow" size={20} color={colors.success} />
           <Text style={[styles.testBtnText, { color: colors.success, fontSize: fs.sm }]}>Testar</Text>
-        </Pressable>
+        </PressableScale>
       </View>
 
       {/* Divider */}
@@ -128,7 +131,7 @@ export function AlarmCard({ alarm, onEdit, onToggle, onTest }: AlarmCardProps) {
           onPress={(e) => { e.stopPropagation?.(); onToggle(alarm); }}
           style={({ pressed }) => [
             styles.toggleBtn,
-            { backgroundColor: colors.background, borderColor: colors.border },
+            { backgroundColor: colors.background, borderColor: colors.border, minHeight: fs.touch(36) },
             pressed && { opacity: 0.7 },
           ]}
           accessibilityRole="switch"
@@ -150,7 +153,7 @@ export function AlarmCard({ alarm, onEdit, onToggle, onTest }: AlarmCardProps) {
           <Text style={[styles.editHintText, { color: colors.muted, fontSize: fs.sm }]}>Toque para editar</Text>
         </View>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -212,7 +215,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     minWidth: 72,
-    minHeight: 44,
   },
   testBtnText: {
     fontWeight: '700',
@@ -237,7 +239,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    minHeight: 36,
   },
   toggleBtnText: {
     fontWeight: '600',

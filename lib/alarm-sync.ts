@@ -93,10 +93,18 @@ export async function syncAlarmsOnStartup(alarms: Alarm[]): Promise<void> {
         continue;
       }
 
-      // On Android with native alarm available, skip expo-notifications (would duplicate).
-      // The native AlarmManager handles its own notification with static text.
+      // Android: (re)agenda o alarme nativo — idempotente (uids determinísticos
+      // vigora_<id>[_wd<n>], e o cálculo do disparo é sempre a PRÓXIMA ocorrência
+      // futura). Necessário desde o cancelamento na troca de conta: o AlarmManager
+      // não guarda mais os alarmes de uma conta deslogada, então quem loga de
+      // volta (ou restaura do cloud após reinstalar) precisa deles reagendados aqui.
       if (isNativeAlarmAvailable) {
-        console.log(`[Alarm Sync] Android: native alarm present for ${alarm.id}, skipping expo-notification`);
+        console.log(`[Alarm Sync] Android: (re)scheduling native alarm for ${alarm.id}`);
+        try {
+          await scheduleFullAlarm(alarm);
+        } catch (error) {
+          console.error(`[Alarm Sync] Failed to reschedule native alarm ${alarm.id}:`, error);
+        }
         continue;
       }
 
@@ -122,14 +130,18 @@ export async function syncAlarmsOnStartup(alarms: Alarm[]): Promise<void> {
 }
 
 /**
- * Cancel all alarms (native + notifications).
+ * Cancel all alarms (native + notifications). Chamado na troca de conta
+ * (login/logout): os alarmes agendados pertencem à conta que sai — sem isso,
+ * o alarme do monitorado continua tocando para quem logar depois no aparelho.
  */
-export async function cancelAllAlarms(alarms: Alarm[]): Promise<void> {
+export async function cancelAllAlarms(): Promise<void> {
   // Cancel all native alarms at once
   if (isNativeAlarmAvailable) {
     await cancelAllNativeAlarms();
   }
 
   // Cancel all notifications
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  if (Platform.OS !== 'web') {
+    await Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
+  }
 }

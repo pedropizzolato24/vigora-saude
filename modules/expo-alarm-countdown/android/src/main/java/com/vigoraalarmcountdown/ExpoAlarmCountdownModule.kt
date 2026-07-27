@@ -1,6 +1,7 @@
 package com.vigoraalarmcountdown
 
 import android.app.AlarmManager
+import android.app.KeyguardManager
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
@@ -10,7 +11,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import android.view.WindowManager
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -140,6 +143,33 @@ class ExpoAlarmCountdownModule(private val reactContext: ReactApplicationContext
     }
 
     /**
+     * Abre o diálogo do sistema "Permitir que o app ignore a otimização de
+     * bateria?" direto para ESTE app (ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).
+     * Na One UI (ex.: S10) a lista genérica IGNORE_BATTERY_OPTIMIZATION_SETTINGS
+     * filtra os apps e o Vigora nem aparecia para o usuário isentar — o diálogo
+     * direto dispensa navegar pela lista. Resolve true se o diálogo foi
+     * disparado; false abaixo do API 23 (sem Doze). Exige a permissão
+     * REQUEST_IGNORE_BATTERY_OPTIMIZATIONS (declarada em app.config.ts).
+     */
+    @ReactMethod
+    fun requestIgnoreBatteryOptimizations(promise: Promise) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:${reactContext.packageName}")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                reactContext.startActivity(intent)
+                promise.resolve(true)
+            } else {
+                promise.resolve(false)
+            }
+        } catch (e: Exception) {
+            promise.reject("request_ignore_battery_failed", e.message, e)
+        }
+    }
+
+    /**
      * Opens the system "Alarms & reminders" screen for THIS app (Android 12+).
      */
     @ReactMethod
@@ -155,6 +185,100 @@ class ExpoAlarmCountdownModule(private val reactContext: ReactApplicationContext
             promise.resolve(null)
         } catch (e: Exception) {
             promise.reject("open_settings_failed", e.message, e)
+        }
+    }
+
+    /**
+     * Android 14+ (API 34): whether USE_FULL_SCREEN_INTENT is granted. Deixou de
+     * ser auto-concedida no install para apps fora da categoria alarme/chamada
+     * da Play Store — sem ela a notificação do alarme cai para heads-up em vez de
+     * abrir a tela cheia sozinha (o diferencial do dead man's switch). Sempre true
+     * abaixo do 34, onde a permissão é concedida no install.
+     */
+    @ReactMethod
+    fun canUseFullScreenIntent(promise: Promise) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                promise.resolve(NotificationManagerCompat.from(reactContext).canUseFullScreenIntent())
+            } else {
+                promise.resolve(true)
+            }
+        } catch (e: Exception) {
+            // Fail-open: se não dá para checar, não incomoda o usuário
+            promise.resolve(true)
+        }
+    }
+
+    /**
+     * Opens the system "Full-screen notifications" screen for THIS app (Android 14+).
+     */
+    @ReactMethod
+    fun openFullScreenIntentSettings(promise: Promise) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+                    data = Uri.parse("package:${reactContext.packageName}")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                reactContext.startActivity(intent)
+            }
+            promise.resolve(null)
+        } catch (e: Exception) {
+            promise.reject("open_settings_failed", e.message, e)
+        }
+    }
+
+    /**
+     * Ativa a exibição da Activity atual por cima da lock screen. Chamado ao
+     * montar a tela de alarme — escopado a ela (via setShowWhenLocked em
+     * runtime, não um flag fixo no manifesto) para que o resto do app
+     * continue respeitando a lock screen normalmente.
+     */
+    @ReactMethod
+    fun enterAlarmLockScreenMode(promise: Promise) {
+        try {
+            val activity = reactContext.currentActivity
+            if (activity != null) {
+                activity.runOnUiThread {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                        activity.setShowWhenLocked(true)
+                    } else {
+                        activity.window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
+                    }
+                }
+            }
+            promise.resolve(null)
+        } catch (e: Exception) {
+            promise.resolve(null)
+        }
+    }
+
+    /**
+     * Desfaz o enterAlarmLockScreenMode. Se o aparelho ainda estiver
+     * bloqueado, manda a Activity para trás — o usuário volta para a lock
+     * screen real em vez da tela inicial do app.
+     */
+    @ReactMethod
+    fun exitAlarmLockScreenMode(promise: Promise) {
+        try {
+            val activity = reactContext.currentActivity
+            if (activity != null) {
+                activity.runOnUiThread {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                        activity.setShowWhenLocked(false)
+                    } else {
+                        activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
+                    }
+                    val keyguardManager =
+                        activity.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+                    if (keyguardManager?.isKeyguardLocked == true) {
+                        activity.moveTaskToBack(true)
+                    }
+                }
+            }
+            promise.resolve(null)
+        } catch (e: Exception) {
+            promise.resolve(null)
         }
     }
 

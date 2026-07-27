@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { PressableScale } from '@/components/pressable-scale';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { BrandFonts } from '@/lib/_core/theme';
@@ -30,10 +31,13 @@ const QUICK_ACTIONS: QuickAction[] = [
 ];
 
 /**
- * Assistente rápido: o toque no microfone abre um painel com as ações mais
- * usadas, guiado por voz (TTS). Reconhecimento de fala real exige um módulo
- * nativo (ex: expo-speech-recognition) e um novo build — quando for adicionado,
- * basta trocar o conteúdo deste painel pela escuta do comando.
+ * Assistente rápido: abre um painel com as ações mais usadas, guiado por voz
+ * (TTS). O ícone é de ajuda (ponto de interrogação), não de microfone: o
+ * botão nunca escutou comando de voz, e o microfone prometia uma função que
+ * não existe (feedback do teste). Usa "help" em vez de "support-agent" para
+ * não se confundir com o ícone da tela de FAQ/Ajuda. Reconhecimento de fala
+ * real exigiria um módulo nativo (ex: expo-speech-recognition) e um novo
+ * build.
  */
 export function MicFab({ bottomOffset, onPress }: MicFabProps) {
   const colors = useColors();
@@ -74,8 +78,9 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
 
   return (
     <>
-      <Pressable
+      <PressableScale
         onPress={onPress ?? openSheet}
+        scaleTo={0.92}
         accessibilityRole="button"
         accessibilityLabel="Assistente rápido. Toque para ver atalhos do app."
         style={({ pressed }) => [
@@ -86,11 +91,11 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
             shadowColor: colors.primary,
             borderColor: colors.onPrimary,
           },
-          pressed && { opacity: 0.9, transform: [{ scale: 0.95 }] },
+          pressed && { opacity: 0.9 },
         ]}
       >
-        <MaterialIcons name="mic" size={28} color={colors.onPrimary} />
-      </Pressable>
+        <MaterialIcons name="help" size={30} color={colors.onPrimary} />
+      </PressableScale>
 
       <Modal
         visible={sheetVisible}
@@ -106,7 +111,7 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
           >
             <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
               <View style={[styles.micBadge, { backgroundColor: colors.primaryLight }]}>
-                <MaterialIcons name="mic" size={24} color={colors.primary} />
+                <MaterialIcons name="help" size={26} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.sheetTitle, { color: colors.foreground, fontSize: fs.lg }]}>
@@ -122,14 +127,14 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
               {QUICK_ACTIONS.map((action) => {
                 const tone = tokenColors[action.colorToken];
                 return (
-                  <Pressable
+                  <PressableScale
                     key={action.route}
                     onPress={() => handleAction(action)}
                     accessibilityRole="button"
                     accessibilityLabel={action.label}
                     style={({ pressed }) => [
                       styles.actionRow,
-                      { backgroundColor: colors.surface, borderColor: colors.border },
+                      { backgroundColor: colors.surface, borderColor: colors.border, minHeight: fs.touch(64) },
                       pressed && { opacity: 0.8 },
                     ]}
                   >
@@ -140,7 +145,7 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
                       {action.label}
                     </Text>
                     <MaterialIcons name="chevron-right" size={24} color={colors.muted} />
-                  </Pressable>
+                  </PressableScale>
                 );
               })}
             </View>
@@ -151,7 +156,7 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
               accessibilityLabel="Fechar assistente"
               style={({ pressed }) => [
                 styles.closeBtn,
-                { borderColor: colors.muted, backgroundColor: colors.surface },
+                { borderColor: colors.muted, backgroundColor: colors.surface, minHeight: fs.touch(54) },
                 pressed && { opacity: 0.8 },
               ]}
             >
@@ -226,7 +231,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderRadius: 16,
     padding: 12,
-    minHeight: 64,
   },
   actionIcon: {
     width: 48,
@@ -241,7 +245,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   closeBtn: {
-    minHeight: 54,
     borderRadius: 14,
     borderWidth: 2,
     alignItems: 'center',

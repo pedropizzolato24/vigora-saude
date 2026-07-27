@@ -91,6 +91,22 @@ describe("verifyGoogleIdToken", () => {
     );
   });
 
+  it("aceita o client id Android de debug (build de teste via CI)", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          ...MOCK_TOKEN_INFO,
+          aud: "39705729598-cm5s8hs0rare5smst57l1gbin9obt0u1.apps.googleusercontent.com",
+        }),
+        { status: 200 }
+      )
+    );
+
+    const result = await verifyGoogleIdToken("debug-build-token");
+
+    expect(result.sub).toBe("abc123");
+  });
+
   it("chama o endpoint correto do Google", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       new Response(JSON.stringify(MOCK_TOKEN_INFO), { status: 200 })

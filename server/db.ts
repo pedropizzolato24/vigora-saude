@@ -1,5 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { migrate } from "drizzle-orm/mysql2/migrator";
 import mysql from "mysql2";
 import { InsertUser, InsertUserData, userData, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -36,6 +37,31 @@ export async function getDb() {
     }
   }
   return _db;
+}
+
+/**
+ * Aplica as migrações pendentes antes do servidor aceitar tráfego.
+ *
+ * O deploy de 23/07/2026 subiu código que lê account_liveness.batteryExempt sem
+ * a migração 0012 ter sido aplicada em produção. O servidor subiu "saudável", o
+ * job do dead man's switch quebrou na primeira query e ficou 27h morto sem
+ * ninguém perceber. Rodar aqui troca essa falha silenciosa por um deploy que
+ * falha alto: o caller derruba o processo e o Railway mantém a versão anterior
+ * no ar em vez de servir uma com schema divergente.
+ *
+ * Sem DATABASE_URL (dev local sem banco) não há o que migrar — mesma tolerância
+ * do resto do arquivo, em vez de impedir o boot.
+ */
+export async function runPendingMigrations(): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] DATABASE_URL ausente — migrações ignoradas");
+    return;
+  }
+  // Caminho relativo ao cwd, como o out do drizzle.config.ts: os scripts npm
+  // sempre rodam a partir da raiz do repo, em dev e no Railway.
+  await migrate(db, { migrationsFolder: "./drizzle" });
+  console.log("[Database] Migrações em dia");
 }
 
 /**

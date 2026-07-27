@@ -20,6 +20,7 @@ import { FormKeyboardView } from '@/components/form-keyboard-view';
 import { WheelPicker, wheelColumnMetrics } from '@/components/wheel-picker';
 import { WizardStep } from '@/components/wizard-step';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { PressableScale } from '@/components/pressable-scale';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AlarmCard } from '@/components/alarm-card';
@@ -31,7 +32,7 @@ import { generateId, useAppContext, type Alarm } from '@/lib/app-context';
 import { scheduleFullAlarm, cancelFullAlarm } from '@/lib/alarm-sync';
 import { openBatteryOptimizationSettings } from '@/lib/battery-optimization';
 import { oemBatteryHint } from '@/lib/_core/oem-battery-hint';
-import { canScheduleExactAlarms, isIgnoringBatteryOptimizations, openExactAlarmSettings } from 'expo-alarm-countdown';
+import { canScheduleExactAlarms, isIgnoringBatteryOptimizations, openExactAlarmSettings, canUseFullScreenIntent, openFullScreenIntentSettings } from 'expo-alarm-countdown';
 import { useRouter } from 'expo-router';
 import { MAX_ALARMS } from '@/components/pro-limits';
 
@@ -41,6 +42,9 @@ let exactAlarmPromptShown = false;
 // Mesma lógica para o aviso de otimização de bateria (a isenção continua sendo
 // re-checada a cada visita — só o diálogo não re-aparece na mesma sessão).
 let batteryPromptShown = false;
+// Mesma lógica para o aviso de "Notificações em tela cheia" (Android 14+): a
+// permissão continua sendo re-checada a cada visita — só o diálogo não re-aparece.
+let fullScreenPromptShown = false;
 // Um aviso de configuração por sessão: os efeitos de bateria e de alarmes
 // exatos disparam quase juntos no mount e o AppDialog é único — sem este gate o
 // segundo showDialog sobrescreve o primeiro e engole um dos avisos em silêncio.
@@ -129,12 +133,12 @@ export default function AlarmsScreen() {
       showDialog({
         title: 'Para o alarme tocar sempre',
         message:
-          'Alguns celulares desligam apps em segundo plano, o que pode impedir o alarme de tocar. Toque em "Abrir configurações" e desative a otimização de bateria para o Vigora.' +
+          'Alguns celulares desligam apps em segundo plano, o que pode impedir o alarme de tocar. Toque em "Continuar" e depois em "Permitir" quando o Android perguntar.' +
           (hint ? `\n\n${hint}` : ''),
         variant: 'warning',
         buttons: [
           { text: 'Agora não', style: 'cancel' },
-          { text: 'Abrir configurações', onPress: () => openBatteryOptimizationSettings() },
+          { text: 'Continuar', onPress: () => openBatteryOptimizationSettings() },
         ],
       });
     })();
@@ -164,6 +168,36 @@ export default function AlarmsScreen() {
         buttons: [
           { text: 'Agora não', style: 'cancel' },
           { text: 'Abrir configurações', onPress: () => { openExactAlarmSettings(); } },
+        ],
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Android 14+: sem a permissão "Notificações em tela cheia" a notificação do
+  // alarme cai para heads-up e a tela cheia (alarm-ring) só abre se o usuário
+  // tocar nela — em vez de abrir sozinha como um alarme nativo. Ela deixou de ser
+  // concedida no install para apps fora da categoria alarme/chamada da Play Store.
+  // Mesmo padrão dos avisos acima: re-checa a cada visita e avisa 1x por sessão.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    let cancelled = false;
+    (async () => {
+      const granted = await canUseFullScreenIntent();
+      if (granted || cancelled || fullScreenPromptShown || alarmSetupPromptShownThisSession) return;
+      fullScreenPromptShown = true;
+      alarmSetupPromptShownThisSession = true;
+      showDialog({
+        title: 'Para o alarme abrir em tela cheia',
+        message:
+          'Para o alarme abrir a tela inteira sozinho (e não só uma notificação), o Vigora precisa da permissão "Notificações em tela cheia". Toque em "Abrir configurações" e ative a chave para o Vigora.',
+        variant: 'warning',
+        buttons: [
+          { text: 'Agora não', style: 'cancel' },
+          { text: 'Abrir configurações', onPress: () => { openFullScreenIntentSettings(); } },
         ],
       });
     })();
@@ -365,42 +399,20 @@ export default function AlarmsScreen() {
   if (isAccessibilityMode) {
     return (
       <ScreenContainer edges={['left', 'right']} containerStyle={{ backgroundColor: ac.background }}>
-        {/* Header */}
+        {/* Header — só título; a ação de adicionar fica na barra inferior,
+            igual ao modo normal (nada de ações no topo). */}
         <View style={{
           paddingHorizontal: 20,
           paddingTop: insets.top + 12,
           paddingBottom: 16,
           borderBottomWidth: 2,
           borderBottomColor: ac.border,
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
           backgroundColor: ac.bar,
         }}>
-          <View>
-            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Remédios</Text>
-            <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>
-              {state.alarms.length} lembrete(s) configurado(s)
-            </Text>
-          </View>
-          <Pressable
-            onPress={openAddModal}
-            style={({ pressed }) => [{
-              backgroundColor: ac.primary,
-              width: as_.touchTarget,
-              height: as_.touchTarget,
-              borderRadius: 20,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderWidth: 3,
-              borderColor: ac.primary,
-              opacity: pressed ? 0.8 : 1,
-            }]}
-            accessibilityRole="button"
-            accessibilityLabel="Adicionar lembrete"
-          >
-            <MaterialIcons name="add" size={36} color={ac.onPrimary} />
-          </Pressable>
+          <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Remédios</Text>
+          <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>
+            {state.alarms.length} lembrete(s) configurado(s)
+          </Text>
         </View>
 
         {sortedAlarms.length === 0 ? (
@@ -410,28 +422,8 @@ export default function AlarmsScreen() {
               Nenhum lembrete
             </Text>
             <Text style={{ fontSize: af.md, color: ac.muted, textAlign: 'center', lineHeight: af.md * 1.5 }}>
-              Toque no botão + para adicionar um lembrete de medicação.
+              Toque no botão abaixo para adicionar um lembrete de medicação.
             </Text>
-            <Pressable
-              onPress={openAddModal}
-              style={({ pressed }) => [{
-                backgroundColor: ac.primary,
-                borderRadius: 20,
-                paddingVertical: as_.buttonPadding,
-                paddingHorizontal: 32,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-                borderWidth: 3,
-                borderColor: ac.primary,
-                opacity: pressed ? 0.85 : 1,
-              }]}
-              accessibilityRole="button"
-              accessibilityLabel="Adicionar lembrete de medicação"
-            >
-              <MaterialIcons name="add" size={32} color={ac.onPrimary} />
-              <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.onPrimary }}>Adicionar Lembrete</Text>
-            </Pressable>
           </View>
         ) : (
           <FlatList
@@ -486,6 +478,36 @@ export default function AlarmsScreen() {
             showsVerticalScrollIndicator={false}
           />
         )}
+
+        {/* Adicionar — barra inferior, mesma posição do modo normal */}
+        <View style={{
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          borderTopWidth: 2,
+          borderTopColor: ac.border,
+          backgroundColor: ac.bar,
+        }}>
+          <Pressable
+            onPress={openAddModal}
+            style={({ pressed }) => [{
+              backgroundColor: ac.primary,
+              borderRadius: 20,
+              minHeight: as_.touchTarget,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 12,
+              borderWidth: 3,
+              borderColor: ac.primary,
+              opacity: pressed ? 0.85 : 1,
+            }]}
+            accessibilityRole="button"
+            accessibilityLabel="Adicionar lembrete de medicação"
+          >
+            <MaterialIcons name="add" size={32} color={ac.onPrimary} />
+            <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.onPrimary }}>Adicionar Lembrete</Text>
+          </Pressable>
+        </View>
 
         {/* Simplified Modal for Accessibility Mode */}
         <Modal
@@ -731,7 +753,7 @@ export default function AlarmsScreen() {
           onPress={() => setHistoryVisible(true)}
           style={({ pressed }) => [
             styles.historyLinkBtn,
-            { backgroundColor: colors.surface, borderColor: colors.border, opacity: pressed ? 0.75 : 1 },
+            { backgroundColor: colors.surface, borderColor: colors.border, minHeight: fs.touch(40), opacity: pressed ? 0.75 : 1 },
           ]}
           accessibilityRole="button"
           accessibilityLabel="Histórico de alarmes"
@@ -775,7 +797,7 @@ export default function AlarmsScreen() {
           <Text style={[styles.emptyTitle, { color: colors.foreground, fontSize: fs.lg, fontFamily: BrandFonts.body }]}>
             Nenhum lembrete configurado
           </Text>
-          <Text style={[styles.emptySubtext, { color: colors.muted, fontSize: fs.sm }]}>
+          <Text style={[styles.emptySubtext, { color: colors.muted, fontSize: fs.sm, lineHeight: fs.scaled(22) }]}>
             Adicione seu primeiro lembrete de medicação abaixo.
           </Text>
         </View>
@@ -799,11 +821,11 @@ export default function AlarmsScreen() {
 
       {/* Add button — full width, min 56dp */}
       <View style={[styles.addBtnContainer, { borderTopColor: colors.border, backgroundColor: colors.bar }]}>
-        <Pressable
+        <PressableScale
           onPress={openAddModal}
           style={({ pressed }) => [
             styles.addBtn,
-            { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
+            { backgroundColor: colors.primary, minHeight: fs.touch(56), opacity: pressed ? 0.85 : 1 },
           ]}
           accessibilityRole="button"
           accessibilityLabel="Adicionar lembrete de medicação"
@@ -812,7 +834,7 @@ export default function AlarmsScreen() {
           <Text style={[styles.addBtnText, { color: colors.onPrimary, fontSize: fs.md, fontFamily: BrandFonts.body }]}>
             Adicionar lembrete
           </Text>
-        </Pressable>
+        </PressableScale>
       </View>
 
       {/* Wizard Modal */}
@@ -884,6 +906,7 @@ export default function AlarmsScreen() {
                               {
                                 backgroundColor: selected ? colors.primary : colors.surface,
                                 borderColor: selected ? colors.primary : colors.border,
+                                minHeight: fs.touch(44),
                               },
                             ]}
                             accessibilityRole="button"
@@ -948,6 +971,7 @@ export default function AlarmsScreen() {
                             {
                               backgroundColor: form.repeat === opt.value ? colors.primary : colors.surface,
                               borderColor: form.repeat === opt.value ? colors.primary : colors.border,
+                              minHeight: fs.touch(44),
                             },
                           ]}
                           accessibilityRole="radio"
@@ -993,6 +1017,7 @@ export default function AlarmsScreen() {
                                   {
                                     backgroundColor: selected ? colors.primary : colors.background,
                                     borderColor: selected ? colors.primary : colors.border,
+                                    minHeight: fs.touch(52),
                                   },
                                 ]}
                                 accessibilityRole="checkbox"
@@ -1068,7 +1093,7 @@ export default function AlarmsScreen() {
                       onPress={() => handleDelete(editingAlarm.id)}
                       style={({ pressed }) => [
                         styles.deleteAlarmBtn,
-                        { borderColor: colors.error, backgroundColor: pressed ? colors.errorLight : colors.background },
+                        { borderColor: colors.error, backgroundColor: pressed ? colors.errorLight : colors.background, minHeight: fs.touch(52) },
                       ]}
                       accessibilityRole="button"
                       accessibilityLabel="Excluir este lembrete"
@@ -1117,7 +1142,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    minHeight: 40,
   },
   historyLinkText: {
     fontWeight: '600',
@@ -1165,7 +1189,6 @@ const styles = StyleSheet.create({
   },
   emptySubtext: {
     textAlign: 'center',
-    lineHeight: 22,
   },
   addBtnContainer: {
     paddingHorizontal: 16,
@@ -1178,7 +1201,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     borderRadius: 14,
-    minHeight: 56,
   },
   addBtnText: {
     fontWeight: '700',
@@ -1280,7 +1302,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1.5,
-    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1307,7 +1328,6 @@ const styles = StyleSheet.create({
   },
   weekdayBtn: {
     flex: 1,
-    height: 52,
     borderRadius: 10,
     borderWidth: 1.5,
     alignItems: 'center',
@@ -1331,7 +1351,6 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1.5,
     borderRadius: 14,
-    minHeight: 52,
     marginTop: 8,
   },
   deleteAlarmBtnText: {

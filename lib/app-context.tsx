@@ -389,6 +389,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (next === activeOpenIdRef.current) return;
       activeOpenIdRef.current = next;
       syncReadyRef.current = false;
+      // Alarmes agendados (AlarmManager nativo + expo-notifications) pertencem
+      // à conta que saiu — sem cancelar aqui, o alarme do monitorado continua
+      // tocando para a conta de cuidador logada depois no mesmo aparelho. Os da
+      // conta que entra são reagendados pelo AlarmSyncInitializer quando o blob
+      // dela carrega. (require preguiçoso: alarm-sync importa o tipo Alarm daqui
+      // — import estático criaria ciclo.)
+      const { cancelAllAlarms } = require('./alarm-sync') as typeof import('./alarm-sync');
+      cancelAllAlarms().catch(() => {});
       dispatch({ type: 'RESET_FOR_ACCOUNT_SWITCH' });
       loadFor(next);
     });
