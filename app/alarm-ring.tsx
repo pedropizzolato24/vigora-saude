@@ -51,6 +51,13 @@ import * as Auth from '@/lib/_core/auth';
 const COUNTDOWN_SECONDS = 30;
 const SNOOZE_MINUTES = 5;
 
+// Disparos já respondidos nesta sessão JS (chave: alarmId@fireMs). Se alguma
+// navegação duplicada empilhar duas instâncias desta tela, a soterrada nunca
+// desmonta no dismiss (router.replace só troca o topo) — sem este registro,
+// ela expirava sozinha e mandava WhatsApp à família sobre um alarme que o
+// idoso JÁ tinha respondido: o pior alarme falso possível do produto.
+const respondedFirings = new Set<string>();
+
 // Builds the speech text for the alarm announcement
 function buildSpeechText(alarmDescription?: string, alarmTime?: string): string {
   const parts: string[] = [];
@@ -109,6 +116,10 @@ export default function AlarmRingScreen() {
   const canonicalScheduledAt = () =>
     new Date((alarm && lastAlarmFireMs(alarm)) || Date.now());
 
+  // Chave estável do DISPARO (não da instância): duas instâncias empilhadas do
+  // mesmo disparo calculam a mesma chave via lastAlarmFireMs.
+  const firingKey = () => `${alarmId}@${canonicalScheduledAt().getTime()}`;
+
   // Speak alarm info aloud - uses speechRate and speechVolume from settings.
   // Pausa o som do alarme durante a fala (em vez de só abaixar): o loop do alarme
   // disputava o foco de áudio e deixava a voz quase inaudível (#7). Ao terminar,
@@ -117,8 +128,8 @@ export default function AlarmRingScreen() {
   const speakAlarm = useCallback(() => {
     if (Platform.OS === 'web') return;
     const text = buildSpeechText(alarm?.description, alarm?.time);
-    // speechVolume só tem efeito no iOS — o expo-speech do Android ignora
-    // options.volume (o SpeechModule nunca o repassa ao TextToSpeech).
+    // speechVolume chega ao Android via patch do expo-speech (KEY_PARAM_VOLUME)
+    // — o módulo original ignorava options.volume por completo fora do iOS.
     const speechVol = (state.settings.speechVolume ?? 90) / 100;
     const speechRate = state.settings.speechRate ?? 0.75;
 
@@ -306,6 +317,12 @@ export default function AlarmRingScreen() {
   // When countdown reaches 0, send WhatsApp escalation
   useEffect(() => {
     if (secondsLeft === 0 && !escalationDoneRef.current && !dismissed) {
+      // Outra instância desta tela (empilhada) já registrou resposta para este
+      // disparo — não escalar nem marcar como perdido.
+      if (respondedFirings.has(firingKey())) {
+        escalationDoneRef.current = true;
+        return;
+      }
       escalationDoneRef.current = true;
       setEscalated(true);
       // Confirm alarm as missed on server monitoring system
@@ -342,6 +359,7 @@ export default function AlarmRingScreen() {
   const handleDismiss = useCallback(() => {
     setDismissed(true);
     dismissedRef.current = true;
+    respondedFirings.add(firingKey());
     if (countdownRef.current) clearInterval(countdownRef.current);
     if (speechTimeoutRef.current) clearTimeout(speechTimeoutRef.current);
     // Stop native alarm (Android AlarmManager)
@@ -388,6 +406,7 @@ export default function AlarmRingScreen() {
     if (speechTimeoutRef.current) clearTimeout(speechTimeoutRef.current);
     setDismissed(true); // impede a escalação do disparo atual
     dismissedRef.current = true;
+    respondedFirings.add(firingKey());
     stopNativeAlarm().catch(() => {});
     Speech.stop().catch(() => {});
     if (alarmId) {

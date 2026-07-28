@@ -270,7 +270,10 @@ export default function SettingsScreen() {
       }
 
       await setAudioModeAsync({ playsInSilentMode: true });
-      previewPlayer.volume = volume / 100;
+      // Mesma curva quadrática do alarme real (Sound.java no patch do
+      // expo-alarm-module): escalar linear soa igual de 10% a 100% — o ouvido
+      // é logarítmico. Mudou lá, mude aqui, senão o teste mente.
+      previewPlayer.volume = (volume / 100) ** 2;
       previewPlayer.loop = false;
       // Seek to start so it always plays from beginning
       previewPlayer.seekTo(0);

@@ -515,6 +515,9 @@ export async function runMonitoringJob(): Promise<void> {
       const scheduledStr = event.scheduledAt.toLocaleTimeString("pt-BR", {
         hour: "2-digit",
         minute: "2-digit",
+        // O Railway roda em UTC — sem timeZone o horario sai 3h adiantado
+        // para o cuidador/familia (21:00 virava "00:00").
+        timeZone: "America/Sao_Paulo",
       });
       const message =
         `⚠️ CHECK-IN NÃO RESPONDIDO - Vigora\n\n` +
@@ -574,6 +577,9 @@ export async function runMonitoringJob(): Promise<void> {
       const scheduledStr = event.scheduledAt.toLocaleTimeString("pt-BR", {
         hour: "2-digit",
         minute: "2-digit",
+        // O Railway roda em UTC — sem timeZone o horario sai 3h adiantado
+        // para o cuidador/familia (21:00 virava "00:00").
+        timeZone: "America/Sao_Paulo",
       });
       const desc = event.alarmDescription || "alarme de medicamento";
       const notSent = event.status === "not_sent";

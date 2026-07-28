@@ -243,10 +243,45 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..fc798a2603b4b2ee51f62663d0616a81
       * Creates an intent for dismissing, snoozing or performing another action in the alarm notification.
       */
 diff --git a/android/src/main/java/com/expoalarmmodule/Manager.java b/android/src/main/java/com/expoalarmmodule/Manager.java
-index 004075da7464088c26edd8b5e6e2e5a191ec7633..06b4f4d7aff42667fc68e24fb055b94429c0d430 100644
+index 004075da7464088c26edd8b5e6e2e5a191ec7633..d391e2dfff995d43c7ee8c68bd261717def928e8 100644
 --- a/android/src/main/java/com/expoalarmmodule/Manager.java
 +++ b/android/src/main/java/com/expoalarmmodule/Manager.java
-@@ -112,6 +112,15 @@ public class Manager {
+@@ -16,7 +16,26 @@ public class Manager {
+         return activeAlarmUid;
+     }
+ 
++    /**
++     * Cancela os PendingIntents dos disparos ANTERIORES deste uid. Obrigatório
++     * antes de qualquer (re)agendamento: cada AlarmDates nasce com
++     * notificationIds ALEATÓRIOS novos, e o app reagenda todos os alarmes a
++     * cada abertura (syncAlarmsOnStartup). Sem cancelar, os PendingIntents
++     * antigos ficavam armados no AlarmManager — "alarmes fantasma" que
++     * disparavam em rajada no horário: som reiniciando, full-screen relançada
++     * (voz repetindo em fila), instâncias empilhadas escalando sozinhas, e
++     * notificação genérica para alarme já desativado/removido do storage.
++     */
++    private static void cancelPreviousDates(Context context, String alarmUid) {
++        AlarmDates previous = Storage.getDates(context, alarmUid);
++        if (previous == null) return;
++        for (Date date : previous.getDates()) {
++            Helper.cancelAlarm(context, previous.getNotificationId(date));
++        }
++    }
++
+     static void schedule(Context context, Alarm alarm) {
++        cancelPreviousDates(context, alarm.uid);
+         AlarmDates dates = alarm.getAlarmDates();
+         for (Date date : dates.getDates()) {
+             Helper.scheduleAlarm(context, alarm.uid, date.getTime(), dates.getNotificationId(date));
+@@ -28,6 +47,7 @@ public class Manager {
+     public static void reschedule(Context context) {
+         Alarm[] alarms = Storage.getAllAlarms(context);
+         for (Alarm alarm : alarms) {
++            cancelPreviousDates(context, alarm.uid);
+             Storage.removeDates(context, alarm.uid);
+             AlarmDates dates = alarm.getAlarmDates();
+             Storage.saveDates(context, dates);
+@@ -112,6 +132,15 @@ public class Manager {
      }
  
      static void start(Context context, String alarmUid) {
@@ -262,7 +297,7 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..06b4f4d7aff42667fc68e24fb055b944
          activeAlarmUid = alarmUid;
          sound = new Sound(context);
          sound.play("default");
-@@ -119,6 +128,23 @@ public class Manager {
+@@ -119,6 +148,23 @@ public class Manager {
          Log.d(TAG, "Starting " + activeAlarmUid);
      }
  
@@ -286,7 +321,7 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..06b4f4d7aff42667fc68e24fb055b944
      public static void stop(Context context) {
          Log.d(TAG, "Stopping " + activeAlarmUid);
  
-@@ -131,11 +157,21 @@ public class Manager {
+@@ -131,11 +177,21 @@ public class Manager {
              AlarmDates dates = Storage.getDates(context, activeAlarmUid);
              if(alarm != null) {
                  if (alarm.repeating) {
@@ -311,7 +346,7 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..06b4f4d7aff42667fc68e24fb055b944
                      alarm.active = false;
                      Storage.saveAlarm(context, alarm);
 diff --git a/android/src/main/java/com/expoalarmmodule/Sound.java b/android/src/main/java/com/expoalarmmodule/Sound.java
-index 73b00616707cd5533258ce215fb1fb1e2deafb50..092c1efeed2cddd514de27cb630fbf7ca28a9732 100644
+index 73b00616707cd5533258ce215fb1fb1e2deafb50..376fc81fe8c20218d5513aded0a5b083c0f74aed 100644
 --- a/android/src/main/java/com/expoalarmmodule/Sound.java
 +++ b/android/src/main/java/com/expoalarmmodule/Sound.java
 @@ -4,8 +4,6 @@ import android.content.Context;
@@ -399,7 +434,7 @@ index 73b00616707cd5533258ce215fb1fb1e2deafb50..092c1efeed2cddd514de27cb630fbf7c
      }
  
      private void playSound(Uri soundUri) {
-@@ -54,7 +91,12 @@ class Sound {
+@@ -54,7 +91,17 @@ class Sound {
                  mediaPlayer.setScreenOnWhilePlaying(true);
                  mediaPlayer.setAudioStreamType(AudioManager.STREAM_ALARM);
                  mediaPlayer.setDataSource(context, soundUri);
@@ -408,12 +443,17 @@ index 73b00616707cd5533258ce215fb1fb1e2deafb50..092c1efeed2cddd514de27cb630fbf7c
 +                // 0..1 aplicado SÓ a este player — não mexe no volume de alarme
 +                // do sistema. O original passava (100,100), que satura em 1.0:
 +                // o slider do app não governava nada.
-+                float volume = Storage.getAlarmVolume(context) / 100f;
++                // Curva QUADRÁTICA: o escalar é linear em amplitude e o ouvido
++                // é logarítmico — linear fazia 10% soar igual a 100%. Com x²,
++                // 50% ≈ -12dB e 10% ≈ -40dB: degraus audíveis. Espelhada no
++                // preview das Configurações (settings.tsx) — mudou aqui, mude lá.
++                float linear = Storage.getAlarmVolume(context) / 100f;
++                float volume = linear * linear;
 +                mediaPlayer.setVolume(volume, volume);
                  mediaPlayer.setLooping(true);
                  mediaPlayer.prepare();
                  mediaPlayer.start();
-@@ -76,23 +118,6 @@ class Sound {
+@@ -76,23 +123,6 @@ class Sound {
          }
      }
  
@@ -437,7 +477,7 @@ index 73b00616707cd5533258ce215fb1fb1e2deafb50..092c1efeed2cddd514de27cb630fbf7c
      private void stopVibration() {
          vibrator.cancel();
      }
-@@ -100,7 +125,16 @@ class Sound {
+@@ -100,7 +130,16 @@ class Sound {
      private Uri getSoundUri(String soundName) {
          Uri soundUri;
          if (soundName.equals("default")) {

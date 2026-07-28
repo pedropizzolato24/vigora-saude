@@ -3,7 +3,7 @@ import { AppState, Platform } from 'react-native';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import * as Notifications from 'expo-notifications';
 import { loadCurrentAppStateRaw } from '@/lib/app-state-storage';
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import { useAppContext } from '@/lib/app-context';
 import { clearAlarmTimeout } from '@/lib/alarm-timeout-manager';
 import { escalateAlarmToContacts, type EscalationResult } from '@/lib/alarm-escalation';
@@ -106,6 +106,18 @@ export function AlarmNotificationHandler() {
   const navigatedAlarms = useRef<Set<string>>(new Set());
   const escalationTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
+  // Com a tela do alarme aberta, o alarme nativo continua ATIVO (o som é dele
+  // desde 28/07 — a tela não o mata mais na montagem). Sem este guard, o
+  // listener de AppState e o poll viam o alarme ativo a cada volta ao
+  // foreground e EMPILHAVAM outra alarm-ring por cima da aberta — timer
+  // zerado, voz repetida, e a instância soterrada escalando sozinha.
+  const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+  const onAlarmScreen = () => pathnameRef.current?.startsWith('/alarm-ring') ?? false;
+
   /**
    * Shared alarm-fired handler - called when an alarm fires (foreground or background).
    * Sets up the timer, navigates to alarm-ring, and schedules escalation.
@@ -166,7 +178,7 @@ export function AlarmNotificationHandler() {
 
     // Navigate to alarm-ring screen, passing expiresAt as URL param.
     // alarm-ring uses expiresAt directly - no AsyncStorage race condition.
-    if (!navigatedAlarms.current.has(alarmId)) {
+    if (!navigatedAlarms.current.has(alarmId) && !onAlarmScreen()) {
       navigatedAlarms.current.add(alarmId);
       router.push(`/alarm-ring?alarmId=${alarmId}&expiresAt=${expiresAt}`);
       setTimeout(() => navigatedAlarms.current.delete(alarmId), 5000);
@@ -224,6 +236,9 @@ export function AlarmNotificationHandler() {
 
     const handleAppStateChange = async (nextState: string) => {
       if (nextState !== 'active') return;
+      // Já na tela do alarme (usuário desligou/religou a tela, por exemplo):
+      // timer e escalação já estão de pé — re-navegar só empilharia instância.
+      if (onAlarmScreen()) return;
 
       try {
         const activeUid = await getAlarmStateNative!();
@@ -344,7 +359,7 @@ export function AlarmNotificationHandler() {
               if (activeUid !== lastActedUid.current) {
                 lastActedUid.current = activeUid;
                 const alarmId = extractAlarmIdFromUid(activeUid);
-                if (alarmId && !pendingAlarms.current.has(alarmId)) {
+                if (alarmId && !pendingAlarms.current.has(alarmId) && !onAlarmScreen()) {
                   console.log(`[AlarmHandler] Foreground poll detected active alarm: ${activeUid} -> ${alarmId}`);
                   stopPolling();
                   handleAlarmFired(alarmId);
