@@ -41,13 +41,24 @@ index 455375ae411fa22e853dbd8c945124690e703e18..fd2862ed2203539357e0943fb13c1555
          int currentDay = calendar.get(Calendar.DAY_OF_WEEK);
          for (Date date : dates) {
 diff --git a/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java b/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
-index 552911d58dbc4123c3eff79031d88bd8e4dc1ed9..180198bec3ee9f56c5b1e5830123870211f7b3fd 100644
+index 552911d58dbc4123c3eff79031d88bd8e4dc1ed9..39a7a05fe422e8a898c63ede83e7efe95128c8a2 100644
 --- a/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
 +++ b/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
-@@ -93,6 +93,22 @@ public class ExpoAlarmModuleModule extends ReactContextBaseJavaModule {
+@@ -93,6 +93,33 @@ public class ExpoAlarmModuleModule extends ReactContextBaseJavaModule {
      promise.resolve(null);
    }
  
++  /**
++   * Volume do alarme (0-100), vindo do slider das Configurações. Persistido
++   * porque quem toca é o AlarmService, que roda sem o app aberto. Escala só o
++   * MediaPlayer do alarme — o volume de alarme do sistema fica intacto.
++   */
++  @ReactMethod
++  public void setAlarmVolume (int volume, Promise promise) {
++    Storage.saveAlarmVolume(reactContext, volume);
++    promise.resolve(null);
++  }
++
 +  /**
 +   * Silencia o som do alarme em curso sem desmontá-lo (a tela usa durante a
 +   * fala). Não confundir com stop(), que encerra o alarme e reagenda.
@@ -300,7 +311,7 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..06b4f4d7aff42667fc68e24fb055b944
                      alarm.active = false;
                      Storage.saveAlarm(context, alarm);
 diff --git a/android/src/main/java/com/expoalarmmodule/Sound.java b/android/src/main/java/com/expoalarmmodule/Sound.java
-index 73b00616707cd5533258ce215fb1fb1e2deafb50..940633e3f8f33346f81055588f0929a1f99dfeba 100644
+index 73b00616707cd5533258ce215fb1fb1e2deafb50..092c1efeed2cddd514de27cb630fbf7ca28a9732 100644
 --- a/android/src/main/java/com/expoalarmmodule/Sound.java
 +++ b/android/src/main/java/com/expoalarmmodule/Sound.java
 @@ -4,8 +4,6 @@ import android.content.Context;
@@ -388,7 +399,21 @@ index 73b00616707cd5533258ce215fb1fb1e2deafb50..940633e3f8f33346f81055588f0929a1
      }
  
      private void playSound(Uri soundUri) {
-@@ -76,23 +113,6 @@ class Sound {
+@@ -54,7 +91,12 @@ class Sound {
+                 mediaPlayer.setScreenOnWhilePlaying(true);
+                 mediaPlayer.setAudioStreamType(AudioManager.STREAM_ALARM);
+                 mediaPlayer.setDataSource(context, soundUri);
+-                mediaPlayer.setVolume(100, 100);
++                // Volume do slider do app (0-100). setVolume recebe um escalar
++                // 0..1 aplicado SÓ a este player — não mexe no volume de alarme
++                // do sistema. O original passava (100,100), que satura em 1.0:
++                // o slider do app não governava nada.
++                float volume = Storage.getAlarmVolume(context) / 100f;
++                mediaPlayer.setVolume(volume, volume);
+                 mediaPlayer.setLooping(true);
+                 mediaPlayer.prepare();
+                 mediaPlayer.start();
+@@ -76,23 +118,6 @@ class Sound {
          }
      }
  
@@ -412,7 +437,7 @@ index 73b00616707cd5533258ce215fb1fb1e2deafb50..940633e3f8f33346f81055588f0929a1
      private void stopVibration() {
          vibrator.cancel();
      }
-@@ -100,7 +120,16 @@ class Sound {
+@@ -100,7 +125,16 @@ class Sound {
      private Uri getSoundUri(String soundName) {
          Uri soundUri;
          if (soundName.equals("default")) {
@@ -430,6 +455,48 @@ index 73b00616707cd5533258ce215fb1fb1e2deafb50..940633e3f8f33346f81055588f0929a1
          } else {
              int resId;
              if (context.getResources().getIdentifier(soundName, "raw", context.getPackageName()) != 0) {
+diff --git a/android/src/main/java/com/expoalarmmodule/Storage.java b/android/src/main/java/com/expoalarmmodule/Storage.java
+index acb1e33bce9bb27c708ef2b0592db2ccc2c70892..7fd1070862bd7e0a6cbb0cae4eedba554f0a080f 100644
+--- a/android/src/main/java/com/expoalarmmodule/Storage.java
++++ b/android/src/main/java/com/expoalarmmodule/Storage.java
+@@ -4,7 +4,6 @@ import android.content.Context;
+ import android.content.SharedPreferences;
+ import android.os.Build;
+ 
+-import com.expoalarmmodule.R;
+ import com.google.gson.Gson;
+ 
+ import java.util.ArrayList;
+@@ -78,9 +77,27 @@ class Storage {
+         return sharedPreferences.edit();
+     }
+ 
++    /** Volume do alarme (0-100), escrito pelo app via ExpoAlarmModule.setAlarmVolume. */
++    private static final String VOLUME_KEY = "vigora_alarm_volume";
++
++    static void saveAlarmVolume(Context context, int volume) {
++        SharedPreferences.Editor editor = getEditor(context);
++        editor.putInt(VOLUME_KEY, Math.max(0, Math.min(100, volume)));
++        editor.apply();
++    }
++
++    /** 100 (máximo) quando o app ainda não escreveu — o comportamento de sempre. */
++    static int getAlarmVolume(Context context) {
++        return getSharedPreferences(context).getInt(VOLUME_KEY, 100);
++    }
++
+     private static SharedPreferences getSharedPreferences(Context context) {
+-        String fileKey = context.getResources().getString(R.string.notification_channel_id);
+-        return context.getSharedPreferences(fileKey, Context.MODE_PRIVATE);
++        // Nome FIXO, desacoplado do notification_channel_id. Eram a mesma
++        // string, então mudar o id do canal (que precisou mudar, porque as
++        // configurações de um NotificationChannel são imutáveis) trocaria
++        // também o arquivo de preferências — e todo alarme já agendado sumiria
++        // da vista do módulo. Este é o nome histórico: preserva os dados.
++        return context.getSharedPreferences("expo-alarm-module", Context.MODE_PRIVATE);
+     }
+ 
+ }
 diff --git a/android/src/main/res/values/strings.xml b/android/src/main/res/values/strings.xml
 index aa5b034b1438475db3b484b82b7e645f7ff5e9c0..72307857f58056b7f2883407e42fddbdda218df6 100644
 --- a/android/src/main/res/values/strings.xml

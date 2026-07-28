@@ -12,16 +12,22 @@
  */
 
 import { NativeModules, Platform } from 'react-native';
-import { Alarm } from './app-context';
+// `import type`: app-context passou a importar este módulo (para empurrar o
+// volume ao nativo), e um import de valor aqui fecharia um ciclo em runtime.
+import type { Alarm } from './app-context';
 
 // Lazy import to avoid crashing on web/iOS where the native module is not linked
 let scheduleAlarmNative: ((alarm: any) => Promise<void>) | null = null;
 let removeAlarmNative: ((uid: string) => Promise<void>) | null = null;
 let removeAllAlarmsNative: (() => Promise<void>) | null = null;
 let stopAlarmNative: (() => Promise<void>) | null = null;
-// pauseSound/resumeSound são adicionados pelo nosso patch e não existem na API
-// pública do pacote — daí o acesso direto ao NativeModules.
-let alarmNativeModule: { pauseSound?: () => Promise<void>; resumeSound?: () => Promise<void> } | null = null;
+// pauseSound/resumeSound/setAlarmVolume são adicionados pelo nosso patch e não
+// existem na API pública do pacote — daí o acesso direto ao NativeModules.
+let alarmNativeModule: {
+  pauseSound?: () => Promise<void>;
+  resumeSound?: () => Promise<void>;
+  setAlarmVolume?: (volume: number) => Promise<void>;
+} | null = null;
 
 if (Platform.OS === 'android') {
   try {
@@ -273,6 +279,21 @@ export async function stopNativeAlarm(): Promise<void> {
     console.log('[NativeAlarm] Alarm stopped');
   } catch (e) {
     console.warn('[NativeAlarm] Error stopping alarm:', e);
+  }
+}
+
+/**
+ * Envia o volume do alarme (0-100, slider das Configurações) para o serviço
+ * nativo, que é quem toca o som. Precisa ser persistido lá porque o alarme
+ * dispara sem o app aberto. Escala apenas o player do alarme — o volume de
+ * alarme do sistema não é alterado.
+ */
+export async function setNativeAlarmVolume(volume: number): Promise<void> {
+  if (Platform.OS !== 'android' || !alarmNativeModule?.setAlarmVolume) return;
+  try {
+    await alarmNativeModule.setAlarmVolume(Math.max(0, Math.min(100, Math.round(volume))));
+  } catch (e) {
+    console.warn('[NativeAlarm] Error setting alarm volume:', e);
   }
 }
 
