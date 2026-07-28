@@ -41,10 +41,10 @@ index 455375ae411fa22e853dbd8c945124690e703e18..fd2862ed2203539357e0943fb13c1555
          int currentDay = calendar.get(Calendar.DAY_OF_WEEK);
          for (Date date : dates) {
 diff --git a/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java b/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
-index 552911d58dbc4123c3eff79031d88bd8e4dc1ed9..39a7a05fe422e8a898c63ede83e7efe95128c8a2 100644
+index 552911d58dbc4123c3eff79031d88bd8e4dc1ed9..af30feb7be43993c39a55707f456e426d06e9825 100644
 --- a/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
 +++ b/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
-@@ -93,6 +93,33 @@ public class ExpoAlarmModuleModule extends ReactContextBaseJavaModule {
+@@ -93,6 +93,43 @@ public class ExpoAlarmModuleModule extends ReactContextBaseJavaModule {
      promise.resolve(null);
    }
  
@@ -56,6 +56,16 @@ index 552911d58dbc4123c3eff79031d88bd8e4dc1ed9..39a7a05fe422e8a898c63ede83e7efe9
 +  @ReactMethod
 +  public void setAlarmVolume (int volume, Promise promise) {
 +    Storage.saveAlarmVolume(reactContext, volume);
++    promise.resolve(null);
++  }
++
++  /**
++   * Prévia de 1,5s do som do alarme para o teste de volume das Configurações —
++   * o alarme de verdade, não uma imitação em JS. Ver Manager.preview.
++   */
++  @ReactMethod
++  public void previewSound (Promise promise) {
++    Manager.preview(reactContext);
 +    promise.resolve(null);
 +  }
 +
@@ -243,10 +253,38 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..fc798a2603b4b2ee51f62663d0616a81
       * Creates an intent for dismissing, snoozing or performing another action in the alarm notification.
       */
 diff --git a/android/src/main/java/com/expoalarmmodule/Manager.java b/android/src/main/java/com/expoalarmmodule/Manager.java
-index 004075da7464088c26edd8b5e6e2e5a191ec7633..d391e2dfff995d43c7ee8c68bd261717def928e8 100644
+index 004075da7464088c26edd8b5e6e2e5a191ec7633..ddc930535678d7582fd1a2965ae2b748057ff3f6 100644
 --- a/android/src/main/java/com/expoalarmmodule/Manager.java
 +++ b/android/src/main/java/com/expoalarmmodule/Manager.java
-@@ -16,7 +16,26 @@ public class Manager {
+@@ -11,12 +11,54 @@ public class Manager {
+     private static final String TAG = "AlarmManager";
+     private static Sound sound;
+     private static String activeAlarmUid;
++    private static Sound previewSound;
++
++    /**
++     * Toca o som do alarme por ~1,5s para o TESTE de volume das Configurações.
++     * Usa o MESMO Sound do disparo real: mesmo arquivo, mesmo STREAM_ALARM,
++     * mesma curva de volume. O teste antigo tocava outro arquivo (assets/
++     * alarm.mp3) por outro pipeline (expo-audio/ExoPlayer) — soava diferente do
++     * alarme de verdade e não havia como o usuário confiar nele.
++     */
++    public static void preview(Context context) {
++        stopPreview();
++        previewSound = new Sound(context);
++        previewSound.play("default");
++        new android.os.Handler(android.os.Looper.getMainLooper())
++                .postDelayed(Manager::stopPreview, 1500);
++    }
++
++    private static void stopPreview() {
++        if (previewSound != null) {
++            previewSound.stop();
++            previewSound = null;
++        }
++    }
+ 
+     static String getActiveAlarm() {
          return activeAlarmUid;
      }
  
@@ -273,7 +311,7 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..d391e2dfff995d43c7ee8c68bd261717
          AlarmDates dates = alarm.getAlarmDates();
          for (Date date : dates.getDates()) {
              Helper.scheduleAlarm(context, alarm.uid, date.getTime(), dates.getNotificationId(date));
-@@ -28,6 +47,7 @@ public class Manager {
+@@ -28,6 +70,7 @@ public class Manager {
      public static void reschedule(Context context) {
          Alarm[] alarms = Storage.getAllAlarms(context);
          for (Alarm alarm : alarms) {
@@ -281,7 +319,7 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..d391e2dfff995d43c7ee8c68bd261717
              Storage.removeDates(context, alarm.uid);
              AlarmDates dates = alarm.getAlarmDates();
              Storage.saveDates(context, dates);
-@@ -112,6 +132,15 @@ public class Manager {
+@@ -112,6 +155,15 @@ public class Manager {
      }
  
      static void start(Context context, String alarmUid) {
@@ -297,7 +335,7 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..d391e2dfff995d43c7ee8c68bd261717
          activeAlarmUid = alarmUid;
          sound = new Sound(context);
          sound.play("default");
-@@ -119,6 +148,23 @@ public class Manager {
+@@ -119,6 +171,23 @@ public class Manager {
          Log.d(TAG, "Starting " + activeAlarmUid);
      }
  
@@ -321,7 +359,7 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..d391e2dfff995d43c7ee8c68bd261717
      public static void stop(Context context) {
          Log.d(TAG, "Stopping " + activeAlarmUid);
  
-@@ -131,11 +177,21 @@ public class Manager {
+@@ -131,11 +200,21 @@ public class Manager {
              AlarmDates dates = Storage.getDates(context, activeAlarmUid);
              if(alarm != null) {
                  if (alarm.repeating) {
@@ -346,7 +384,7 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..d391e2dfff995d43c7ee8c68bd261717
                      alarm.active = false;
                      Storage.saveAlarm(context, alarm);
 diff --git a/android/src/main/java/com/expoalarmmodule/Sound.java b/android/src/main/java/com/expoalarmmodule/Sound.java
-index 73b00616707cd5533258ce215fb1fb1e2deafb50..376fc81fe8c20218d5513aded0a5b083c0f74aed 100644
+index 73b00616707cd5533258ce215fb1fb1e2deafb50..9b42dd7019fe96f019ec3d6a6cc77674d5573cda 100644
 --- a/android/src/main/java/com/expoalarmmodule/Sound.java
 +++ b/android/src/main/java/com/expoalarmmodule/Sound.java
 @@ -4,8 +4,6 @@ import android.content.Context;
@@ -358,14 +396,14 @@ index 73b00616707cd5533258ce215fb1fb1e2deafb50..376fc81fe8c20218d5513aded0a5b083
  import android.os.Vibrator;
  import android.provider.Settings;
  import android.util.Log;
-@@ -13,12 +11,13 @@ import android.util.Log;
+@@ -13,39 +11,74 @@ import android.util.Log;
  class Sound {
  
      private static final String TAG = "AlarmSound";
 -    private static final long DEFAULT_VIBRATION = 100;
  
-     private AudioManager audioManager;
-     private int userVolume;
+-    private AudioManager audioManager;
+-    private int userVolume;
      private MediaPlayer mediaPlayer;
      private Vibrator vibrator;
 +    /** Após stop() o MediaPlayer está liberado — pause/resume viram no-op. */
@@ -373,7 +411,14 @@ index 73b00616707cd5533258ce215fb1fb1e2deafb50..376fc81fe8c20218d5513aded0a5b083
  
      private Context context;
  
-@@ -33,19 +32,57 @@ class Sound {
+     Sound(Context context) {
+         this.context = context;
+         this.vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+-        this.audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+-        this.userVolume = audioManager.getStreamVolume(AudioManager.STREAM_ALARM);
+         this.mediaPlayer = new MediaPlayer();
+     }
+ 
      void play(String sound) {
          Uri soundUri = getSoundUri(sound);
          playSound(soundUri);
@@ -434,7 +479,7 @@ index 73b00616707cd5533258ce215fb1fb1e2deafb50..376fc81fe8c20218d5513aded0a5b083
      }
  
      private void playSound(Uri soundUri) {
-@@ -54,7 +91,17 @@ class Sound {
+@@ -54,7 +87,17 @@ class Sound {
                  mediaPlayer.setScreenOnWhilePlaying(true);
                  mediaPlayer.setAudioStreamType(AudioManager.STREAM_ALARM);
                  mediaPlayer.setDataSource(context, soundUri);
@@ -453,7 +498,20 @@ index 73b00616707cd5533258ce215fb1fb1e2deafb50..376fc81fe8c20218d5513aded0a5b083
                  mediaPlayer.setLooping(true);
                  mediaPlayer.prepare();
                  mediaPlayer.start();
-@@ -76,23 +123,6 @@ class Sound {
+@@ -66,8 +109,10 @@ class Sound {
+ 
+     private void stopSound() {
+         try {
+-            // reset the volume to what it was before we changed it.
+-            audioManager.setStreamVolume(AudioManager.STREAM_ALARM, userVolume, AudioManager.FLAG_PLAY_SOUND);
++            // O original "restaurava" o volume do stream de alarme aqui, resquício
++            // de quando ele subia esse volume. Hoje quem escala é setVolume() no
++            // próprio player: o stream do sistema nunca é tocado, e a restauração
++            // só servia para emitir o bipe do FLAG_PLAY_SOUND a cada parada.
+             mediaPlayer.stop();
+             mediaPlayer.reset();
+         } catch (Exception e) {
+@@ -76,23 +121,6 @@ class Sound {
          }
      }
  
@@ -477,7 +535,7 @@ index 73b00616707cd5533258ce215fb1fb1e2deafb50..376fc81fe8c20218d5513aded0a5b083
      private void stopVibration() {
          vibrator.cancel();
      }
-@@ -100,7 +130,16 @@ class Sound {
+@@ -100,7 +128,16 @@ class Sound {
      private Uri getSoundUri(String soundName) {
          Uri soundUri;
          if (soundName.equals("default")) {

@@ -27,6 +27,7 @@ let alarmNativeModule: {
   pauseSound?: () => Promise<void>;
   resumeSound?: () => Promise<void>;
   setAlarmVolume?: (volume: number) => Promise<void>;
+  previewSound?: () => Promise<void>;
 } | null = null;
 
 if (Platform.OS === 'android') {
@@ -294,6 +295,23 @@ export async function setNativeAlarmVolume(volume: number): Promise<void> {
     await alarmNativeModule.setAlarmVolume(Math.max(0, Math.min(100, Math.round(volume))));
   } catch (e) {
     console.warn('[NativeAlarm] Error setting alarm volume:', e);
+  }
+}
+
+/**
+ * Toca 1,5s do som do alarme — o teste de volume das Configurações. É o alarme
+ * de verdade (mesmo arquivo, mesmo stream de ALARME, mesma curva), não uma
+ * imitação em JS: o teste antigo tocava outro arquivo por outro player e não
+ * dizia nada sobre como o alarme soaria.
+ */
+export async function previewNativeAlarmSound(volume: number): Promise<void> {
+  if (Platform.OS !== 'android' || !alarmNativeModule?.previewSound) return;
+  // O nativo lê o volume do storage; grava ANTES para a prévia ser do valor novo.
+  await setNativeAlarmVolume(volume);
+  try {
+    await alarmNativeModule.previewSound();
+  } catch (e) {
+    console.warn('[NativeAlarm] Error previewing alarm sound:', e);
   }
 }
 
