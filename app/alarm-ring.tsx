@@ -2,7 +2,9 @@
  * AlarmRingScreen
  *
  * Full-screen alarm experience:
- * - Plays alarm sound on loop for up to 30 seconds
+ * - O SOM não é desta tela: quem toca é o serviço nativo (expo-alarm-module),
+ *   em loop no STREAM_ALARM, desde o disparo e independente do app estar
+ *   aberto. Esta tela só o pausa/retoma durante a fala. Ver docs/claude/alarmes.md.
  * - Halo que cresce e some ao redor do ícone (o ícone em si fica parado)
  * - Shows alarm name and description
  * - Reads alarm name and description aloud via expo-speech (pt-BR)
@@ -22,7 +24,6 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
@@ -32,7 +33,12 @@ import { loadCurrentAppStateRaw } from '@/lib/app-state-storage';
 import { useAccessibility } from '@/lib/accessibility-context';
 import { useColors } from '@/hooks/use-colors';
 import { escalateAlarmToContacts } from '@/lib/alarm-escalation';
-import { stopNativeAlarm, snoozeNativeAlarm } from '@/lib/native-alarm-manager';
+import {
+  stopNativeAlarm,
+  snoozeNativeAlarm,
+  pauseNativeAlarmSound,
+  resumeNativeAlarmSound,
+} from '@/lib/native-alarm-manager';
 import { enterAlarmLockScreenMode, exitAlarmLockScreenMode } from 'expo-alarm-countdown';
 import { RippleHalo } from '@/components/animated-components';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -42,7 +48,6 @@ import { updateAlarmWidgetOnDismiss } from '@/lib/update-widgets';
 import { confirmAlarmResponded, confirmAlarmMissed, createPendingAlarmEvent } from '@/lib/monitoring-service';
 import * as Auth from '@/lib/_core/auth';
 
-const ALARM_SOUND = require('@/assets/alarm.mp3');
 const COUNTDOWN_SECONDS = 30;
 const SNOOZE_MINUTES = 5;
 
@@ -104,23 +109,27 @@ export default function AlarmRingScreen() {
   const canonicalScheduledAt = () =>
     new Date((alarm && lastAlarmFireMs(alarm)) || Date.now());
 
-  // Audio player
-  const player = useAudioPlayer(ALARM_SOUND);
-
   // Speak alarm info aloud - uses speechRate and speechVolume from settings.
   // Pausa o som do alarme durante a fala (em vez de só abaixar): o loop do alarme
   // disputava o foco de áudio e deixava a voz quase inaudível (#7). Ao terminar,
   // retoma o alarme — a menos que o usuário já tenha respondido.
+  // O som é o do serviço nativo, então pausar/retomar passa pelo módulo nativo.
   const speakAlarm = useCallback(() => {
     if (Platform.OS === 'web') return;
     const text = buildSpeechText(alarm?.description, alarm?.time);
+    // speechVolume só tem efeito no iOS — o expo-speech do Android ignora
+    // options.volume (o SpeechModule nunca o repassa ao TextToSpeech).
     const speechVol = (state.settings.speechVolume ?? 90) / 100;
     const speechRate = state.settings.speechRate ?? 0.75;
 
     const resumeAlarm = () => {
       if (dismissedRef.current) return;
-      try { player.play(); } catch {}
+      resumeNativeAlarmSound();
     };
+
+    // Diagnóstico da voz muda no S10 (feedback 28/07): ainda não sabemos se o
+    // TTS nem chega a iniciar, se falha, ou se fala sem sair som. Temporário.
+    console.log('[Voz] Speech.speak chamado, rate=', speechRate, 'len=', text.length);
 
     setIsSpeaking(true);
     Speech.speak(text, {
@@ -129,24 +138,28 @@ export default function AlarmRingScreen() {
       pitch: 1.0,
       volume: speechVol,
       onStart: () => {
+        console.log('[Voz] onStart');
         setIsSpeaking(true);
         // Silencia o alarme para a voz ser claramente ouvida
-        try { player.pause(); } catch {}
+        pauseNativeAlarmSound();
       },
       onDone: () => {
+        console.log('[Voz] onDone');
         setIsSpeaking(false);
         resumeAlarm();
       },
       onStopped: () => {
+        console.log('[Voz] onStopped');
         setIsSpeaking(false);
         resumeAlarm();
       },
-      onError: () => {
+      onError: (e) => {
+        console.log('[Voz] onError', e);
         setIsSpeaking(false);
         resumeAlarm();
       },
     });
-  }, [alarm, state.settings, player]);
+  }, [alarm, state.settings]);
 
   // Mostra a tela por cima da lock screen enquanto o alarme está ativo —
   // escopado a esta tela (não um flag fixo no app inteiro). Ao desmontar
@@ -161,33 +174,26 @@ export default function AlarmRingScreen() {
     };
   }, []);
 
-  // Start audio, vibration, and speech on mount
+  // Start vibration and speech on mount (o som já está tocando, é do nativo)
   useEffect(() => {
     const startAlarm = async () => {
       try {
         if (Platform.OS !== 'web') {
-          // Stop the native alarm sound (expo-alarm-module plays its own audio)
-          // so that expo-audio takes full control of the alarm sound
-          try { await stopNativeAlarm(); } catch {}
+          // O SOM é do serviço nativo (expo-alarm-module) e continua tocando —
+          // esta tela NÃO o substitui. A versão anterior matava o som nativo
+          // aqui para tocar via expo-audio, e no cold start o player do JS não
+          // subia a tempo: o alarme ficava mudo justamente quando o app estava
+          // fechado. O caminho nativo é foreground service no STREAM_ALARM e
+          // não depende do boot do JS. Ver docs/claude/alarmes.md.
 
-          // Must await setAudioModeAsync before play() to ensure silent mode override
-          await setAudioModeAsync({ playsInSilentMode: true });
-          // Set loop and seek to start before playing
-          player.loop = true;
-          player.seekTo(0);
-          player.play();
-
-          // Set volume AFTER play() - expo-audio requires the player to be
-          // actively playing before volume changes take effect
-          setTimeout(() => {
-            try { player.volume = (state.settings.alarmVolume ?? 80) / 100; } catch {}
-          }, 100);
-
-          // Vibração respeita as DUAS chaves: a global (Configurações) e a do
-          // alarme (formulário). Antes vibrava incondicionalmente — desligar em
-          // qualquer uma delas não tinha efeito nenhum (feedback 27/07).
-          // Lê do storage pelo mesmo motivo do timerDuration abaixo: no disparo
-          // a frio o state ainda não hidratou e os defaults (true) venceriam.
+          // ÚNICA fonte de vibração do alarme: o canal de notificação e o
+          // serviço nativo não vibram mais (patch em expo-alarm-module). Eram
+          // três fontes somadas, e as duas nativas não conhecem as
+          // configurações — desligar a vibração no app não surtia efeito.
+          // Respeita as DUAS chaves: a global (Configurações) e a do alarme
+          // (formulário). Lê do storage pelo mesmo motivo do timerDuration
+          // abaixo: no disparo a frio o state ainda não hidratou e os defaults
+          // (true) venceriam.
           const vibrationOk = await shouldVibrate(
             { globalEnabled: state.settings.vibrationEnabled, alarmEnabled: alarm?.vibration },
             alarmId,
@@ -197,15 +203,16 @@ export default function AlarmRingScreen() {
             Vibration.vibrate([0, 500, 500, 500], true);
           }
 
-          // Curto atraso para o som iniciar, então fala. Guardado em ref para
-          // ser cancelado se o usuário desligar antes de começar (#8).
+          // Curto atraso antes de falar, para o idoso registrar o alarme antes
+          // da voz. Guardado em ref para ser cancelado se ele desligar antes
+          // de a fala começar (#8).
           speechTimeoutRef.current = setTimeout(() => {
             speechTimeoutRef.current = null;
             speakAlarm();
           }, 500);
         }
       } catch (e) {
-        console.warn('[AlarmRing] Audio error:', e);
+        console.warn('[AlarmRing] Error starting vibration/speech:', e);
       }
     };
 
@@ -214,8 +221,6 @@ export default function AlarmRingScreen() {
     return () => {
       try {
         if (speechTimeoutRef.current) clearTimeout(speechTimeoutRef.current);
-        player.pause();
-        player.remove();
         Vibration.cancel();
         Speech.stop();
       } catch {}
@@ -348,11 +353,7 @@ export default function AlarmRingScreen() {
       clearAlarmTimer(alarmId);
     }
 
-    try {
-      player.pause();
-      player.remove();
-      Vibration.cancel();
-    } catch {}
+    Vibration.cancel();
 
     if (Platform.OS !== 'web') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -377,7 +378,7 @@ export default function AlarmRingScreen() {
     // TINHA respondido. (updateAlarmWidgetOnDismiss recebia [] pelo mesmo
     // motivo.) handleSnooze já dependia de `alarm` — por isso só o dismiss
     // falhava.
-  }, [alarmId, alarm, state.alarms, player, dispatch, router, postAlarmRoute]);
+  }, [alarmId, alarm, state.alarms, dispatch, router, postAlarmRoute]);
 
   // Soneca: conta como respondido AGORA (idoso interagiu = vivo), mas re-arma um
   // disparo em 5 min. Se a soneca for ignorada, o evento +5min vira "perdido" no
@@ -392,11 +393,7 @@ export default function AlarmRingScreen() {
     if (alarmId) {
       clearAlarmTimer(alarmId);
     }
-    try {
-      player.pause();
-      player.remove();
-      Vibration.cancel();
-    } catch {}
+    Vibration.cancel();
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
@@ -410,7 +407,7 @@ export default function AlarmRingScreen() {
     }
 
     router.replace(postAlarmRoute as never);
-  }, [alarmId, alarm, player, dispatch, router, postAlarmRoute]);
+  }, [alarmId, alarm, dispatch, router, postAlarmRoute]);
 
   // Botão "Soneca" da notificação: chega como deep link &snooze=1 (a action
   // nativa abre o app em vez de reagendar em Java — ver native-alarm-manager).

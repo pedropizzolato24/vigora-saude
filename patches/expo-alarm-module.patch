@@ -40,8 +40,35 @@ index 455375ae411fa22e853dbd8c945124690e703e18..fd2862ed2203539357e0943fb13c1555
          Calendar calendar = Calendar.getInstance();
          int currentDay = calendar.get(Calendar.DAY_OF_WEEK);
          for (Date date : dates) {
+diff --git a/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java b/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
+index 552911d58dbc4123c3eff79031d88bd8e4dc1ed9..180198bec3ee9f56c5b1e5830123870211f7b3fd 100644
+--- a/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
++++ b/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
+@@ -93,6 +93,22 @@ public class ExpoAlarmModuleModule extends ReactContextBaseJavaModule {
+     promise.resolve(null);
+   }
+ 
++  /**
++   * Silencia o som do alarme em curso sem desmontá-lo (a tela usa durante a
++   * fala). Não confundir com stop(), que encerra o alarme e reagenda.
++   */
++  @ReactMethod
++  public void pauseSound (Promise promise) {
++    Manager.pauseSound();
++    promise.resolve(null);
++  }
++
++  @ReactMethod
++  public void resumeSound (Promise promise) {
++    Manager.resumeSound();
++    promise.resolve(null);
++  }
++
+   @ReactMethod
+   public void snooze (Promise promise) {
+     Manager.snooze(reactContext);
 diff --git a/android/src/main/java/com/expoalarmmodule/Helper.java b/android/src/main/java/com/expoalarmmodule/Helper.java
-index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..90058df5e4a1d5ccf98e0a51e2ecb9d75a87b0d2 100644
+index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..fc798a2603b4b2ee51f62663d0616a812662c3de 100644
 --- a/android/src/main/java/com/expoalarmmodule/Helper.java
 +++ b/android/src/main/java/com/expoalarmmodule/Helper.java
 @@ -11,6 +11,7 @@ import android.content.res.Resources;
@@ -101,7 +128,30 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..90058df5e4a1d5ccf98e0a51e2ecb9d7
          return getNotification(context, notificationID, alarm.uid, alarm.title, alarm.description, alarm.showDismiss, alarm.showSnooze, alarm.dismissText, alarm.snoozeText);
      }
  
-@@ -147,7 +171,13 @@ public class Helper {
+@@ -122,11 +146,20 @@ public class Helper {
+             // Sets the notification light color for notifications posted to this
+             // channel, if the device supports this feature.
+             channel.setLightColor(Color.RED);
+-            channel.enableVibration(true);
+-            channel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
++            // Canal NÃO vibra e NÃO toca: quem faz som é o MediaPlayer do
++            // AlarmService (no STREAM_ALARM) e quem vibra é a tela do alarme,
++            // que respeita as configurações do usuário. Com o canal vibrando
++            // também, desligar a vibração no app não surtia efeito nenhum.
++            channel.enableVibration(false);
++            channel.setSound(null, null);
+             // Register the channel with the system; you can't change the importance
+             // or other notification behaviors after this
+             NotificationManager notificationManager = ContextCompat.getSystemService(context, NotificationManager.class);
++            // As configurações de um canal são IMUTÁVEIS depois de criado: em
++            // quem já tinha o app, o canal antigo continuaria vibrando para
++            // sempre. Por isso o id mudou (ver strings.xml) e o antigo é
++            // removido — senão ele fica órfão nas configurações do Android.
++            notificationManager.deleteNotificationChannel("expo-alarm-module");
+             notificationManager.createNotificationChannel(channel);
+             Log.d(TAG, "created a notification channel " + channel.toString());
+         } else {
+@@ -147,7 +180,13 @@ public class Helper {
          ) {
          Resources res = context.getResources();
          String packageName = context.getPackageName();
@@ -116,7 +166,7 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..90058df5e4a1d5ccf98e0a51e2ecb9d7
          String channelId = context.getResources().getString(R.string.notification_channel_id);
      
          PendingIntent pendingIntentDismiss = createActionIntent(context, alarmUid, id, "DISMISS_ACTION");
-@@ -162,10 +192,11 @@ public class Helper {
+@@ -162,10 +201,11 @@ public class Helper {
                  .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                  .setCategory(NotificationCompat.CATEGORY_ALARM)
                  .setAutoCancel(true)
@@ -129,7 +179,7 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..90058df5e4a1d5ccf98e0a51e2ecb9d7
                  .setDeleteIntent(pendingIntentDismiss);
  
          // If the dismiss button should be visible.
-@@ -174,9 +205,13 @@ public class Helper {
+@@ -174,9 +214,13 @@ public class Helper {
          }
  
          // If snooze is active, add a button for snoozing.
@@ -145,7 +195,7 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..90058df5e4a1d5ccf98e0a51e2ecb9d7
          }
  
      
-@@ -195,6 +230,10 @@ public class Helper {
+@@ -195,6 +239,10 @@ public class Helper {
      private static PendingIntent createOnClickedIntent(Context context, String alarmUid, int notificationID) {
          Intent resultIntent = new Intent(context, Helper.getMainActivityClass(context));
          resultIntent.putExtra("ALARM_UID", alarmUid);
@@ -156,7 +206,7 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..90058df5e4a1d5ccf98e0a51e2ecb9d7
  
          PendingIntent pendingIntent = null;
          if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {  
-@@ -214,6 +253,24 @@ public class Helper {
+@@ -214,6 +262,24 @@ public class Helper {
          return pendingIntent;
      }
  
@@ -182,10 +232,50 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..90058df5e4a1d5ccf98e0a51e2ecb9d7
       * Creates an intent for dismissing, snoozing or performing another action in the alarm notification.
       */
 diff --git a/android/src/main/java/com/expoalarmmodule/Manager.java b/android/src/main/java/com/expoalarmmodule/Manager.java
-index 004075da7464088c26edd8b5e6e2e5a191ec7633..a36c83e1151a73d98414487580c6a206afb00185 100644
+index 004075da7464088c26edd8b5e6e2e5a191ec7633..06b4f4d7aff42667fc68e24fb055b94429c0d430 100644
 --- a/android/src/main/java/com/expoalarmmodule/Manager.java
 +++ b/android/src/main/java/com/expoalarmmodule/Manager.java
-@@ -131,11 +131,21 @@ public class Manager {
+@@ -112,6 +112,15 @@ public class Manager {
+     }
+ 
+     static void start(Context context, String alarmUid) {
++        // Idempotente. O AlarmService é START_STICKY e onStartCommand roda mais
++        // de uma vez por disparo; a versão original criava um Sound novo a cada
++        // chamada e ORFANAVA o MediaPlayer anterior — que tocava em loop
++        // (setLooping(true)) sem nenhuma referência capaz de pará-lo. Resultado:
++        // o som continuava depois de dispensar o alarme, até o processo morrer
++        // ("MediaPlayer finalized without being released" no logcat).
++        if (sound != null) {
++            sound.stop();
++        }
+         activeAlarmUid = alarmUid;
+         sound = new Sound(context);
+         sound.play("default");
+@@ -119,6 +128,23 @@ public class Manager {
+         Log.d(TAG, "Starting " + activeAlarmUid);
+     }
+ 
++    /**
++     * Silencia/retoma o som do alarme em curso, sem desmontá-lo. A tela do
++     * alarme usa isto durante a fala (TTS) — `stop()` não serve porque também
++     * reagenda a recorrência e zera o activeAlarmUid.
++     */
++    public static void pauseSound() {
++        if (sound != null) {
++            sound.pause();
++        }
++    }
++
++    public static void resumeSound() {
++        if (sound != null) {
++            sound.resume();
++        }
++    }
++
+     public static void stop(Context context) {
+         Log.d(TAG, "Stopping " + activeAlarmUid);
+ 
+@@ -131,11 +157,21 @@ public class Manager {
              AlarmDates dates = Storage.getDates(context, activeAlarmUid);
              if(alarm != null) {
                  if (alarm.repeating) {
@@ -210,10 +300,46 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..a36c83e1151a73d98414487580c6a206
                      alarm.active = false;
                      Storage.saveAlarm(context, alarm);
 diff --git a/android/src/main/java/com/expoalarmmodule/Sound.java b/android/src/main/java/com/expoalarmmodule/Sound.java
-index 73b00616707cd5533258ce215fb1fb1e2deafb50..7f1b00fb3045bf4be5efb63e6222ec5f604b6cc9 100644
+index 73b00616707cd5533258ce215fb1fb1e2deafb50..940633e3f8f33346f81055588f0929a1f99dfeba 100644
 --- a/android/src/main/java/com/expoalarmmodule/Sound.java
 +++ b/android/src/main/java/com/expoalarmmodule/Sound.java
-@@ -40,12 +40,19 @@ class Sound {
+@@ -4,8 +4,6 @@ import android.content.Context;
+ import android.media.AudioManager;
+ import android.media.MediaPlayer;
+ import android.net.Uri;
+-import android.os.Build;
+-import android.os.VibrationEffect;
+ import android.os.Vibrator;
+ import android.provider.Settings;
+ import android.util.Log;
+@@ -13,12 +11,13 @@ import android.util.Log;
+ class Sound {
+ 
+     private static final String TAG = "AlarmSound";
+-    private static final long DEFAULT_VIBRATION = 100;
+ 
+     private AudioManager audioManager;
+     private int userVolume;
+     private MediaPlayer mediaPlayer;
+     private Vibrator vibrator;
++    /** Após stop() o MediaPlayer está liberado — pause/resume viram no-op. */
++    private boolean released = false;
+ 
+     private Context context;
+ 
+@@ -33,19 +32,57 @@ class Sound {
+     void play(String sound) {
+         Uri soundUri = getSoundUri(sound);
+         playSound(soundUri);
+-        startVibration();
++        // Vibração NÃO sai daqui: este serviço não conhece as configurações do
++        // usuário (a global e a do alarme), então vibrava sempre — desligar no
++        // app não tinha efeito. Quem vibra é a tela do alarme, que lê as duas
++        // chaves ao vivo. Ver docs/claude/alarmes.md.
+     }
+ 
+     void stop() {
++        released = true;
          try {
              if (mediaPlayer.isPlaying()) {
                  stopSound();
@@ -232,10 +358,61 @@ index 73b00616707cd5533258ce215fb1fb1e2deafb50..7f1b00fb3045bf4be5efb63e6222ec5f
 +        // false), a versão original nunca chamava stopVibration() e o padrão
 +        // repetido (repeat=0) vibrava para sempre.
 +        stopVibration();
++    }
++
++    /**
++     * Silencia o som SEM desmontar o alarme — a tela usa isto enquanto a voz
++     * (TTS) fala, para a fala ser ouvida. `stop()` não serve: ele libera o
++     * player e ainda reagenda a recorrência lá no Manager.
++     */
++    void pause() {
++        if (released) return;
++        try {
++            if (mediaPlayer.isPlaying()) {
++                mediaPlayer.pause();
++            }
++        } catch (IllegalStateException e) {
++            Log.d(TAG, "Cannot pause - player already released");
++        }
++    }
++
++    void resume() {
++        if (released) return;
++        try {
++            if (!mediaPlayer.isPlaying()) {
++                mediaPlayer.start();
++            }
++        } catch (IllegalStateException e) {
++            Log.d(TAG, "Cannot resume - player already released");
++        }
      }
  
      private void playSound(Uri soundUri) {
-@@ -100,7 +107,16 @@ class Sound {
+@@ -76,23 +113,6 @@ class Sound {
+         }
+     }
+ 
+-    private void startVibration() {
+-        vibrator.vibrate(DEFAULT_VIBRATION);
+-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+-            vibrator.vibrate(VibrationEffect.createOneShot(5000, VibrationEffect.DEFAULT_AMPLITUDE));
+-        } else {
+-            //deprecated in API 26
+-            vibrator.vibrate(500);
+-        }
+-
+-        long[] pattern = {0, 100, 1000};
+-
+-        // The '0' here means to repeat indefinitely
+-        // '0' is actually the index at which the pattern keeps repeating from (the start)
+-        // To repeat the pattern from any other point, you could increase the index, e.g. '1'
+-        vibrator.vibrate(pattern, 0);
+-    }
+-
+     private void stopVibration() {
+         vibrator.cancel();
+     }
+@@ -100,7 +120,16 @@ class Sound {
      private Uri getSoundUri(String soundName) {
          Uri soundUri;
          if (soundName.equals("default")) {
@@ -253,3 +430,21 @@ index 73b00616707cd5533258ce215fb1fb1e2deafb50..7f1b00fb3045bf4be5efb63e6222ec5f
          } else {
              int resId;
              if (context.getResources().getIdentifier(soundName, "raw", context.getPackageName()) != 0) {
+diff --git a/android/src/main/res/values/strings.xml b/android/src/main/res/values/strings.xml
+index aa5b034b1438475db3b484b82b7e645f7ff5e9c0..72307857f58056b7f2883407e42fddbdda218df6 100644
+--- a/android/src/main/res/values/strings.xml
++++ b/android/src/main/res/values/strings.xml
+@@ -1,6 +1,10 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+-  <string name="notification_channel_id">expo-alarm-module</string>
+-  <string name="notification_channel_name">expo-alarm-channel</string>
+-  <string name="notification_channel_desc">Ativa o alarm</string>
++  <!-- Id NOVO de propósito: as configurações de um NotificationChannel são
++       imutáveis depois de criado, e o canal antigo ("expo-alarm-module") ficou
++       gravado com vibração ligada em todo aparelho que já teve o app. Nome e
++       descrição são visíveis nas configurações do Android — daí o PT-BR. -->
++  <string name="notification_channel_id">vigora-alarme-v2</string>
++  <string name="notification_channel_name">Alarmes de medicamento</string>
++  <string name="notification_channel_desc">Avisos dos seus alarmes de medicamento</string>
+ </resources>
