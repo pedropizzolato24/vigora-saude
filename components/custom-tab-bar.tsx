@@ -31,7 +31,9 @@ export function CustomTabBar() {
   const { isAccessibilityMode, a11yColors: ac } = useAccessibility();
   const activeAlarmCount = state.alarms.filter((a) => a.enabled).length;
 
-  const bottomPadding = Platform.OS === 'web' ? 12 : Math.max(insets.bottom, 8);
+  // Mesmo cap do (tabs)/_layout.tsx: sem isso, aparelhos com barra de
+  // navegação antiga (3 botões) inflam o padding e a barra fica "super alta".
+  const bottomPadding = Platform.OS === 'web' ? 12 : Math.min(Math.max(insets.bottom, 8), 24);
   const tabBarHeight = isAccessibilityMode ? 100 + bottomPadding : 86 + bottomPadding;
 
   const isActive = (route: string) => {

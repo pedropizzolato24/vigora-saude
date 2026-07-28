@@ -487,15 +487,18 @@ export default function DashboardScreen() {
               : 'Nenhum lembrete configurado. Toque para criar um.'
           }
         >
-          <Text style={[styles.nextAlarmLabel, { color: colors.muted, fontFamily: 'PlusJakartaSans', fontSize: fs.sm }]}>
-            PRÓXIMO REMÉDIO
-          </Text>
-          <Text style={{ fontFamily: 'SpaceMono-Regular', fontSize: fs.scaled(22), color: colors.foreground }}>
-            {nextAlarm ? nextAlarm.time : '--:--'}
-          </Text>
-          <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: fs.base, color: colors.muted }}>
-            {nextAlarm ? nextAlarm.description : 'Nenhum lembrete configurado'}
-          </Text>
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={[styles.nextAlarmLabel, { color: colors.muted, fontFamily: 'PlusJakartaSans', fontSize: fs.sm }]}>
+              PRÓXIMO REMÉDIO
+            </Text>
+            <Text style={{ fontFamily: 'SpaceMono-Regular', fontSize: fs.scaled(22), color: colors.foreground }}>
+              {nextAlarm ? nextAlarm.time : '--:--'}
+            </Text>
+            <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: fs.base, color: colors.muted }}>
+              {nextAlarm ? nextAlarm.description : 'Nenhum lembrete configurado'}
+            </Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={22} color={colors.muted} />
         </Pressable>
 
         {/* Rede de apoio */}
@@ -618,7 +621,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderLeftWidth: 6,
-    gap: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   nextAlarmLabel: {
     fontWeight: '700',

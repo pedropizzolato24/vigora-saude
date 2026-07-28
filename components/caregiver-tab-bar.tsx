@@ -51,6 +51,10 @@ export function CaregiverTabBar() {
 
   return (
     <View
+      // Chave ligada ao modo: sair do modo de acessibilidade some com os ícones
+      // até reabrir o app (glifos do MaterialIcons não redesenham no Android
+      // depois do Modal de confirmação fechar). Trocar a key força remontagem.
+      key={isAccessibilityMode ? 'a11y' : 'normal'}
       style={[
         styles.container,
         {
