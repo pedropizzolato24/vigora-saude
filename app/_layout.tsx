@@ -20,6 +20,7 @@ import { UpdateBanner } from '@/components/update-banner';
 import { syncAlarmsOnStartup } from "@/lib/alarm-sync";
 import { setupNotificationChannels, requestNotificationPermissions } from "@/lib/notifications-utils";
 import * as Notifications from 'expo-notifications';
+import * as SplashScreen from 'expo-splash-screen';
 import { useRouter } from 'expo-router';
 import { AlarmSyncInitializer } from "@/components/alarm-sync-initializer";
 import { AlarmNotificationHandler } from '@/components/alarm-notification-handler';
@@ -66,6 +67,9 @@ export default function RootLayout() {
   // a primeira tela é fonte, quanto é provider, quanto é rede.
   useEffect(() => {
     perfMark('RootLayout: primeiro render');
+    // Só agora libera o splash nativo (segurado em index.ts): até este ponto o
+    // que apareceria é o windowBackground preto do AppTheme.
+    SplashScreen.hideAsync().catch(() => {});
   }, []);
   useEffect(() => {
     if (fontsLoaded) perfMark('fontes carregadas');
