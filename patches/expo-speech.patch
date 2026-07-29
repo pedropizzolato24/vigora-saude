@@ -1,39 +1,131 @@
 diff --git a/android/src/main/java/expo/modules/speech/SpeechModule.kt b/android/src/main/java/expo/modules/speech/SpeechModule.kt
-index 33b9587f76c644510842134a97010385d1ffde8a..e45fe70528631972acb365b2ab876332df2e6ad3 100644
+index 33b9587f76c644510842134a97010385d1ffde8a..a9f307c6fe2e6201ba2a9405801c63a3ba96fdf8 100644
 --- a/android/src/main/java/expo/modules/speech/SpeechModule.kt
 +++ b/android/src/main/java/expo/modules/speech/SpeechModule.kt
-@@ -1,7 +1,9 @@
+@@ -1,7 +1,14 @@
  package expo.modules.speech
  
 +import android.media.AudioManager
++import android.media.MediaPlayer
  import android.os.Bundle
++import android.os.Handler
++import android.os.Looper
  import android.speech.tts.TextToSpeech
 +import android.util.Log
++import java.io.File
++import java.util.concurrent.ConcurrentHashMap
  import android.speech.tts.UtteranceProgressListener
  import android.speech.tts.Voice
  import expo.modules.kotlin.Promise
-@@ -123,10 +125,48 @@ class SpeechModule : Module() {
+@@ -21,6 +28,75 @@ class SpeechModule : Module() {
+   private val delayedUtterances: Queue<Utterance> = ArrayDeque()
+   private val delayedGetVoices: Queue<Promise> = ArrayDeque()
+ 
++  // Vigora: a fala do alarme não pode sair no volume de MÍDIA — quem deixa a
++  // mídia baixa não ouviria o alarme falar. Duas tentativas de convencer o
++  // engine a tocar no stream de ALARME falharam no S10 (28/07):
++  // KEY_PARAM_STREAM o framework descarta antes de chegar ao engine, e
++  // setUsage(USAGE_ALARM) deixou a voz completamente muda. Então paramos de
++  // negociar: o engine SINTETIZA para um arquivo e QUEM TOCA somos nós, pelo
++  // mesmo MediaPlayer/STREAM_ALARM do som do alarme — o único caminho de áudio
++  // comprovado neste aparelho. Ver docs/claude/alarmes.md.
++  private var alarmPlayer: MediaPlayer? = null
++  /** Volume (0..1) de cada síntese em andamento, do pedido até a reprodução. */
++  private val pendingVolumes = ConcurrentHashMap<String, Float>()
++  private val mainHandler = Handler(Looper.getMainLooper())
++
++  private fun synthesisFile(id: String): File? {
++    val cacheDir = appContext.reactContext?.cacheDir ?: return null
++    return File(cacheDir, "vigora-tts-${id.hashCode()}.wav")
++  }
++
++  /**
++   * Toca o WAV recém-sintetizado no stream de ALARME e só então avisa o JS que
++   * a fala terminou — a tela do alarme religa o som do alarme nesse evento, e
++   * religar no fim da SÍNTESE cortaria a voz pela metade.
++   */
++  private fun playOnAlarmStream(id: String, file: File, volume: Float) {
++    // MediaPlayer sem Looper não entrega o onCompletion: a síntese termina numa
++    // thread de binder, então a reprodução tem que nascer na main.
++    mainHandler.post {
++      try {
++        releasePlayer()
++        alarmPlayer = MediaPlayer().apply {
++          setAudioStreamType(AudioManager.STREAM_ALARM)
++          setDataSource(file.absolutePath)
++          // Curva quadrática, a mesma do volume do alarme (Sound.java): o
++          // escalar é linear em amplitude e o ouvido é logarítmico.
++          setVolume(volume * volume, volume * volume)
++          setOnCompletionListener {
++            releasePlayer()
++            file.delete()
++            sendEvent(speakingDoneEvent, idToMap(id))
++          }
++          setOnErrorListener { _, what, extra ->
++            Log.w("VigoraSpeech", "playback failed ($what/$extra)")
++            releasePlayer()
++            file.delete()
++            sendEvent(speakingDoneEvent, idToMap(id))
++            true
++          }
++          prepare()
++          start()
++        }
++      } catch (e: Exception) {
++        Log.w("VigoraSpeech", "playback failed", e)
++        file.delete()
++        sendEvent(speakingDoneEvent, idToMap(id))
++      }
++    }
++  }
++
++  private fun releasePlayer() {
++    alarmPlayer?.let {
++      try {
++        it.release()
++      } catch (e: Exception) {
++        Log.d("VigoraSpeech", "player already released")
++      }
++    }
++    alarmPlayer = null
++  }
++
+   override fun definition() = ModuleDefinition {
+     Name("ExpoSpeech")
+ 
+@@ -38,10 +114,12 @@ class SpeechModule : Module() {
+ 
+     OnActivityDestroys {
+       textToSpeech.shutdown()
++      releasePlayer()
+     }
+ 
+     AsyncFunction<Boolean>("isSpeaking") {
+-      textToSpeech.isSpeaking
++      // Sintetizar acabou não quer dizer que a fala acabou — ver alarmPlayer.
++      textToSpeech.isSpeaking || (alarmPlayer?.isPlaying ?: false)
+     }
+ 
+     AsyncFunction("getVoices") { promise: Promise ->
+@@ -57,6 +135,10 @@ class SpeechModule : Module() {
+ 
+     AsyncFunction<Unit>("stop") {
+       textToSpeech.stop()
++      // Parar a síntese não cala o nosso player — a tela do alarme chama
++      // stop() antes de cada fala nova e ao dispensar o alarme.
++      pendingVolumes.clear()
++      mainHandler.post { releasePlayer() }
+     }
+ 
+     AsyncFunction("speak") { id: String, text: String, options: SpeechOptions ->
+@@ -123,10 +205,56 @@ class SpeechModule : Module() {
          ?.let(textToSpeech::setVoice)
      }
  
-+    // Vigora: a fala do alarme sai no STREAM_ALARM, não no de mídia.
-+    //
-+    // setLegacyStreamType, e NÃO setUsage(USAGE_ALARM): com as attributes
-+    // "modernas" a voz ficou completamente MUDA no S10 (28/07). Os engines
-+    // reais (Samsung SMT, Google TTS) roteiam pelo stream legado; o legacy
-+    // deriva usage=ALARM E preserva o stream que eles entendem. Nem
-+    // KEY_PARAM_STREAM sozinho resolve — o framework descarta esse param
-+    // assim que existem audio attributes.
-+    // Idempotente — barato de chamar a cada speak.
-+    textToSpeech.setAudioAttributes(
-+      android.media.AudioAttributes.Builder()
-+        .setLegacyStreamType(AudioManager.STREAM_ALARM)
-+        .build()
-+    )
-+
 +    // O módulo original nunca repassava options.volume no Android (só iOS) —
-+    // a configuração "volume da voz" do app não tinha efeito nenhum.
-+    // KEY_PARAM_VOLUME (0..1) é o canal que o TextToSpeech entende.
++    // a configuração "volume da voz" do app não tinha efeito nenhum. No
++    // caminho normal quem aplica o volume somos nós, no player; o
++    // KEY_PARAM_VOLUME fica para o fallback, em que o engine ainda toca.
 +    val volume = options.volume?.coerceIn(0f, 1f) ?: 1f
 +    val params = Bundle().apply {
 +      putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, volume)
@@ -54,6 +146,28 @@ index 33b9587f76c644510842134a97010385d1ffde8a..e45fe70528631972acb365b2ab876332
 +        "${audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC)}"
 +    )
 +
++    // Sintetiza para arquivo e toca por conta própria no STREAM_ALARM (ver o
++    // campo alarmPlayer). Se o engine não souber sintetizar para arquivo,
++    // cai no speak() normal: a voz sai no volume de mídia, o que é ruim, mas
++    // muito melhor do que não sair — já perdemos a voz inteira uma vez
++    // tentando ser espertos com o roteamento.
++    val file = synthesisFile(id)
++    if (file != null) {
++      pendingVolumes[id] = volume
++      val result = textToSpeech.synthesizeToFile(text, params, file, id)
++      if (result == TextToSpeech.SUCCESS) return
++      pendingVolumes.remove(id)
++      Log.w("VigoraSpeech", "synthesizeToFile recusado pelo engine; usando speak()")
++    }
++
++    // Só o fallback passa por aqui, e nele quem toca é o engine: pede-se o
++    // stream de alarme pelo legacy (o único jeito que não deixou a voz muda no
++    // S10), sabendo que os engines podem ignorar e sair no volume de mídia.
++    textToSpeech.setAudioAttributes(
++      android.media.AudioAttributes.Builder()
++        .setLegacyStreamType(AudioManager.STREAM_ALARM)
++        .build()
++    )
      textToSpeech.speak(
        text,
        TextToSpeech.QUEUE_ADD,
@@ -62,13 +176,30 @@ index 33b9587f76c644510842134a97010385d1ffde8a..e45fe70528631972acb365b2ab876332
        id
      )
    }
-@@ -166,6 +206,9 @@ class SpeechModule : Module() {
+@@ -158,6 +286,14 @@ class SpeechModule : Module() {
+             }
+ 
+             override fun onDone(utteranceId: String) {
++              // No caminho normal isto é o fim da SÍNTESE, não da fala: quem
++              // avisa o JS é o fim da reprodução, lá em playOnAlarmStream.
++              val volume = pendingVolumes.remove(utteranceId)
++              val file = synthesisFile(utteranceId)
++              if (volume != null && file != null && file.length() > 0) {
++                playOnAlarmStream(utteranceId, file, volume)
++                return
++              }
+               sendEvent(speakingDoneEvent, idToMap(utteranceId))
+             }
+ 
+@@ -166,6 +302,11 @@ class SpeechModule : Module() {
              }
  
              override fun onError(utteranceId: String) {
 +              // Vigora: o evento de erro só chegava ao JS, que o ignora — uma
 +              // fala que morre no engine ficava invisível no logcat.
 +              Log.w("VigoraSpeech", "utterance failed: $utteranceId")
++              pendingVolumes.remove(utteranceId)
++              synthesisFile(utteranceId)?.delete()
                sendEvent(speakingErrorEvent, idToMap(utteranceId))
              }
            })

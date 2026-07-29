@@ -31,7 +31,25 @@ const addedCode = added
   .join("\n");
 
 describe("voz do alarme — roteamento e volume", () => {
-  it("usa setLegacyStreamType(STREAM_ALARM)", () => {
+  it("sintetiza para arquivo e toca no STREAM_ALARM por conta própria", () => {
+    // O engine é dono da voz só no fallback; no caminho normal quem toca
+    // somos nós, pelo mesmo mecanismo do som do alarme.
+    expect(added).toMatch(/synthesizeToFile\(text, params, file, id\)/);
+    expect(added).toMatch(/setAudioStreamType\(AudioManager\.STREAM_ALARM\)/);
+  });
+
+  it("avisa o fim da fala no fim da REPRODUÇÃO, não da síntese", () => {
+    // A tela do alarme religa o som do alarme nesse evento — mandá-lo quando a
+    // síntese termina cortaria a voz pela metade.
+    expect(added).toMatch(/setOnCompletionListener[\s\S]{0,200}speakingDoneEvent/);
+  });
+
+  it("mantém o fallback por speak() se o engine recusar a síntese", () => {
+    // Já perdemos a voz inteira uma vez tentando ser espertos com roteamento;
+    // sair no volume de mídia é ruim, não sair é pior.
+    // Só o sucesso da síntese encerra o caminho novo; qualquer recusa cai no
+    // textToSpeech.speak() original (linha que o patch nem toca).
+    expect(added).toMatch(/if \(result == TextToSpeech\.SUCCESS\) return/);
     expect(added).toMatch(/setLegacyStreamType\(AudioManager\.STREAM_ALARM\)/);
   });
 
