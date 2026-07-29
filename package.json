@@ -163,6 +163,10 @@
         "expo-dev-client",
         "expo-dev-menu",
         "expo-dev-launcher"
+      ],
+      "buildFromSource": [
+        "expo-speech",
+        "expo-audio"
       ]
     }
   }
