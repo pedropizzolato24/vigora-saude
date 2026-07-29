@@ -61,7 +61,7 @@ export default function CaregiverOnboardingScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
 
-  const finish = async (destination: '/(caregiver-tabs)/link' | '/(caregiver-tabs)/') => {
+  const finish = async (destination: '/(caregiver-tabs)/link' | '/(caregiver-tabs)') => {
     const user = await Auth.getUserInfo();
     if (user?.openId) await markCaregiverOnboardingCompleted(user.openId);
     router.replace(destination);
@@ -126,7 +126,7 @@ export default function CaregiverOnboardingScreen() {
             >
               <Text style={styles.primaryText}>Vincular agora</Text>
             </Pressable>
-            <Pressable onPress={() => finish('/(caregiver-tabs)/')} hitSlop={8}>
+            <Pressable onPress={() => finish('/(caregiver-tabs)')} hitSlop={8}>
               <Text style={[styles.secondary, { color: colors.muted }]}>Explorar primeiro</Text>
             </Pressable>
           </>
