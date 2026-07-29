@@ -34,6 +34,7 @@ import { MonitoringStatusPanel } from '@/components/monitoring-status-panel';
 import { ProtectAccountBanner } from '@/components/protect-account-banner';
 import { TrialBanner, ExpiredBanner } from '@/components/trial-banner';
 import { scheduleCheckin, cancelCheckin } from '@/lib/checkin-service';
+import { previewNativeAlarmSound } from '@/lib/native-alarm-manager';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
@@ -262,6 +263,13 @@ export default function SettingsScreen() {
 
   const playVolumePreview = useCallback(async (volume: number) => {
     if (Platform.OS === 'web') return;
+    if (Platform.OS === 'android') {
+      // O teste É o alarme: mesmo arquivo, mesmo stream de ALARME, mesma curva
+      // de volume. Enquanto o teste era um player de JS com outro arquivo, ele
+      // não dizia nada sobre como o alarme de verdade soaria.
+      previewNativeAlarmSound(volume);
+      return;
+    }
     try {
       // Cancel any pending stop
       if (previewTimeoutRef.current) {
@@ -270,7 +278,10 @@ export default function SettingsScreen() {
       }
 
       await setAudioModeAsync({ playsInSilentMode: true });
-      previewPlayer.volume = volume / 100;
+      // Mesma curva quadrática do alarme real (Sound.java no patch do
+      // expo-alarm-module): escalar linear soa igual de 10% a 100% — o ouvido
+      // é logarítmico. Mudou lá, mude aqui, senão o teste mente.
+      previewPlayer.volume = (volume / 100) ** 2;
       previewPlayer.loop = false;
       // Seek to start so it always plays from beginning
       previewPlayer.seekTo(0);
@@ -297,6 +308,17 @@ export default function SettingsScreen() {
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const newVol = Math.max(0, Math.min(100, settings.speechVolume + delta));
     updateSetting('speechVolume', newVol);
+    // Este slider nunca teve prévia — só a Velocidade da Voz tinha. Sem ouvir,
+    // o usuário regulava às cegas um volume que agora tem efeito de verdade.
+    if (Platform.OS !== 'web') {
+      Speech.stop().then(() => {
+        Speech.speak('Hora do remédio.', {
+          language: 'pt-BR',
+          rate: settings.speechRate,
+          volume: newVol / 100,
+        });
+      });
+    }
   };
 
   const handleTimerDurationChange = (duration: 15 | 30 | 45 | 60) => {
@@ -581,10 +603,10 @@ export default function SettingsScreen() {
                     opacity: pressed ? 0.7 : 1,
                   }]}
                 >
-                  <Text style={{ fontSize: af.md, fontWeight: '800', color: settings.speechRate === opt.value ? colors.onPrimary : ac.foreground }}>
+                  <Text style={{ fontSize: af.md, fontWeight: '800', color: settings.speechRate === opt.value ? colors.onPrimary : ac.foreground, textAlign: 'center' }}>
                     {opt.label}
                   </Text>
-                  <Text style={{ fontSize: af.sm, color: settings.speechRate === opt.value ? colors.onPrimary + 'BB' : ac.muted, marginTop: 2 }}>
+                  <Text style={{ fontSize: af.sm, color: settings.speechRate === opt.value ? colors.onPrimary + 'BB' : ac.muted, marginTop: 2, textAlign: 'center' }}>
                     {opt.sublabel}
                   </Text>
                 </Pressable>
@@ -1832,7 +1854,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  fontSizeBtnText: { fontWeight: '600' },
+  fontSizeBtnText: { fontWeight: '600', textAlign: 'center' },
 
   // Language
   languageOption: {

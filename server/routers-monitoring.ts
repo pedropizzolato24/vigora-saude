@@ -138,6 +138,9 @@ async function pushMissedAlarmToCaregivers(
     const scheduledStr = scheduledAt.toLocaleTimeString("pt-BR", {
       hour: "2-digit",
       minute: "2-digit",
+      // O Railway roda em UTC — sem timeZone o horario sai 3h adiantado
+      // para o cuidador/familia (21:00 virava "00:00").
+      timeZone: "America/Sao_Paulo",
     });
 
     // Check-in e alarme de medicação têm cópia/tipo de push DIFERENTES — e no

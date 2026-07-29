@@ -16,6 +16,12 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Simula o ambiente do Railway (UTC) — é onde o bug de fuso aparecia: sem
+// timeZone explícito no toLocaleTimeString, 21:00 de Brasília virava "00:00"
+// na mensagem ao cuidador. (Vitest isola cada arquivo em seu worker, então o
+// TZ não vaza para os outros testes.)
+process.env.TZ = "UTC";
+
 vi.mock("../server/db-monitoring", () => ({
   getExpiredPendingEvents: vi.fn(async () => []),
   getAccountsWithUnconfirmedEvents: vi.fn(async () => []),
@@ -158,6 +164,22 @@ describe("Passo 4 — cópia por status do evento", () => {
     expect(waMessage).toContain("não pôde ser entregue");
 
     expect(db.markEventWarningSent).toHaveBeenCalledWith(11);
+  });
+
+  it("horário nas mensagens é o de Brasília, não o do servidor (UTC)", async () => {
+    vi.mocked(db.getMissedMedicationEvents).mockResolvedValue([
+      { ...pendingEvent, status: "missed" },
+    ]);
+
+    await runMonitoringJob();
+
+    const expected = SCHEDULED_AT.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "America/Sao_Paulo",
+    });
+    const waMessage = vi.mocked(whatsapp.sendWhatsAppMessage).mock.calls[0][1];
+    expect(waMessage).toContain(`previsto para ${expected}`);
   });
 
   it("'missed' → cópia 'não respondeu' preservada", async () => {

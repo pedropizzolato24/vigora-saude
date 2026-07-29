@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useReducer } from 'react';
 import { updateAllWidgets } from './update-widgets';
+import { setNativeAlarmVolume } from './native-alarm-manager';
 import { pullCloudData, pushCloudData, type CloudSnapshot } from './cloud-sync';
 import { appStateKeyFor, loadAppStateRaw } from './app-state-storage';
 import * as Auth from './_core/auth';
@@ -488,6 +489,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (state.isLoading) return;
     updateAllWidgets(state.alarms, state.healthMetrics).catch(() => {});
   }, [state.alarms, state.healthMetrics, state.isLoading]);
+
+  // Quem toca o alarme é o serviço nativo, que dispara sem o app aberto — não
+  // dá para ler a configuração na hora de tocar. Empurra o volume para o lado
+  // nativo na hidratação e a cada mudança do slider.
+  useEffect(() => {
+    if (state.isLoading) return;
+    setNativeAlarmVolume(state.settings.alarmVolume);
+  }, [state.settings.alarmVolume, state.isLoading]);
 
   return (
     <AppContext.Provider value={{ state, dispatch, reconcileFromCloud }}>

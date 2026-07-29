@@ -9,7 +9,10 @@ import { View } from "react-native";
 export default function TabLayout() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
+  // Cap: em aparelhos com barra de navegação antiga (3 botões) o inset pode
+  // passar de 40dp, deixando a barra "super alta" só para cobrir esse espaço.
+  // Limitamos o quanto isso infla a altura, mesmo cobrindo um pouco menos.
+  const bottomPadding = Platform.OS === "web" ? 12 : Math.min(Math.max(insets.bottom, 8), 24);
   const tabBarHeight = 86 + bottomPadding;
 
   return (

@@ -19,7 +19,9 @@ import { AppLockGate } from '@/components/app-lock-gate';
 import { UpdateBanner } from '@/components/update-banner';
 import { syncAlarmsOnStartup } from "@/lib/alarm-sync";
 import { setupNotificationChannels, requestNotificationPermissions } from "@/lib/notifications-utils";
+import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
+import * as SplashScreen from 'expo-splash-screen';
 import { useRouter } from 'expo-router';
 import { AlarmSyncInitializer } from "@/components/alarm-sync-initializer";
 import { AlarmNotificationHandler } from '@/components/alarm-notification-handler';
@@ -66,6 +68,9 @@ export default function RootLayout() {
   // a primeira tela é fonte, quanto é provider, quanto é rede.
   useEffect(() => {
     perfMark('RootLayout: primeiro render');
+    // Só agora libera o splash nativo (segurado em index.ts): até este ponto o
+    // que apareceria é o windowBackground preto do AppTheme.
+    SplashScreen.hideAsync().catch(() => {});
   }, []);
   useEffect(() => {
     if (fontsLoaded) perfMark('fontes carregadas');
@@ -119,6 +124,17 @@ export default function RootLayout() {
         // Strategy 1: Android native alarm (expo-alarm-module)
         if (Platform.OS === 'android') {
           try {
+            // O tap (e o full-screen) da notificação já entram por deep link
+            // (vigora://alarm-ring → +native-intent) e montam a tela com o
+            // timer ancorado no disparo REAL. Navegar DE NOVO aqui empilhava
+            // uma segunda alarm-ring por cima da certa, com timer zerado em
+            // 30s — e a de baixo, nunca respondida, expirava e escalava
+            // sozinha. Este caminho fica só para o launch pelo ÍCONE com
+            // alarme ativo. (Antes o bug não aparecia porque a tela matava o
+            // som nativo na montagem, zerando o getAlarmState daqui.)
+            const initialUrl = await Linking.getInitialURL().catch(() => null);
+            if (initialUrl?.includes('alarm-ring')) return;
+
             const { getAlarmState } = require('expo-alarm-module');
             // ponytail: o módulo nativo pode não responder no instante 0 do cold
             // start; tenta algumas vezes antes de desistir (feedback do beta: abrir
@@ -137,41 +153,10 @@ export default function RootLayout() {
               if (alarmId) {
                 console.log(`[RootLayout] Native alarm active: ${activeUid} -> alarmId: ${alarmId}`);
                 const { router } = require('expo-router');
-                const { loadAlarmTimer, saveAlarmTimer } = require('@/lib/alarm-timer-store');
-                const { loadCurrentAppStateRaw } = require('@/lib/app-state-storage');
-
-                // Try to load persisted timer first
-                let expiresAtForNav: number | null = null;
-                try {
-                  const timerEntry = await loadAlarmTimer(alarmId);
-                  if (timerEntry && timerEntry.expiresAt > Date.now()) {
-                    expiresAtForNav = timerEntry.expiresAt;
-                  }
-                } catch {}
-
-                // If no valid timer exists, create one now from stored timerDuration
-                if (!expiresAtForNav) {
-                  try {
-                    let timerDuration = 30;
-                    const raw = await loadCurrentAppStateRaw();
-                    if (raw) {
-                      const parsed = JSON.parse(raw);
-                      const stored = parsed?.settings?.timerDuration;
-                      if (typeof stored === 'number' && [15, 30, 45, 60].includes(stored)) {
-                        timerDuration = stored;
-                      }
-                    }
-                    const startedAt = Date.now();
-                    expiresAtForNav = startedAt + timerDuration * 1000;
-                    await saveAlarmTimer({ alarmId, startedAt, expiresAt: expiresAtForNav, timerDuration });
-                    console.log(`[RootLayout] Created new timer for cold start: ${timerDuration}s`);
-                  } catch {}
-                }
-
-                const navUrl = expiresAtForNav
-                  ? `/alarm-ring?alarmId=${alarmId}&expiresAt=${expiresAtForNav}`
-                  : `/alarm-ring?alarmId=${alarmId}`;
-                router.push(navUrl);
+                // Sem expiresAt e sem criar timer aqui: o initTimer da tela
+                // ancora no horário real do disparo (timer persistido ou
+                // lastAlarmFireMs). Criar um timer novo aqui zerava a contagem.
+                router.push(`/alarm-ring?alarmId=${alarmId}`);
                 return;
               }
             }
