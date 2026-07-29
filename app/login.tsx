@@ -102,14 +102,7 @@ export default function LoginScreen() {
     setError(null);
     try {
       const result = await signInAnonymously();
-      // Adaptador: o Router tipado do expo-router não satisfaz Nav
-      // estruturalmente (href literal vs string) — mesmo atrito pré-existente
-      // dos outros provedores; aqui resolvido sem `as` no router inteiro.
-      await completeServerLogin(
-        result,
-        { replace: (href: string) => router.replace(href as never) },
-        reconcileFromCloud
-      );
+      await completeServerLogin(result, router, reconcileFromCloud);
     } catch (err) {
       setError(
         err instanceof Error && err.message

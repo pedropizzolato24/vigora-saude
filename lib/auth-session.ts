@@ -9,6 +9,7 @@
  * { sessionToken, user } do servidor para completeServerLogin.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { Href } from "expo-router";
 import * as Auth from "@/lib/_core/auth";
 import { clearPendingInvite, getPendingInvite } from "@/lib/pending-invite";
 import { hasCompletedCaregiverOnboarding } from "@/lib/caregiver-onboarding-flag";
@@ -17,7 +18,7 @@ import { identifyUser } from "@/lib/purchases";
 
 const LOGIN_COMPLETED_KEY = "vigora_login_completed";
 
-export type Nav = { replace: (href: string) => void };
+export type Nav = { replace: (href: Href) => void };
 
 export interface ServerAuthResult {
   sessionToken: string;
@@ -38,7 +39,7 @@ export interface ServerAuthResult {
 export function getNextRoute(
   userType: "caregiver" | "monitored" | null,
   caregiverOnboardingDone: boolean
-): string {
+): Href {
   if (!userType) return "/register";
   if (userType === "caregiver") {
     return caregiverOnboardingDone
