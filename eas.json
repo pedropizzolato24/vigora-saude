@@ -5,6 +5,7 @@
   },
   "build": {
     "development": {
+      "node": "22.12.0",
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
@@ -21,6 +22,7 @@
       }
     },
     "simulator": {
+      "node": "22.12.0",
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
@@ -31,6 +33,7 @@
       }
     },
     "preview": {
+      "node": "22.12.0",
       "distribution": "internal",
       "ios": {
         "resourceClass": "m-medium"
@@ -44,6 +47,7 @@
       }
     },
     "production": {
+      "node": "22.12.0",
       "autoIncrement": true,
       "ios": {
         "resourceClass": "m-medium"
@@ -60,6 +64,10 @@
   },
   "submit": {
     "production": {
+      "ios": {
+        "appleId": "pedropizzolato24@gmail.com",
+        "ascAppId": "6783513538"
+      },
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
         "track": "internal"
