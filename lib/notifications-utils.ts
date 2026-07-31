@@ -138,6 +138,11 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
       priority: Notifications.AndroidNotificationPriority.MAX,
       // Android: sticky notification that requires user interaction
       sticky: true,
+      // iOS: sem isto o alarme é silenciado por qualquer Foco/Não Perturbe —
+      // inclusive o "Modo Sono", justamente quando o remédio da noite toca.
+      // Furar o botão físico de silencioso exigiria Critical Alerts, que só a
+      // Apple libera mediante pedido (ver docs/claude/alarmes.md).
+      interruptionLevel: 'timeSensitive',
     };
 
     // Handle different repeat patterns

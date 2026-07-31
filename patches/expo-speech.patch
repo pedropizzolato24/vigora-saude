@@ -1,5 +1,5 @@
 diff --git a/android/src/main/java/expo/modules/speech/SpeechModule.kt b/android/src/main/java/expo/modules/speech/SpeechModule.kt
-index 33b9587f76c644510842134a97010385d1ffde8a..a9f307c6fe2e6201ba2a9405801c63a3ba96fdf8 100644
+index 33b9587f76c644510842134a97010385d1ffde8a..b2ccddec59492bc02c6825aaedec45a32368df6d 100644
 --- a/android/src/main/java/expo/modules/speech/SpeechModule.kt
 +++ b/android/src/main/java/expo/modules/speech/SpeechModule.kt
 @@ -1,7 +1,14 @@
@@ -204,7 +204,7 @@ index 33b9587f76c644510842134a97010385d1ffde8a..a9f307c6fe2e6201ba2a9405801c63a3
              }
            })
 diff --git a/android/src/main/java/expo/modules/speech/SpeechOptions.kt b/android/src/main/java/expo/modules/speech/SpeechOptions.kt
-index b86a6236559e356ea5735e338a4eb4df8a5a477a..3289950a7ab002f8bec94a94671c023c2e8e49e3 100644
+index b86a6236559e356ea5735e338a4eb4df8a5a477a..7ce9a94f2b95dd14954858e1824a99db35d7b603 100644
 --- a/android/src/main/java/expo/modules/speech/SpeechOptions.kt
 +++ b/android/src/main/java/expo/modules/speech/SpeechOptions.kt
 @@ -7,5 +7,8 @@ data class SpeechOptions(
@@ -217,3 +217,36 @@ index b86a6236559e356ea5735e338a4eb4df8a5a477a..3289950a7ab002f8bec94a94671c023c
 +  // capturava — ver KEY_PARAM_VOLUME no SpeechModule.
 +  @Field val volume: Float?
  ) : Record
+diff --git a/ios/SpeechModule.swift b/ios/SpeechModule.swift
+index 485d5d3bea38e5937e7b0c229549e6d78b30e9c9..f9ec6a2152b478dc0dff9848c2484dfd1de6df07 100644
+--- a/ios/SpeechModule.swift
++++ b/ios/SpeechModule.swift
+@@ -49,6 +49,12 @@ public final class SpeechModule: Module, SpeechResultHadler {
+         utterance.rate = Float(rate) * AVSpeechUtteranceDefaultSpeechRate
+       }
+ 
++      // Vigora: AVSpeechUtterance.volume é 0..1 e o padrão é 1 — sem isto o
++      // ajuste "Volume da Voz" do app não mudava nada no iPhone.
++      if let volume = options.volume {
++        utterance.volume = Float(min(1, max(0, volume)))
++      }
++
+       if let useApplicationAudioSession = options.useApplicationAudioSession {
+         synthesizer.usesApplicationAudioSession = useApplicationAudioSession
+       }
+diff --git a/ios/SpeechOptions.swift b/ios/SpeechOptions.swift
+index a072cb8fbb7c56e2ba6286278aa7679ef91f3583..1c369db0fedc5268fda84ddaedbf1c5dbd2f8972 100644
+--- a/ios/SpeechOptions.swift
++++ b/ios/SpeechOptions.swift
+@@ -9,6 +9,11 @@ struct SpeechOptions: Record {
+   var rate: Double?
+   @Field
+   var voice: String?
++  // Vigora: o JS sempre enviou volume (0..1), mas o Record do iOS não o
++  // capturava e o utterance saía sempre no volume máximo — o ajuste "Volume
++  // da Voz" não tinha efeito nenhum no iPhone.
++  @Field
++  var volume: Double?
+   @Field
+   var useApplicationAudioSession: Bool?
+ }

@@ -62,6 +62,13 @@ describe("voz do alarme — roteamento e volume", () => {
     // O Record do Android não tinha o campo — sem ele, options.volume some.
     expect(added).toMatch(/@Field val volume: Float\?/);
   });
+
+  it("aplica o volume também no iOS", () => {
+    // O SpeechOptions do iOS também não declarava volume: o utterance saía
+    // sempre no máximo e o ajuste "Volume da Voz" não mudava nada no iPhone.
+    expect(added).toMatch(/var volume: Double\?/);
+    expect(added).toMatch(/utterance\.volume = Float\(/);
+  });
 });
 
 describe("higiene dos patches", () => {
