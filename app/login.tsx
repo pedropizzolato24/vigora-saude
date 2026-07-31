@@ -21,7 +21,11 @@ import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/use-colors";
 import { useAppContext } from "@/lib/app-context";
 import * as Auth from "@/lib/_core/auth";
-import { finishGoogleLogin, persistOAuthPkce } from "@/lib/google-signin";
+import {
+  finishGoogleLogin,
+  openGoogleAuth,
+  persistOAuthPkce,
+} from "@/lib/google-signin";
 import { isAppleCancel, signInWithApple } from "@/lib/apple-signin";
 import { signInAnonymously } from "@/lib/anonymous-signin";
 import { completeServerLogin } from "@/lib/auth-session";
@@ -173,9 +177,18 @@ export default function LoginScreen() {
       if (request?.codeVerifier && request.redirectUri) {
         await persistOAuthPkce(request.codeVerifier, request.redirectUri);
       }
-      await promptAsync();
-    } catch {
-      setError("Não foi possível iniciar o login. Verifique sua conexão e tente novamente.");
+      // openGoogleAuth cai no navegador padrão quando o aparelho não tem Custom
+      // Tab disponível; nesse caso o app volta na hora e o loading pode sair.
+      if (await openGoogleAuth(promptAsync, request?.url)) {
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("[Login] Falha ao abrir o consentimento do Google:", err);
+      setError(
+        `Não foi possível iniciar o login. Verifique sua conexão e tente novamente. (${
+          err instanceof Error ? err.message : String(err)
+        })`
+      );
       setLoading(false);
     }
   };
