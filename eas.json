@@ -43,7 +43,10 @@
       },
       "env": {
         "NODE_ENV": "production",
-        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "39705729598-iv01adn3g5di03k6ukp9n02mri393s6n.apps.googleusercontent.com"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.vigorasaude.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "39705729598-iv01adn3g5di03k6ukp9n02mri393s6n.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "39705729598-0q57pbi4hmfd231rkbld2ftgh9eqcidg.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "39705729598-q49ldjevjp58hg9tvre49tphuo076s08.apps.googleusercontent.com"
       }
     },
     "production": {
@@ -57,7 +60,10 @@
       },
       "env": {
         "NODE_ENV": "production",
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.vigorasaude.com",
         "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "39705729598-iv01adn3g5di03k6ukp9n02mri393s6n.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "39705729598-0q57pbi4hmfd231rkbld2ftgh9eqcidg.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "39705729598-q49ldjevjp58hg9tvre49tphuo076s08.apps.googleusercontent.com",
         "EXPO_PUBLIC_APPLE_SIGNIN_ENABLED": "true"
       }
     }

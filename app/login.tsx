@@ -160,7 +160,10 @@ export default function LoginScreen() {
     } else if (response.type === "error") {
       setError("Autenticação cancelada ou recusada pelo Google.");
       setLoading(false);
-    } else if (response.type === "dismiss") {
+    } else {
+      // Qualquer outro desfecho (cancel/dismiss/locked) só encerra o loading.
+      // Tratar só "dismiss" travava a tela no iOS: fechar o Safari devolve
+      // "cancel" e os botões ficavam desabilitados até reabrir o app.
       setLoading(false);
     }
   }, [response]);
