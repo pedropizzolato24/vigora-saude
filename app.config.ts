@@ -134,6 +134,9 @@ const config: ExpoConfig = {
     "expo-router",
     "expo-font",
     "expo-web-browser",
+    // Sem isto o Android 11+ esconde os navegadores do aparelho e o login
+    // Google não abre em quem não tem Chrome ativo (ver o plugin).
+    "./plugins/with-browser-queries.js",
     // Plugin do Apple Sign In só entra quando habilitado (mesma razão do
     // usesAppleSignIn acima) — evita o entitlement em builds de dev.
     ...(appleSignIn ? ["expo-apple-authentication"] : []),

@@ -184,10 +184,16 @@ export default function LoginScreen() {
       }
     } catch (err) {
       console.error("[Login] Falha ao abrir o consentimento do Google:", err);
+      // Diagnóstico dos builds de teste: quando nem o Custom Tab nem o navegador
+      // padrão abrem, a lista de navegadores que o app enxerga diz se o aparelho
+      // não tem nenhum ou se é o filtro de visibilidade do Android 11+.
+      const browsers = await WebBrowser.getCustomTabsSupportingBrowsersAsync()
+        .then((r) => r.browserPackages.join(", ") || "nenhum")
+        .catch(() => "não foi possível listar");
       setError(
         `Não foi possível iniciar o login. Verifique sua conexão e tente novamente. (${
           err instanceof Error ? err.message : String(err)
-        })`
+        } | navegadores: ${browsers})`
       );
       setLoading(false);
     }
