@@ -122,6 +122,13 @@ const SLIDES: OnboardingSlide[] = [
 // Sem isto o iPhone recebia um passo a passo de Android que não existe lá.
 const SETTINGS_APP = Platform.OS === 'ios' ? 'Ajustes' : 'Configurações';
 
+// O diálogo do sistema não oferece as mesmas opções: o iOS só concede o uso em
+// primeiro plano nesta etapa ("o tempo todo" vem depois, pelos Ajustes).
+const FOREGROUND_LOCATION_HINT =
+  Platform.OS === 'ios'
+    ? 'Selecione "Permitir ao usar o app" no diálogo do sistema.'
+    : 'Selecione "Permitir enquanto usa o app" ou "Permitir o tempo todo" no diálogo do sistema.';
+
 const BACKGROUND_LOCATION_GUIDE =
   Platform.OS === 'ios'
     ? {
@@ -282,7 +289,7 @@ export default function OnboardingScreen() {
           <View style={[styles.permissionInfoBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <MaterialIcons name="info-outline" size={18} color={colors.muted} />
             <Text style={[styles.permissionInfoText, { color: colors.muted }]}>
-              Selecione "Permitir enquanto usa o app" ou "Permitir o tempo todo" no diálogo do sistema.
+              {FOREGROUND_LOCATION_HINT}
             </Text>
           </View>
         )}
