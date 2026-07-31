@@ -2,9 +2,13 @@
  * AlarmRingScreen
  *
  * Full-screen alarm experience:
- * - O SOM não é desta tela: quem toca é o serviço nativo (expo-alarm-module),
- *   em loop no STREAM_ALARM, desde o disparo e independente do app estar
- *   aberto. Esta tela só o pausa/retoma durante a fala. Ver docs/claude/alarmes.md.
+ * - O SOM depende da plataforma:
+ *   Android — quem toca é o serviço nativo (expo-alarm-module), em loop no
+ *   STREAM_ALARM, desde o disparo e independente do app estar aberto; esta
+ *   tela só o pausa/retoma durante a fala. Ver docs/claude/alarmes.md.
+ *   iOS — não há serviço equivalente: a notificação toca o som uma única vez
+ *   e para. A partir da abertura desta tela, ela É a fonte do som (expo-audio,
+ *   em loop, com playsInSilentMode).
  * - Halo que cresce e some ao redor do ícone (o ícone em si fica parado)
  * - Shows alarm name and description
  * - Reads alarm name and description aloud via expo-speech (pt-BR)
@@ -27,6 +31,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
+import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { useAppContext } from '@/lib/app-context';
 import { shouldVibrate } from '@/lib/_core/alarm-vibration';
 import { loadCurrentAppStateRaw } from '@/lib/app-state-storage';
@@ -50,6 +55,11 @@ import * as Auth from '@/lib/_core/auth';
 
 const COUNTDOWN_SECONDS = 30;
 const SNOOZE_MINUTES = 5;
+
+// Som do alarme para o iOS. No Android quem toca é o serviço nativo; no iOS
+// não existe equivalente — a notificação toca o som UMA vez e para, então a
+// partir daqui esta tela é a fonte do som.
+const ALARM_SOUND = require('@/assets/alarm.mp3');
 
 // Disparos já respondidos nesta sessão JS (chave: alarmId@fireMs). Se alguma
 // navegação duplicada empilhar duas instâncias desta tela, a soterrada nunca
@@ -98,6 +108,28 @@ export default function AlarmRingScreen() {
   // que a fala termina/para (o handler onDone/onStopped roda de forma assíncrona).
   const dismissedRef = useRef(false);
 
+  // Player do som no iOS (no Android o hook fica ocioso — quem toca é o nativo).
+  const iosPlayer = useAudioPlayer(ALARM_SOUND);
+  const soundOn = alarm?.sound !== false;
+
+  /** Silencia o som do alarme durante a fala, sem encerrar o alarme. */
+  const pauseAlarmSound = useCallback(() => {
+    if (Platform.OS === 'ios') {
+      iosPlayer.pause();
+      return;
+    }
+    pauseNativeAlarmSound();
+  }, [iosPlayer]);
+
+  /** Retoma o som depois da fala — no Android via serviço, no iOS pelo player. */
+  const resumeAlarmSound = useCallback(() => {
+    if (Platform.OS === 'ios') {
+      if (soundOn) iosPlayer.play();
+      return;
+    }
+    resumeNativeAlarmSound();
+  }, [iosPlayer, soundOn]);
+
   // Rota de saída pós-resposta depende do TIPO da conta logada: um cuidador que
   // tocou numa notificação de alarme atrasada (agendada pela conta monitorada
   // que usou o aparelho antes) não pode ser jogado no fluxo do monitorado.
@@ -135,7 +167,7 @@ export default function AlarmRingScreen() {
 
     const resumeAlarm = () => {
       if (dismissedRef.current) return;
-      resumeNativeAlarmSound();
+      resumeAlarmSound();
     };
 
     // Diagnóstico da voz muda no S10 (feedback 28/07): ainda não sabemos se o
@@ -152,7 +184,7 @@ export default function AlarmRingScreen() {
         console.log('[Voz] onStart');
         setIsSpeaking(true);
         // Silencia o alarme para a voz ser claramente ouvida
-        pauseNativeAlarmSound();
+        pauseAlarmSound();
       },
       onDone: () => {
         console.log('[Voz] onDone');
@@ -170,7 +202,7 @@ export default function AlarmRingScreen() {
         resumeAlarm();
       },
     });
-  }, [alarm, state.settings]);
+  }, [alarm, state.settings, pauseAlarmSound, resumeAlarmSound]);
 
   // Mostra a tela por cima da lock screen enquanto o alarme está ativo —
   // escopado a esta tela (não um flag fixo no app inteiro). Ao desmontar
@@ -190,6 +222,19 @@ export default function AlarmRingScreen() {
     const startAlarm = async () => {
       try {
         if (Platform.OS !== 'web') {
+          // iOS: a notificação tocou o som UMA vez e parou — não há serviço
+          // nativo mantendo o alarme. Aqui a tela assume o som, em loop, até o
+          // idoso responder. playsInSilentMode faz tocar mesmo com a chavinha
+          // lateral no silencioso (a notificação sozinha não fura).
+          if (Platform.OS === 'ios' && soundOn) {
+            await setAudioModeAsync({ playsInSilentMode: true });
+            // Mesma curva quadrática do alarme no Android (Sound.java): escalar
+            // linear soa igual de 10% a 100%, o ouvido é logarítmico.
+            iosPlayer.volume = ((state.settings.alarmVolume ?? 80) / 100) ** 2;
+            iosPlayer.loop = true;
+            iosPlayer.play();
+          }
+
           // O SOM é do serviço nativo (expo-alarm-module) e continua tocando —
           // esta tela NÃO o substitui. A versão anterior matava o som nativo
           // aqui para tocar via expo-audio, e no cold start o player do JS não
@@ -234,6 +279,9 @@ export default function AlarmRingScreen() {
         if (speechTimeoutRef.current) clearTimeout(speechTimeoutRef.current);
         Vibration.cancel();
         Speech.stop();
+        // Sair da tela (desligar, soneca ou voltar) tem de calar o som do iOS —
+        // no Android quem encerra é o stopNativeAlarm/snoozeNativeAlarm.
+        if (Platform.OS === 'ios') iosPlayer.pause();
       } catch {}
     };
   }, []);
