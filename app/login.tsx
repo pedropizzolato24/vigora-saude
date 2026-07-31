@@ -26,6 +26,7 @@ import {
   openGoogleAuth,
   persistOAuthPkce,
 } from "@/lib/google-signin";
+import { signInWithGoogleNative } from "@/lib/google-native-signin";
 import { isAppleCancel, signInWithApple } from "@/lib/apple-signin";
 import { signInAnonymously } from "@/lib/anonymous-signin";
 import { completeServerLogin } from "@/lib/auth-session";
@@ -170,7 +171,23 @@ export default function LoginScreen() {
     }
     setLoading(true);
     setError(null);
+    // Guardado para entrar na mensagem de erro se o navegador também falhar —
+    // sem isso o motivo real do caminho nativo se perde.
+    let nativeError: unknown = null;
     try {
+      // Android: Play Services primeiro. O seletor de conta é desenhado pelo
+      // sistema, então funciona em aparelho sem navegador nenhum (Samsung A15).
+      if (Platform.OS === "android") {
+        try {
+          await signInWithGoogleNative(router, reconcileFromCloud);
+          setLoading(false);
+          return;
+        } catch (err) {
+          nativeError = err;
+          console.warn("[Login] Google nativo falhou, tentando navegador:", err);
+        }
+      }
+
       // Persiste o PKCE antes de abrir o browser: no Android o redirect volta
       // como deep link (podendo reabrir o app do zero) e a troca acontece em
       // app/oauthredirect.tsx, fora do estado em memória deste componente.
@@ -190,10 +207,14 @@ export default function LoginScreen() {
       const browsers = await WebBrowser.getCustomTabsSupportingBrowsersAsync()
         .then((r) => r.browserPackages.join(", ") || "nenhum")
         .catch(() => "não foi possível listar");
+      const describe = (e: unknown) =>
+        e instanceof Error ? e.message : String(e);
       setError(
-        `Não foi possível iniciar o login. Verifique sua conexão e tente novamente. (${
-          err instanceof Error ? err.message : String(err)
-        } | navegadores: ${browsers})`
+        `Não foi possível iniciar o login. Verifique sua conexão e tente novamente. (${describe(
+          err
+        )} | navegadores: ${browsers}${
+          nativeError ? ` | nativo: ${describe(nativeError)}` : ""
+        })`
       );
       setLoading(false);
     }

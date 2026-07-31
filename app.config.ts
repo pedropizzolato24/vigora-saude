@@ -137,6 +137,16 @@ const config: ExpoConfig = {
     // Sem isto o Android 11+ esconde os navegadores do aparelho e o login
     // Google não abre em quem não tem Chrome ativo (ver o plugin).
     "./plugins/with-browser-queries.js",
+    [
+      // Login Google pelo Play Services (sem navegador). Passar opções ativa o
+      // modo "sem Firebase": só registra o URL scheme no iOS, não mexe no
+      // Gradle do Android — o módulo nativo entra por autolinking.
+      "@react-native-google-signin/google-signin",
+      {
+        iosUrlScheme:
+          "com.googleusercontent.apps.39705729598-0q57pbi4hmfd231rkbld2ftgh9eqcidg",
+      },
+    ],
     // Plugin do Apple Sign In só entra quando habilitado (mesma razão do
     // usesAppleSignIn acima) — evita o entitlement em builds de dev.
     ...(appleSignIn ? ["expo-apple-authentication"] : []),
