@@ -12,7 +12,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { AccountDangerZone } from '@/components/account-danger-zone';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
+import { DataExportButton } from '@/components/data-export-button';
 import { Collapsible, COLLAPSE_DURATION, FadeInView } from '@/components/animated-components';
 import { FormKeyboardView } from '@/components/form-keyboard-view';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -703,6 +705,14 @@ export default function SettingsScreen() {
               <Text style={{ fontSize: af.md, fontWeight: '800', color: colors.onPrimary }}>Abrir Configurações</Text>
             </Pressable>
           </View>
+
+          {/* Direitos do titular (LGPD Art. 18): portabilidade fora da caixa,
+              ações irreversíveis dentro dela. */}
+          <DataExportButton />
+          <AccountDangerZone
+            clearLocalData={() => dispatch({ type: 'CLEAR_ALL_DATA' })}
+            onClearAllData={() => dispatch({ type: 'CLEAR_ALL_DATA' })}
+          />
 
           {/* Version info */}
           <View style={{ alignItems: 'center', gap: 4, paddingTop: 8 }}>
@@ -1516,6 +1526,15 @@ export default function SettingsScreen() {
               <Text style={[styles.storageLabel, { color: colors.foreground }]}>Ficha de anamnese</Text>
               <Text style={[styles.storageValue, { color: colors.muted }]}>{state.anamnesis ? 'Preenchida' : 'Vazia'}</Text>
             </View>
+          </View>
+          {/* Direitos do titular (LGPD Art. 18): portabilidade fora da caixa,
+              ações irreversíveis dentro dela. */}
+          <View style={{ paddingHorizontal: 16, paddingBottom: 16, gap: 4 }}>
+            <DataExportButton />
+            <AccountDangerZone
+              clearLocalData={() => dispatch({ type: 'CLEAR_ALL_DATA' })}
+              onClearAllData={() => dispatch({ type: 'CLEAR_ALL_DATA' })}
+            />
           </View>
         </CollapsibleSection>
 
