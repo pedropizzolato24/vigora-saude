@@ -18,12 +18,25 @@ import { useFontSize } from '@/lib/font-size-context';
 import { useDeleteAccount } from '@/hooks/use-delete-account';
 import { useColors } from '@/hooks/use-colors';
 
+/** Texto padrão — conta de monitorado, que guarda dados de saúde. */
+const MENSAGEM_PADRAO =
+  'Esta ação é PERMANENTE. Apaga sua conta e todos os seus dados dos nossos servidores — perfil, anamnese, histórico de saúde, contatos, alarmes e vínculos com cuidadores. Não há como desfazer.';
+
 interface AccountDangerZoneProps {
   /** Limpeza do estado local da árvore que hospeda o componente. */
   clearLocalData?: () => void | Promise<void>;
+  /**
+   * Texto do diálogo de confirmação. Existe como prop porque a conta de
+   * cuidador não guarda anamnese nem histórico de saúde — listar dados que
+   * ela não tem seria impreciso num aviso irreversível.
+   */
+  message?: string;
 }
 
-export function AccountDangerZone({ clearLocalData }: AccountDangerZoneProps) {
+export function AccountDangerZone({
+  clearLocalData,
+  message = MENSAGEM_PADRAO,
+}: AccountDangerZoneProps) {
   const colors = useColors();
   const fs = useFontSize();
   const { isAccessibilityMode, a11yColors: ac, a11yFontSize: af } = useAccessibility();
@@ -34,8 +47,7 @@ export function AccountDangerZone({ clearLocalData }: AccountDangerZoneProps) {
     if (isDeleting) return;
     showDialog({
       title: 'Excluir minha conta',
-      message:
-        'Esta ação é PERMANENTE. Apaga sua conta e todos os seus dados dos nossos servidores — perfil, anamnese, histórico de saúde, contatos, alarmes e vínculos com cuidadores. Não há como desfazer.',
+      message,
       variant: 'confirm',
       buttons: [
         { text: 'Cancelar', style: 'cancel' },
