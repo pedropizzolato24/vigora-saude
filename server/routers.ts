@@ -12,6 +12,8 @@ import { linkRouter } from "./routers-links";
 import { pushRouter } from "./routers-push";
 import { getUserByOpenId, getUserData, upsertUser, upsertUserData } from "./db";
 import { deleteAccountData } from "./db-account";
+import { getAccountLiveness, getAlarmEventHistory, getWarningHistory } from "./db-monitoring";
+import { getActiveCaregiversForMonitored } from "./db-links";
 import type { EmergencyContactRecord } from "../drizzle/schema";
 
 /**
@@ -277,6 +279,63 @@ export const appRouter = router({
         });
         return { success: true } as const;
       }),
+    /**
+     * Exportação de dados do titular (LGPD Art. 18, V — portabilidade).
+     *
+     * Devolve TUDO que o servidor guarda sobre a conta do chamador. As seções
+     * espelham as tabelas que `server/db-account.ts` apaga na exclusão de
+     * conta — tabela nova precisa entrar nos dois lugares.
+     *
+     * Fora de propósito, com justificativa: `auth_codes` são segredos de login
+     * em trânsito (exportar seria falha de segurança); `push_tokens` são
+     * identificadores de aparelho sem valor para o titular; `link_invites` são
+     * convites transitórios que expiram sozinhos.
+     *
+     * Escopo sempre por `ctx.user.openId` — nunca por input do cliente.
+     */
+    export: protectedProcedure.query(async ({ ctx }) => {
+      const openId = ctx.user.openId;
+
+      // Teto alto em vez de paginação: o volume por conta é pequeno (ordem de
+      // centenas) e a exportação precisa ser completa para valer como
+      // portabilidade.
+      const LIMITE_EXPORTACAO = 10_000;
+
+      const [user, data, historicoDeAlarmes, alertasEnviados, sinalDeVida, cuidadores] =
+        await Promise.all([
+          getUserByOpenId(openId),
+          getUserData(openId),
+          getAlarmEventHistory(openId, LIMITE_EXPORTACAO),
+          getWarningHistory(openId, LIMITE_EXPORTACAO),
+          getAccountLiveness(openId),
+          getActiveCaregiversForMonitored(openId),
+        ]);
+
+      return {
+        conta: user
+          ? { nome: user.name ?? null, email: user.email ?? null, telefone: user.phone ?? null }
+          : null,
+        dadosDaConta: data
+          ? {
+              anamnese: data.anamnesis ?? null,
+              contatosDeEmergencia: data.emergencyContacts ?? [],
+              alarmes: data.alarms ?? [],
+              configuracoes: data.settings ?? null,
+              metricasDeSaude: data.healthMetrics ?? [],
+              perfil: data.profile ?? null,
+              atualizadoEm: data.dataUpdatedAt ?? 0,
+            }
+          : null,
+        historicoDeAlarmes,
+        alertasEnviados,
+        sinalDeVida: sinalDeVida ?? null,
+        cuidadoresVinculados: cuidadores.map((c) => ({
+          caregiverOpenId: c.caregiverOpenId,
+          relationship: c.relationship,
+          vinculadoEm: c.createdAt instanceof Date ? c.createdAt.getTime() : c.createdAt,
+        })),
+      };
+    }),
   }),
 
   // Alarm monitoring system

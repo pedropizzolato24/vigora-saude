@@ -11,6 +11,10 @@
  * authenticateRequest reloads the user from the DB on every request and 403s
  * when it's gone (see _core/sdk.ts). That gives us "log out everywhere" for free
  * and satisfies the post-incident containment requirement too.
+ *
+ * ESPELHO: `userData.export` em server/routers.ts exporta estas mesmas tabelas.
+ * Tabela nova precisa entrar nos dois lugares — senão o app guarda dado que
+ * não exporta, ou exporta dado que não apaga.
  */
 import { and, eq, inArray, isNull, lt, or } from "drizzle-orm";
 import {
