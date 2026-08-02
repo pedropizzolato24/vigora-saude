@@ -15,6 +15,8 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
+import { AccountDangerZone } from '@/components/account-danger-zone';
+import { DataExportButton } from '@/components/data-export-button';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeaderBack } from '@/components/screen-header-back';
 import { FormKeyboardView } from '@/components/form-keyboard-view';
@@ -281,6 +283,8 @@ export default function ProfileScreen() {
             <MaterialIcons name="save" size={32} color={ac.onPrimary} />
             <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.onPrimary }}>Salvar Perfil</Text>
           </TouchableOpacity>
+          {/* Portabilidade de dados (LGPD Art. 18 V) — fora da zona perigosa */}
+          <DataExportButton />
           {/* Logout — destrutivo, em vermelho (distinto dos botões comuns) */}
           <TouchableOpacity
             onPress={handleLogout}
@@ -291,6 +295,8 @@ export default function ProfileScreen() {
             <MaterialIcons name="logout" size={32} color={ac.emergency} />
             <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.emergency }}>Sair da Conta</Text>
           </TouchableOpacity>
+          {/* Exclusão de conta (LGPD Art. 18 VI) — irreversível, isolada no fim */}
+          <AccountDangerZone clearLocalData={() => dispatch({ type: 'CLEAR_ALL_DATA' })} />
         </ScrollView>
         </FormKeyboardView>
       </ScreenContainer>
@@ -426,6 +432,9 @@ export default function ProfileScreen() {
           <Text style={[styles.saveButtonText, { color: colors.onSuccess, fontSize: fs.scaled(17) }]}>Salvar Perfil</Text>
         </TouchableOpacity>
 
+        {/* Portabilidade de dados (LGPD Art. 18 V) — fora da zona perigosa */}
+        <DataExportButton />
+
         {/* Logout — destrutivo, contorno vermelho */}
         <TouchableOpacity
           onPress={handleLogout}
@@ -436,6 +445,9 @@ export default function ProfileScreen() {
           <MaterialIcons name="logout" size={22} color={colors.error} />
           <Text style={[styles.saveButtonText, { color: colors.error, fontSize: fs.scaled(17) }]}>Sair da Conta</Text>
         </TouchableOpacity>
+
+        {/* Exclusão de conta (LGPD Art. 18 VI) — irreversível, isolada no fim */}
+        <AccountDangerZone clearLocalData={() => dispatch({ type: 'CLEAR_ALL_DATA' })} />
 
         <View style={{ height: 100 }} />
       </ScrollView>

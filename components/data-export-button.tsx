@@ -136,6 +136,10 @@ export function DataExportButton() {
             borderColor: c.border,
             backgroundColor: c.surface,
             paddingHorizontal: 16,
+            // No modo acessível o ScrollView já aplica gap entre os filhos; no
+            // normal os botões vizinhos trazem a própria margem, então esta
+            // acompanha a do botão de logout para o ritmo ficar igual.
+            marginTop: isAccessibilityMode ? 0 : 12,
             opacity: isExporting ? 0.6 : pressed ? 0.8 : 1,
           },
         ]}

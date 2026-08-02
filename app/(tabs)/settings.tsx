@@ -28,7 +28,6 @@ import { useThemeContext } from '@/lib/theme-provider';
 import { useFontSize } from '@/lib/font-size-context';
 import { useAccessibility } from '@/lib/accessibility-context';
 import { useAppLock } from '@/lib/app-lock-context';
-import { useDeleteAccount } from '@/hooks/use-delete-account';
 import { useRouter } from 'expo-router';
 import { MonitoringStatusPanel } from '@/components/monitoring-status-panel';
 import { ProtectAccountBanner } from '@/components/protect-account-banner';
@@ -189,7 +188,6 @@ export default function SettingsScreen() {
   const { dialogProps, showDialog } = useAppDialog();
   const router = useRouter();
   const appLock = useAppLock();
-  const { runDeleteAccount, isDeleting } = useDeleteAccount(() => dispatch({ type: 'CLEAR_ALL_DATA' }));
 
   const [countdownTestActive, setCountdownTestActive] = useState(false);
   const [countdownTestSecondsLeft, setCountdownTestSecondsLeft] = useState(10);
@@ -388,39 +386,6 @@ export default function SettingsScreen() {
           onPress: () => {
             if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             dispatch({ type: 'CLEAR_ALL_DATA' });
-          },
-        },
-      ],
-    });
-  };
-
-  // Exclusão definitiva da conta (LGPD Art. 18, VI): apaga TODOS os dados do
-  // servidor, não só os locais. Irreversível, por isso confirmação forte.
-  const handleDeleteAccount = () => {
-    if (isDeleting) return;
-    showDialog({
-      title: 'Excluir minha conta',
-      message:
-        'Esta ação é PERMANENTE. Apaga sua conta e todos os seus dados dos nossos servidores — perfil, anamnese, histórico de saúde, contatos, alarmes e vínculos com cuidadores. Não há como desfazer.',
-      variant: 'confirm',
-      buttons: [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir conta',
-          style: 'destructive',
-          onPress: async () => {
-            if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            try {
-              await runDeleteAccount();
-            } catch {
-              showDialog({
-                title: 'Não foi possível excluir',
-                message:
-                  'Houve um erro ao excluir sua conta no servidor. Seus dados não foram apagados. Tente novamente em instantes; se persistir, verifique sua conexão.',
-                variant: 'error',
-                buttons: [{ text: 'OK' }],
-              });
-            }
           },
         },
       ],
@@ -756,37 +721,6 @@ export default function SettingsScreen() {
             >
               <Text style={{ fontSize: af.md, fontWeight: '800', color: colors.onPrimary }}>Abrir Configurações</Text>
             </Pressable>
-          </View>
-
-          {/* Excluir minha conta (LGPD Art. 18 VI) — paridade no Modo Acessível */}
-          <View style={{ gap: 8, paddingTop: 8 }}>
-            <Pressable
-              onPress={handleDeleteAccount}
-              disabled={isDeleting}
-              accessibilityRole="button"
-              accessibilityLabel="Excluir minha conta e todos os dados do servidor"
-              style={({ pressed }) => [{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
-                minHeight: 64,
-                borderRadius: 16,
-                borderWidth: 3,
-                borderColor: ac.error,
-                backgroundColor: ac.surface,
-                paddingHorizontal: 16,
-                opacity: isDeleting ? 0.6 : pressed ? 0.7 : 1,
-              }]}
-            >
-              <MaterialIcons name="no-accounts" size={26} color={ac.error} />
-              <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.error }}>
-                {isDeleting ? 'Excluindo...' : 'Excluir minha conta'}
-              </Text>
-            </Pressable>
-            <Text style={{ fontSize: af.sm, color: ac.muted, textAlign: 'center' }}>
-              Apaga sua conta e todos os dados dos nossos servidores. Permanente (LGPD).
-            </Text>
           </View>
 
           {/* Version info */}
@@ -1616,24 +1550,6 @@ export default function SettingsScreen() {
             </Pressable>
             <Text style={[styles.dangerHint, { color: colors.muted, fontSize: fs.xs, lineHeight: fs.scaled(18) }]}>
               Remove alarmes, contatos, anamnese e histórico de saúde permanentemente.
-            </Text>
-            <Pressable
-              onPress={handleDeleteAccount}
-              disabled={isDeleting}
-              accessibilityRole="button"
-              accessibilityLabel="Excluir minha conta e todos os dados do servidor"
-              style={({ pressed }) => [
-                styles.dangerButton,
-                { borderColor: colors.error, marginTop: 12, opacity: isDeleting ? 0.6 : pressed ? 0.8 : 1 },
-              ]}
-            >
-              <MaterialIcons name="no-accounts" size={20} color={colors.error} />
-              <Text style={[styles.dangerButtonText, { color: colors.error }]}>
-                {isDeleting ? 'Excluindo...' : 'Excluir minha conta'}
-              </Text>
-            </Pressable>
-            <Text style={[styles.dangerHint, { color: colors.muted, fontSize: fs.xs, lineHeight: fs.scaled(18) }]}>
-              Apaga sua conta e todos os dados dos nossos servidores (LGPD, Art. 18). Esta ação é permanente.
             </Text>
           </View>
         </CollapsibleSection>
