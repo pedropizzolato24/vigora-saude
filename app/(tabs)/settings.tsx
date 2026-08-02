@@ -373,25 +373,6 @@ export default function SettingsScreen() {
     unknown: { label: 'Verificando...', color: colors.muted, icon: 'location-searching' as const },
   };
 
-  const handleClearData = () => {
-    showDialog({
-      title: 'Limpar Todos os Dados',
-      message: 'Esta ação removerá todos os alarmes, contatos, ficha de anamnese e histórico de saúde. Esta ação não pode ser desfeita.',
-      variant: 'confirm',
-      buttons: [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Limpar Tudo',
-          style: 'destructive',
-          onPress: () => {
-            if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            dispatch({ type: 'CLEAR_ALL_DATA' });
-          },
-        },
-      ],
-    });
-  };
-
   // Ativar abre o fluxo de criar PIN; desativar exige confirmar o PIN atual.
   // O toggle reflete appLock.enabled, então abandonar o fluxo não muda nada.
   const handleToggleAppLock = (value: boolean) => {
@@ -1536,22 +1517,6 @@ export default function SettingsScreen() {
               <Text style={[styles.storageValue, { color: colors.muted }]}>{state.anamnesis ? 'Preenchida' : 'Vazia'}</Text>
             </View>
           </View>
-          <Divider colors={colors} />
-          <View style={styles.dangerZone}>
-            <Pressable
-              onPress={handleClearData}
-              style={({ pressed }) => [
-                styles.dangerButton,
-                { borderColor: colors.error, opacity: pressed ? 0.8 : 1 },
-              ]}
-            >
-              <MaterialIcons name="delete-forever" size={20} color={colors.error} />
-              <Text style={[styles.dangerButtonText, { color: colors.error }]}>Limpar Todos os Dados</Text>
-            </Pressable>
-            <Text style={[styles.dangerHint, { color: colors.muted, fontSize: fs.xs, lineHeight: fs.scaled(18) }]}>
-              Remove alarmes, contatos, anamnese e histórico de saúde permanentemente.
-            </Text>
-          </View>
         </CollapsibleSection>
 
         {/* ═══ Trial / assinatura: nada é exibido para quem já paga ═══ */}
@@ -1794,19 +1759,6 @@ const styles = StyleSheet.create({
   storageValue: { fontWeight: '600' },
 
   // Danger Zone
-  dangerZone: { padding: 16, gap: 8 },
-  dangerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-  },
-  dangerButtonText: { fontWeight: '600' },
-  dangerHint: { textAlign: 'center' },
-
   // Footer
   footerSection: {
     alignItems: 'center',

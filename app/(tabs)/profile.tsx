@@ -296,7 +296,10 @@ export default function ProfileScreen() {
             <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.emergency }}>Sair da Conta</Text>
           </TouchableOpacity>
           {/* Exclusão de conta (LGPD Art. 18 VI) — irreversível, isolada no fim */}
-          <AccountDangerZone clearLocalData={() => dispatch({ type: 'CLEAR_ALL_DATA' })} />
+          <AccountDangerZone
+            clearLocalData={() => dispatch({ type: 'CLEAR_ALL_DATA' })}
+            onClearAllData={() => dispatch({ type: 'CLEAR_ALL_DATA' })}
+          />
         </ScrollView>
         </FormKeyboardView>
       </ScreenContainer>
@@ -446,8 +449,11 @@ export default function ProfileScreen() {
           <Text style={[styles.saveButtonText, { color: colors.error, fontSize: fs.scaled(17) }]}>Sair da Conta</Text>
         </TouchableOpacity>
 
-        {/* Exclusão de conta (LGPD Art. 18 VI) — irreversível, isolada no fim */}
-        <AccountDangerZone clearLocalData={() => dispatch({ type: 'CLEAR_ALL_DATA' })} />
+        {/* Ações irreversíveis (LGPD Art. 18 VI) — isoladas no fim da tela */}
+        <AccountDangerZone
+          clearLocalData={() => dispatch({ type: 'CLEAR_ALL_DATA' })}
+          onClearAllData={() => dispatch({ type: 'CLEAR_ALL_DATA' })}
+        />
 
         <View style={{ height: 100 }} />
       </ScrollView>

@@ -23,8 +23,14 @@ const MENSAGEM_PADRAO =
   'Esta ação é PERMANENTE. Apaga sua conta e todos os seus dados dos nossos servidores — perfil, anamnese, histórico de saúde, contatos, alarmes e vínculos com cuidadores. Não há como desfazer.';
 
 interface AccountDangerZoneProps {
-  /** Limpeza do estado local da árvore que hospeda o componente. */
+  /** Limpeza do estado local rodada DEPOIS que a conta é apagada no servidor. */
   clearLocalData?: () => void | Promise<void>;
+  /**
+   * Ação de "limpar todos os dados do aparelho" sem apagar a conta. Quando
+   * ausente, o botão não é renderizado — a conta de cuidador não tem dados
+   * locais próprios para limpar.
+   */
+  onClearAllData?: () => void;
   /**
    * Texto do diálogo de confirmação. Existe como prop porque a conta de
    * cuidador não guarda anamnese nem histórico de saúde — listar dados que
@@ -35,6 +41,7 @@ interface AccountDangerZoneProps {
 
 export function AccountDangerZone({
   clearLocalData,
+  onClearAllData,
   message = MENSAGEM_PADRAO,
 }: AccountDangerZoneProps) {
   const colors = useColors();
@@ -42,6 +49,28 @@ export function AccountDangerZone({
   const { isAccessibilityMode, a11yColors: ac, a11yFontSize: af } = useAccessibility();
   const { dialogProps, showDialog } = useAppDialog();
   const { runDeleteAccount, isDeleting } = useDeleteAccount(clearLocalData);
+
+  const handleClearAllData = () => {
+    showDialog({
+      title: 'Limpar Todos os Dados',
+      message:
+        'Esta ação removerá todos os alarmes, contatos, ficha de anamnese e histórico de saúde. Esta ação não pode ser desfeita.',
+      variant: 'confirm',
+      buttons: [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Limpar Tudo',
+          style: 'destructive',
+          onPress: () => {
+            if (Platform.OS !== 'web') {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            }
+            onClearAllData?.();
+          },
+        },
+      ],
+    });
+  };
 
   const handleDeleteAccount = () => {
     if (isDeleting) return;
@@ -110,9 +139,46 @@ export function AccountDangerZone({
         </View>
 
         <Text style={{ fontSize: bodySize, color: c.muted }}>
-          Excluir a conta apaga permanentemente todos os seus dados dos nossos servidores.
-          Não há como desfazer.
+          As ações abaixo são permanentes e não podem ser desfeitas.
         </Text>
+
+        {onClearAllData ? (
+          <>
+            <Pressable
+              onPress={handleClearAllData}
+              accessibilityRole="button"
+              accessibilityLabel="Limpar todos os dados do aparelho"
+              style={({ pressed }) => [
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 10,
+                  minHeight: isAccessibilityMode ? 64 : fs.touch(56),
+                  borderRadius: isAccessibilityMode ? 16 : 12,
+                  borderWidth: isAccessibilityMode ? 3 : 2,
+                  borderColor: c.error,
+                  backgroundColor: c.surface,
+                  paddingHorizontal: 16,
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
+            >
+              <MaterialIcons
+                name="delete-forever"
+                size={isAccessibilityMode ? 26 : 20}
+                color={c.error}
+              />
+              <Text style={{ fontSize: buttonSize, fontWeight: '800', color: c.error }}>
+                Limpar Todos os Dados
+              </Text>
+            </Pressable>
+            <Text style={{ fontSize: bodySize, color: c.muted }}>
+              Remove alarmes, contatos, anamnese e histórico de saúde do aparelho. A conta
+              continua existindo.
+            </Text>
+          </>
+        ) : null}
 
         <Pressable
           onPress={handleDeleteAccount}
@@ -140,6 +206,9 @@ export function AccountDangerZone({
             {isDeleting ? 'Excluindo...' : 'Excluir minha conta'}
           </Text>
         </Pressable>
+        <Text style={{ fontSize: bodySize, color: c.muted }}>
+          Apaga a conta e todos os dados dos nossos servidores (LGPD, Art. 18).
+        </Text>
       </View>
       <AppDialog {...dialogProps} />
     </>
