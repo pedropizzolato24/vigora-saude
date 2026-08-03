@@ -7,7 +7,7 @@
  */
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
-import { upsertPushToken } from "./db-push";
+import { deletePushToken, upsertPushToken } from "./db-push";
 
 export const pushRouter = router({
   /**
@@ -27,6 +27,25 @@ export const pushRouter = router({
         token: input.token,
         platform: input.platform,
       });
+      return { success: true } as const;
+    }),
+
+  /**
+   * Remove o registro deste aparelho. Chamado no logout, ANTES de a sessão ser
+   * descartada (precisa de auth).
+   *
+   * Apaga por TOKEN, não por (token, openId), de propósito: o caso que motivou
+   * esta procedure é justamente a linha estar chaveada numa conta diferente da
+   * que está saindo (o aparelho registrou como cuidador e depois trocou para a
+   * conta monitorada). Filtrar por openId deixaria a linha órfã de pé, que é o
+   * bug. Possuir o token do aparelho é a própria autorização — ele é um segredo
+   * do dispositivo, não enumerável; o `protectedProcedure` só garante que a
+   * chamada vem de uma sessão válida.
+   */
+  unregister: protectedProcedure
+    .input(z.object({ token: z.string().min(1).max(255) }))
+    .mutation(async ({ input }) => {
+      await deletePushToken(input.token);
       return { success: true } as const;
     }),
 });
