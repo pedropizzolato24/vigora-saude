@@ -10,7 +10,7 @@
  * `servidor_incluido: false` + aviso. O usuário nunca sai de mãos vazias.
  */
 import React, { useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, Text } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, Text } from 'react-native';
 import * as Application from 'expo-application';
 import { File, Paths } from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
@@ -160,7 +160,19 @@ export function DataExportButton() {
         </Text>
       </Pressable>
       <AppDialog {...dialogProps} />
-      <AppToast {...toastProps} />
+      {/* Modal (portal nativo) em vez de posicionar direto: este botão vive
+          dentro do ScrollView de Configurações, e o `position: absolute` do
+          AppToast fica relativo ao conteúdo que rola, não à tela — o aviso
+          saía fora da vista ou rolava junto em vez de ficar fixo embaixo. */}
+      <Modal
+        visible={toastProps.visible}
+        transparent
+        animationType="none"
+        statusBarTranslucent
+        onRequestClose={() => toastProps.onHide?.()}
+      >
+        <AppToast {...toastProps} />
+      </Modal>
     </>
   );
 }
