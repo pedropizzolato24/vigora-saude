@@ -483,11 +483,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Persist state on every change (except isLoading). A chave vem do ref da
   // conta ativa (síncrono) para nunca gravar o estado de uma conta sob a
-  // chave de outra durante uma troca.
+  // chave de outra durante uma troca. Sem conta não há chave — o app deslogado
+  // não persiste nada (antes gravava no blob legado global, que era adotado
+  // pela próxima conta a logar no aparelho).
   useEffect(() => {
     if (state.isLoading) return;
-    const { isLoading: _loading, ...persistable } = state;
     const key = appStateKeyFor(activeOpenIdRef.current ?? null);
+    if (key == null) return;
+    const { isLoading: _loading, ...persistable } = state;
     AsyncStorage.setItem(key, JSON.stringify(persistable)).catch(() => {});
   }, [state]);
 
