@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useRe
 import { updateAllWidgets } from './update-widgets';
 import { setNativeAlarmVolume } from './native-alarm-manager';
 import { pullCloudData, pushCloudData, type CloudSnapshot } from './cloud-sync';
+import { switchAccount } from './_core/account-switch';
 import { appStateKeyFor, loadAppStateRaw } from './app-state-storage';
 import * as Auth from './_core/auth';
 
@@ -397,9 +398,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // dela carrega. (require preguiçoso: alarm-sync importa o tipo Alarm daqui
       // — import estático criaria ciclo.)
       const { cancelAllAlarms } = require('./alarm-sync') as typeof import('./alarm-sync');
-      cancelAllAlarms().catch(() => {});
-      dispatch({ type: 'RESET_FOR_ACCOUNT_SWITCH' });
-      loadFor(next);
+      // A ordem é crítica: o cancelamento precisa TERMINAR antes do carregamento,
+      // senão ele resolve depois do reagendamento e apaga os alarmes da conta que
+      // entrou. Ver lib/_core/account-switch.ts e tests/account-switch.test.ts.
+      void switchAccount({
+        resetState: () => dispatch({ type: 'RESET_FOR_ACCOUNT_SWITCH' }),
+        cancelAlarms: cancelAllAlarms,
+        loadState: () => loadFor(next),
+        isStillCurrent: () => activeOpenIdRef.current === next,
+      });
     });
     return unsubscribe;
   }, []);
