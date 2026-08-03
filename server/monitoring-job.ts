@@ -25,6 +25,7 @@
  */
 import {
   claimWarning,
+  deleteAlarmEvent,
   getAccountLiveness,
   getAccountsWithUnconfirmedEvents,
   getExpiredPendingEvents,
@@ -69,6 +70,38 @@ const WARNING_LEVELS = [
 
 // Minimum interval between warnings of the same level (hours)
 const MIN_WARNING_INTERVAL_HOURS = 2;
+
+// O check-in diário é um alarme sintético do cliente (lib/checkin-service.ts):
+// tem o mesmo id fixo aqui, no routers-monitoring e no cliente, mas NÃO vive na
+// lista de alarmes do usuário. Por isso ele nunca passa pela checagem de agenda
+// abaixo — "ausente da lista" é o estado normal dele, não prova de cancelamento.
+const CHECKIN_ALARM_ID = "checkin-daily";
+
+/**
+ * O alarme que pré-registrou este evento ainda está de pé na agenda da conta?
+ *
+ * `syncAlarmsToServer` só CRIA evento para alarme habilitado — quando o usuário
+ * desativa ou apaga um alarme, o evento já pré-registrado ficava pendente,
+ * vencia e escalava como 'missed'/'not_sent'. A família recebia WhatsApp por um
+ * alarme desligado de propósito, e alarme falso ensina a ignorar o verdadeiro.
+ *
+ * A agenda autoritativa é `user_data.alarms` (sobe no cloud backup).
+ *
+ * Conservador de propósito: só responde `false` com PROVA POSITIVA de que o
+ * alarme saiu do ar. Sem agenda no servidor (conta que nunca sincronizou, blob
+ * corrompido) devolve `true` e o evento escala como antes — falso positivo
+ * assusta a família, falso negativo cala o dead man's switch.
+ */
+export function isAlarmStillArmed(alarms: unknown, alarmId: string): boolean {
+  if (!Array.isArray(alarms)) return true;
+  const found = alarms.find(
+    (a): a is { id: string; enabled?: boolean } =>
+      !!a && typeof a === "object" && (a as { id?: unknown }).id === alarmId
+  );
+  if (!found) return false;
+  // `enabled` ausente = formato antigo, conta como armado.
+  return found.enabled !== false;
+}
 
 // --- Job health (dead man's switch self-monitoring) -----------------------
 // The whole escalation depends on this job running. Previously a thrown error
@@ -316,12 +349,36 @@ export async function runMonitoringJob(): Promise<void> {
     const expiredEvents = await getExpiredPendingEvents(GRACE_PERIOD_MINUTES);
     console.log(`[Monitor] Found ${expiredEvents.length} expired pending events`);
 
+    // Agenda por conta, lida uma vez por execução: várias contas costumam ter
+    // vários eventos vencidos no mesmo ciclo.
+    const agendaPorConta = new Map<string, unknown>();
+    const getAgenda = async (openId: string) => {
+      if (!agendaPorConta.has(openId)) {
+        agendaPorConta.set(openId, (await getUserData(openId))?.alarms);
+      }
+      return agendaPorConta.get(openId);
+    };
+
     for (const event of expiredEvents) {
       // Isolado por evento: uma linha problemática não pode travar a resolução
       // de todas as outras. Esta é a fila que mantém o estado dos alarmes
       // andando — se ela congela, o switch morre para todo mundo, não só para
       // o dono do evento ruim.
       try {
+        // O alarme foi desativado/apagado depois de pré-registrar este disparo?
+        // Então ele não era esperado: apaga em vez de resolver. Sem isto o
+        // evento órfão virava 'missed' e escalava para contatos e cuidadores.
+        if (
+          event.alarmId !== CHECKIN_ALARM_ID &&
+          !isAlarmStillArmed(await getAgenda(event.openId), event.alarmId)
+        ) {
+          await deleteAlarmEvent(event.id);
+          console.log(
+            `[Monitor] Event ${event.id} (alarm ${event.alarmId}) -> apagado (alarme desativado ou removido pelo usuário)`
+          );
+          continue;
+        }
+
         const liveness = await getAccountLiveness(event.openId);
         // Vida DEPOIS do horário do disparo. Sem sinal a partir de scheduledAt,
         // não há evidência de que o alarme sequer tocou (celular desligado, sem
