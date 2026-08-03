@@ -156,6 +156,20 @@ export async function updateAlarmEventStatus(
 }
 
 /**
+ * Apaga um evento pendente que nunca deveria ter acontecido — o alarme que o
+ * pré-registrou foi desativado ou apagado antes do horário.
+ *
+ * Apagar, e não marcar um status novo: `alarm_events` é log de OCORRÊNCIAS, e
+ * um disparo que o usuário desligou de propósito não ocorreu. Também evita
+ * migração de enum e um estado novo para o app do cuidador renderizar.
+ */
+export async function deleteAlarmEvent(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(alarmEvents).where(eq(alarmEvents.id, id));
+}
+
+/**
  * Aplica um novo status ao evento de alarme casado por (openId, alarmId,
  * scheduledAt). Retorna o evento efetivamente transicionado, ou `null` quando
  * nada foi atualizado (sem DB, ou nenhum candidato casou — ex.: retry após a

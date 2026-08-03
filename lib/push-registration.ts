@@ -47,3 +47,55 @@ export async function getDevicePushToken(): Promise<DevicePushToken | null> {
     return null;
   }
 }
+
+/**
+ * Desregistra este aparelho no servidor. Precisa rodar no logout ANTES de a
+ * sessão ser descartada (a rota exige auth).
+ *
+ * Sem isto, a linha em `push_tokens` sobrevivia ao logout e à troca de conta:
+ * o aparelho continuava recebendo os alertas da conta que o registrou — até
+ * mesmo sem ninguém logado. Best-effort: falhar aqui não pode travar o logout,
+ * mas o motivo real vai para o log.
+ */
+export async function unregisterDevicePushToken(): Promise<void> {
+  if (Platform.OS === 'web') return;
+
+  try {
+    const { getApiBaseUrl } = await import('@/constants/oauth');
+    const Auth = await import('@/lib/_core/auth');
+
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      (Constants as { easConfig?: { projectId?: string } }).easConfig?.projectId;
+    if (!projectId) return;
+
+    // Sem pedir permissão aqui: se o aparelho nunca teve token, não há o que
+    // desregistrar, e um prompt de permissão no logout seria absurdo.
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return;
+
+    const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
+    if (!token) return;
+
+    const sessionToken = await Auth.getSessionToken();
+    if (!sessionToken) return;
+
+    const res = await fetch(`${getApiBaseUrl()}/api/trpc/push.unregister`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionToken}`,
+      },
+      credentials: 'include',
+      body: JSON.stringify({ json: { token } }),
+    });
+
+    if (!res.ok) {
+      console.warn('[Push] unregister respondeu', res.status);
+      return;
+    }
+    console.log('[Push] Token deste aparelho desregistrado');
+  } catch (err) {
+    console.warn('[Push] Falha ao desregistrar o token:', err);
+  }
+}

@@ -1,4 +1,4 @@
-import { Platform } from "react-native";
+import { Linking, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { exchangeCodeAsync } from "expo-auth-session";
 import {
@@ -46,6 +46,37 @@ export async function persistOAuthPkce(
     [VERIFIER_KEY, codeVerifier],
     [REDIRECT_KEY, redirectUri],
   ]);
+}
+
+/**
+ * Abre a tela de consentimento do Google.
+ *
+ * O caminho normal é o Custom Tab (expo-web-browser), mas ele depende de um
+ * navegador que exponha o CustomTabsService e esteja visível para o app
+ * (package visibility do Android 11+). Em aparelhos com Chrome desativado ou
+ * ROM enxuta isso não existe e o módulo rejeita com "No matching browser
+ * activity found" — o login nem chegava a abrir (Samsung A15).
+ *
+ * Fallback: abrir a URL no navegador padrão do sistema. No Android o retorno é
+ * sempre por deep link (`com.vigora.saude:/oauthredirect`), tratado em
+ * app/oauthredirect.tsx, então o login termina igual.
+ *
+ * @returns `true` quando usou o fallback (o app volta ao primeiro plano na hora,
+ * então quem chamou precisa liberar o estado de loading).
+ */
+export async function openGoogleAuth(
+  promptAsync: () => Promise<unknown>,
+  authUrl: string | null | undefined
+): Promise<boolean> {
+  try {
+    await promptAsync();
+    return false;
+  } catch (err) {
+    if (Platform.OS !== "android" || !authUrl) throw err;
+    console.warn("[GoogleLogin] Custom Tab indisponível, abrindo navegador padrão:", err);
+    await Linking.openURL(authUrl);
+    return true;
+  }
 }
 
 /**

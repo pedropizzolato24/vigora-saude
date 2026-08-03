@@ -15,21 +15,33 @@ import * as Auth from "@/lib/_core/auth";
 
 const LEGACY_KEY = "vigora_app_state";
 
-/** Chave do blob de estado da conta (blob legado quando deslogado). */
-export function appStateKeyFor(openId: string | null | undefined): string {
-  return openId ? `${LEGACY_KEY}:${openId}` : LEGACY_KEY;
+/**
+ * Chave do blob de estado da conta, ou `null` quando não há conta.
+ *
+ * Deslogado NÃO tem blob. Antes isto devolvia a chave legada global, então o
+ * app sem conta lia e escrevia nela — o que reagendava alarmes num aparelho
+ * deslogado e, pior, fazia esse estado ser ADOTADO pela próxima conta que
+ * logasse (a migração abaixo adota o legado). Ver tests/app-state-storage.test.ts.
+ */
+export function appStateKeyFor(openId: string | null | undefined): string | null {
+  return openId ? `${LEGACY_KEY}:${openId}` : null;
 }
 
 /**
  * Lê o estado local (JSON cru) da conta. Se a conta ainda não tem blob próprio
  * e existe o blob legado pré-refactor, adota-o (migração) e apaga o legado.
+ *
+ * Sem conta, devolve null sem tocar em nada — inclusive sem consumir o legado,
+ * que ainda pertence à próxima conta que logar neste aparelho.
  */
 export async function loadAppStateRaw(
   openId: string | null | undefined
 ): Promise<string | null> {
   const key = appStateKeyFor(openId);
+  if (key == null) return null;
+
   let raw = await AsyncStorage.getItem(key);
-  if (raw == null && key !== LEGACY_KEY) {
+  if (raw == null) {
     const legacy = await AsyncStorage.getItem(LEGACY_KEY);
     if (legacy != null) {
       await AsyncStorage.setItem(key, legacy);

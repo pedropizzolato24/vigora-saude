@@ -90,8 +90,15 @@ export function WheelPicker({
   const scrollRef = useRef<ScrollView>(null);
   const centreStart = count * Math.floor(COPIES / 2);
 
+  // Último índice que NÓS mandamos a roda mostrar. Sem isto, o reancoramento
+  // abaixo cortava o scroll animado da setinha no meio; no iOS o corte dispara
+  // onMomentumScrollEnd com um offset intermediário e o handler "corrigia" o
+  // valor de volta para o anterior — o número piscava e voltava.
+  const commandedIndex = useRef<number | null>(null);
+
   const scrollToIndex = useCallback(
     (index: number, animated = false) => {
+      commandedIndex.current = index;
       scrollRef.current?.scrollTo({ y: index * itemH, animated });
     },
     [itemH],
@@ -99,6 +106,8 @@ export function WheelPicker({
 
   useEffect(() => {
     const targetIndex = centreStart + value;
+    // Já comandado (setinha, digitação ou arrasto): a roda está indo pra lá.
+    if (commandedIndex.current === targetIndex) return;
     const timer = setTimeout(() => scrollToIndex(targetIndex, false), 50);
     return () => clearTimeout(timer);
   }, [value, centreStart, scrollToIndex]);
@@ -117,6 +126,7 @@ export function WheelPicker({
       }
 
       const centredIndex = centreStart + newValue;
+      commandedIndex.current = centredIndex;
       if (rawIndex !== centredIndex) {
         scrollRef.current?.scrollTo({ y: centredIndex * itemH, animated: false });
       }

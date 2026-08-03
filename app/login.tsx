@@ -21,7 +21,12 @@ import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/use-colors";
 import { useAppContext } from "@/lib/app-context";
 import * as Auth from "@/lib/_core/auth";
-import { finishGoogleLogin, persistOAuthPkce } from "@/lib/google-signin";
+import {
+  finishGoogleLogin,
+  openGoogleAuth,
+  persistOAuthPkce,
+} from "@/lib/google-signin";
+import { signInWithGoogleNative } from "@/lib/google-native-signin";
 import { isAppleCancel, signInWithApple } from "@/lib/apple-signin";
 import { signInAnonymously } from "@/lib/anonymous-signin";
 import { completeServerLogin } from "@/lib/auth-session";
@@ -155,7 +160,10 @@ export default function LoginScreen() {
     } else if (response.type === "error") {
       setError("Autenticação cancelada ou recusada pelo Google.");
       setLoading(false);
-    } else if (response.type === "dismiss") {
+    } else {
+      // Qualquer outro desfecho (cancel/dismiss/locked) só encerra o loading.
+      // Tratar só "dismiss" travava a tela no iOS: fechar o Safari devolve
+      // "cancel" e os botões ficavam desabilitados até reabrir o app.
       setLoading(false);
     }
   }, [response]);
@@ -166,16 +174,51 @@ export default function LoginScreen() {
     }
     setLoading(true);
     setError(null);
+    // Guardado para entrar na mensagem de erro se o navegador também falhar —
+    // sem isso o motivo real do caminho nativo se perde.
+    let nativeError: unknown = null;
     try {
+      // Android: Play Services primeiro. O seletor de conta é desenhado pelo
+      // sistema, então funciona em aparelho sem navegador nenhum (Samsung A15).
+      if (Platform.OS === "android") {
+        try {
+          await signInWithGoogleNative(router, reconcileFromCloud);
+          setLoading(false);
+          return;
+        } catch (err) {
+          nativeError = err;
+          console.warn("[Login] Google nativo falhou, tentando navegador:", err);
+        }
+      }
+
       // Persiste o PKCE antes de abrir o browser: no Android o redirect volta
       // como deep link (podendo reabrir o app do zero) e a troca acontece em
       // app/oauthredirect.tsx, fora do estado em memória deste componente.
       if (request?.codeVerifier && request.redirectUri) {
         await persistOAuthPkce(request.codeVerifier, request.redirectUri);
       }
-      await promptAsync();
-    } catch {
-      setError("Não foi possível iniciar o login. Verifique sua conexão e tente novamente.");
+      // openGoogleAuth cai no navegador padrão quando o aparelho não tem Custom
+      // Tab disponível; nesse caso o app volta na hora e o loading pode sair.
+      if (await openGoogleAuth(promptAsync, request?.url)) {
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("[Login] Falha ao abrir o consentimento do Google:", err);
+      // Diagnóstico dos builds de teste: quando nem o Custom Tab nem o navegador
+      // padrão abrem, a lista de navegadores que o app enxerga diz se o aparelho
+      // não tem nenhum ou se é o filtro de visibilidade do Android 11+.
+      const browsers = await WebBrowser.getCustomTabsSupportingBrowsersAsync()
+        .then((r) => r.browserPackages.join(", ") || "nenhum")
+        .catch(() => "não foi possível listar");
+      const describe = (e: unknown) =>
+        e instanceof Error ? e.message : String(e);
+      setError(
+        `Não foi possível iniciar o login. Verifique sua conexão e tente novamente. (${describe(
+          err
+        )} | navegadores: ${browsers}${
+          nativeError ? ` | nativo: ${describe(nativeError)}` : ""
+        })`
+      );
       setLoading(false);
     }
   };

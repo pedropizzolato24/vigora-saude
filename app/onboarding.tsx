@@ -117,6 +117,40 @@ const SLIDES: OnboardingSlide[] = [
   },
 ];
 
+// O caminho da permissão "o tempo todo" muda por sistema: no Android está em
+// Permissões do app; no iOS é a tela Localização dentro dos Ajustes do app.
+// Sem isto o iPhone recebia um passo a passo de Android que não existe lá.
+const SETTINGS_APP = Platform.OS === 'ios' ? 'Ajustes' : 'Configurações';
+
+// O diálogo do sistema não oferece as mesmas opções: o iOS só concede o uso em
+// primeiro plano nesta etapa ("o tempo todo" vem depois, pelos Ajustes).
+const FOREGROUND_LOCATION_HINT =
+  Platform.OS === 'ios'
+    ? 'Selecione "Permitir ao usar o app" no diálogo do sistema.'
+    : 'Selecione "Permitir enquanto usa o app" ou "Permitir o tempo todo" no diálogo do sistema.';
+
+const BACKGROUND_LOCATION_GUIDE =
+  Platform.OS === 'ios'
+    ? {
+        title: 'Como ativar no iPhone:',
+        steps: [
+          `Toque em "Ir para ${SETTINGS_APP}" abaixo`,
+          'Toque em "Localização"',
+          'Selecione "Sempre"',
+          'Volte ao app e toque em "Próximo"',
+        ],
+      }
+    : {
+        title: 'Como ativar no Android:',
+        steps: [
+          `Toque em "Ir para ${SETTINGS_APP}" abaixo`,
+          'Toque em "Permissões"',
+          'Toque em "Localização"',
+          'Selecione "Permitir o tempo todo"',
+          'Volte ao app e toque em "Próximo"',
+        ],
+      };
+
 export default function OnboardingScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -255,7 +289,7 @@ export default function OnboardingScreen() {
           <View style={[styles.permissionInfoBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <MaterialIcons name="info-outline" size={18} color={colors.muted} />
             <Text style={[styles.permissionInfoText, { color: colors.muted }]}>
-              Selecione "Permitir enquanto usa o app" ou "Permitir o tempo todo" no diálogo do sistema.
+              {FOREGROUND_LOCATION_HINT}
             </Text>
           </View>
         )}
@@ -289,15 +323,9 @@ export default function OnboardingScreen() {
             {/* Step-by-step guide */}
             <View style={[styles.guideBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={[styles.guideTitle, { color: colors.foreground }]}>
-                Como ativar no Android:
+                {BACKGROUND_LOCATION_GUIDE.title}
               </Text>
-              {[
-                'Toque em "Ir para Configurações" abaixo',
-                'Toque em "Permissões"',
-                'Toque em "Localização"',
-                'Selecione "Permitir o tempo todo"',
-                'Volte ao app e toque em "Próximo"',
-              ].map((step, i) => (
+              {BACKGROUND_LOCATION_GUIDE.steps.map((step, i) => (
                 <View key={i} style={styles.guideStep}>
                   <View style={[styles.guideStepNumber, { backgroundColor: item.iconBg }]}>
                     <Text style={[styles.guideStepNumberText, { color: colors.onPrimary }]}>{i + 1}</Text>
@@ -315,11 +343,11 @@ export default function OnboardingScreen() {
               ]}
             >
               <MaterialIcons name="settings" size={20} color={colors.onPrimary} />
-              <Text style={[styles.settingsButtonText, { color: colors.onPrimary }]}>Ir para Configurações</Text>
+              <Text style={[styles.settingsButtonText, { color: colors.onPrimary }]}>Ir para {SETTINGS_APP}</Text>
             </Pressable>
 
             <Text style={[styles.skipHint, { color: colors.muted }]}>
-              Você pode pular esta etapa e configurar depois em Configurações {'>'}{'>'} Localização.
+              Você pode pular esta etapa e configurar depois em {SETTINGS_APP} {'>'}{'>'} Localização.
             </Text>
           </>
         )}

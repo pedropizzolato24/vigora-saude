@@ -11,6 +11,7 @@
 
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import * as Auth from '@/lib/_core/auth';
 import { Alarm } from './app-context';
 import {
   scheduleAlarmNotification,
@@ -76,6 +77,17 @@ export async function cancelFullAlarm(alarm: Alarm): Promise<void> {
  */
 export async function syncAlarmsOnStartup(alarms: Alarm[]): Promise<void> {
   try {
+    // Defesa em profundidade: alarme pertence a uma conta. Sem conta logada não
+    // se agenda nada — um aparelho deslogado chegou a tocar o alarme da última
+    // conta que o usou. A causa primária (estado carregado sem conta) foi
+    // corrigida em app-state-storage, mas agendar alarme é o caminho mais
+    // crítico do app e não deve depender de outra camada ter acertado.
+    const user = await Auth.getUserInfo().catch(() => null);
+    if (!user) {
+      console.log('[Alarm Sync] Sem conta logada — nada a agendar');
+      return;
+    }
+
     // Get all scheduled notifications to check which are missing
     const scheduledNotifications = Platform.OS !== 'web'
       ? await Notifications.getAllScheduledNotificationsAsync()

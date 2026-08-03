@@ -1,6 +1,7 @@
 import * as Api from "@/lib/_core/api";
 import * as Auth from "@/lib/_core/auth";
 import { clearAppLockStorage } from "@/lib/app-lock-storage";
+import { unregisterDevicePushToken } from "@/lib/push-registration";
 import { logoutUser } from "@/lib/purchases";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform } from "react-native";
@@ -87,6 +88,11 @@ export function useAuth(options?: UseAuthOptions) {
   }, []);
 
   const logout = useCallback(async () => {
+    // ANTES de descartar a sessão (a rota exige auth): tira este aparelho da
+    // lista de destinos de push. Sem isto a linha em push_tokens sobrevivia ao
+    // logout e o aparelho seguia recebendo os alertas da conta que o registrou,
+    // mesmo sem ninguém logado. Best-effort — não pode travar o logout.
+    await unregisterDevicePushToken();
     try {
       await Api.logout();
     } catch (err) {

@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useRe
 import { updateAllWidgets } from './update-widgets';
 import { setNativeAlarmVolume } from './native-alarm-manager';
 import { pullCloudData, pushCloudData, type CloudSnapshot } from './cloud-sync';
+import { switchAccount } from './_core/account-switch';
 import { appStateKeyFor, loadAppStateRaw } from './app-state-storage';
 import * as Auth from './_core/auth';
 
@@ -397,9 +398,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // dela carrega. (require preguiçoso: alarm-sync importa o tipo Alarm daqui
       // — import estático criaria ciclo.)
       const { cancelAllAlarms } = require('./alarm-sync') as typeof import('./alarm-sync');
-      cancelAllAlarms().catch(() => {});
-      dispatch({ type: 'RESET_FOR_ACCOUNT_SWITCH' });
-      loadFor(next);
+      // A ordem é crítica: o cancelamento precisa TERMINAR antes do carregamento,
+      // senão ele resolve depois do reagendamento e apaga os alarmes da conta que
+      // entrou. Ver lib/_core/account-switch.ts e tests/account-switch.test.ts.
+      void switchAccount({
+        resetState: () => dispatch({ type: 'RESET_FOR_ACCOUNT_SWITCH' }),
+        cancelAlarms: cancelAllAlarms,
+        loadState: () => loadFor(next),
+        isStillCurrent: () => activeOpenIdRef.current === next,
+      });
     });
     return unsubscribe;
   }, []);
@@ -476,11 +483,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Persist state on every change (except isLoading). A chave vem do ref da
   // conta ativa (síncrono) para nunca gravar o estado de uma conta sob a
-  // chave de outra durante uma troca.
+  // chave de outra durante uma troca. Sem conta não há chave — o app deslogado
+  // não persiste nada (antes gravava no blob legado global, que era adotado
+  // pela próxima conta a logar no aparelho).
   useEffect(() => {
     if (state.isLoading) return;
-    const { isLoading: _loading, ...persistable } = state;
     const key = appStateKeyFor(activeOpenIdRef.current ?? null);
+    if (key == null) return;
+    const { isLoading: _loading, ...persistable } = state;
     AsyncStorage.setItem(key, JSON.stringify(persistable)).catch(() => {});
   }, [state]);
 

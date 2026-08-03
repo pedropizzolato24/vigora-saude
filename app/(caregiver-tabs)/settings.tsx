@@ -5,7 +5,9 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View,
 } from 'react-native';
+import { AccountDangerZone } from '@/components/account-danger-zone';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
+import { DataExportButton } from '@/components/data-export-button';
 import { ProtectAccountBanner } from '@/components/protect-account-banner';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
@@ -13,7 +15,6 @@ import { useFontSize } from '@/lib/font-size-context';
 import { useAccessibility } from '@/lib/accessibility-context';
 import { BrandFonts } from '@/lib/_core/theme';
 import { useAuth } from '@/hooks/use-auth';
-import { useDeleteAccount } from '@/hooks/use-delete-account';
 import * as Auth from '@/lib/_core/auth';
 import { useAppLock } from '@/lib/app-lock-context';
 import { useCaregiverContext } from '@/lib/caregiver-context';
@@ -40,11 +41,6 @@ export default function CaregiverSettingsScreen() {
   const { state, clearLinkedMonitored, updateNotificationPrefs } = useCaregiverContext();
   const { dialogProps, showDialog } = useAppDialog();
   const appLock = useAppLock();
-  const { runDeleteAccount, isDeleting } = useDeleteAccount(async () => {
-    clearLinkedMonitored();
-    await AsyncStorage.multiRemove(['vigora_caregiver_state']);
-  });
-
   const updateProfile = trpc.auth.updateProfile.useMutation();
 
   const [name, setName] = useState('');
@@ -113,36 +109,6 @@ export default function CaregiverSettingsScreen() {
             // re-onboarda ao relogar e uma conta diferente ainda vê o onboarding.
             await AsyncStorage.multiRemove(['vigora_caregiver_state']);
             router.replace('/login');
-          },
-        },
-      ],
-    });
-  };
-
-  const confirmDeleteAccount = () => {
-    if (isDeleting) return;
-    showDialog({
-      title: 'Excluir minha conta',
-      message:
-        'Esta ação é PERMANENTE. Apaga sua conta e todos os seus dados dos nossos servidores — perfil, vínculos com quem você acompanha e notificações. Não há como desfazer.',
-      variant: 'confirm',
-      buttons: [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir conta',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await runDeleteAccount();
-            } catch {
-              showDialog({
-                title: 'Não foi possível excluir',
-                message:
-                  'Houve um erro ao excluir sua conta no servidor. Seus dados não foram apagados. Tente novamente em instantes.',
-                variant: 'error',
-                buttons: [{ text: 'OK' }],
-              });
-            }
           },
         },
       ],
@@ -313,6 +279,9 @@ export default function CaregiverSettingsScreen() {
           </Pressable>
         </Section>
 
+        {/* Portabilidade de dados (LGPD Art. 18 V) — fora da zona perigosa */}
+        <DataExportButton />
+
         {/* Logout */}
         <Pressable
           onPress={confirmLogout}
@@ -323,22 +292,15 @@ export default function CaregiverSettingsScreen() {
           <Text style={[styles.logoutText, { color: c.error, fontSize: sz.logout, fontFamily: BrandFonts.body }]}>Sair da conta</Text>
         </Pressable>
 
-        {/* Exclusão definitiva da conta (LGPD Art. 18, VI) */}
-        <Pressable
-          onPress={confirmDeleteAccount}
-          disabled={isDeleting}
-          accessibilityRole="button"
-          accessibilityLabel="Excluir minha conta e todos os dados do servidor"
-          style={({ pressed }) => [styles.logoutBtn, { borderColor: c.error, borderWidth: bw, minHeight: touch, opacity: isDeleting ? 0.6 : pressed ? 0.85 : 1 }]}
-        >
-          <MaterialIcons name="no-accounts" size={a11y ? 26 : 20} color={c.error} />
-          <Text style={[styles.logoutText, { color: c.error, fontSize: sz.logout, fontFamily: BrandFonts.body }]}>
-            {isDeleting ? 'Excluindo...' : 'Excluir minha conta'}
-          </Text>
-        </Pressable>
-        <Text style={[styles.note, { color: c.muted, textAlign: 'center', fontSize: sz.note, fontFamily: BrandFonts.body }]}>
-          Apaga sua conta e todos os dados dos nossos servidores (LGPD, Art. 18). Permanente.
-        </Text>
+        {/* Exclusão de conta (LGPD Art. 18 VI) — irreversível, isolada no fim.
+            O cuidador não tem tela de Perfil, então aqui é o rodapé da conta. */}
+        <AccountDangerZone
+          message="Esta ação é PERMANENTE. Apaga sua conta e todos os seus dados dos nossos servidores — perfil, vínculos com quem você acompanha e notificações. Não há como desfazer."
+          clearLocalData={async () => {
+            clearLinkedMonitored();
+            await AsyncStorage.multiRemove(['vigora_caregiver_state']);
+          }}
+        />
       </ScrollView>
       <AppDialog {...dialogProps} />
     </ScreenContainer>
