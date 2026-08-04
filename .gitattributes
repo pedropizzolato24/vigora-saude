@@ -1,0 +1,3 @@
+# scripts shell precisam de LF; com autocrlf=true o checkout poria CRLF e
+# o bash falharia com "$: command not found"
+*.sh text eol=lf
