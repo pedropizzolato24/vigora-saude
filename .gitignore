@@ -46,7 +46,11 @@ app-example
 # generated native folders
 /ios
 /android
-modules/expo-alarm-countdown/android/
+# só o gerado — o build.gradle e os fontes .kt precisam subir para o EAS
+# (o EAS usa o .gitignore para montar o upload, então ignorar a pasta inteira
+# fazia o Gradle resolver :expo-alarm-countdown como projeto sem variants)
+modules/expo-alarm-countdown/android/.gradle/
+modules/expo-alarm-countdown/android/build/
 
 # IDE
 .vscode/
