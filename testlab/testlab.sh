@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Orquestração do Firebase Test Lab para o Vigora (Android, robo crawl).
 #
-#   ./testlab/testlab.sh devices              lista modelos Xiaomi/Redmi e sugere 5
+#   ./testlab/testlab.sh devices [marca...]   lista o catálogo da marca e sugere 5
 #   ./testlab/testlab.sh run <caminho.apk>    roda o robo em cada device de devices.txt
 #   ./testlab/testlab.sh pull                 baixa screenshots/vídeo/logcat da última rodada
 #
