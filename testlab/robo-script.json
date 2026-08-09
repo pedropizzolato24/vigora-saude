@@ -1,5 +1,24 @@
 [
   {
+    "id": 999,
+    "description": "SEGURANÇA: impede o robo de tocar no SOS e nos botões 'Ligar' da tela de ambulância — o SOS abre um contador de 3s que dispara sozinho (escalateSOSToContacts: WhatsApp real + push real pro cuidador se a conta tiver contatos/cuidador vinculado) e 'Ligar' abre o discador com o número da SAMU/Bombeiros pronto. pre_crawl roda uma vez, antes do robo decidir o que tocar, então esses elementos nunca entram na lista de candidatos.",
+    "crawlStage": "pre_crawl",
+    "actions": [
+      {
+        "eventType": "ELEMENT_IGNORED",
+        "elementDescriptors": [
+          { "contentDescriptionRegex": "^Botão( de emergência| SOS de emergência)" }
+        ]
+      },
+      {
+        "eventType": "ELEMENT_IGNORED",
+        "elementDescriptors": [
+          { "textRegex": "^Ligar" }
+        ]
+      }
+    ]
+  },
+  {
     "id": 1000,
     "description": "Onboarding: toca Próximo/Permitir Localização/Começar sempre que presente na tela — o crawl padrão do robo não repete o mesmo toque pelas 7 telas em sequência",
     "crawlStage": "crawl",
