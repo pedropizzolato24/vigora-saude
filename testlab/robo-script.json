@@ -20,225 +20,51 @@
   },
   {
     "id": 1000,
-    "description": "Onboarding: toca Próximo/Permitir Localização/Começar sempre que presente na tela — o crawl padrão do robo não repete o mesmo toque pelas 7 telas em sequência",
-    "crawlStage": "crawl",
-    "contextDescriptor": {
-      "condition": "element_present",
-      "elementDescriptors": [
-        { "contentDescriptionRegex": "^(Próximo|Permitir Localização|Começar), ?" }
-      ]
-    },
+    "description": "SEQUÊNCIA LINEAR (pre_crawl, roda uma vez, em ordem fixa — não depende do robo decidir sozinho se vale continuar explorando). Achado na 1ª rodada real: os 5 slides 'info' do onboarding têm a MESMA estrutura de view, então o robo trata tudo como 'a mesma tela já vista' e encerra o crawl inteiro depois de UM toque em 'Próximo' — login/cadastro/alarme nunca eram alcançados com crawlStage:'crawl' reativo. pre_crawl ignora essa heurística e apenas repete os passos na ordem escrita aqui.",
+    "crawlStage": "pre_crawl",
     "actions": [
-      {
-        "eventType": "VIEW_CLICKED",
-        "elementDescriptors": [
-          { "contentDescriptionRegex": "^(Próximo|Permitir Localização|Começar), ?" }
-        ],
-        "optional": true
-      }
-    ]
-  },
-  {
-    "id": 1001,
-    "description": "Login: pula OAuth (sai do app) usando o botão 'Continuar sem conta' — accessibilityLabel confirmado em app/login.tsx",
-    "crawlStage": "crawl",
-    "contextDescriptor": {
-      "condition": "element_present",
-      "elementDescriptors": [
-        { "contentDescription": "Continuar sem conta" }
-      ]
-    },
-    "actions": [
-      {
-        "eventType": "VIEW_CLICKED",
-        "elementDescriptors": [
-          { "contentDescription": "Continuar sem conta" }
-        ],
-        "optional": true
-      }
-    ]
-  },
-  {
-    "id": 1002,
-    "description": "Cadastro: preenche Nome completo — accessibilityLabel adicionado em app/register.tsx só para isto (campo não tinha nenhum identificador estável, só placeholder)",
-    "crawlStage": "crawl",
-    "contextDescriptor": {
-      "condition": "element_present",
-      "elementDescriptors": [
-        { "contentDescription": "Nome completo" }
-      ]
-    },
-    "actions": [
-      {
-        "eventType": "VIEW_TEXT_CHANGED",
-        "elementDescriptors": [
-          { "contentDescription": "Nome completo" }
-        ],
-        "replacementText": "Usuário Robo",
-        "optional": true
-      }
-    ]
-  },
-  {
-    "id": 1003,
-    "description": "Cadastro: preenche Telefone com DDD — validação exige 10+ dígitos após formatPhone() remover a máscara",
-    "crawlStage": "crawl",
-    "contextDescriptor": {
-      "condition": "element_present",
-      "elementDescriptors": [
-        { "contentDescription": "Telefone com DDD" }
-      ]
-    },
-    "actions": [
-      {
-        "eventType": "VIEW_TEXT_CHANGED",
-        "elementDescriptors": [
-          { "contentDescription": "Telefone com DDD" }
-        ],
-        "replacementText": "11987654321",
-        "optional": true
-      }
-    ]
-  },
-  {
-    "id": 1004,
-    "description": "Cadastro: seleciona 'Para mim' (userType=monitored) — obrigatório para o submit passar na validação",
-    "crawlStage": "crawl",
-    "contextDescriptor": {
-      "condition": "element_present",
-      "elementDescriptors": [
-        { "contentDescriptionRegex": "^, Para mim," }
-      ]
-    },
-    "actions": [
-      {
-        "eventType": "VIEW_CLICKED",
-        "elementDescriptors": [
-          { "contentDescriptionRegex": "^, Para mim," }
-        ],
-        "optional": true
-      }
-    ]
-  },
-  {
-    "id": 1005,
-    "description": "Cadastro: toca 'Concluir cadastro' — só passa quando nome/telefone/tipo já estão preenchidos; se tocado cedo demais mostra erro e o robo tenta de novo depois",
-    "crawlStage": "crawl",
-    "contextDescriptor": {
-      "condition": "element_present",
-      "elementDescriptors": [
-        { "contentDescription": "Concluir cadastro" }
-      ]
-    },
-    "actions": [
-      {
-        "eventType": "VIEW_CLICKED",
-        "elementDescriptors": [
-          { "contentDescription": "Concluir cadastro" }
-        ],
-        "optional": true
-      }
-    ]
-  },
-  {
-    "id": 1006,
-    "description": "TEMP TESTLAB: entra na aba Remédios (alarms.tsx) a partir da home",
-    "crawlStage": "crawl",
-    "contextDescriptor": {
-      "condition": "element_present",
-      "elementDescriptors": [
-        { "contentDescription": "Remédios" }
-      ]
-    },
-    "actions": [
-      {
-        "eventType": "VIEW_CLICKED",
-        "elementDescriptors": [
-          { "contentDescription": "Remédios" }
-        ],
-        "optional": true
-      }
-    ]
-  },
-  {
-    "id": 1007,
-    "description": "TEMP TESTLAB: abre o formulário de novo lembrete — com a mudança temporária em alarms.tsx (openAddModal), já abre com a hora ATUAL do aparelho, não mais 08:00 fixo",
-    "crawlStage": "crawl",
-    "contextDescriptor": {
-      "condition": "element_present",
-      "elementDescriptors": [
-        { "contentDescription": "Adicionar lembrete de medicação" }
-      ]
-    },
-    "actions": [
-      {
-        "eventType": "VIEW_CLICKED",
-        "elementDescriptors": [
-          { "contentDescription": "Adicionar lembrete de medicação" }
-        ],
-        "optional": true
-      }
-    ]
-  },
-  {
-    "id": 1008,
-    "description": "TEMP TESTLAB: empurra o minuto +2 a partir da hora atual (maxNumberOfRuns limita a exatamente 2 toques em todo o crawl — sem isso, 'element_present' dispararia de novo toda vez que o robo revisitasse a tela e o alarme acabaria muito mais que 2min no futuro)",
-    "crawlStage": "crawl",
-    "maxNumberOfRuns": 2,
-    "contextDescriptor": {
-      "condition": "element_present",
-      "elementDescriptors": [
-        { "contentDescription": "Aumentar minuto" }
-      ]
-    },
-    "actions": [
-      {
-        "eventType": "VIEW_CLICKED",
-        "elementDescriptors": [
-          { "contentDescription": "Aumentar minuto" }
-        ],
-        "optional": true
-      }
-    ]
-  },
-  {
-    "id": 1009,
-    "description": "TEMP TESTLAB: salva o lembrete (hora atual + 2min, repetição/descrição ficam no padrão)",
-    "crawlStage": "crawl",
-    "contextDescriptor": {
-      "condition": "element_present",
-      "elementDescriptors": [
-        { "contentDescription": "Salvar lembrete" }
-      ]
-    },
-    "actions": [
-      {
-        "eventType": "VIEW_CLICKED",
-        "elementDescriptors": [
-          { "contentDescription": "Salvar lembrete" }
-        ],
-        "optional": true
-      }
-    ]
-  },
-  {
-    "id": 1010,
-    "description": "SEGURANÇA: dispensa a tela de alarme tocado assim que aparece — ela tem contador de 30s que dispara escalateAlarmToContacts (WhatsApp real) se ninguém tocar 'Desligar alarme' antes. A aparição da tela já é a prova de que o alarme disparou (visível no vídeo/screenshot); não precisa esperar o countdown.",
-    "crawlStage": "crawl",
-    "contextDescriptor": {
-      "condition": "element_present",
-      "elementDescriptors": [
-        { "contentDescription": "Desligar alarme" }
-      ]
-    },
-    "actions": [
-      {
-        "eventType": "VIEW_CLICKED",
-        "elementDescriptors": [
-          { "contentDescription": "Desligar alarme" }
-        ],
-        "optional": true
-      }
+      { "eventType": "WAIT", "delayTime": 3000 },
+
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescriptionRegex": "^(Próximo|Permitir Localização|Começar), ?" }], "optional": true },
+      { "eventType": "WAIT", "delayTime": 700 },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescriptionRegex": "^(Próximo|Permitir Localização|Começar), ?" }], "optional": true },
+      { "eventType": "WAIT", "delayTime": 700 },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescriptionRegex": "^(Próximo|Permitir Localização|Começar), ?" }], "optional": true },
+      { "eventType": "WAIT", "delayTime": 700 },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescriptionRegex": "^(Próximo|Permitir Localização|Começar), ?" }], "optional": true },
+      { "eventType": "WAIT", "delayTime": 700 },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescriptionRegex": "^(Próximo|Permitir Localização|Começar), ?" }], "optional": true },
+      { "eventType": "WAIT", "delayTime": 700 },
+
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescriptionRegex": "^(Próximo|Permitir Localização|Começar), ?" }], "optional": true },
+      { "eventType": "WAIT", "delayTime": 1800 },
+
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescriptionRegex": "^(Próximo|Permitir Localização|Começar), ?" }], "optional": true },
+      { "eventType": "WAIT", "delayTime": 1800 },
+
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescription": "Continuar sem conta" }], "optional": true },
+      { "eventType": "WAIT", "delayTime": 1800 },
+
+      { "eventType": "VIEW_TEXT_CHANGED", "elementDescriptors": [{ "contentDescription": "Nome completo" }], "replacementText": "Usuário Robo", "optional": true },
+      { "eventType": "VIEW_TEXT_CHANGED", "elementDescriptors": [{ "contentDescription": "Telefone com DDD" }], "replacementText": "11987654321", "optional": true },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescriptionRegex": "^, Para mim," }], "optional": true },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescription": "Concluir cadastro" }], "optional": true },
+      { "eventType": "WAIT", "delayTime": 3500 },
+
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescription": "Remédios" }], "optional": true },
+      { "eventType": "WAIT", "delayTime": 1200 },
+
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescription": "Adicionar lembrete de medicação" }], "optional": true },
+      { "eventType": "WAIT", "delayTime": 1200 },
+
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescription": "Aumentar minuto" }], "optional": true },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescription": "Aumentar minuto" }], "optional": true },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescription": "Salvar lembrete" }], "optional": true },
+      { "eventType": "WAIT", "delayTime": 3500 },
+
+      { "eventType": "WAIT", "delayTime": 130000 },
+
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescription": "Desligar alarme" }], "optional": true }
     ]
   }
 ]
