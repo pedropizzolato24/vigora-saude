@@ -38,5 +38,87 @@
         "optional": true
       }
     ]
+  },
+  {
+    "id": 1002,
+    "description": "Cadastro: preenche Nome completo — accessibilityLabel adicionado em app/register.tsx só para isto (campo não tinha nenhum identificador estável, só placeholder)",
+    "crawlStage": "crawl",
+    "contextDescriptor": {
+      "condition": "element_present",
+      "elementDescriptors": [
+        { "contentDescription": "Nome completo" }
+      ]
+    },
+    "actions": [
+      {
+        "eventType": "VIEW_TEXT_CHANGED",
+        "elementDescriptors": [
+          { "contentDescription": "Nome completo" }
+        ],
+        "replacementText": "Usuário Robo",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": 1003,
+    "description": "Cadastro: preenche Telefone com DDD — validação exige 10+ dígitos após formatPhone() remover a máscara",
+    "crawlStage": "crawl",
+    "contextDescriptor": {
+      "condition": "element_present",
+      "elementDescriptors": [
+        { "contentDescription": "Telefone com DDD" }
+      ]
+    },
+    "actions": [
+      {
+        "eventType": "VIEW_TEXT_CHANGED",
+        "elementDescriptors": [
+          { "contentDescription": "Telefone com DDD" }
+        ],
+        "replacementText": "11987654321",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": 1004,
+    "description": "Cadastro: seleciona 'Para mim' (userType=monitored) — obrigatório para o submit passar na validação",
+    "crawlStage": "crawl",
+    "contextDescriptor": {
+      "condition": "element_present",
+      "elementDescriptors": [
+        { "contentDescriptionRegex": "^, Para mim," }
+      ]
+    },
+    "actions": [
+      {
+        "eventType": "VIEW_CLICKED",
+        "elementDescriptors": [
+          { "contentDescriptionRegex": "^, Para mim," }
+        ],
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": 1005,
+    "description": "Cadastro: toca 'Concluir cadastro' — só passa quando nome/telefone/tipo já estão preenchidos; se tocado cedo demais mostra erro e o robo tenta de novo depois",
+    "crawlStage": "crawl",
+    "contextDescriptor": {
+      "condition": "element_present",
+      "elementDescriptors": [
+        { "contentDescription": "Concluir cadastro" }
+      ]
+    },
+    "actions": [
+      {
+        "eventType": "VIEW_CLICKED",
+        "elementDescriptors": [
+          { "contentDescription": "Concluir cadastro" }
+        ],
+        "optional": true
+      }
+    ]
   }
 ]

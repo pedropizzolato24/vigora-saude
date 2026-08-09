@@ -227,6 +227,7 @@ export default function RegisterScreen() {
             onChangeText={setName}
             placeholder="Como devemos te chamar?"
             placeholderTextColor={colors.muted}
+            accessibilityLabel="Nome completo"
             style={[
               styles.input,
               { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border },
@@ -244,6 +245,7 @@ export default function RegisterScreen() {
             placeholder="(11) 99999-9999"
             placeholderTextColor={colors.muted}
             keyboardType="phone-pad"
+            accessibilityLabel="Telefone com DDD"
             style={[
               styles.input,
               { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border },
