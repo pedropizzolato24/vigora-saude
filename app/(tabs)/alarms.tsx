@@ -289,7 +289,15 @@ export default function AlarmsScreen() {
       return;
     }
     setEditingAlarm(null);
-    setForm(EMPTY_FORM);
+    // TEMP TESTLAB: hora atual em vez do 08:00 fixo do EMPTY_FORM — só pra o
+    // robo do Firebase Test Lab conseguir agendar "daqui a 1-2 min" com
+    // "Aumentar minuto" e validar o disparo real do alarme. Reverter depois
+    // do teste (decisão de produto foi manter 08:00 fixo).
+    const now = new Date();
+    setForm({
+      ...EMPTY_FORM,
+      time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+    });
     setWizardStep(1);
     setModalVisible(true);
   };

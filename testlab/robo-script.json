@@ -139,5 +139,106 @@
         "optional": true
       }
     ]
+  },
+  {
+    "id": 1006,
+    "description": "TEMP TESTLAB: entra na aba Remédios (alarms.tsx) a partir da home",
+    "crawlStage": "crawl",
+    "contextDescriptor": {
+      "condition": "element_present",
+      "elementDescriptors": [
+        { "contentDescription": "Remédios" }
+      ]
+    },
+    "actions": [
+      {
+        "eventType": "VIEW_CLICKED",
+        "elementDescriptors": [
+          { "contentDescription": "Remédios" }
+        ],
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": 1007,
+    "description": "TEMP TESTLAB: abre o formulário de novo lembrete — com a mudança temporária em alarms.tsx (openAddModal), já abre com a hora ATUAL do aparelho, não mais 08:00 fixo",
+    "crawlStage": "crawl",
+    "contextDescriptor": {
+      "condition": "element_present",
+      "elementDescriptors": [
+        { "contentDescription": "Adicionar lembrete de medicação" }
+      ]
+    },
+    "actions": [
+      {
+        "eventType": "VIEW_CLICKED",
+        "elementDescriptors": [
+          { "contentDescription": "Adicionar lembrete de medicação" }
+        ],
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": 1008,
+    "description": "TEMP TESTLAB: empurra o minuto +2 a partir da hora atual (maxNumberOfRuns limita a exatamente 2 toques em todo o crawl — sem isso, 'element_present' dispararia de novo toda vez que o robo revisitasse a tela e o alarme acabaria muito mais que 2min no futuro)",
+    "crawlStage": "crawl",
+    "maxNumberOfRuns": 2,
+    "contextDescriptor": {
+      "condition": "element_present",
+      "elementDescriptors": [
+        { "contentDescription": "Aumentar minuto" }
+      ]
+    },
+    "actions": [
+      {
+        "eventType": "VIEW_CLICKED",
+        "elementDescriptors": [
+          { "contentDescription": "Aumentar minuto" }
+        ],
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": 1009,
+    "description": "TEMP TESTLAB: salva o lembrete (hora atual + 2min, repetição/descrição ficam no padrão)",
+    "crawlStage": "crawl",
+    "contextDescriptor": {
+      "condition": "element_present",
+      "elementDescriptors": [
+        { "contentDescription": "Salvar lembrete" }
+      ]
+    },
+    "actions": [
+      {
+        "eventType": "VIEW_CLICKED",
+        "elementDescriptors": [
+          { "contentDescription": "Salvar lembrete" }
+        ],
+        "optional": true
+      }
+    ]
+  },
+  {
+    "id": 1010,
+    "description": "SEGURANÇA: dispensa a tela de alarme tocado assim que aparece — ela tem contador de 30s que dispara escalateAlarmToContacts (WhatsApp real) se ninguém tocar 'Desligar alarme' antes. A aparição da tela já é a prova de que o alarme disparou (visível no vídeo/screenshot); não precisa esperar o countdown.",
+    "crawlStage": "crawl",
+    "contextDescriptor": {
+      "condition": "element_present",
+      "elementDescriptors": [
+        { "contentDescription": "Desligar alarme" }
+      ]
+    },
+    "actions": [
+      {
+        "eventType": "VIEW_CLICKED",
+        "elementDescriptors": [
+          { "contentDescription": "Desligar alarme" }
+        ],
+        "optional": true
+      }
+    ]
   }
 ]
