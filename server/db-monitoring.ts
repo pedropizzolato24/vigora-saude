@@ -128,6 +128,7 @@ export async function createAlarmEvent(data: InsertAlarmEvent): Promise<number> 
         .set({
           scheduledAt: data.scheduledAt as Date,
           alarmDescription: data.alarmDescription,
+          timezone: data.timezone ?? null,
         })
         .where(eq(alarmEvents.id, keep.id));
       if (extras.length > 0) {
@@ -181,7 +182,7 @@ export async function updateAlarmEventStatusByAlarmId(
   alarmId: string,
   scheduledAt: Date,
   status: "responded" | "missed" | "not_sent"
-): Promise<{ id: number } | null> {
+): Promise<{ id: number; timezone: string | null } | null> {
   const db = await getDb();
   if (!db) return null;
 
@@ -250,7 +251,7 @@ export async function updateAlarmEventStatusByAlarmId(
     (res as { affectedRows?: number }).affectedRows ??
     (res as Array<{ affectedRows?: number }>)[0]?.affectedRows ??
     0;
-  return affected > 0 ? { id: target.id } : null;
+  return affected > 0 ? { id: target.id, timezone: target.timezone } : null;
 }
 
 /**

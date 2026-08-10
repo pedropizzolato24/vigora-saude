@@ -45,6 +45,7 @@ import { getActiveCaregiversForMonitored } from "./db-links";
 import { getPushTokensForOpenIds } from "./db-push";
 import { sendExpoPush } from "./push";
 import type { EmergencyContactRecord } from "../drizzle/schema";
+import { formatEventTime } from "./_core/format-event-time";
 
 // Grace period: how long after scheduledAt we wait before resolving a pending event.
 // Precisa cobrir só o caminho feliz do cliente: countdown máximo de 60s
@@ -569,13 +570,7 @@ export async function runMonitoringJob(): Promise<void> {
       }
 
       const name = userName || "O usuário do Vigora";
-      const scheduledStr = event.scheduledAt.toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-        // O Railway roda em UTC — sem timeZone o horario sai 3h adiantado
-        // para o cuidador/familia (21:00 virava "00:00").
-        timeZone: "America/Sao_Paulo",
-      });
+      const scheduledStr = formatEventTime(event.scheduledAt, event.timezone);
       const message =
         `⚠️ CHECK-IN NÃO RESPONDIDO - Vigora\n\n` +
         `${name} não respondeu ao check-in de saúde previsto para ${scheduledStr}.\n\n` +
@@ -631,13 +626,7 @@ export async function runMonitoringJob(): Promise<void> {
       }
 
       const name = userName || "O usuário do Vigora";
-      const scheduledStr = event.scheduledAt.toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-        // O Railway roda em UTC — sem timeZone o horario sai 3h adiantado
-        // para o cuidador/familia (21:00 virava "00:00").
-        timeZone: "America/Sao_Paulo",
-      });
+      const scheduledStr = formatEventTime(event.scheduledAt, event.timezone);
       const desc = event.alarmDescription || "alarme de medicamento";
       const notSent = event.status === "not_sent";
       const message = notSent

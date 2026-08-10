@@ -182,6 +182,31 @@ describe("Passo 4 — cópia por status do evento", () => {
     expect(waMessage).toContain(`previsto para ${expected}`);
   });
 
+  it("horário respeita o fuso do EVENTO: Acre não recebe horário de Brasília", async () => {
+    // Regressão: "America/Sao_Paulo" era fixo no servidor, então um alarme das
+    // 21:00 no Acre (UTC-5) chegava ao cuidador como 23:00. Horário falso
+    // dentro de alerta de saúde é pior do que horário nenhum.
+    vi.mocked(db.getMissedMedicationEvents).mockResolvedValue([
+      { ...pendingEvent, status: "missed", timezone: "America/Rio_Branco" },
+    ]);
+
+    await runMonitoringJob();
+
+    const acre = SCHEDULED_AT.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "America/Rio_Branco",
+    });
+    const brasilia = SCHEDULED_AT.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "America/Sao_Paulo",
+    });
+    const waMessage = vi.mocked(whatsapp.sendWhatsAppMessage).mock.calls[0][1];
+    expect(waMessage).toContain(`previsto para ${acre}`);
+    expect(waMessage).not.toContain(`previsto para ${brasilia}`);
+  });
+
   it("'missed' → cópia 'não respondeu' preservada", async () => {
     vi.mocked(db.getMissedMedicationEvents).mockResolvedValue([
       { ...pendingEvent, status: "missed" },

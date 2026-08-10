@@ -269,6 +269,20 @@ export async function syncAlarmsToServer(alarms: Alarm[]): Promise<void> {
 // --- Alarm Events -------------------------------------------------------------
 
 /**
+ * Nome IANA do fuso do aparelho (ex.: "America/Rio_Branco"). Em ROM enxuta sem
+ * dados de ICU o Intl pode não resolver o fuso — devolve null e o servidor cai
+ * no fallback de Brasília em vez de gravar um valor inventado.
+ */
+function deviceTimezone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch (error) {
+    console.warn('[Monitoring] fuso do aparelho indisponível:', error);
+    return null;
+  }
+}
+
+/**
  * Create a pending alarm event on the server.
  * Call this when an alarm is about to fire (e.g., in alarm-notification-handler).
  */
@@ -280,6 +294,10 @@ export async function createPendingAlarmEvent(
     alarmId: alarm.id,
     alarmDescription: alarm.description || alarm.time,
     scheduledAt: scheduledAt.toISOString(),
+    // Fuso do aparelho: o servidor usa isso para mostrar ao cuidador o mesmo
+    // horário que o idoso viu na tela. O Brasil tem quatro fusos — sem isso o
+    // Acre recebia "23:00" para um alarme das 21:00.
+    timezone: deviceTimezone(),
   });
   console.log(`[Monitoring] Created pending event for alarm ${alarm.id}`);
 }
