@@ -20,7 +20,7 @@
   },
   {
     "id": 1000,
-    "description": "SEQUÊNCIA LINEAR (pre_crawl, roda uma vez, em ordem fixa — não depende do robo decidir sozinho se vale continuar explorando). Achado na 1ª rodada real: os 5 slides 'info' do onboarding têm a MESMA estrutura de view, então o robo trata tudo como 'a mesma tela já vista' e encerra o crawl inteiro depois de UM toque em 'Próximo' — login/cadastro/alarme nunca eram alcançados com crawlStage:'crawl' reativo. pre_crawl ignora essa heurística e apenas repete os passos na ordem escrita aqui. 2º achado (rodada com pre_crawl): mesmo em pre_crawl, VIEW_CLICKED por contentDescriptor só funcionou no 1º toque em 'Próximo' — reproduzido via ADB manual: toques em coordenada real (input tap) avançam as 7 telas normalmente no mesmo ritmo, então o clique do Robo por elementDescriptor (accessibility action) não está disparando o onPress do Pressable de forma confiável a partir do 2º toque. Troquei os 7 toques do onboarding para POINT_TAP por coordenada percentual (botão fixo no rodapé, mesma posição nas 7 telas: bounds [63,1925][1017,2069] em 1080x2340 ≈ x=50%,y=85%) — não depende de accessibility action.",
+    "description": "SEQUÊNCIA LINEAR (pre_crawl, roda uma vez, em ordem fixa — não depende do robo decidir sozinho se vale continuar explorando). Achado na 1ª rodada real: os 5 slides 'info' do onboarding têm a MESMA estrutura de view, então o robo trata tudo como 'a mesma tela já vista' e encerra o crawl inteiro depois de UM toque em 'Próximo' — login/cadastro/alarme nunca eram alcançados com crawlStage:'crawl' reativo. pre_crawl ignora essa heurística e apenas repete os passos na ordem escrita aqui. 2º achado (rodada com pre_crawl): mesmo em pre_crawl, VIEW_CLICKED por contentDescriptor só funcionou no 1º toque em 'Próximo' — reproduzido via ADB manual: toques em coordenada real (input tap) avançam as 7 telas normalmente no mesmo ritmo, então o clique do Robo por elementDescriptor (accessibility action) não está disparando o onPress do Pressable de forma confiável a partir do 2º toque. Troquei os 7 toques do onboarding para POINT_TAP por coordenada percentual (botão fixo no rodapé, mesma posição nas 7 telas: bounds [63,1925][1017,2069] em 1080x2340 ≈ x=50%,y=85%) — não depende de accessibility action. 3º achado (rodada com POINT_TAP): onboarding confirmado OK (7 monkey taps no actions.json), mas cadastro nunca persistia sessão (relançamento pós-script sempre voltava com 'Session token missing'). 'Continuar sem conta' chama signInAnonymously()+completeServerLogin() — 1ª chamada de rede da sessão pro Railway, pode ter cold start — e o WAIT depois dele era só 1800ms. Aumentado pra 6000ms.",
     "crawlStage": "pre_crawl",
     "actions": [
       { "eventType": "WAIT", "delayTime": 3000 },
@@ -43,7 +43,7 @@
       { "eventType": "WAIT", "delayTime": 1800 },
 
       { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescription": "Continuar sem conta" }], "optional": true },
-      { "eventType": "WAIT", "delayTime": 1800 },
+      { "eventType": "WAIT", "delayTime": 6000 },
 
       { "eventType": "VIEW_TEXT_CHANGED", "elementDescriptors": [{ "contentDescription": "Nome completo" }], "replacementText": "Usuário Robo", "optional": true },
       { "eventType": "VIEW_TEXT_CHANGED", "elementDescriptors": [{ "contentDescription": "Telefone com DDD" }], "replacementText": "11987654321", "optional": true },
