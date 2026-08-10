@@ -14,5 +14,8 @@ guamp,30	# moto g(9) play   — Android 11, o Moto G de entrada mais antigo do c
 caprip,31	# moto g(30)       — Android 12: SCHEDULE_EXACT_ALARM vira revogável (fallback do patch)
 maui,33	# moto g play 2023 — Android 13: USE_EXACT_ALARM + permissão de notificação
 fogos,34	# moto g34 5G      — Android 14: aperta full-screen intent
-RE58C2,35	# realme C53       — Android 15 + realme UI (ColorOS): bateria agressiva,
-	#                     o proxy mais próximo da MIUI que o catálogo oferece
+lamul,35	# moto g05          — Android 15. Era RE58C2 (realme C53, o proxy mais
+	#                     próximo da MIUI/ColorOS, sem Xiaomi/Redmi/POCO no
+	#                     catálogo) mas travou em PENDING 3x em rodadas
+	#                     diferentes (04 e 08/ago) — trocado por device
+	#                     confiável na mesma versão de Android.
