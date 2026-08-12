@@ -129,7 +129,18 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
       body: alarm.description
         ? `Hora do alarme: ${alarm.time} - ${alarm.description}`
         : `Hora do alarme: ${alarm.time}`,
-      sound: alarm.sound ? 'alarm_notification.wav' : undefined,
+      // iOS: só um som CRÍTICO toca com a chavinha lateral no silencioso —
+      // `interruptionLevel: 'critical'` sozinho não basta, o som precisa ser
+      // marcado como crítico. O expo-notifications expõe apenas
+      // `defaultCritical` (UNNotificationSound.defaultCritical); o som próprio
+      // do alarme só viria por `criticalSoundNamed`, que ele não repassa.
+      // Trocamos o timbre pelo alarme que de fato toca: assim que a tela abre,
+      // alarm-ring.tsx assume com alarm.mp3 em loop.
+      sound: alarm.sound
+        ? Platform.OS === 'ios'
+          ? 'defaultCritical'
+          : 'alarm_notification.wav'
+        : undefined,
       vibrate: alarm.vibration ? [0, 500, 200, 500, 200, 500] : undefined,
       data: {
         alarmId: alarm.id,
@@ -138,11 +149,12 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
       priority: Notifications.AndroidNotificationPriority.MAX,
       // Android: sticky notification that requires user interaction
       sticky: true,
-      // iOS: sem isto o alarme é silenciado por qualquer Foco/Não Perturbe —
-      // inclusive o "Modo Sono", justamente quando o remédio da noite toca.
-      // Furar o botão físico de silencioso exigiria Critical Alerts, que só a
-      // Apple libera mediante pedido (ver docs/claude/alarmes.md).
-      interruptionLevel: 'timeSensitive',
+      // iOS: 'critical' fura o Foco/Não Perturbe (inclusive o "Modo Sono",
+      // justamente quando o remédio da noite toca) E a chavinha de silencioso.
+      // Depende do entitlement aprovado pela Apple + do usuário ter aceitado o
+      // pedido de alertas críticos; se ele recusar, o iOS rebaixa sozinho para
+      // o comportamento normal, sem erro.
+      interruptionLevel: 'critical',
     };
 
     // Handle different repeat patterns

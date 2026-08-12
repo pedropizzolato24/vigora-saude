@@ -64,6 +64,15 @@ const config: ExpoConfig = {
     // Só é ligado em produção via EXPO_PUBLIC_APPLE_SIGNIN_ENABLED=true.
     ...(appleSignIn ? { usesAppleSignIn: true } : {}),
     ...(linkHost ? { associatedDomains: [`applinks:${linkHost}`] } : {}),
+    // Critical Alerts — aprovado pela Apple em 12/08/2026 para o alarme de
+    // medicação (pedido em docs/ios-critical-alerts-request.md). É o que
+    // permite o alarme furar o silencioso físico e o Foco/Não Perturbe; sem o
+    // entitlement o iOS ignora `allowCriticalAlerts` e `interruptionLevel:
+    // 'critical'` em silêncio. A capability precisa seguir habilitada no App
+    // ID, senão o build de produção falha na assinatura.
+    "entitlements": {
+      "com.apple.developer.usernotifications.critical-alerts": true
+    },
     "infoPlist": {
       "ITSAppUsesNonExemptEncryption": false
     }
