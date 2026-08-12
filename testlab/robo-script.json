@@ -20,7 +20,7 @@
   },
   {
     "id": 1000,
-    "description": "SEQUÊNCIA LINEAR (pre_crawl, roda uma vez, em ordem fixa — não depende do robo decidir sozinho se vale continuar explorando). Achado na 1ª rodada real: os 5 slides 'info' do onboarding têm a MESMA estrutura de view, então o robo trata tudo como 'a mesma tela já vista' e encerra o crawl inteiro depois de UM toque em 'Próximo' — login/cadastro/alarme nunca eram alcançados com crawlStage:'crawl' reativo. pre_crawl ignora essa heurística e apenas repete os passos na ordem escrita aqui. 2º achado (rodada com pre_crawl): mesmo em pre_crawl, VIEW_CLICKED por contentDescriptor só funcionou no 1º toque em 'Próximo' — reproduzido via ADB manual: toques em coordenada real (input tap) avançam as 7 telas normalmente no mesmo ritmo, então o clique do Robo por elementDescriptor (accessibility action) não está disparando o onPress do Pressable de forma confiável a partir do 2º toque. Troquei os 7 toques do onboarding para POINT_TAP por coordenada percentual (botão fixo no rodapé, mesma posição nas 7 telas: bounds [63,1925][1017,2069] em 1080x2340 ≈ x=50%,y=85%) — não depende de accessibility action. 3º achado (rodada com POINT_TAP): onboarding confirmado OK (7 monkey taps no actions.json), mas cadastro nunca persistia sessão (relançamento pós-script sempre voltava com 'Session token missing'). 'Continuar sem conta' chama signInAnonymously()+completeServerLogin() — 1ª chamada de rede da sessão pro Railway, pode ter cold start — e o WAIT depois dele era só 1800ms. Aumentado pra 6000ms. 4º achado (reproduzido via ADB manual, passo a passo): 'Concluir cadastro' não existe na árvore de acessibilidade até rolar a tela (RN só renderiza o conteúdo visível) — adicionado ONE_POINT_GESTURE (swipe) antes do toque. 5º achado: 1ª visita à aba Remédios pode mostrar um AppDialog (não é permissão nativa do Android, o auto-grant do Robo não cobre) perguntando sobre isenção de bateria — adicionado toque em 'Agora não' pra dispensar. 6º achado: o robo-script tinha sido escrito contra os labels do MODO ACESSIBILIDADE ('Aumentar minuto', 'Salvar lembrete'), que não existem no modo normal (padrão de instalação nova) — isso explica por que a criação de alarme nunca completava mesmo depois dos achados 1-5. Corrigido: accessibilityLabel adicionado aos botões +/- do WheelPicker (components/wheel-picker.tsx, minuto/hora, ambos os modos) e o alvo do salvamento trocado de 'Salvar lembrete' pra 'Criar lembrete' (label do modo normal) — e adicionado o toque em 'Continuar' que faltava entre os dois passos do wizard (hora -> detalhes). 7º achado (A CAUSA REAL, que invalidava tudo acima): 'pre_crawl' roda ANTES do app ser lançado — a doc é explícita ('Before Robo launches and starts crawling the app-under-test'). Comprovado no actions.json: os toques do script acontecem entre t=21s e t=271s, o 'roboscriptFinished END_OF_SCRIPT' em t=271s, e só então o 'launch' em t=279s. Ou seja: a sequência inteira estava batendo na tela 'Device Details' do próprio Test Lab, nunca no app, e o que se via nos últimos ~10s do vídeo era o crawl autônomo do Robo (que toca 'Próximo' uma vez e o teste acaba). Por isso TODA rodada parecia 'presa na 2ª tela do onboarding' independente das correções 1-6. Corrigido: crawlStage 'crawl' + contextDescriptor 'app_under_test_shown' (dispara com o app em primeiro plano) + maxNumberOfRuns 1 (roda a sequência uma única vez). Só a regra 999 (ELEMENT_IGNORED) fica em pre_crawl, que é o uso correto — é configuração, não interação.",
+    "description": "SEQUÊNCIA LINEAR (crawlStage:'crawl' + app_under_test_shown + maxNumberOfRuns:1 — dispara uma vez, assim que o app aparece em primeiro plano, e roda os passos em ordem fixa). HISTÓRICO DE ACHADOS (mais recente primeiro — ver git log de testlab/robo-script.json pro raciocínio completo de cada um):\n8º achado (A CAUSA REAL de tudo até aqui): 'pre_crawl' roda ANTES do app ser lançado (doc: 'Before Robo launches and starts crawling the app-under-test'). Confirmado no actions.json: toques do script entre t=21-271s, 'launch' só em t=279s — a sequência inteira batia na tela 'Device Details' do Test Lab, nunca no app. Corrigido movendo pra crawlStage:'crawl' com app_under_test_shown. Isso também invalida o achado anterior (POINT_TAP): a evidência de 'clique por elementDescriptor só funciona 1x' vinha de testes que nunca tocaram o app de verdade — revertido pra VIEW_CLICKED por contentDescriptor (mais robusto entre resoluções de tela diferentes que POINT_TAP por %) com WAIT maior (1500ms) entre toques.\nOutros achados já corrigidos: login não persistia sessão por WAIT curto após 'Continuar sem conta' (signInAnonymously tem cold start, wait 1800→6000ms); 'Concluir cadastro' não renderiza até rolar a tela (ONE_POINT_GESTURE antes do toque); AppDialog de isenção de bateria na 1ª visita a Remédios (toque em 'Agora não'); script mirava labels do modo acessibilidade que não existem no modo normal ('Aumentar minuto' agora tem accessibilityLabel real em wheel-picker.tsx; alvo do salvamento é 'Criar lembrete', não 'Salvar lembrete'; toque em 'Continuar' entre os passos do wizard).",
     "crawlStage": "crawl",
     "maxNumberOfRuns": 1,
     "contextDescriptor": {
@@ -29,21 +29,21 @@
     "actions": [
       { "eventType": "WAIT", "delayTime": 3000 },
 
-      { "eventType": "POINT_TAP", "pointTapXPercent": 50, "pointTapYPercent": 85 },
-      { "eventType": "WAIT", "delayTime": 700 },
-      { "eventType": "POINT_TAP", "pointTapXPercent": 50, "pointTapYPercent": 85 },
-      { "eventType": "WAIT", "delayTime": 700 },
-      { "eventType": "POINT_TAP", "pointTapXPercent": 50, "pointTapYPercent": 85 },
-      { "eventType": "WAIT", "delayTime": 700 },
-      { "eventType": "POINT_TAP", "pointTapXPercent": 50, "pointTapYPercent": 85 },
-      { "eventType": "WAIT", "delayTime": 700 },
-      { "eventType": "POINT_TAP", "pointTapXPercent": 50, "pointTapYPercent": 85 },
-      { "eventType": "WAIT", "delayTime": 700 },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescriptionRegex": "^(Próximo|Permitir Localização|Começar), ?" }], "optional": true },
+      { "eventType": "WAIT", "delayTime": 1500 },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescriptionRegex": "^(Próximo|Permitir Localização|Começar), ?" }], "optional": true },
+      { "eventType": "WAIT", "delayTime": 1500 },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescriptionRegex": "^(Próximo|Permitir Localização|Começar), ?" }], "optional": true },
+      { "eventType": "WAIT", "delayTime": 1500 },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescriptionRegex": "^(Próximo|Permitir Localização|Começar), ?" }], "optional": true },
+      { "eventType": "WAIT", "delayTime": 1500 },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescriptionRegex": "^(Próximo|Permitir Localização|Começar), ?" }], "optional": true },
+      { "eventType": "WAIT", "delayTime": 1500 },
 
-      { "eventType": "POINT_TAP", "pointTapXPercent": 50, "pointTapYPercent": 85 },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescriptionRegex": "^(Próximo|Permitir Localização|Começar), ?" }], "optional": true },
       { "eventType": "WAIT", "delayTime": 1800 },
 
-      { "eventType": "POINT_TAP", "pointTapXPercent": 50, "pointTapYPercent": 85 },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescriptionRegex": "^(Próximo|Permitir Localização|Começar), ?" }], "optional": true },
       { "eventType": "WAIT", "delayTime": 1800 },
 
       { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescription": "Continuar sem conta" }], "optional": true },
