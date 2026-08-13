@@ -43,6 +43,7 @@
     "drizzle-orm": "^0.45.2",
     "expo": "~54.0.35",
     "expo-alarm-countdown": "link:modules/expo-alarm-countdown",
+    "expo-alarm-kit": "^0.1.11",
     "expo-alarm-module": "^1.2.0",
     "expo-apple-authentication": "~8.0.8",
     "expo-application": "~7.0.8",

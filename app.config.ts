@@ -71,10 +71,17 @@ const config: ExpoConfig = {
     // 'critical'` em silêncio. A capability precisa seguir habilitada no App
     // ID, senão o build de produção falha na assinatura.
     "entitlements": {
-      "com.apple.developer.usernotifications.critical-alerts": true
+      "com.apple.developer.usernotifications.critical-alerts": true,
+      // SPIKE AlarmKit — o expo-alarm-kit compartilha estado entre o app e o
+      // intent de dismiss (que roda fora do processo do app) por App Group.
+      // Sem ele, `configure()` retorna false e o dismiss não é registrado.
+      "com.apple.security.application-groups": ["group.com.vigora.saude.alarms"]
     },
     "infoPlist": {
-      "ITSAppUsesNonExemptEncryption": false
+      "ITSAppUsesNonExemptEncryption": false,
+      // SPIKE AlarmKit — exigido para pedir a permissão de alarmes (iOS 26+).
+      "NSAlarmKitUsageDescription":
+        "O Vigora usa alarmes do sistema para o lembrete de medicação tocar na hora certa, mesmo com o celular no silencioso."
     }
   },
   android: {
@@ -201,7 +208,10 @@ const config: ExpoConfig = {
         // ele o Android usa o ic_launcher adaptativo, que vira quadrado cinza.
         "icon": "./assets/images/android-icon-monochrome.png",
         "color": "#0033CC",
-        "sounds": ["./assets/alarm_notification.wav"],
+        // alarm.mp3 entra na lista só para o plugin copiá-lo para o bundle iOS
+        // (SPIKE AlarmKit: AlertSound.named lê do main bundle e, pelos relatos,
+        // só aceita mp3 — o .wav daqui não serve para o teste).
+        "sounds": ["./assets/alarm_notification.wav", "./assets/alarm.mp3"],
         "defaultChannel": "default"
       }
     ],
@@ -251,6 +261,13 @@ const config: ExpoConfig = {
         android: {
           buildArchs: ["armeabi-v7a", "arm64-v8a"],
           minSdkVersion: 24,
+        },
+        // SPIKE AlarmKit — o podspec do expo-alarm-kit exige iOS 26.1, e o
+        // CocoaPods falha se o alvo do app for menor. ESTE BUILD SÓ INSTALA EM
+        // iOS 26.1+. Não subir para produção assim: em Fase 1 isto volta para o
+        // default e o AlarmKit fica atrás de @available(iOS 26).
+        ios: {
+          deploymentTarget: "26.1",
         },
       },
     ],
