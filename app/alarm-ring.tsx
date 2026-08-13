@@ -44,6 +44,7 @@ import {
   pauseNativeAlarmSound,
   resumeNativeAlarmSound,
 } from '@/lib/native-alarm-manager';
+import { dismissDeliveredAlarmNotification } from '@/lib/notifications-utils';
 import { enterAlarmLockScreenMode, exitAlarmLockScreenMode } from 'expo-alarm-countdown';
 import { RippleHalo } from '@/components/animated-components';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -417,6 +418,10 @@ export default function AlarmRingScreen() {
     // Clear persisted timer
     if (alarmId) {
       clearAlarmTimer(alarmId);
+      // iOS: tira da Central a notificação já entregue deste alarme. Sem isto
+      // ela sobrevive ao dismiss e, tocada depois, reabre esta tela num
+      // disparo já respondido — que monta direto no estado escalado.
+      dismissDeliveredAlarmNotification(alarmId);
     }
 
     Vibration.cancel();
@@ -459,6 +464,9 @@ export default function AlarmRingScreen() {
     Speech.stop().catch(() => {});
     if (alarmId) {
       clearAlarmTimer(alarmId);
+      // Mesma limpeza do dismiss: a soneca também encerra o disparo atual, e a
+      // notificação dele não pode sobreviver para reabrir a tela depois.
+      dismissDeliveredAlarmNotification(alarmId);
     }
     Vibration.cancel();
     if (Platform.OS !== 'web') {

@@ -272,6 +272,36 @@ export async function cancelAlarmNotification(notificationId: string): Promise<v
 }
 
 /**
+ * Remove da Central de Notificações o que já foi ENTREGUE deste alarme.
+ *
+ * Chamada quando o idoso responde o alarme na tela cheia. No Android quem
+ * apaga a notificação é o serviço nativo (dentro de `stopNativeAlarm`); no iOS
+ * não há equivalente, e a notificação ficava pendurada mesmo depois do
+ * dismiss — tocar nela reabria a alarm-ring de um disparo já respondido, que
+ * monta no estado escalado ("Mensagem de emergência enviada para seus
+ * contatos"). Sem plataforma no guard: o filtro por `data.alarmId` já não
+ * encontra a notificação nativa do Android.
+ *
+ * Filtra por `data.alarmId` em vez de usar `alarm.notificationId` porque
+ * repeat weekdays/weekends/custom agenda 5/2/N requests e só o primeiro id é
+ * persistido — por id, os outros dias continuariam na Central.
+ */
+export async function dismissDeliveredAlarmNotification(alarmId: string): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const presented = await Notifications.getPresentedNotificationsAsync();
+    for (const notification of presented) {
+      if (notification.request.content.data?.alarmId === alarmId) {
+        await Notifications.dismissNotificationAsync(notification.request.identifier);
+      }
+    }
+  } catch (error) {
+    // Best-effort: o alarme já foi respondido, nada aqui pode bloquear o fluxo.
+    console.warn('[Notifications] Error dismissing delivered alarm:', error);
+  }
+}
+
+/**
  * Cancel all scheduled notifications.
  */
 export async function cancelAllNotifications(): Promise<void> {
