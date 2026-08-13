@@ -76,11 +76,23 @@ export async function handleUnauthorized(): Promise<void> {
   // responde 401 e o redirect para /login atropelava o funil de onboarding
   // (item 3 do feedback de testes). Sem user info e sem token, não há o que
   // limpar nem para onde "voltar" — só ignora.
-  const [user, token] = await Promise.all([
-    getUserInfo().catch(() => null),
-    getSessionToken().catch(() => null),
+  const [userRead, tokenRead] = await Promise.all([
+    readSecure(USER_INFO_KEY),
+    readSecure(SESSION_TOKEN_KEY),
   ]);
-  if (!user && !token) {
+  // Leitura que FALHOU não é leitura vazia. Com o aparelho bloqueado o keychain
+  // recusa a leitura (kSecAttrAccessibleWhenUnlocked) e devolver null aqui fazia
+  // o app apagar credencial válida: o 401 saía da chamada feita sem token e,
+  // se o usuário desbloqueasse antes desta releitura, a guarda de instalação
+  // virgem não pegava mais. Foi o que deslogou o aparelho no spike do AlarmKit
+  // (13/08/2026) — nas duas rodadas com a tela bloqueada, nunca na desbloqueada.
+  // Na dúvida sobre o que existe no keychain, não se apaga nada.
+  if (!userRead.ok || !tokenRead.ok) {
+    console.warn("[Auth] 401 ignorado: keychain indisponível, sessão não foi lida");
+    handlingUnauthorized = false;
+    return;
+  }
+  if (!userRead.value && !tokenRead.value) {
     handlingUnauthorized = false;
     return;
   }
@@ -100,6 +112,21 @@ export async function handleUnauthorized(): Promise<void> {
     setTimeout(() => {
       handlingUnauthorized = false;
     }, 3000);
+  }
+}
+
+/**
+ * Leitura crua do SecureStore que distingue "não tem valor" de "não deu para
+ * ler". Existe porque as duas coisas viravam `null` e um consumidor (o
+ * handleUnauthorized) toma decisão DESTRUTIVA com base nisso — ver o comentário
+ * lá. Quem só precisa do valor continua usando getSessionToken/getUserInfo.
+ */
+async function readSecure(key: string): Promise<{ ok: boolean; value: string | null }> {
+  try {
+    return { ok: true, value: await SecureStore.getItemAsync(key) };
+  } catch (error) {
+    console.error(`[Auth] Falha ao ler ${key} do SecureStore:`, error);
+    return { ok: false, value: null };
   }
 }
 
