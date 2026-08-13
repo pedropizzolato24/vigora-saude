@@ -1,0 +1,24 @@
+diff --git a/ios/ExpoAlarmKitModule.swift b/ios/ExpoAlarmKitModule.swift
+index eadb113dd4afecf6ca40e750a385fafb335e3ea5..52d80f34fea3dd3ccc284cf65582c42ec978312b 100644
+--- a/ios/ExpoAlarmKitModule.swift
++++ b/ios/ExpoAlarmKitModule.swift
+@@ -584,8 +584,18 @@ public class ExpoAlarmKitModule: Module {
+             )
+             
+             // Create alert presentation for when timer fires
++            // PATCH (Vigora): o SDK do iOS 26.1 tornou `stopButton` obrigatório em
++            // AlarmPresentation.Alert — a lib (0.1.11, abr/2026) ainda chamava sem
++            // ele e quebrava a compilação. Reaproveita o mesmo botão "Stop" do
++            // caminho scheduleAlarm/scheduleRepeatingAlarm.
++            let timerStopButton = AlarmButton(
++                text: LocalizedStringResource(stringLiteral: "Stop"),
++                textColor: Color.white,
++                systemImageName: "stop.circle"
++            )
+             let alert = AlarmPresentation.Alert(
+-                title: LocalizedStringResource(stringLiteral: options.title)
++                title: LocalizedStringResource(stringLiteral: options.title),
++                stopButton: timerStopButton
+             )
+             
+             let presentation = AlarmPresentation(alert: alert, countdown: countdown, paused: paused)

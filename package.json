@@ -158,7 +158,8 @@
     "patchedDependencies": {
       "expo-alarm-module": "patches/expo-alarm-module.patch",
       "expo-audio": "patches/expo-audio.patch",
-      "expo-speech": "patches/expo-speech.patch"
+      "expo-speech": "patches/expo-speech.patch",
+      "expo-alarm-kit": "patches/expo-alarm-kit.patch"
     }
   },
   "expo": {

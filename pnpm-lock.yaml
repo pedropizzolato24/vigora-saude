@@ -44,6 +44,9 @@ overrides:
   '@esbuild-kit/core-utils>esbuild': '>=0.25.0 <0.26.0'
 
 patchedDependencies:
+  expo-alarm-kit:
+    hash: uxerzuuy4qtkl52slchq5zng6m
+    path: patches/expo-alarm-kit.patch
   expo-alarm-module:
     hash: 33zzem4yhmvjp6fbzln4giyc5a
     path: patches/expo-alarm-module.patch
@@ -111,7 +114,7 @@ importers:
         version: link:modules/expo-alarm-countdown
       expo-alarm-kit:
         specifier: ^0.1.11
-        version: 0.1.11(expo@54.0.35)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+        version: 0.1.11(patch_hash=uxerzuuy4qtkl52slchq5zng6m)(expo@54.0.35)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       expo-alarm-module:
         specifier: ^1.2.0
         version: 1.2.0(patch_hash=33zzem4yhmvjp6fbzln4giyc5a)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
@@ -9712,7 +9715,7 @@ snapshots:
 
   expect-type@1.3.0: {}
 
-  expo-alarm-kit@0.1.11(expo@54.0.35)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
+  expo-alarm-kit@0.1.11(patch_hash=uxerzuuy4qtkl52slchq5zng6m)(expo@54.0.35)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
     dependencies:
       expo: 54.0.35(@babel/core@7.29.7)(@expo/metro-runtime@6.1.2)(expo-router@6.0.24)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
       react: 19.1.0
