@@ -31,6 +31,8 @@
 
       { "eventType": "ADB_SHELL_COMMAND", "command": "input tap 360 1365", "optional": true },
       { "eventType": "WAIT", "delayTime": 1500 },
+      { "eventType": "TAKE_SCREENSHOT", "screenshotName": "diag_apos_1_toque", "description": "DIAGNOSTICO: estado apos o 1o toque no onboarding" },
+      { "eventType": "ASSERTION", "description": "DIAGNOSTICO 0: confirma que o 1o toque avancou pro slide 2/7. Se falhar aqui, a coordenada (360,1365) nao esta acertando o botao neste device (720x1600).", "contextDescriptor": { "condition": "element_present", "elementDescriptors": [{ "text": "2 / 7" }] } },
       { "eventType": "ADB_SHELL_COMMAND", "command": "input tap 360 1365", "optional": true },
       { "eventType": "WAIT", "delayTime": 1500 },
       { "eventType": "ADB_SHELL_COMMAND", "command": "input tap 360 1365", "optional": true },
