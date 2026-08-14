@@ -21,16 +21,41 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View, Pressable, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
 import { useColors } from '@/hooks/use-colors';
 import * as Auth from '@/lib/_core/auth';
 import { listPendingConfirmations } from '@/lib/pending-confirmations';
 import { flushPendingConfirmations } from '@/lib/monitoring-service';
+import { scheduleAlarmNotification } from '@/lib/notifications-utils';
+import type { Alarm } from '@/lib/app-context';
 import * as AlarmKit from 'expo-alarm-kit';
 
 const LOG_KEY = 'spike:alarmkit:log';
 const APP_GROUP = 'group.com.vigora.saude.alarms';
 // 30s dá tempo de bloquear a tela / virar a chavinha antes de tocar.
 const FIRE_IN_SECONDS = 30;
+// Notificação (não AlarmKit): 2min para dar tempo de fechar o app e bloquear.
+const NOTIF_IN_MINUTES = 2;
+
+/** HH:MM daqui a N minutos — mesmo formato que o formulário de alarme produz. */
+function horaDaquiA(minutos: number): string {
+  const d = new Date(Date.now() + minutos * 60 * 1000);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/** Alarme mínimo no formato que scheduleAlarmNotification espera. */
+function alarmeDeTeste(som: boolean, hora: string): Alarm {
+  return {
+    id: `spike-${som ? 'com' : 'sem'}-som`,
+    time: hora,
+    description: som ? 'TESTE com som' : 'TESTE sem som',
+    enabled: true,
+    repeat: 'daily',
+    customDays: [],
+    sound: som,
+    vibration: true,
+  } as Alarm;
+}
 
 export default function AlarmKitSpikeScreen() {
   const colors = useColors();
@@ -107,6 +132,15 @@ export default function AlarmKitSpikeScreen() {
 
       const pending = await listPendingConfirmations().catch(() => []);
       append(`FILA de confirmações pendentes: ${pending.length} ${JSON.stringify(pending)}`);
+
+      // Se o usuário recusou alertas críticos, o alarme COM som também estaria
+      // rebaixado — e a comparação com/sem som mudaria de sentido.
+      try {
+        const perm = await Notifications.getPermissionsAsync();
+        append(`PERMISSÃO notificações: ${JSON.stringify(perm.ios ?? perm.status)}`);
+      } catch (e) {
+        append(`getPermissions LANÇOU: ${String(e)}`);
+      }
     })();
   }, [append]);
 
@@ -122,6 +156,96 @@ export default function AlarmKitSpikeScreen() {
     const after = await listPendingConfirmations().catch(() => []);
     append(`flush: ${after.length} pendente(s) depois`);
   }, [append]);
+
+  // --- Sondas do alarme SEM som no iOS -------------------------------------
+  // O alarme com "Som" desmarcado não aparece no iPhone: nenhuma notificação.
+  // Duas hipóteses já caíram (interruptionLevel crítico; código da lib), então
+  // aqui a ideia é MEDIR em vez de supor. Três perguntas, separadas de
+  // propósito porque hoje elas estão emboladas num único sintoma:
+  //   A. chega a ser agendada? (id de volta, ou null do catch)
+  //   B. o iOS aceitou e guardou? (aparece em getAllScheduled)
+  //   C. foi entregue e ninguém viu? (aparece em getPresented)
+
+  const dumpAgendadas = useCallback(async () => {
+    try {
+      const todas = await Notifications.getAllScheduledNotificationsAsync();
+      append(`AGENDADAS: ${todas.length}`);
+      for (const n of todas) {
+        const c = n.content as unknown as Record<string, unknown>;
+        append(
+          `  · "${String(c.title ?? '').slice(0, 22)}" som=${JSON.stringify(c.sound)} ` +
+            `nível=${String(c.interruptionLevel ?? '(ausente)')}`,
+        );
+      }
+    } catch (e) {
+      append(`getAllScheduled LANÇOU: ${String(e)}`);
+    }
+  }, [append]);
+
+  const dumpEntregues = useCallback(async () => {
+    try {
+      const todas = await Notifications.getPresentedNotificationsAsync();
+      append(`ENTREGUES (na Central agora): ${todas.length}`);
+      for (const n of todas) {
+        const c = n.request.content as unknown as Record<string, unknown>;
+        append(`  · "${String(c.title ?? '').slice(0, 30)}"`);
+      }
+      if (todas.length === 0) {
+        append('  ^ vazio. Se o horário já passou, não foi entregue OU já foi dispensada.');
+      }
+    } catch (e) {
+      append(`getPresented LANÇOU: ${String(e)}`);
+    }
+  }, [append]);
+
+  /**
+   * Pergunta A+B pelo caminho REAL de produção: as duas versões do mesmo
+   * alarme, no mesmo minuto, mudando só a chave de som. Se só uma sobreviver
+   * até getAllScheduled, o problema é no agendamento; se as duas sobreviverem
+   * e só uma chegar no aparelho, é entrega — e aí a culpa é do iOS, não nossa.
+   */
+  const compararComSemSom = useCallback(async () => {
+    await Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
+    const hora = horaDaquiA(NOTIF_IN_MINUTES);
+    append(`--- COM vs SEM som, os dois às ${hora} ---`);
+    for (const som of [true, false]) {
+      const id = await scheduleAlarmNotification(alarmeDeTeste(som, hora));
+      append(
+        `scheduleAlarmNotification(sound=${som}) -> ` +
+          (id ? `id=${id.slice(0, 8)}` : 'NULL — exceção engolida pelo try/catch da função'),
+      );
+    }
+    await dumpAgendadas();
+    append('Feche o app e bloqueie a tela. Depois volte e toque em "Ver entregues".');
+  }, [append, dumpAgendadas]);
+
+  /**
+   * Isola a variável suspeita sem passar pelo nosso código: 4 notificações
+   * cruas, todas SEM som, uma por interruptionLevel. Se timeSensitive for a
+   * única que não agenda (ou não chega), a resposta é essa e não há o que
+   * adivinhar. Notificação crua = nada do Vigora no meio do caminho.
+   */
+  const sondarNiveis = useCallback(async () => {
+    await Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
+    const quando = new Date(Date.now() + NOTIF_IN_MINUTES * 60 * 1000);
+    append(`--- sonda: 4 cruas SEM som, ${quando.toLocaleTimeString('pt-BR')} ---`);
+    for (const nivel of ['passive', 'active', 'timeSensitive', 'critical'] as const) {
+      try {
+        const id = await Notifications.scheduleNotificationAsync({
+          content: { title: `Sonda ${nivel}`, body: 'sem som', interruptionLevel: nivel },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: quando,
+          } as Notifications.DateTriggerInput,
+        });
+        append(`  ${nivel}: agendou (${id.slice(0, 8)})`);
+      } catch (e) {
+        append(`  ${nivel}: LANÇOU -> ${String(e)}`);
+      }
+    }
+    await dumpAgendadas();
+    append('Bloqueie a tela e espere. Quantas das 4 aparecerem é a resposta.');
+  }, [append, dumpAgendadas]);
 
   const requestAuth = useCallback(async () => {
     try {
@@ -222,6 +346,15 @@ export default function AlarmKitSpikeScreen() {
         <Btn label="Q2b · Som 'alarm' (sem extensão)" onPress={() => schedule('Q2b-sem-ext', 'alarm', true)} />
         <Btn label="Q3 · Stop SEM abrir o app" onPress={() => schedule('Q3-sem-launch', undefined, false)} />
         <Btn label="Ver estado (alarmes + payload)" onPress={inspect} />
+
+        <Text style={[styles.sub, { color: colors.muted, marginTop: 10 }]}>
+          Alarme sem som no iOS (notificação, não AlarmKit) — toca em {NOTIF_IN_MINUTES} min:
+        </Text>
+        <Btn label="A · Comparar COM vs SEM som" onPress={compararComSemSom} />
+        <Btn label="B · Sondar os 4 interruptionLevel" onPress={sondarNiveis} />
+        <Btn label="C · Ver agendadas" onPress={dumpAgendadas} />
+        <Btn label="D · Ver entregues (depois de tocar)" onPress={dumpEntregues} />
+
         <Btn label="Flush da fila de confirmações" onPress={flushNow} />
         <Btn label="Cancelar todos os alarmes" onPress={clearAll} />
         <Btn label="Limpar log" onPress={clearLog} />
