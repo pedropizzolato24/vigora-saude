@@ -134,7 +134,10 @@ export default function AlarmsScreen() {
       showDialog({
         title: 'Para o alarme tocar sempre',
         message:
-          'Alguns celulares desligam apps em segundo plano, o que pode impedir o alarme de tocar. Toque em "Continuar" e depois em "Permitir" quando o Android perguntar.' +
+          'Para economizar energia, o celular pode fechar o Vigora sozinho. Se isso acontecer, o alarme não toca.\n\n' +
+          'Vamos resolver:\n' +
+          '1. Toque em "Continuar" aqui embaixo\n' +
+          '2. Na pergunta que aparecer, escolha "Permitir"' +
           (hint ? `\n\n${hint}` : ''),
         variant: 'warning',
         buttons: [
@@ -178,35 +181,36 @@ export default function AlarmsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Android 14+: sem a permissão "Notificações em tela cheia" a notificação do
-  // alarme cai para heads-up e a tela cheia (alarm-ring) só abre se o usuário
-  // tocar nela — em vez de abrir sozinha como um alarme nativo. Ela deixou de ser
-  // concedida no install para apps fora da categoria alarme/chamada da Play Store.
-  // Mesmo padrão dos avisos acima: re-checa a cada visita e avisa 1x por sessão.
-  useEffect(() => {
+  // Sem a permissão "Notificações em tela cheia" (Android 14+) o alarme vira um
+  // aviso pequeno no alto da tela: a alarm-ring só abre se o idoso TOCAR nele,
+  // em vez de tomar a tela sozinha como um alarme de verdade. Ela deixou de ser
+  // concedida no install para apps fora da categoria alarme/chamada da loja.
+  //
+  // Este aviso NÃO roda no mount junto com os outros dois. Rodava, e perdia a
+  // vaga única da sessão para o de bateria — só aparecia numa visita posterior,
+  // que na prática caía DEPOIS do primeiro alarme já ter tocado sem tela cheia.
+  // Tarde demais: o alarme que ele conserta é justamente aquele. Agora sai na
+  // criação do alarme (ver handleSave), que é quando a permissão passa a valer
+  // e quando o idoso está olhando para o assunto.
+  const promptFullScreenIfNeeded = async () => {
     if (Platform.OS !== 'android') return;
-    let cancelled = false;
-    (async () => {
-      const granted = await canUseFullScreenIntent();
-      if (granted || cancelled || fullScreenPromptShown || alarmSetupPromptShownThisSession) return;
-      fullScreenPromptShown = true;
-      alarmSetupPromptShownThisSession = true;
-      showDialog({
-        title: 'Para o alarme abrir em tela cheia',
-        message:
-          'Para o alarme abrir a tela inteira sozinho (e não só uma notificação), o Vigora precisa da permissão "Notificações em tela cheia". Toque em "Abrir configurações" e ative a chave para o Vigora.',
-        variant: 'warning',
-        buttons: [
-          { text: 'Agora não', style: 'cancel' },
-          { text: 'Abrir configurações', onPress: () => { openFullScreenIntentSettings(); } },
-        ],
-      });
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (fullScreenPromptShown) return;
+    if (await canUseFullScreenIntent()) return;
+    fullScreenPromptShown = true;
+    showDialog({
+      title: 'Para o alarme aparecer na tela toda',
+      message:
+        'Do jeito que está, o alarme vai chegar como um aviso pequeno no alto da tela — e é fácil não perceber.\n\n' +
+        'Vamos resolver:\n' +
+        '1. Toque em "Abrir configurações" aqui embaixo\n' +
+        '2. Na tela que abrir, ligue a chave "Notificações em tela cheia"',
+      variant: 'warning',
+      buttons: [
+        { text: 'Agora não', style: 'cancel' },
+        { text: 'Abrir configurações', onPress: () => { openFullScreenIntentSettings(); } },
+      ],
+    });
+  };
 
   // Derived hour/minute from form.time for the split picker
   const [timeHour, timeMinute] = form.time.split(':');
@@ -355,6 +359,14 @@ export default function AlarmsScreen() {
       const desc = form.description ? `\n"${form.description}"` : '';
       const action = editingAlarm ? 'atualizado' : 'criado';
       showToast({ message: `Alarme ${action}: ${form.time} · ${repeatLabel}${desc}`, variant: 'success' });
+
+      // Depois do toast, e só na criação: agora existe um alarme para tocar, e
+      // é o momento em que a permissão de tela cheia significa alguma coisa. O
+      // atraso deixa o modal terminar de fechar — o AppDialog é irmão dele na
+      // árvore e apareceria por baixo se subisse junto.
+      if (!editingAlarm) {
+        setTimeout(() => { promptFullScreenIfNeeded(); }, 800);
+      }
     } catch (error) {
       console.error('Error scheduling alarm notification:', error);
       showDialog({ title: 'Erro', message: 'Não foi possível agendar a notificação do alarme.', variant: 'error', buttons: [{ text: 'OK' }] });
