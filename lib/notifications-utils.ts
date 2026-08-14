@@ -4,7 +4,7 @@ import { Alarm } from './app-context';
 import { setupCountdownChannel } from './alarm-countdown-notifier';
 
 // --- Notification Channel IDs ----------------------------------------------
-import { ALARM_CHANNEL_ID, DEFAULT_CHANNEL_ID, CHECKIN_CHANNEL_ID } from './notification-constants';
+import { ALARM_CHANNEL_ID, DEFAULT_CHANNEL_ID, CHECKIN_CHANNEL_ID, alarmChannelId } from './notification-constants';
 export { ALARM_CHANNEL_ID, DEFAULT_CHANNEL_ID, CHECKIN_CHANNEL_ID };
 
 // --- Configure notification handler ----------------------------------------
@@ -29,11 +29,12 @@ Notifications.setNotificationHandler({
  * Set up Android notification channels.
  * Must be called once at app startup (before scheduling any notifications).
  *
- * The "vigora-alarms" channel uses:
+ * São quatro canais de alarme, um por combinação som × vibração (ver
+ * alarmChannelId). Todos usam:
  * - AndroidImportance.MAX -> bypasses Do Not Disturb / silent mode
- * - Custom alarm sound (alarm-notification.wav bundled via expo-notifications plugin)
- * - Vibration pattern
  * - enableLights + lightColor for LED indicator
+ * e variam só no som (alarm-notification.wav, embutido pelo plugin do
+ * expo-notifications) e no padrão de vibração.
  *
  * On Android 8+, the channel importance determines whether the notification
  * can make sound and vibrate even when the device is in silent/DND mode.
@@ -42,29 +43,41 @@ Notifications.setNotificationHandler({
 export async function setupNotificationChannels(): Promise<void> {
   if (Platform.OS !== 'android') return;
 
-  // Android caches channel settings (including sound) on first creation.
-  // To apply updated sound/importance, we must delete the old channel first.
-  // This ensures the correct alarm_notification.wav is used.
-  try {
-    await Notifications.deleteNotificationChannelAsync(ALARM_CHANNEL_ID);
-  } catch {}
-
   // Set up countdown channel (no sound, DEFAULT importance)
   await setupCountdownChannel();
 
-  // Alarm channel - MAX importance, custom sound, bypasses silent mode
-  await Notifications.setNotificationChannelAsync(ALARM_CHANNEL_ID, {
-    name: 'Alarmes de Medicamento',
-    description: 'Alarmes de alta prioridade para medicamentos e lembretes de saúde. Toca mesmo no modo silencioso.',
-    importance: Notifications.AndroidImportance.MAX,
-    sound: 'alarm_notification.wav',
-    vibrationPattern: [0, 500, 200, 500, 200, 500],
-    enableLights: true,
-    lightColor: '#0066CC',
-    enableVibrate: true,
-    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-    bypassDnd: true,
-  });
+  // Um canal por combinação som × vibração: no Android 8+ essas duas coisas são
+  // propriedades do canal, e desmarcá-las no `content` da notificação não tem
+  // efeito nenhum. Todos mantêm MAX + bypassDnd — silenciar o alarme não pode
+  // rebaixar a entrega dele.
+  const combinacoes: { som: boolean; vibracao: boolean; nome: string }[] = [
+    { som: true, vibracao: true, nome: 'Alarmes de Medicamento' },
+    { som: true, vibracao: false, nome: 'Alarmes de Medicamento (sem vibração)' },
+    { som: false, vibracao: true, nome: 'Alarmes de Medicamento (sem som)' },
+    { som: false, vibracao: false, nome: 'Alarmes de Medicamento (silencioso)' },
+  ];
+
+  for (const { som, vibracao, nome } of combinacoes) {
+    const id = alarmChannelId(som, vibracao);
+    // Android congela som/importância na criação do canal; para uma definição
+    // nova valer é preciso apagar antes.
+    try {
+      await Notifications.deleteNotificationChannelAsync(id);
+    } catch {}
+
+    await Notifications.setNotificationChannelAsync(id, {
+      name: nome,
+      description: 'Alarmes de alta prioridade para medicamentos e lembretes de saúde. Aparece mesmo no modo silencioso.',
+      importance: Notifications.AndroidImportance.MAX,
+      sound: som ? 'alarm_notification.wav' : null,
+      vibrationPattern: vibracao ? [0, 500, 200, 500, 200, 500] : undefined,
+      enableVibrate: vibracao,
+      enableLights: true,
+      lightColor: '#0066CC',
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      bypassDnd: true,
+    });
+  }
 
   // Default channel for non-alarm notifications
   await Notifications.setNotificationChannelAsync(DEFAULT_CHANNEL_ID, {
@@ -113,8 +126,8 @@ export async function requestNotificationPermissions(): Promise<boolean> {
  * Schedule a notification for an alarm.
  *
  * Key features:
- * - Uses the "vigora-alarms" channel (MAX importance) -> overrides silent mode on Android
- * - Uses custom alarm sound (alarm-notification.wav)
+ * - Escolhe o canal de alarme (MAX importance) conforme as chaves de som e
+ *   vibração do próprio alarme -> overrides silent mode on Android
  * - Includes data.url for deep linking to alarm-ring screen
  * - Includes data.alarmId for alarm identification
  * - Sets priority to MAX for full-screen intent behavior
@@ -157,6 +170,11 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
       interruptionLevel: 'critical',
     };
 
+    // Android: é o canal que decide som e vibração — o `sound`/`vibrate` acima
+    // vale só para o iOS. Sem escolher o canal aqui, desmarcar "Som" no
+    // formulário não silenciava nada.
+    const channelId = alarmChannelId(alarm.sound, alarm.vibration);
+
     // Handle different repeat patterns
     if (alarm.repeat === 'daily') {
       const notificationId = await Notifications.scheduleNotificationAsync({
@@ -165,7 +183,7 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
           type: Notifications.SchedulableTriggerInputTypes.DAILY,
           hour: hours,
           minute: minutes,
-          channelId: ALARM_CHANNEL_ID,
+          channelId,
         } as any,
       });
       return notificationId;
@@ -181,7 +199,7 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
             weekday,
             hour: hours,
             minute: minutes,
-            channelId: ALARM_CHANNEL_ID,
+            channelId,
           } as any,
         });
         notificationIds.push(id);
@@ -199,7 +217,7 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
             weekday,
             hour: hours,
             minute: minutes,
-            channelId: ALARM_CHANNEL_ID,
+            channelId,
           } as any,
         });
         notificationIds.push(id);
@@ -228,7 +246,7 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
               weekday,
               hour: hours,
               minute: minutes,
-              channelId: ALARM_CHANNEL_ID,
+              channelId,
             } as any,
           });
           notificationIds.push(id);
@@ -249,7 +267,7 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
           date: triggerDate,
-          channelId: ALARM_CHANNEL_ID,
+          channelId,
         } as any,
       });
       return notificationId;
