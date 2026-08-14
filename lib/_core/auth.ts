@@ -135,6 +135,9 @@ const SECURE_WRITE_OPTIONS: SecureStore.SecureStoreOptions = {
 
 const KEYCHAIN_MIGRATION_FLAG = "vigora_keychain_after_first_unlock_migrado";
 
+/** Migração em curso, para as leituras não caírem na janela de apaga/regrava. */
+let migrationInFlight: Promise<void> | null = null;
+
 /**
  * Regrava as credenciais já existentes com a acessibilidade nova.
  *
@@ -148,14 +151,21 @@ const KEYCHAIN_MIGRATION_FLAG = "vigora_keychain_after_first_unlock_migrado";
  * a flag — tenta de novo no próximo boot. Chamada uma vez no startup, antes
  * de qualquer coisa que escreva sessão, para não competir com o delete.
  */
-export async function migrateKeychainAccessibility(): Promise<void> {
+export function migrateKeychainAccessibility(): Promise<void> {
+  if (!migrationInFlight) migrationInFlight = runKeychainMigration();
+  return migrationInFlight;
+}
+
+async function runKeychainMigration(): Promise<void> {
   // Android usa EncryptedSharedPreferences: não existe acessibilidade por
   // estado de bloqueio, e apagar/regravar só criaria risco à toa.
   if (Platform.OS !== "ios") return;
   if (await AsyncStorage.getItem(KEYCHAIN_MIGRATION_FLAG)) return;
 
   for (const key of [SESSION_TOKEN_KEY, USER_INFO_KEY]) {
-    const read = await readSecure(key);
+    // rawReadSecure, não readSecure: esta função É a migração em curso, e
+    // esperar por si mesma trava tudo.
+    const read = await rawReadSecure(key);
     // Ilegível = aparelho bloqueado. Aborta a migração inteira sem marcar a
     // flag: migrar só metade e dizer que acabou deixaria a outra chave presa
     // no WHEN_UNLOCKED para sempre.
@@ -190,13 +200,21 @@ export async function migrateKeychainAccessibility(): Promise<void> {
  * handleUnauthorized) toma decisão DESTRUTIVA com base nisso — ver o comentário
  * lá. Quem só precisa do valor continua usando getSessionToken/getUserInfo.
  */
-async function readSecure(key: string): Promise<{ ok: boolean; value: string | null }> {
+async function rawReadSecure(key: string): Promise<{ ok: boolean; value: string | null }> {
   try {
     return { ok: true, value: await SecureStore.getItemAsync(key) };
   } catch (error) {
     console.error(`[Auth] Falha ao ler ${key} do SecureStore:`, error);
     return { ok: false, value: null };
   }
+}
+
+async function readSecure(key: string): Promise<{ ok: boolean; value: string | null }> {
+  // A migração apaga e regrava a credencial; ler no meio dessa janela devolve
+  // null e o app se acha deslogado (o OnboardingGate roteia para /login antes
+  // de qualquer um perceber). Quem lê espera a migração em curso terminar.
+  if (migrationInFlight) await migrationInFlight.catch(() => {});
+  return rawReadSecure(key);
 }
 
 export async function getSessionToken(): Promise<string | null> {

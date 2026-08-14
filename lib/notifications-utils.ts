@@ -154,7 +154,15 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
       // Depende do entitlement aprovado pela Apple + do usuário ter aceitado o
       // pedido de alertas críticos; se ele recusar, o iOS rebaixa sozinho para
       // o comportamento normal, sem erro.
-      interruptionLevel: 'critical',
+      //
+      // SÓ com som. Alerta crítico existe para furar o silencioso TOCANDO —
+      // pedir 'critical' sem som é contraditório, e no iPhone o alarme
+      // simplesmente não aparecia: desmarcar "Som" no formulário fazia o
+      // alarme sumir por completo (medido em 14/08/2026; com e sem som, essa
+      // era a única variável diferente no conteúdo agendado). Sem som ele cai
+      // para 'timeSensitive', que ainda fura Foco/Não Perturbe sem depender de
+      // tocar nada — quem desliga o som quer silêncio, não quer perder o alarme.
+      interruptionLevel: alarm.sound ? 'critical' : 'timeSensitive',
     };
 
     // Handle different repeat patterns

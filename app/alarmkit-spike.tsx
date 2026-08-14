@@ -22,6 +22,9 @@ import { ScrollView, StyleSheet, Text, View, Pressable, Platform } from 'react-n
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColors } from '@/hooks/use-colors';
+import * as Auth from '@/lib/_core/auth';
+import { listPendingConfirmations } from '@/lib/pending-confirmations';
+import { flushPendingConfirmations } from '@/lib/monitoring-service';
 import * as AlarmKit from 'expo-alarm-kit';
 
 const LOG_KEY = 'spike:alarmkit:log';
@@ -86,7 +89,38 @@ export default function AlarmKitSpikeScreen() {
       } catch (e) {
         append(`getAllAlarms LANÇOU: ${String(e)}`);
       }
+
+      // Diagnóstico do boot. Sem isto a investigação do "app abriu no login"
+      // vira palpite: precisamos saber se a leitura do keychain funcionou
+      // NAQUELE boot e se a migração já tinha rodado.
+      const migrated = await AsyncStorage.getItem(
+        'vigora_keychain_after_first_unlock_migrado',
+      ).catch(() => null);
+      const [token, user] = await Promise.all([
+        Auth.getSessionToken().catch(() => null),
+        Auth.getUserInfo().catch(() => null),
+      ]);
+      append(
+        `KEYCHAIN: migrado=${migrated === '1'} | token=${token ? 'presente' : 'AUSENTE'} | ` +
+          `user=${user ? 'presente' : 'AUSENTE'}`,
+      );
+
+      const pending = await listPendingConfirmations().catch(() => []);
+      append(`FILA de confirmações pendentes: ${pending.length} ${JSON.stringify(pending)}`);
     })();
+  }, [append]);
+
+  /** Roda o flush na mão e mostra o antes/depois — o console.log não é visível no TestFlight. */
+  const flushNow = useCallback(async () => {
+    const before = await listPendingConfirmations().catch(() => []);
+    append(`flush: ${before.length} pendente(s) antes`);
+    try {
+      await flushPendingConfirmations();
+    } catch (e) {
+      append(`flush LANÇOU: ${String(e)}`);
+    }
+    const after = await listPendingConfirmations().catch(() => []);
+    append(`flush: ${after.length} pendente(s) depois`);
   }, [append]);
 
   const requestAuth = useCallback(async () => {
@@ -188,6 +222,7 @@ export default function AlarmKitSpikeScreen() {
         <Btn label="Q2b · Som 'alarm' (sem extensão)" onPress={() => schedule('Q2b-sem-ext', 'alarm', true)} />
         <Btn label="Q3 · Stop SEM abrir o app" onPress={() => schedule('Q3-sem-launch', undefined, false)} />
         <Btn label="Ver estado (alarmes + payload)" onPress={inspect} />
+        <Btn label="Flush da fila de confirmações" onPress={flushNow} />
         <Btn label="Cancelar todos os alarmes" onPress={clearAll} />
         <Btn label="Limpar log" onPress={clearLog} />
 
