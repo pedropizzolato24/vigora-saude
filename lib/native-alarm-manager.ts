@@ -118,6 +118,7 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         snoozeInterval: 0,
         dismissText: 'Dispensar',
         snoozeText: 'Soneca',
+        sound: alarm.sound !== false,
       });
       uids.push(baseUid);
 
@@ -138,6 +139,7 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         snoozeInterval: 0,
         dismissText: 'Dispensar',
         snoozeText: 'Soneca',
+        sound: alarm.sound !== false,
       });
         uids.push(uid);
       }
@@ -159,6 +161,7 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
           snoozeInterval: 0,
           dismissText: 'Dispensar',
           snoozeText: 'Soneca',
+          sound: alarm.sound !== false,
         });
         uids.push(uid);
       }
@@ -179,6 +182,7 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
           snoozeInterval: 0,
           dismissText: 'Dispensar',
           snoozeText: 'Soneca',
+          sound: alarm.sound !== false,
         });
         uids.push(uid);
       }
@@ -198,6 +202,7 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         snoozeInterval: 0,
         dismissText: 'Dispensar',
         snoozeText: 'Soneca',
+        sound: alarm.sound !== false,
       });
       uids.push(baseUid);
     }
@@ -234,6 +239,7 @@ export async function snoozeNativeAlarm(alarm: Alarm, fireAt: Date): Promise<voi
       snoozeInterval: 0,
       dismissText: 'Dispensar',
       snoozeText: 'Soneca',
+        sound: alarm.sound !== false,
     });
     console.log(`[NativeAlarm] Snoozed alarm ${alarm.id} until ${fireAt.toISOString()}`);
   } catch (e) {
