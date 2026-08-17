@@ -369,7 +369,24 @@ export default function AlarmsScreen() {
       }
     } catch (error) {
       console.error('Error scheduling alarm notification:', error);
-      showDialog({ title: 'Erro', message: 'Não foi possível agendar a notificação do alarme.', variant: 'error', buttons: [{ text: 'OK' }] });
+      // Na edição, cancelFullAlarm já derrubou o alarme ANTIGO antes desta
+      // tentativa. Deixá-lo ligado na lista mostraria um alarme que não vai
+      // mais tocar — a mesma mentira de antes, só que mais tarde e mais
+      // perigosa, porque o idoso já confiava nele.
+      if (editingAlarm) {
+        dispatch({
+          type: 'UPDATE_ALARM',
+          payload: { ...editingAlarm, enabled: false, notificationId: undefined, nativeAlarmUids: [] },
+        });
+      }
+      showDialog({
+        title: editingAlarm ? 'O alarme foi desligado' : 'O alarme não foi criado',
+        message: editingAlarm
+          ? 'Não foi possível salvar a mudança, e o alarme foi desligado por segurança. Ele NÃO vai tocar.\n\nAbra o alarme e ligue de novo.'
+          : 'O celular não aceitou este alarme. Ele NÃO vai tocar.\n\nTente criar de novo.',
+        variant: 'error',
+        buttons: [{ text: 'Entendi' }],
+      });
     }
   };
 
@@ -418,6 +435,17 @@ export default function AlarmsScreen() {
       }
     } catch (error) {
       console.error('Error toggling alarm notification:', error);
+      // Sem dispatch a chavinha volta sozinha para o estado anterior, e o
+      // usuário só via ela "pular de volta" sem nenhuma explicação. Se falhou
+      // ao LIGAR, o alarme não vai tocar e isso precisa ser dito.
+      showDialog({
+        title: newEnabled ? 'O alarme não foi ligado' : 'O alarme não foi desligado',
+        message: newEnabled
+          ? 'O celular não aceitou este alarme. Ele NÃO vai tocar.\n\nTente ligar de novo.'
+          : 'Não foi possível desligar o alarme. Ele ainda pode tocar.\n\nTente de novo.',
+        variant: 'error',
+        buttons: [{ text: 'Entendi' }],
+      });
     }
   };
 

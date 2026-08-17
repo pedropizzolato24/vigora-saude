@@ -28,6 +28,13 @@ import {
  * Schedule both a native alarm (Android) and a notification for an alarm.
  * Returns the updated alarm with notificationId and nativeAlarmUids populated.
  *
+ * LANÇA se o sistema não aceitou o agendamento. Antes devolvia o alarme do
+ * mesmo jeito — sem notificationId, sem uid, sem sinal nenhum — e a tela
+ * anunciava "Alarme criado" para um alarme que não existia. Foi isso que
+ * escondeu o bug do iOS por três rodadas de teste no aparelho. Quem chama
+ * PRECISA avisar o usuário: um alarme de remédio que não vai tocar não pode
+ * ser uma falha silenciosa.
+ *
  * Strategy:
  * - Android: use expo-alarm-module ONLY. It creates its own notification with
  *   static title/body (set in native-alarm-manager.ts). Adding expo-notifications
@@ -40,6 +47,11 @@ export async function scheduleFullAlarm(alarm: Alarm): Promise<Alarm> {
   // 1. Schedule native alarm (Android AlarmManager) - NO expo-notifications on Android
   if (isNativeAlarmAvailable) {
     const uids = await scheduleNativeAlarm(alarm);
+    if (uids.length === 0) {
+      throw new Error(
+        `Alarme ${alarm.id}: o sistema não aceitou nenhum agendamento nativo`,
+      );
+    }
     updated.nativeAlarmUids = uids;
     // Do NOT schedule expo-notifications here - it creates a duplicate notification.
     // The native alarm module creates its own notification with the static text
@@ -49,9 +61,12 @@ export async function scheduleFullAlarm(alarm: Alarm): Promise<Alarm> {
 
   // 2. iOS/Web fallback: schedule via expo-notifications
   const notificationId = await scheduleAlarmNotification(alarm);
-  if (notificationId) {
-    updated.notificationId = notificationId;
+  if (!notificationId) {
+    throw new Error(
+      `Alarme ${alarm.id}: o sistema não aceitou o agendamento da notificação`,
+    );
   }
+  updated.notificationId = notificationId;
 
   return updated;
 }
