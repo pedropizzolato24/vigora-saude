@@ -136,25 +136,19 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
   try {
     const [hours, minutes] = alarm.time.split(':').map(Number);
 
+    // `!== false` e não `=== true`: alarme gravado antes destas chaves
+    // existirem tem o campo ausente, e para ele o certo é tocar/vibrar — não
+    // emudecer o remédio de alguém sem ninguém ter pedido. Mesma convenção do
+    // lado nativo do Android (ver alarmChannelId e native-alarm-manager).
+    const comSom = alarm.sound !== false;
+    const comVibracao = alarm.vibration !== false;
+
     // Notification content - same for all repeat types
     const content: Notifications.NotificationContentInput = {
       title: `⏰ ${alarm.description || 'Alarme'}`,
       body: alarm.description
         ? `Hora do alarme: ${alarm.time} - ${alarm.description}`
         : `Hora do alarme: ${alarm.time}`,
-      // iOS: só um som CRÍTICO toca com a chavinha lateral no silencioso —
-      // `interruptionLevel: 'critical'` sozinho não basta, o som precisa ser
-      // marcado como crítico. O expo-notifications expõe apenas
-      // `defaultCritical` (UNNotificationSound.defaultCritical); o som próprio
-      // do alarme só viria por `criticalSoundNamed`, que ele não repassa.
-      // Trocamos o timbre pelo alarme que de fato toca: assim que a tela abre,
-      // alarm-ring.tsx assume com alarm.mp3 em loop.
-      sound: alarm.sound
-        ? Platform.OS === 'ios'
-          ? 'defaultCritical'
-          : 'alarm_notification.wav'
-        : undefined,
-      vibrate: alarm.vibration ? [0, 500, 200, 500, 200, 500] : undefined,
       data: {
         alarmId: alarm.id,
         url: `/alarm-ring?alarmId=${alarm.id}`,
@@ -167,8 +161,34 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
       // Depende do entitlement aprovado pela Apple + do usuário ter aceitado o
       // pedido de alertas críticos; se ele recusar, o iOS rebaixa sozinho para
       // o comportamento normal, sem erro.
-      interruptionLevel: 'critical',
+      //
+      // Sem som cai para 'timeSensitive': 'critical' existe para furar o
+      // silencioso TOCANDO, então pedi-lo para um alarme mudo é contraditório
+      // (e gasta a permissão de alerta crítico à toa). Medido: os quatro
+      // níveis entregam igual sem som — isto é coerência, não é o que
+      // consertou o alarme sumido.
+      interruptionLevel: comSom ? 'critical' : 'timeSensitive',
     };
+
+    // As chaves só entram quando têm valor. `sound: undefined` NÃO equivale a
+    // omitir: em JS a chave continua no objeto (Object.keys devolve 'sound'),
+    // e do outro lado da ponte o campo é `Either<Bool, String>?` — converter
+    // undefined para Either falha e derruba o agendamento INTEIRO. Era isso
+    // que fazia o alarme sem som não existir no iPhone: scheduleNotification
+    // lançava, o catch abaixo engolia, e nunca houve o que entregar.
+    if (comSom) {
+      content.sound = Platform.OS === 'ios'
+        // Só um som CRÍTICO toca com a chavinha no silencioso. O
+        // expo-notifications expõe apenas `defaultCritical`; o som próprio do
+        // alarme só viria por `criticalSoundNamed`, que ele não repassa —
+        // então trocamos o timbre pelo alarme que de fato toca: assim que a
+        // tela abre, alarm-ring.tsx assume com alarm.mp3 em loop.
+        ? 'defaultCritical'
+        : 'alarm_notification.wav';
+    }
+    if (comVibracao) {
+      content.vibrate = [0, 500, 200, 500, 200, 500];
+    }
 
     // Android: é o canal que decide som e vibração — o `sound`/`vibrate` acima
     // vale só para o iOS. Sem escolher o canal aqui, desmarcar "Som" no

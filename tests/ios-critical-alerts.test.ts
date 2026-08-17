@@ -29,12 +29,14 @@ describe("alarme iOS — Critical Alerts", () => {
     expect(notifications).toMatch(/allowCriticalAlerts:\s*true/);
   });
 
-  it("agenda o alarme com interruptionLevel 'critical'", () => {
-    expect(notifications).toMatch(/interruptionLevel:\s*['"]critical['"]/);
-    // 'timeSensitive' fura Foco mas NÃO a chavinha de silencioso — era o
-    // estado anterior, e voltar a ele reintroduz o bug sem nenhum sinal.
-    expect(notifications).not.toMatch(/interruptionLevel:\s*['"]timeSensitive['"]/);
-  });
+  // A trava do interruptionLevel saiu daqui em 17/08/2026. Era regex na fonte
+  // e só enxergava o literal `interruptionLevel: 'critical'`; o nível virou
+  // condicional (alarme mudo cai para 'timeSensitive', porque pedir crítico
+  // sem som derrubava o agendamento inteiro no iOS). A mesma regressão que
+  // este teste pegava — o caso COM som voltar a 'timeSensitive' e parar de
+  // furar a chavinha de silencioso — agora é verificada POR EXECUÇÃO em
+  // tests/notification-content-no-undefined.test.ts, que vale para qualquer
+  // forma que o código tome. O que sobra aqui é o que só a fonte mostra.
 
   it("usa um som CRÍTICO no iOS — som normal não toca no silencioso", () => {
     // O expo-notifications só mapeia 'defaultCritical' para
