@@ -15,7 +15,7 @@ import * as Auth from '@/lib/_core/auth';
 import { Alarm } from './app-context';
 import {
   scheduleAlarmNotification,
-  cancelAlarmNotification,
+  cancelScheduledAlarmNotifications,
 } from './notifications-utils';
 import {
   scheduleNativeAlarm,
@@ -80,10 +80,10 @@ export async function cancelFullAlarm(alarm: Alarm): Promise<void> {
     await cancelNativeAlarm(alarm.nativeAlarmUids);
   }
 
-  // Cancel notification
-  if (alarm.notificationId) {
-    await cancelAlarmNotification(alarm.notificationId);
-  }
+  // Por alarmId, não pelo id guardado: repeat weekdays/weekends/custom agenda
+  // 5/2/N requests e só o primeiro id é persistido. Cancelar só esse deixava
+  // as outras vivas para sempre, acumulando a cada edição.
+  await cancelScheduledAlarmNotifications(alarm.id);
 }
 
 /**
@@ -107,15 +107,37 @@ export async function syncAlarmsOnStartup(alarms: Alarm[]): Promise<void> {
     const scheduledNotifications = Platform.OS !== 'web'
       ? await Notifications.getAllScheduledNotificationsAsync()
       : [];
-    const scheduledIds = new Set(scheduledNotifications.map(n => n.identifier));
+    console.log(`[Alarm Sync] Found ${alarms.length} alarms, ${scheduledNotifications.length} scheduled notifications`);
 
-    console.log(`[Alarm Sync] Found ${alarms.length} alarms, ${scheduledIds.size} scheduled notifications`);
+    // Quantas notificações existem POR alarme, contadas pelo data.alarmId.
+    // Antes a pergunta era "o id que guardei ainda está agendado?", e a
+    // resposta era sempre "não": syncAlarmsOnStartup descarta o retorno de
+    // scheduleFullAlarm, então alarm.notificationId seguia apontando para o
+    // agendamento anterior. Cada abertura do app reagendava tudo de novo e
+    // somava mais N notificações, sem limite — a causa principal das ~15-20
+    // que dispararam juntas no iPhone.
+    const agendadasPorAlarme = new Map<string, number>();
+    for (const n of scheduledNotifications) {
+      const id = (n.content?.data as { alarmId?: string } | undefined)?.alarmId;
+      if (id) agendadasPorAlarme.set(id, (agendadasPorAlarme.get(id) ?? 0) + 1);
+    }
+
+    // Notificação de alarme que não pertence a nenhum alarme atual: sobra de
+    // exclusão/edição anterior. Ninguém mais vai cancelá-la, e ela toca no
+    // aparelho do idoso como um alarme fantasma.
+    const idsAtuais = new Set(alarms.map((a) => a.id));
+    for (const [alarmId] of agendadasPorAlarme) {
+      if (!idsAtuais.has(alarmId)) {
+        const n = await cancelScheduledAlarmNotifications(alarmId);
+        console.log(`[Alarm Sync] ${n} notificação(ões) órfã(s) do alarme ${alarmId} removida(s)`);
+      }
+    }
 
     for (const alarm of alarms) {
       if (!alarm.enabled) {
         // Cancel any lingering scheduled items for disabled alarms
-        if (alarm.notificationId && scheduledIds.has(alarm.notificationId)) {
-          await cancelAlarmNotification(alarm.notificationId);
+        if (agendadasPorAlarme.has(alarm.id)) {
+          await cancelScheduledAlarmNotifications(alarm.id);
         }
         continue;
       }
@@ -135,12 +157,17 @@ export async function syncAlarmsOnStartup(alarms: Alarm[]): Promise<void> {
         continue;
       }
 
-      // iOS/Web: Check if notification is missing
-      const notificationMissing = !alarm.notificationId || !scheduledIds.has(alarm.notificationId);
+      // iOS/Web: falta agendamento? Pergunta pelo alarmId, não pelo id
+      // guardado — que fica desatualizado assim que este reagendamento roda e
+      // fazia todo alarme parecer faltando em toda abertura.
+      const notificationMissing = (agendadasPorAlarme.get(alarm.id) ?? 0) === 0;
 
       if (notificationMissing) {
         console.log(`[Alarm Sync] Rescheduling alarm: ${alarm.id}`);
         try {
+          // Se sobrou qualquer resto deste alarme, sai antes — reagendar por
+          // cima é exatamente como o acúmulo começou.
+          await cancelScheduledAlarmNotifications(alarm.id);
           await scheduleFullAlarm(alarm);
         } catch (error) {
           console.error(`[Alarm Sync] Failed to reschedule alarm ${alarm.id}:`, error);

@@ -299,6 +299,34 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
 }
 
 /**
+ * Cancela TODAS as notificações agendadas deste alarme e devolve quantas eram.
+ *
+ * `weekdays`/`weekends`/`custom` agendam 5/2/N requests e só o PRIMEIRO id vai
+ * para alarm.notificationId — cancelar por esse id deixava as outras agendadas
+ * para sempre. Um iPhone chegou a disparar ~15-20 notificações de uma vez, num
+ * horário sem relação com o alarme e de um alarme que já não existia.
+ *
+ * Filtrar por `data.alarmId` é a única pergunta que corresponde à realidade, e
+ * de quebra recolhe o que já ficou órfão de versões anteriores — sem exigir
+ * reinstalação de quem já tem o problema.
+ */
+export async function cancelScheduledAlarmNotifications(alarmId: string): Promise<number> {
+  try {
+    const agendadas = await Notifications.getAllScheduledNotificationsAsync();
+    const doAlarme = agendadas.filter(
+      (n) => (n.content?.data as { alarmId?: string } | undefined)?.alarmId === alarmId,
+    );
+    for (const n of doAlarme) {
+      await Notifications.cancelScheduledNotificationAsync(n.identifier);
+    }
+    return doAlarme.length;
+  } catch (error) {
+    console.error('[Notifications] Erro ao cancelar notificações do alarme:', error);
+    return 0;
+  }
+}
+
+/**
  * Cancel a scheduled notification by ID.
  */
 export async function cancelAlarmNotification(notificationId: string): Promise<void> {
