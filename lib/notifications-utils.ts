@@ -245,20 +245,14 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
       return notificationIds[0];
 
     } else if (alarm.repeat === 'custom' && alarm.customDays && alarm.customDays.length > 0) {
-      // Custom days - map day index (0=Mon..6=Sun) to expo weekday (1=Sun,2=Mon..7=Sat)
-      const dayMap: Record<number, number> = {
-        0: 2, // Mon
-        1: 3, // Tue
-        2: 4, // Wed
-        3: 5, // Thu
-        4: 6, // Fri
-        5: 7, // Sat
-        6: 1, // Sun
-      };
+      // customDays vem da UI em convenção JS (0=Dom..6=Sáb) — igual ao WEEKDAYS
+      // do formulário, ao DAY_ABBR do card e ao alarm-fire-times. O expo usa
+      // 1=Dom..7=Sáb, então é só somar 1. O dayMap anterior assumia 0=Seg e
+      // agendava TODO dia escolhido um dia depois (domingo tocava segunda).
       const notificationIds: string[] = [];
       for (const dayIdx of alarm.customDays) {
-        const weekday = dayMap[dayIdx];
-        if (weekday) {
+        const weekday = dayIdx + 1;
+        if (weekday >= 1 && weekday <= 7) {
           const id = await Notifications.scheduleNotificationAsync({
             content,
             trigger: {

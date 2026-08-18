@@ -60,14 +60,14 @@ function getNextTriggerDate(timeStr: string): Date {
 
 /**
  * Get the next weekday trigger date.
- * weekday: 0=Mon, 1=Tue, ..., 6=Sun
+ * `jsDay` é dia JS (getDay: 0=Dom..6=Sáb) — a mesma convenção do customDays
+ * gravado pela UI. Antes esta função assumia 0=Seg e convertia com
+ * `(weekday+1)%7`, o que fazia todo dia escolhido disparar um dia depois
+ * (alarme de domingo tocava na segunda). Exportada para teste.
  */
-function getNextWeekdayDate(weekday: number, timeStr: string): Date {
+export function getNextWeekdayDate(jsDay: number, timeStr: string): Date {
   const [hours, minutes] = timeStr.split(':').map(Number);
   const now = new Date();
-  // JS getDay(): 0=Sun, 1=Mon, ..., 6=Sat
-  // Our weekday: 0=Mon, 1=Tue, ..., 6=Sun
-  const jsDay = (weekday + 1) % 7; // convert our weekday to JS getDay()
   const today = now.getDay();
   let daysUntil = (jsDay - today + 7) % 7;
   if (daysUntil === 0) {
@@ -123,8 +123,8 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
       uids.push(baseUid);
 
     } else if (alarm.repeat === 'weekdays') {
-      // Mon–Fri: weekdays 0–4
-      for (let wd = 0; wd <= 4; wd++) {
+      // Seg–Sex em dia JS: 1–5
+      for (const wd of [1, 2, 3, 4, 5]) {
         const uid = `${baseUid}_wd${wd}`;
         const day = getNextWeekdayDate(wd, alarm.time);
       await scheduleAlarmNative({
@@ -145,8 +145,8 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
       }
 
     } else if (alarm.repeat === 'weekends') {
-      // Sat(5) and Sun(6)
-      for (const wd of [5, 6]) {
+      // Dom(0) e Sáb(6) em dia JS
+      for (const wd of [0, 6]) {
         const uid = `${baseUid}_wd${wd}`;
         const day = getNextWeekdayDate(wd, alarm.time);
         await scheduleAlarmNative({
