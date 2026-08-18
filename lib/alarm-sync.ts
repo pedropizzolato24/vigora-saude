@@ -9,6 +9,7 @@
  * the notification is the secondary trigger that opens the alarm-ring screen.
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import * as Auth from '@/lib/_core/auth';
@@ -23,6 +24,19 @@ import {
   cancelAllNativeAlarms,
   isNativeAlarmAvailable,
 } from './native-alarm-manager';
+
+/**
+ * Versão do agendamento já gravado no sistema. Bump a cada correção que muda o
+ * QUANDO um alarme dispara — o iOS só reagenda o que está faltando, e uma
+ * notificação com o dia/horário errado conta como presente, então sem isso a
+ * correção só chegaria em quem editasse o alarme na mão. Público de 60+ com
+ * alarme de remédio não pode depender disso.
+ *
+ * 2 — convenção de dias da semana (customDays 0=Dom): todo dia escolhido
+ *     disparava um dia depois.
+ */
+const SCHEDULE_VERSION = '2';
+const SCHEDULE_VERSION_KEY = 'vigora:alarm-schedule-version';
 
 /**
  * Schedule both a native alarm (Android) and a notification for an alarm.
@@ -103,6 +117,23 @@ export async function syncAlarmsOnStartup(alarms: Alarm[]): Promise<void> {
       return;
     }
 
+    // Correção de agendamento mais nova que o que está no sistema? Reagenda
+    // tudo uma vez. Falha de leitura força o reagendamento (o caminho seguro:
+    // reagendar à toa custa uma notificação, não reagendar mantém o alarme
+    // errado tocando).
+    const versaoGravada = await AsyncStorage.getItem(SCHEDULE_VERSION_KEY).catch(
+      (error) => {
+        console.warn('[Alarm Sync] versão de agendamento ilegível:', error);
+        return null;
+      }
+    );
+    const forcarReagendamento = versaoGravada !== SCHEDULE_VERSION;
+    if (forcarReagendamento) {
+      console.log(
+        `[Alarm Sync] agendamento v${versaoGravada ?? 'ausente'} -> v${SCHEDULE_VERSION}: reagendando tudo uma vez`
+      );
+    }
+
     // Get all scheduled notifications to check which are missing
     const scheduledNotifications = Platform.OS !== 'web'
       ? await Notifications.getAllScheduledNotificationsAsync()
@@ -162,7 +193,7 @@ export async function syncAlarmsOnStartup(alarms: Alarm[]): Promise<void> {
       // fazia todo alarme parecer faltando em toda abertura.
       const notificationMissing = (agendadasPorAlarme.get(alarm.id) ?? 0) === 0;
 
-      if (notificationMissing) {
+      if (notificationMissing || forcarReagendamento) {
         console.log(`[Alarm Sync] Rescheduling alarm: ${alarm.id}`);
         try {
           // Se sobrou qualquer resto deste alarme, sai antes — reagendar por
@@ -175,6 +206,16 @@ export async function syncAlarmsOnStartup(alarms: Alarm[]): Promise<void> {
       } else {
         console.log(`[Alarm Sync] Alarm ${alarm.id} is properly scheduled`);
       }
+    }
+
+    // Só depois do loop inteiro: se algo acima lançou, o próximo boot tenta de
+    // novo em vez de dar a migração por feita.
+    if (forcarReagendamento) {
+      await AsyncStorage.setItem(SCHEDULE_VERSION_KEY, SCHEDULE_VERSION).catch(
+        (error) => {
+          console.warn('[Alarm Sync] não gravou a versão de agendamento:', error);
+        }
+      );
     }
 
     console.log('[Alarm Sync] Sync completed');
