@@ -39,12 +39,28 @@ vi.mock("react-native", () => ({
   NativeModules: { ExpoAlarmModule: {} },
 }));
 
+type AlarmeNativo = { uid: string; day: Date };
+const agendados: AlarmeNativo[] = [];
+
+// Mockar o bridge (e não `expo-alarm-module`) é o que torna este teste possível:
+// vi.mock não intercepta require, e no Node a lib real resolve para um build
+// commonjs que nem parseia.
+vi.mock("../lib/_core/native-alarm-bridge", () => ({
+  scheduleAlarmNative: async (a: AlarmeNativo) => {
+    agendados.push(a);
+  },
+  removeAlarmNative: async () => {},
+  removeAllAlarmsNative: async () => {},
+  stopAlarmNative: async () => {},
+  alarmNativeModule: null,
+}));
+
 vi.mock("../lib/alarm-countdown-notifier", () => ({
   setupCountdownChannel: vi.fn(async () => {}),
 }));
 
 import { scheduleAlarmNotification } from "../lib/notifications-utils";
-import { getNextWeekdayDate } from "../lib/native-alarm-manager";
+import { scheduleNativeAlarm } from "../lib/native-alarm-manager";
 import type { Alarm } from "../lib/app-context";
 
 const alarme = (customDays: number[]): Alarm =>
@@ -64,6 +80,7 @@ const NOMES = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sá
 
 beforeEach(() => {
   triggers.length = 0;
+  agendados.length = 0;
 });
 
 describe("customDays usa 0=Domingo nos dois agendadores", () => {
@@ -77,14 +94,43 @@ describe("customDays usa 0=Domingo nos dois agendadores", () => {
     });
   }
 
-  // O caminho nativo (Android) não dá para exercitar aqui: o
-  // `require('expo-alarm-module')` do módulo carrega TSX cru e o vi.mock não
-  // intercepta require. `getNextWeekdayDate` é a função onde a conversão
-  // errada morava, e é pura — é ela que decide o dia de weekdays, weekends e
-  // custom (os três call sites passam dia JS depois da correção).
   for (let dia = 0; dia < 7; dia++) {
-    it(`alarme nativo: getNextWeekdayDate(${dia}) cai num ${NOMES[dia]}`, () => {
-      expect(getNextWeekdayDate(dia, "08:00").getDay()).toBe(dia);
+    it(`alarme nativo: ${NOMES[dia]} (customDays=[${dia}]) cai num ${NOMES[dia]}`, async () => {
+      await scheduleNativeAlarm(alarme([dia]));
+
+      expect(agendados.length, "não agendou nada").toBe(1);
+      expect(agendados[0].day.getDay()).toBe(dia);
     });
   }
+});
+
+/**
+ * weekdays/weekends não leem customDays — trazem a lista de dias no próprio
+ * agendador. Eram exatamente os call sites que a correção da convenção mexeu e
+ * que nenhum teste cobria.
+ */
+describe("weekdays e weekends caem nos dias certos", () => {
+  const repetindo = (repeat: Alarm["repeat"]): Alarm =>
+    ({ ...alarme([]), repeat }) as Alarm;
+
+  it("notificação: weekdays = segunda a sexta", async () => {
+    await scheduleAlarmNotification(repetindo("weekdays"));
+    // expo: 1=Dom, então segunda a sexta é 2..6.
+    expect(triggers.map((t) => t.weekday).sort()).toEqual([2, 3, 4, 5, 6]);
+  });
+
+  it("notificação: weekends = sábado e domingo", async () => {
+    await scheduleAlarmNotification(repetindo("weekends"));
+    expect(triggers.map((t) => t.weekday).sort()).toEqual([1, 7]);
+  });
+
+  it("alarme nativo: weekdays = segunda a sexta", async () => {
+    await scheduleNativeAlarm(repetindo("weekdays"));
+    expect(agendados.map((a: AlarmeNativo) => a.day.getDay()).sort()).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("alarme nativo: weekends = sábado e domingo", async () => {
+    await scheduleNativeAlarm(repetindo("weekends"));
+    expect(agendados.map((a: AlarmeNativo) => a.day.getDay()).sort()).toEqual([0, 6]);
+  });
 });

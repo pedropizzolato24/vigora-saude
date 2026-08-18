@@ -11,37 +11,19 @@
  *   still works as a secondary trigger.
  */
 
-import { NativeModules, Platform } from 'react-native';
+import { Platform } from 'react-native';
 // `import type`: app-context passou a importar este módulo (para empurrar o
 // volume ao nativo), e um import de valor aqui fecharia um ciclo em runtime.
 import type { Alarm } from './app-context';
-
-// Lazy import to avoid crashing on web/iOS where the native module is not linked
-let scheduleAlarmNative: ((alarm: any) => Promise<void>) | null = null;
-let removeAlarmNative: ((uid: string) => Promise<void>) | null = null;
-let removeAllAlarmsNative: (() => Promise<void>) | null = null;
-let stopAlarmNative: (() => Promise<void>) | null = null;
-// pauseSound/resumeSound/setAlarmVolume são adicionados pelo nosso patch e não
-// existem na API pública do pacote — daí o acesso direto ao NativeModules.
-let alarmNativeModule: {
-  pauseSound?: () => Promise<void>;
-  resumeSound?: () => Promise<void>;
-  setAlarmVolume?: (volume: number) => Promise<void>;
-  previewSound?: () => Promise<void>;
-} | null = null;
-
-if (Platform.OS === 'android') {
-  try {
-    const mod = require('expo-alarm-module');
-    scheduleAlarmNative = mod.scheduleAlarm;
-    removeAlarmNative = mod.removeAlarm;
-    removeAllAlarmsNative = mod.removeAllAlarms;
-    stopAlarmNative = mod.stopAlarm;
-    alarmNativeModule = NativeModules.ExpoAlarmModule ?? null;
-  } catch (e) {
-    console.warn('[NativeAlarm] expo-alarm-module not available:', e);
-  }
-}
+import { weeklyJsDays } from './alarm-fire-times';
+// O require da lib nativa mora no bridge — ver o porquê lá.
+import {
+  scheduleAlarmNative,
+  removeAlarmNative,
+  removeAllAlarmsNative,
+  stopAlarmNative,
+  alarmNativeModule,
+} from './_core/native-alarm-bridge';
 
 /**
  * Calculate the next trigger Date for an alarm given its time string (HH:MM).
@@ -60,12 +42,12 @@ function getNextTriggerDate(timeStr: string): Date {
 
 /**
  * Get the next weekday trigger date.
- * `jsDay` é dia JS (getDay: 0=Dom..6=Sáb) — a mesma convenção do customDays
- * gravado pela UI. Antes esta função assumia 0=Seg e convertia com
+ * `jsDay` é dia JS (getDay: 0=Dom..6=Sáb), como tudo que vem de
+ * weeklyJsDays. Antes esta função assumia 0=Seg e convertia com
  * `(weekday+1)%7`, o que fazia todo dia escolhido disparar um dia depois
- * (alarme de domingo tocava na segunda). Exportada para teste.
+ * (alarme de domingo tocava na segunda).
  */
-export function getNextWeekdayDate(jsDay: number, timeStr: string): Date {
+function getNextWeekdayDate(jsDay: number, timeStr: string): Date {
   const [hours, minutes] = timeStr.split(':').map(Number);
   const now = new Date();
   const today = now.getDay();
@@ -104,6 +86,9 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
       : 'Toque aqui para confirmar que tomou o medicamento';
     const baseUid = `vigora_${alarm.id}`;
 
+    // Dias da semana deste alarme (vazio = diário ou disparo único).
+    const diasSemana = weeklyJsDays(alarm);
+
     if (alarm.repeat === 'daily') {
       const day = getNextTriggerDate(alarm.time);
       await scheduleAlarmNative({
@@ -122,54 +107,14 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
       });
       uids.push(baseUid);
 
-    } else if (alarm.repeat === 'weekdays') {
-      // Seg–Sex em dia JS: 1–5
-      for (const wd of [1, 2, 3, 4, 5]) {
-        const uid = `${baseUid}_wd${wd}`;
-        const day = getNextWeekdayDate(wd, alarm.time);
-      await scheduleAlarmNative({
-        uid,
-        day,
-        title,
-        description: body,
-        active: true,
-        repeating: true,
-        showDismiss: true,
-        showSnooze: true,
-        snoozeInterval: 0,
-        dismissText: 'Dispensar',
-        snoozeText: 'Soneca',
-        sound: alarm.sound !== false,
-      });
-        uids.push(uid);
-      }
-
-    } else if (alarm.repeat === 'weekends') {
-      // Dom(0) e Sáb(6) em dia JS
-      for (const wd of [0, 6]) {
-        const uid = `${baseUid}_wd${wd}`;
-        const day = getNextWeekdayDate(wd, alarm.time);
-        await scheduleAlarmNative({
-          uid,
-          day,
-          title,
-          description: body,
-          active: true,
-          repeating: true,
-          showDismiss: true,
-          showSnooze: true,
-          snoozeInterval: 0,
-          dismissText: 'Dispensar',
-          snoozeText: 'Soneca',
-          sound: alarm.sound !== false,
-        });
-        uids.push(uid);
-      }
-
-    } else if (alarm.repeat === 'custom' && alarm.customDays && alarm.customDays.length > 0) {
-      for (const wd of alarm.customDays) {
-        const uid = `${baseUid}_wd${wd}`;
-        const day = getNextWeekdayDate(wd, alarm.time);
+    } else if (diasSemana.length > 0) {
+      // weekdays/weekends/custom: a lista de dias vem do alarm-fire-times — a
+      // MESMA que pré-registra o disparo no servidor. Manter uma cópia própria
+      // aqui foi como a convenção divergiu (UI grava 0=Dom, este arquivo lia
+      // 0=Seg) e todo alarme semanal passou a disparar um dia depois.
+      for (const jsDay of diasSemana) {
+        const uid = `${baseUid}_wd${jsDay}`;
+        const day = getNextWeekdayDate(jsDay, alarm.time);
         await scheduleAlarmNative({
           uid,
           day,

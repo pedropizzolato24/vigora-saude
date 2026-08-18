@@ -17,16 +17,32 @@ function parseHM(time: string): [number, number] | null {
   return [h, m];
 }
 
-// Dias JS (getDay: 0=Dom..6=Sáb) em que o alarme dispara, conforme o repeat.
-// 'every' = diário (também trata one-time/desconhecido como diário, igual ao
-// comportamento anterior do handler).
-function firingJsDays(alarm: Alarm): number[] | 'every' {
+/**
+ * Dias JS (getDay: 0=Dom..6=Sáb) em que o alarme dispara, conforme o repeat.
+ * 'every' = diário (também trata one-time/desconhecido como diário, igual ao
+ * comportamento anterior do handler).
+ *
+ * Fonte ÚNICA da convenção de dias: usada pelo pré-registro no servidor e pelos
+ * dois agendadores (notificação e alarme nativo). Cada um mantinha a sua lista,
+ * e foi assim que a convenção divergiu — a UI grava 0=Dom, os agendadores liam
+ * 0=Seg, e todo alarme semanal disparava um dia depois.
+ *
+ * `customDays` vem de estado persistido (inclusive restaurado da nuvem), então
+ * dia fora de 0..6 é descartado aqui — uma vez só, para todo mundo.
+ */
+export function firingJsDays(alarm: Alarm): number[] | 'every' {
   switch (alarm.repeat) {
     case 'weekdays': return [1, 2, 3, 4, 5];
     case 'weekends': return [0, 6];
-    case 'custom': return alarm.customDays && alarm.customDays.length ? alarm.customDays : [];
+    case 'custom': return (alarm.customDays ?? []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
     default: return 'every';
   }
+}
+
+/** Dias semanais do alarme; vazio quando ele não é semanal. */
+export function weeklyJsDays(alarm: Alarm): number[] {
+  const dias = firingJsDays(alarm);
+  return dias === 'every' ? [] : dias;
 }
 
 /** Próximo disparo futuro (> now). null se desabilitado/inválido/sem dias. */

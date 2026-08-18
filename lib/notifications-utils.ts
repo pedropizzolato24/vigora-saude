@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { weeklyJsDays } from './alarm-fire-times';
 import { Platform } from 'react-native';
 import { Alarm } from './app-context';
 import { setupCountdownChannel } from './alarm-countdown-notifier';
@@ -196,6 +197,9 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
     const channelId = alarmChannelId(alarm.sound, alarm.vibration);
 
     // Handle different repeat patterns
+
+    // Dias da semana deste alarme (vazio = diário ou disparo único).
+    const diasSemana = weeklyJsDays(alarm);
     if (alarm.repeat === 'daily') {
       const notificationId = await Notifications.scheduleNotificationAsync({
         content,
@@ -208,15 +212,18 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
       });
       return notificationId;
 
-    } else if (alarm.repeat === 'weekdays') {
-      // Schedule for Monday(2) through Friday(6) - expo uses 1=Sunday, 2=Monday...7=Saturday
+    } else if (diasSemana.length > 0) {
+      // weekdays/weekends/custom: a lista de dias vem do alarm-fire-times — a
+      // MESMA que pré-registra o disparo no servidor. Manter uma cópia própria
+      // aqui foi como a convenção divergiu (UI grava 0=Dom, este arquivo lia
+      // 0=Seg) e todo alarme semanal passou a disparar um dia depois.
       const notificationIds: string[] = [];
-      for (let weekday = 2; weekday <= 6; weekday++) {
+      for (const jsDay of diasSemana) {
         const id = await Notifications.scheduleNotificationAsync({
           content,
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-            weekday,
+            weekday: jsDay + 1, // expo: 1=Dom..7=Sáb
             hour: hours,
             minute: minutes,
             channelId,
@@ -225,48 +232,6 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
         notificationIds.push(id);
       }
       return notificationIds[0];
-
-    } else if (alarm.repeat === 'weekends') {
-      // Schedule for Saturday(7) and Sunday(1)
-      const notificationIds: string[] = [];
-      for (const weekday of [1, 7]) {
-        const id = await Notifications.scheduleNotificationAsync({
-          content,
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-            weekday,
-            hour: hours,
-            minute: minutes,
-            channelId,
-          } as any,
-        });
-        notificationIds.push(id);
-      }
-      return notificationIds[0];
-
-    } else if (alarm.repeat === 'custom' && alarm.customDays && alarm.customDays.length > 0) {
-      // customDays vem da UI em convenção JS (0=Dom..6=Sáb) — igual ao WEEKDAYS
-      // do formulário, ao DAY_ABBR do card e ao alarm-fire-times. O expo usa
-      // 1=Dom..7=Sáb, então é só somar 1. O dayMap anterior assumia 0=Seg e
-      // agendava TODO dia escolhido um dia depois (domingo tocava segunda).
-      const notificationIds: string[] = [];
-      for (const dayIdx of alarm.customDays) {
-        const weekday = dayIdx + 1;
-        if (weekday >= 1 && weekday <= 7) {
-          const id = await Notifications.scheduleNotificationAsync({
-            content,
-            trigger: {
-              type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-              weekday,
-              hour: hours,
-              minute: minutes,
-              channelId,
-            } as any,
-          });
-          notificationIds.push(id);
-        }
-      }
-      return notificationIds.length > 0 ? notificationIds[0] : null;
 
     } else {
       // One-time alarm
