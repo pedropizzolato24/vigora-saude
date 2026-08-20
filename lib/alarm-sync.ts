@@ -24,6 +24,11 @@ import {
   cancelAllNativeAlarms,
   isNativeAlarmAvailable,
 } from './native-alarm-manager';
+import {
+  isAlarmKitAvailable,
+  scheduleAlarmKitAlarm,
+  cancelAlarmKitAlarm,
+} from './ios-alarm-kit';
 
 /**
  * Versão do agendamento já gravado no sistema. Bump a cada correção que muda o
@@ -73,7 +78,20 @@ export async function scheduleFullAlarm(alarm: Alarm): Promise<Alarm> {
     return updated;
   }
 
-  // 2. iOS/Web fallback: schedule via expo-notifications
+  // 2. iOS 26+: AlarmKit é o alarme de verdade — toca em loop e toma a tela,
+  // em vez de uma notificação que soa uma vez e vira banner.
+  if (isAlarmKitAvailable()) {
+    await scheduleAlarmKitAlarm(alarm);
+    // Migração: quem vinha do caminho antigo tem notificações agendadas para
+    // este alarme. Sem cancelar, o remédio toca duas vezes.
+    await cancelScheduledAlarmNotifications(alarm.id);
+    updated.notificationId = undefined;
+    return updated;
+  }
+
+  // 3. iOS <26 / AlarmKit indisponível: notificação com Critical Alerts.
+  // Se havia alarme do AlarmKit (aparelho que perdeu a capacidade), sai antes.
+  await cancelAlarmKitAlarm(alarm.id);
   const notificationId = await scheduleAlarmNotification(alarm);
   if (!notificationId) {
     throw new Error(
@@ -93,6 +111,10 @@ export async function cancelFullAlarm(alarm: Alarm): Promise<void> {
   if (isNativeAlarmAvailable && alarm.nativeAlarmUids && alarm.nativeAlarmUids.length > 0) {
     await cancelNativeAlarm(alarm.nativeAlarmUids);
   }
+
+  // Os dois caminhos, sempre: o alarme pode ter sido agendado por um deles e
+  // cancelado depois de o aparelho mudar de capacidade.
+  await cancelAlarmKitAlarm(alarm.id);
 
   // Por alarmId, não pelo id guardado: repeat weekdays/weekends/custom agenda
   // 5/2/N requests e só o primeiro id é persistido. Cancelar só esse deixava
