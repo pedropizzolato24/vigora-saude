@@ -7,6 +7,7 @@
  *   - id fora do formato UUID → `guard let uuid = UUID(uuidString:)` → false
  *   - agendamento recusado → Promise<boolean> false
  */
+import { AppState, AppStateStatus } from 'react-native';
 import { alarmKit } from './_core/ios-alarm-kit-bridge';
 import { firingJsDays, lastAlarmFireMs } from './alarm-fire-times';
 import { enqueueConfirmation } from './pending-confirmations';
@@ -152,4 +153,38 @@ export async function confirmAlarmKitDismissal(
     status: 'responded',
   });
   return dismissal.alarmId;
+}
+
+/**
+ * Drena o dismiss também quando o app volta ao primeiro plano, e não só no
+ * mount.
+ *
+ * O intent do "Desligar" roda dentro do processo do app e grava o payload num
+ * static. Se o app estava apenas SUSPENSO em memória — o idoso mexeu nele à
+ * noite e o alarme toca às 22h —, o intent grava o payload e traz o app para
+ * frente, mas nenhum efeito de mount roda de novo: sem este ouvinte o payload
+ * fica lá e a confirmação nunca sai, exatamente o caso que faz a família ser
+ * avisada de um alarme atendido.
+ *
+ * Re-drenar é inofensivo: `getLaunchPayload` limpa o static na leitura, então
+ * sem dismiss novo isto não enfileira nada. Devolve a função de cancelamento
+ * (o caller chama no cleanup do efeito).
+ */
+export function watchAlarmKitDismissals(
+  loadRaw: () => Promise<string | null>,
+  onConfirmed: (alarmId: string) => void,
+): () => void {
+  if (!alarmKit) return () => {};
+
+  const assinatura = AppState.addEventListener('change', (estado: AppStateStatus) => {
+    if (estado !== 'active') return;
+    confirmAlarmKitDismissal(loadRaw)
+      .then((alarmId) => {
+        if (alarmId) onConfirmed(alarmId);
+      })
+      .catch((error) =>
+        console.warn('[AlarmKit] falha ao drenar o dismiss no retorno ao app:', error),
+      );
+  });
+  return () => assinatura.remove();
 }

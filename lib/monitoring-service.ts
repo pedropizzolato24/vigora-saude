@@ -309,11 +309,16 @@ export async function createPendingAlarmEvent(
 }
 
 /**
- * Envia uma confirmação e só tira da fila local se o servidor aceitou.
+ * Envia uma confirmação e só tira da fila local se a chamada CHEGOU ao servidor
+ * (resposta OK). `trpcMutation` devolve `null` em TODA falha (sem sessão, 4xx,
+ * 5xx, timeout) sem nunca lançar — por isso a decisão é pelo retorno, não por
+ * try/catch. O que não sair fica na fila e é reenviado por
+ * flushPendingConfirmations.
  *
- * `trpcMutation` devolve `null` em TODA falha (sem sessão, 4xx, 5xx, timeout)
- * sem nunca lançar — por isso a decisão é pelo retorno, não por try/catch. O
- * que não sair fica na fila e é reenviado por flushPendingConfirmations.
+ * A fila garante ENTREGA, não casamento: `monitoring.confirmEvent` devolve
+ * `{ success: true }` mesmo quando nenhum evento pendente casou com
+ * (alarmId, scheduledAt), e o cliente não distingue os dois casos. Uma
+ * confirmação entregue para um evento inexistente sai da fila do mesmo jeito.
  */
 async function sendConfirmation(
   alarmId: string,
@@ -334,13 +339,30 @@ async function sendConfirmation(
   console.log(`[Monitoring] Alarm ${alarmId} confirmed as ${status}`);
 }
 
+/** Flush em curso, para dois chamadores não rodarem a mesma fila em paralelo. */
+let flushEmAndamento: Promise<void> | null = null;
+
 /**
  * Reenvia as confirmações que não chegaram ao servidor. Chamada no bootstrap
- * autenticado do MonitoringInitializer: é a rede de segurança para o idoso que
- * respondeu o alarme com a rede caída (ou com o app morrendo logo em seguida)
- * e cuja família seria avisada de um alarme perdido que não existiu.
+ * autenticado do MonitoringInitializer e logo depois de um dismiss do AlarmKit
+ * ser drenado: é a rede de segurança para o idoso que respondeu o alarme com a
+ * rede caída (ou com o app morrendo logo em seguida) e cuja família seria
+ * avisada de um alarme perdido que não existiu.
+ *
+ * Quem chega no meio de um flush reaproveita a promessa em curso. São dois
+ * disparos independentes no mesmo boot, e a fila é read-modify-write sem trava:
+ * rodando em paralelo, um `enqueueConfirmation` intercalado é sobrescrito pela
+ * gravação do outro — e o que some é uma resposta que o idoso deu de verdade.
  */
-export async function flushPendingConfirmations(): Promise<void> {
+export function flushPendingConfirmations(): Promise<void> {
+  if (flushEmAndamento) return flushEmAndamento;
+  flushEmAndamento = executarFlush().finally(() => {
+    flushEmAndamento = null;
+  });
+  return flushEmAndamento;
+}
+
+async function executarFlush(): Promise<void> {
   const pending = await listPendingConfirmations();
   if (pending.length === 0) return;
   console.log(`[Monitoring] Reenviando ${pending.length} confirmação(ões) pendente(s)`);

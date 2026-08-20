@@ -22,6 +22,23 @@ import { join } from "node:path";
 let payload: { alarmId: string; payload: string | null } | null = null;
 const enfileirar = vi.fn(async () => {});
 
+type Ouvinte = (estado: string) => void;
+const ouvintes: Ouvinte[] = [];
+
+vi.mock("react-native", () => ({
+  AppState: {
+    addEventListener: (_evento: string, cb: Ouvinte) => {
+      ouvintes.push(cb);
+      return {
+        remove: () => {
+          const i = ouvintes.indexOf(cb);
+          if (i >= 0) ouvintes.splice(i, 1);
+        },
+      };
+    },
+  },
+}));
+
 vi.mock("../lib/_core/ios-alarm-kit-bridge", () => ({
   get alarmKit() {
     return {
@@ -39,7 +56,10 @@ vi.mock("../lib/pending-confirmations", () => ({
   enqueueConfirmation: (...a: unknown[]) => enfileirar(...(a as [])),
 }));
 
-import { confirmAlarmKitDismissal } from "../lib/ios-alarm-kit";
+import {
+  confirmAlarmKitDismissal,
+  watchAlarmKitDismissals,
+} from "../lib/ios-alarm-kit";
 
 /** 20/08/2026 (quinta), 09:00 no fuso do aparelho. */
 const agora = new Date(2026, 7, 20, 9, 0, 0, 0);
@@ -59,8 +79,12 @@ const alarme = {
   vibration: true,
 };
 
+/** Deixa a cadeia async do ouvinte terminar antes de asserir. */
+const tick = () => new Promise((r) => setTimeout(r, 0));
+
 beforeEach(() => {
   payload = null;
+  ouvintes.length = 0;
   vi.clearAllMocks();
 });
 
@@ -132,6 +156,68 @@ describe("confirmação pelo dismiss", () => {
   });
 });
 
+describe("dismiss com o app apenas suspenso", () => {
+  /**
+   * O intent roda no processo do app e grava o payload num static. Se o app
+   * estava suspenso em memória (o idoso mexeu nele à noite e o alarme toca às
+   * 22h), ele volta ao primeiro plano sem montar de novo: o efeito de boot não
+   * roda outra vez e o payload ficaria lá parado para sempre — a família
+   * receberia alerta de um alarme atendido. É a explicação mais provável do
+   * "1 em 9" que falhou na medição em aparelho.
+   */
+  it("drena quando o app volta a ficar ativo", async () => {
+    const confirmados: string[] = [];
+    const parar = watchAlarmKitDismissals(estadoCom([alarme]), (id) =>
+      confirmados.push(id),
+    );
+    payload = { alarmId: "a1", payload: "a1" };
+
+    ouvintes.forEach((cb) => cb("active"));
+    await tick();
+
+    expect(confirmados).toEqual(["a1"]);
+    expect(enfileirar).toHaveBeenCalledWith(
+      expect.objectContaining({ alarmId: "a1", status: "responded" }),
+    );
+    parar();
+  });
+
+  it("voltar ao primeiro plano sem dismiss não enfileira nada", async () => {
+    const confirmados: string[] = [];
+    const parar = watchAlarmKitDismissals(estadoCom([alarme]), (id) =>
+      confirmados.push(id),
+    );
+    payload = null;
+
+    ouvintes.forEach((cb) => cb("active"));
+    await tick();
+
+    expect(confirmados).toEqual([]);
+    expect(enfileirar).not.toHaveBeenCalled();
+    parar();
+  });
+
+  it("ir para segundo plano não drena", async () => {
+    const parar = watchAlarmKitDismissals(estadoCom([alarme]), () => {});
+    payload = { alarmId: "a1", payload: "a1" };
+
+    ouvintes.forEach((cb) => cb("background"));
+    await tick();
+
+    expect(enfileirar).not.toHaveBeenCalled();
+    parar();
+  });
+
+  it("cancelar tira o ouvinte", () => {
+    const parar = watchAlarmKitDismissals(estadoCom([alarme]), () => {});
+    expect(ouvintes).toHaveLength(1);
+
+    parar();
+
+    expect(ouvintes).toHaveLength(0);
+  });
+});
+
 describe("costura no boot do app", () => {
   const layout = readFileSync(join(__dirname, "..", "app/_layout.tsx"), "utf8");
 
@@ -142,9 +228,17 @@ describe("costura no boot do app", () => {
     expect(layout).toMatch(/confirmAlarmKitDismissal\(loadCurrentAppStateRaw\)/);
   });
 
+  it("continua drenando depois do boot, quando o app volta ao primeiro plano", () => {
+    // O efeito de mount roda uma vez só; sem este ouvinte, o dismiss que chega
+    // com o app suspenso nunca é lido.
+    expect(layout).toMatch(/watchAlarmKitDismissals\(/);
+  });
+
   it("configura o App Group antes de tocar em qualquer outra coisa do AlarmKit", () => {
-    // Medido na Fase 0: sem configure(APP_GROUP) o intent de dismiss não
-    // registra nada e o payload nunca chega.
+    // O App Group é o suitName do UserDefaults compartilhado: sem ele
+    // setAlarm/getAllAlarms não gravam nem leem nada, ou seja, agendar e
+    // listar (listAlarmKitAlarmIds) dependem do configure. O payload do
+    // dismiss NÃO depende — o intent grava um static no processo do app.
     const configure = layout.indexOf("configure(APP_GROUP)");
     const confirma = layout.indexOf("confirmAlarmKitDismissal(");
     const autoriza = layout.indexOf("requestAlarmKitAuthorization(");

@@ -25,6 +25,7 @@ import {
   isAlarmKitAvailable,
   requestAlarmKitAuthorization,
   confirmAlarmKitDismissal,
+  watchAlarmKitDismissals,
 } from "@/lib/ios-alarm-kit";
 import { flushPendingConfirmations } from "@/lib/monitoring-service";
 import { loadCurrentAppStateRaw } from "@/lib/app-state-storage";
@@ -58,6 +59,20 @@ const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
 export const unstable_settings = {
   anchor: "(tabs)",
 };
+
+/**
+ * Empurra ao servidor o que a fila de confirmações tiver pendente, depois de um
+ * dismiss do AlarmKit ter sido drenado.
+ *
+ * Sem await de propósito: a confirmação já está gravada na fila local e o
+ * MonitoringInitializer reenvia no bootstrap autenticado — segurar o boot (ou o
+ * retorno ao primeiro plano) por até 15s de timeout de rede não compra nada.
+ */
+function reenviarConfirmacao(): void {
+  flushPendingConfirmations().catch((e) =>
+    console.warn('[RootLayout] reenvio da confirmação do dismiss falhou:', e),
+  );
+}
 
 export default function RootLayout() {
   const initialInsets = initialWindowMetrics?.insets ?? DEFAULT_WEB_INSETS;
@@ -93,9 +108,12 @@ export default function RootLayout() {
   // Set up notification channels and request permissions on startup
   useEffect(() => {
     const init = async () => {
-      // AlarmKit (iOS 26+): configure() PRECISA vir antes de qualquer outra
-      // chamada — sem o App Group o intent de dismiss não registra nada
-      // (medido na Fase 0: configure devolve false e o dismiss se perde).
+      // AlarmKit (iOS 26+): configure() guarda o App Group que vira o suiteName
+      // do UserDefaults compartilhado — sem ele o módulo não grava nem lê a
+      // lista de alarmes (setAlarm/getAllAlarms), então agendar e conferir o
+      // que está agendado dependem dele. Por isso vem antes de qualquer outra
+      // chamada. O payload do dismiss NÃO depende do App Group: o intent grava
+      // um static dentro do processo do app.
       if (isAlarmKitAvailable()) {
         alarmKit?.configure(APP_GROUP);
 
@@ -105,17 +123,10 @@ export default function RootLayout() {
         // atendido e a família recebe mensagem à toa.
         //
         // Vem antes de requestAlarmKitAuthorization de propósito: a autorização
-        // pode ficar parada num diálogo do sistema, e a confirmação não depende
-        // dela (o payload do dismiss só precisa do App Group).
+        // pode ficar parada num diálogo do sistema e a confirmação não depende
+        // dela.
         const confirmado = await confirmAlarmKitDismissal(loadCurrentAppStateRaw);
-        if (confirmado) {
-          // Sem await: a fila local já guarda a confirmação e o
-          // MonitoringInitializer reenvia no bootstrap autenticado. Segurar o
-          // boot por até 15s de timeout de rede não compra nada.
-          flushPendingConfirmations().catch((e) =>
-            console.warn('[RootLayout] reenvio da confirmação do dismiss falhou:', e),
-          );
-        }
+        if (confirmado) reenviarConfirmacao();
 
         await requestAlarmKitAuthorization();
       }
@@ -124,6 +135,12 @@ export default function RootLayout() {
       await requestNotificationPermissions();
     };
     init();
+
+    // O caminho de cima só cobre o app que SUBIU pelo dismiss. Com o app
+    // suspenso em memória o intent grava o payload e traz o app para frente sem
+    // remontar nada — este efeito não roda de novo e, sem o ouvinte abaixo, a
+    // confirmação nunca sairia.
+    return watchAlarmKitDismissals(loadCurrentAppStateRaw, reenviarConfirmacao);
   }, []);
 
   // Sliding session + expired-session guard. Refresh the token on startup so an

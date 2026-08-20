@@ -13,9 +13,12 @@
  *    perder rede nesses segundos, a resposta do idoso se perde para sempre.
  *
  * A fila local guarda a confirmação ANTES de tentar a rede e só a remove
- * quando o servidor de fato confirmou. O que sobrar é reenviado no próximo
- * boot autenticado. Evidência positiva apenas — só entra na fila o que o
- * usuário realmente respondeu, então nada aqui afrouxa o dead man's switch.
+ * quando a chamada chegou ao servidor (resposta OK) — o que não é o mesmo que
+ * o evento ter casado: `confirmEvent` devolve `{ success: true }` mesmo sem
+ * casar com (alarmId, scheduledAt). O que a fila garante é entrega. O que
+ * sobrar é reenviado no próximo boot autenticado. Evidência positiva apenas —
+ * só entra na fila o que o usuário realmente respondeu, então nada aqui
+ * afrouxa o dead man's switch.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -146,6 +149,27 @@ describe("flush no boot", () => {
     await svc.flushPendingConfirmations();
 
     expect(await queue.listPendingConfirmations()).toHaveLength(1);
+  });
+
+  it("dois flushes ao mesmo tempo não viram duas rodadas de reenvio", async () => {
+    // O boot por dismiss dispara um flush e o MonitoringInitializer dispara
+    // outro. A fila é read-modify-write sem trava: intercalados, um
+    // enqueueConfirmation no meio some — e o que some é uma resposta que o
+    // idoso deu de verdade.
+    fetchMock.mockResolvedValue(boom());
+    const svc = await import("../lib/monitoring-service");
+    const queue = await import("../lib/pending-confirmations");
+    await svc.confirmAlarmResponded(ALARM, SCHEDULED);
+
+    fetchMock.mockClear();
+    fetchMock.mockResolvedValue(ok());
+    await Promise.all([
+      svc.flushPendingConfirmations(),
+      svc.flushPendingConfirmations(),
+    ]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(await queue.listPendingConfirmations()).toHaveLength(0);
   });
 
   it("descarta confirmação velha demais para importar (>24h)", async () => {

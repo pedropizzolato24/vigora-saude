@@ -75,7 +75,13 @@ export async function enqueueConfirmation(
   await writeAll(withoutDuplicate);
 }
 
-/** Chamada só quando o servidor DE FATO confirmou. */
+/**
+ * Chamada quando a confirmação CHEGOU ao servidor (resposta OK). Não é o mesmo
+ * que "o evento pendente casou": `monitoring.confirmEvent` responde
+ * `{ success: true }` mesmo quando nenhum evento bate com (alarmId,
+ * scheduledAt), e o cliente não tem como distinguir. O que a fila garante é
+ * entrega, não casamento.
+ */
 export async function dequeueConfirmation(
   alarmId: string,
   scheduledAtIso: string
