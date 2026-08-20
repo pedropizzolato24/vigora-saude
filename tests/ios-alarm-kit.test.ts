@@ -41,6 +41,7 @@ import {
   alarmKitWeekdays,
   scheduleAlarmKitAlarm,
   cancelAlarmKitAlarm,
+  listAlarmKitAlarmIds,
 } from "../lib/ios-alarm-kit";
 import type { Alarm } from "../lib/app-context";
 
@@ -133,5 +134,17 @@ describe("agendamento", () => {
   it("cancelar repassa o id", async () => {
     await cancelAlarmKitAlarm("3f2504e0-4f89-11d3-9a0c-0305e82c3301");
     expect(ponte.cancelAlarm).toHaveBeenCalledWith("3f2504e0-4f89-11d3-9a0c-0305e82c3301");
+  });
+});
+
+describe("listAlarmKitAlarmIds", () => {
+  it("repassa os ids que a ponte devolve", () => {
+    ponte.getAllAlarms.mockReturnValue(["a1", "a2"]);
+    expect(listAlarmKitAlarmIds()).toEqual(["a1", "a2"]);
+  });
+
+  it("sem ponte, devolve lista vazia em vez de lançar", () => {
+    pontePresente = false;
+    expect(listAlarmKitAlarmIds()).toEqual([]);
   });
 });

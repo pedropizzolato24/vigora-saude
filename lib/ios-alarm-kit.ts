@@ -78,6 +78,18 @@ export async function cancelAlarmKitAlarm(alarmId: string): Promise<void> {
   await alarmKit.cancelAlarm(alarmId);
 }
 
+/**
+ * Ids dos alarmes agendados de verdade no AlarmKit — a fonte usada por
+ * syncAlarmsOnStartup para saber o que já está agendado quando o AlarmKit é o
+ * caminho ativo. Perguntar às notificações (como o fallback faz) não serve
+ * aqui: um alarme do AlarmKit nunca aparece nelas, então todo alarme
+ * pareceria faltando em toda abertura do app.
+ */
+export function listAlarmKitAlarmIds(): string[] {
+  if (!alarmKit) return [];
+  return alarmKit.getAllAlarms();
+}
+
 /** Dismiss que abriu o app, se houver. Consome (só vale uma vez). */
 export function takeDismissal(): { alarmId: string; payload: string | null } | null {
   if (!alarmKit) return null;

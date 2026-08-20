@@ -28,6 +28,7 @@ import {
   isAlarmKitAvailable,
   scheduleAlarmKitAlarm,
   cancelAlarmKitAlarm,
+  listAlarmKitAlarmIds,
 } from './ios-alarm-kit';
 
 /**
@@ -58,7 +59,10 @@ const SCHEDULE_VERSION_KEY = 'vigora:alarm-schedule-version';
  * - Android: use expo-alarm-module ONLY. It creates its own notification with
  *   static title/body (set in native-alarm-manager.ts). Adding expo-notifications
  *   on top creates a DUPLICATE notification - removed per Passo 1.1.
- * - iOS/Web: use expo-notifications only (no native alarm module available).
+ * - iOS 26+ (AlarmKit disponível): AlarmKit é o alarme de verdade — toca em
+ *   loop e toma a tela. Nenhuma notificação é agendada para este alarme.
+ * - iOS <26 / AlarmKit indisponível / Web: expo-notifications (Critical
+ *   Alerts no iOS).
  */
 export async function scheduleFullAlarm(alarm: Alarm): Promise<Alarm> {
   const updated = { ...alarm };
@@ -210,12 +214,21 @@ export async function syncAlarmsOnStartup(alarms: Alarm[]): Promise<void> {
         continue;
       }
 
-      // iOS/Web: falta agendamento? Pergunta pelo alarmId, não pelo id
-      // guardado — que fica desatualizado assim que este reagendamento roda e
-      // fazia todo alarme parecer faltando em toda abertura.
-      const notificationMissing = (agendadasPorAlarme.get(alarm.id) ?? 0) === 0;
+      // iOS 26+: a pergunta "está faltando?" vai ao AlarmKit, não às
+      // notificações — um alarme do AlarmKit nunca aparece em
+      // agendadasPorAlarme, e perguntar lá faria TODO alarme parecer
+      // faltando em toda abertura do app: a mesma classe de bug das ~15-20
+      // notificações simultâneas do iPhone, agora do lado do AlarmKit.
+      //
+      // iOS <26 / AlarmKit indisponível: pergunta pelo alarmId nas
+      // notificações, não pelo id guardado — que fica desatualizado assim
+      // que este reagendamento roda e fazia todo alarme parecer faltando em
+      // toda abertura.
+      const missing = isAlarmKitAvailable()
+        ? !listAlarmKitAlarmIds().includes(alarm.id)
+        : (agendadasPorAlarme.get(alarm.id) ?? 0) === 0;
 
-      if (notificationMissing || forcarReagendamento) {
+      if (missing || forcarReagendamento) {
         console.log(`[Alarm Sync] Rescheduling alarm: ${alarm.id}`);
         try {
           // Se sobrou qualquer resto deste alarme, sai antes — reagendar por
