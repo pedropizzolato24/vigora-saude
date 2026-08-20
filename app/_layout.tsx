@@ -2,7 +2,7 @@ import "@/global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import { Platform } from "react-native";
@@ -32,7 +32,7 @@ import { loadCurrentAppStateRaw } from "@/lib/app-state-storage";
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
-import { useRouter } from 'expo-router';
+import { router, usePathname, useRouter } from 'expo-router';
 import { AlarmSyncInitializer } from "@/components/alarm-sync-initializer";
 import { AlarmNotificationHandler } from '@/components/alarm-notification-handler';
 import { MonitoringInitializer } from '@/components/monitoring-initializer';
@@ -88,6 +88,44 @@ export default function RootLayout() {
     'SpaceMono-Bold': require('../assets/fonts/SpaceMono-Bold.ttf'),
   });
 
+  // Rota atual em ref: os drenos do dismiss do AlarmKit rodam em callbacks de
+  // efeito, fora do render. Mesmo padrão do AlarmNotificationHandler.
+  const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
+  /**
+   * Um dismiss do AlarmKit acabou de ser drenado: reenvia a confirmação e abre
+   * a tela do alarme.
+   *
+   * `fromAlarmKit=1` é o que conta à alarm-ring a PROCEDÊNCIA do disparo — dali
+   * ela deriva que não deve tocar som, vibrar nem rodar o countdown, porque o
+   * alarme já tocou em tela cheia e já foi respondido. Sem o parâmetro a tela
+   * se comporta como no caminho antigo, que é o certo para as outras rotas que
+   * levam a ela (botão "Testar" da lista, notificação legada).
+   *
+   * É esta navegação que cumpre a promessa da spec: o app abre falando qual
+   * remédio é (no caminho do AlarmKit é a primeira vez que o idoso ouve isso) e
+   * mostrando "Confirmado".
+   *
+   * O perigo que docs/claude/alarmes.md descreve ao navegar para /alarm-ring
+   * por fora do deep link é a instância empilhada que expira e escala sozinha.
+   * Aqui o countdown não roda, então ela não escala — mas ainda assim não
+   * empilhamos: com a tela já aberta, não navegamos de novo.
+   *
+   * Deps [] de propósito: `router` é o singleton imperativo do expo-router, não
+   * o hook. Assim esta função tem identidade fixa e o efeito de init abaixo (que
+   * também pede autorização e cria canais de notificação) continua rodando uma
+   * vez só.
+   */
+  const aoDrenarDismiss = useCallback((alarmId: string) => {
+    reenviarConfirmacao();
+    if (pathnameRef.current?.startsWith('/alarm-ring')) return;
+    router.push(`/alarm-ring?alarmId=${encodeURIComponent(alarmId)}&fromAlarmKit=1`);
+  }, []);
+
   // Diagnóstico do splash longo (item 2 do feedback 27/07): quanto do tempo até
   // a primeira tela é fonte, quanto é provider, quanto é rede.
   useEffect(() => {
@@ -126,7 +164,7 @@ export default function RootLayout() {
         // pode ficar parada num diálogo do sistema e a confirmação não depende
         // dela.
         const confirmado = await confirmAlarmKitDismissal(loadCurrentAppStateRaw);
-        if (confirmado) reenviarConfirmacao();
+        if (confirmado) aoDrenarDismiss(confirmado);
 
         await requestAlarmKitAuthorization();
       }
@@ -140,8 +178,8 @@ export default function RootLayout() {
     // suspenso em memória o intent grava o payload e traz o app para frente sem
     // remontar nada — este efeito não roda de novo e, sem o ouvinte abaixo, a
     // confirmação nunca sairia.
-    return watchAlarmKitDismissals(loadCurrentAppStateRaw, reenviarConfirmacao);
-  }, []);
+    return watchAlarmKitDismissals(loadCurrentAppStateRaw, aoDrenarDismiss);
+  }, [aoDrenarDismiss]);  // aoDrenarDismiss é estável (useCallback com deps [])
 
   // Sliding session + expired-session guard. Refresh the token on startup so an
   // actively-used device never logs out — a dead session silently disarms the

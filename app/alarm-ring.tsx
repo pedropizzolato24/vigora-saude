@@ -48,7 +48,6 @@ import {
   resumeNativeAlarmSound,
 } from '@/lib/native-alarm-manager';
 import { dismissDeliveredAlarmNotification } from '@/lib/notifications-utils';
-import { isAlarmKitAvailable } from '@/lib/ios-alarm-kit';
 import { enterAlarmLockScreenMode, exitAlarmLockScreenMode } from 'expo-alarm-countdown';
 import { RippleHalo } from '@/components/animated-components';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -74,7 +73,11 @@ const ALARM_SOUND = require('@/assets/alarm.mp3');
 const respondedFirings = new Set<string>();
 
 // Builds the speech text for the alarm announcement
-function buildSpeechText(alarmDescription?: string, alarmTime?: string): string {
+function buildSpeechText(
+  alarmDescription?: string,
+  alarmTime?: string,
+  vindoDoAlarmKit = false,
+): string {
   const parts: string[] = [];
   parts.push('Atenção! Alarme de medicamento.');
   if (alarmTime) {
@@ -83,25 +86,40 @@ function buildSpeechText(alarmDescription?: string, alarmTime?: string): string 
   if (alarmDescription) {
     parts.push(alarmDescription);
   }
-  parts.push('Toque em Desligar Alarme para confirmar que tomou o medicamento.');
+  // A voz é a ÚNICA coisa que sobrevive no caminho do AlarmKit, e lá não existe
+  // botão "Desligar Alarme" — mandar procurá-lo é mandar o idoso procurar o que
+  // não está na tela. Lá o alarme já foi desligado; o que falta é tomar o
+  // remédio.
+  parts.push(
+    vindoDoAlarmKit
+      ? 'Você já desligou o alarme. Agora é só tomar o medicamento.'
+      : 'Toque em Desligar Alarme para confirmar que tomou o medicamento.',
+  );
   return parts.join(' ');
 }
 
 export default function AlarmRingScreen() {
   const router = useRouter();
-  const { alarmId, expiresAt: expiresAtParam, snooze: snoozeParam } = useLocalSearchParams<{ alarmId: string; expiresAt?: string; snooze?: string }>();
+  const { alarmId, expiresAt: expiresAtParam, snooze: snoozeParam, fromAlarmKit } = useLocalSearchParams<{ alarmId: string; expiresAt?: string; snooze?: string; fromAlarmKit?: string }>();
   const { state, dispatch } = useAppContext();
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac } = useAccessibility();
   const colors = useColors();
 
   const alarm = state.alarms.find((a) => a.id === alarmId);
 
-  // iOS 26+: quando esta tela monta, o alarme JÁ tocou em tela cheia e o idoso
-  // JÁ apertou "Desligar" — foi isso que abriu o app. Não há o que tocar nem o
-  // que contar: rodar o countdown aqui escalaria para a família um alarme que
-  // foi atendido (a confirmação já saiu no boot, em confirmAlarmKitDismissal).
-  // A tela vira confirmação: fala o remédio e mostra "Confirmado".
-  const vindoDoAlarmKit = Platform.OS === 'ios' && isAlarmKitAvailable();
+  // iOS 26+: o alarme JÁ tocou em tela cheia e o idoso JÁ apertou "Desligar" —
+  // foi isso que abriu o app. Não há o que tocar nem o que contar: rodar o
+  // countdown aqui escalaria para a família um alarme que foi atendido (a
+  // confirmação já saiu em confirmAlarmKitDismissal). A tela vira confirmação.
+  //
+  // ⚠️ É PROCEDÊNCIA do disparo, não capacidade do aparelho. Perguntar
+  // `isAlarmKitAvailable()` respondia "este iPhone tem AlarmKit", e num 26+ há
+  // rotas vivas que NÃO vêm do AlarmKit: o botão "Testar" da lista de alarmes e
+  // a notificação legada de um alarme agendado por build anterior, que dispara
+  // antes de syncAlarmsOnStartup migrar. Nessas, dizer "não precisa fazer mais
+  // nada" e desligar o countdown seria desarmar o dead man's switch num alarme
+  // real não atendido. Só quem navega sabendo da procedência passa o parâmetro.
+  const vindoDoAlarmKit = fromAlarmKit === '1';
 
   // Initialize with the configured duration; will be overridden by persisted timer on mount.
   // Note: configuredDuration from state may be stale if state hasn't loaded yet.
@@ -176,7 +194,7 @@ export default function AlarmRingScreen() {
   // O som é o do serviço nativo, então pausar/retomar passa pelo módulo nativo.
   const speakAlarm = useCallback(() => {
     if (Platform.OS === 'web') return;
-    const text = buildSpeechText(alarm?.description, alarm?.time);
+    const text = buildSpeechText(alarm?.description, alarm?.time, vindoDoAlarmKit);
     // speechVolume chega ao Android via patch do expo-speech (KEY_PARAM_VOLUME)
     // — o módulo original ignorava options.volume por completo fora do iOS.
     const speechVol = (state.settings.speechVolume ?? 90) / 100;
@@ -219,7 +237,7 @@ export default function AlarmRingScreen() {
         resumeAlarm();
       },
     });
-  }, [alarm, state.settings, pauseAlarmSound, resumeAlarmSound]);
+  }, [alarm, state.settings, pauseAlarmSound, resumeAlarmSound, vindoDoAlarmKit]);
 
   // Mostra a tela por cima da lock screen enquanto o alarme está ativo —
   // escopado a esta tela (não um flag fixo no app inteiro). Ao desmontar
@@ -277,7 +295,11 @@ export default function AlarmRingScreen() {
             alarmId,
             loadCurrentAppStateRaw
           );
-          if (vibrationOk) {
+          // `!vindoDoAlarmKit` pelo mesmo motivo do som: vibrate(..., true)
+          // repete até Vibration.cancel(), e no caminho do AlarmKit o idoso já
+          // desligou o alarme — o celular ficaria vibrando sem parar depois de
+          // ele ter respondido.
+          if (vibrationOk && !vindoDoAlarmKit) {
             Vibration.vibrate([0, 500, 500, 500], true);
           }
 
@@ -621,9 +643,9 @@ export default function AlarmRingScreen() {
             o layout de caixa de aviso; a cor é que diz o que aconteceu.) */}
         <View style={[styles.countdownSection, { gap: 10 }]}>
           {vindoDoAlarmKit ? (
-            <View style={[styles.escalatedBox, { backgroundColor: colors.successLight, borderColor: colors.success, borderWidth: 3 }]}>
-              <MaterialIcons name="check-circle" size={36} color={colors.success} />
-              <Text style={[styles.escalatedText, { color: colors.success, fontSize: af.md, lineHeight: af.md * 1.4 }]}>
+            <View style={[styles.escalatedBox, { backgroundColor: ac.surface, borderColor: ac.success, borderWidth: 3 }]}>
+              <MaterialIcons name="check-circle" size={36} color={ac.success} />
+              <Text style={[styles.escalatedText, { color: ac.success, fontSize: af.md, lineHeight: af.md * 1.4 }]}>
                 Alarme desligado. Não precisa fazer mais nada.
               </Text>
             </View>
@@ -649,9 +671,12 @@ export default function AlarmRingScreen() {
           )}
         </View>
 
-        {/* Snooze + Dismiss buttons */}
+        {/* Snooze + Dismiss buttons — a soneca some no caminho do AlarmKit:
+            snoozeNativeAlarm é no-op fora do Android, mas handleSnooze registra
+            o evento pendente. No iPhone nada voltaria a tocar e a família seria
+            avisada em 5 min sobre quem acabou de responder. */}
         <View style={[styles.bottomSection, { gap: 14 }]}>
-          {!isExpired && (
+          {!isExpired && !vindoDoAlarmKit && (
             <Pressable
               style={({ pressed }) => [
                 styles.snoozeButton,
@@ -659,11 +684,11 @@ export default function AlarmRingScreen() {
                 pressed && { opacity: 0.85 },
               ]}
               onPress={handleSnooze}
-              accessibilityLabel={`${vindoDoAlarmKit ? 'Adiar' : 'Soneca de'} ${SNOOZE_MINUTES} minutos`}
+              accessibilityLabel={`Soneca de ${SNOOZE_MINUTES} minutos`}
             >
               <MaterialIcons name="snooze" size={36} color={ac.foreground} />
               <Text style={[styles.snoozeText, { fontSize: af.md, color: ac.foreground, fontWeight: '800' }]}>
-                {vindoDoAlarmKit ? `Adiar ${SNOOZE_MINUTES} min` : `Soneca (${SNOOZE_MINUTES} min)`}
+                Soneca ({SNOOZE_MINUTES} min)
               </Text>
             </Pressable>
           )}
@@ -671,14 +696,14 @@ export default function AlarmRingScreen() {
             style={({ pressed }) => [
               styles.dismissButton,
               { minHeight: 88, paddingVertical: 26 },
-              vindoDoAlarmKit && { backgroundColor: colors.success, shadowColor: colors.success },
+              vindoDoAlarmKit && { backgroundColor: ac.success, shadowColor: ac.success },
               pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
             ]}
             onPress={handleDismiss}
             accessibilityLabel={vindoDoAlarmKit ? 'Confirmado, fechar' : 'Desligar alarme'}
           >
-            <MaterialIcons name={vindoDoAlarmKit ? 'check' : 'alarm-off'} size={44} color={vindoDoAlarmKit ? colors.onSuccess : '#FFFFFF'} />
-            <Text style={[styles.dismissText, { fontSize: af.lg, fontWeight: '900' }, vindoDoAlarmKit && { color: colors.onSuccess }]}>
+            <MaterialIcons name={vindoDoAlarmKit ? 'check' : 'alarm-off'} size={44} color={vindoDoAlarmKit ? ac.onPrimary : '#FFFFFF'} />
+            <Text style={[styles.dismissText, { fontSize: af.lg, fontWeight: '900' }, vindoDoAlarmKit && { color: ac.onPrimary }]}>
               {vindoDoAlarmKit ? 'Confirmado' : 'Desligar Alarme'}
             </Text>
           </Pressable>
@@ -768,18 +793,17 @@ export default function AlarmRingScreen() {
         )}
       </View>
 
-      {/* Snooze + Dismiss buttons */}
+      {/* Snooze + Dismiss buttons — ver a nota do modo acessível: sem soneca
+          no caminho do AlarmKit. */}
       <View style={[styles.bottomSection, { gap: 12 }]}>
-        {!isExpired && (
+        {!isExpired && !vindoDoAlarmKit && (
           <Pressable
             style={({ pressed }) => [styles.snoozeButton, pressed && { opacity: 0.8 }]}
             onPress={handleSnooze}
-            accessibilityLabel={`${vindoDoAlarmKit ? 'Adiar' : 'Soneca de'} ${SNOOZE_MINUTES} minutos`}
+            accessibilityLabel={`Soneca de ${SNOOZE_MINUTES} minutos`}
           >
             <MaterialIcons name="snooze" size={24} color="#FFFFFF" />
-            <Text style={styles.snoozeText}>
-              {vindoDoAlarmKit ? `Adiar ${SNOOZE_MINUTES} min` : `Soneca (${SNOOZE_MINUTES} min)`}
-            </Text>
+            <Text style={styles.snoozeText}>Soneca ({SNOOZE_MINUTES} min)</Text>
           </Pressable>
         )}
         <Pressable
