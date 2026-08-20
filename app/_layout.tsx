@@ -2,7 +2,7 @@ import "@/global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import { Platform } from "react-native";
@@ -32,7 +32,7 @@ import { loadCurrentAppStateRaw } from "@/lib/app-state-storage";
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
-import { router, usePathname, useRouter } from 'expo-router';
+import { router, useRouter } from 'expo-router';
 import { AlarmSyncInitializer } from "@/components/alarm-sync-initializer";
 import { AlarmNotificationHandler } from '@/components/alarm-notification-handler';
 import { MonitoringInitializer } from '@/components/monitoring-initializer';
@@ -88,14 +88,6 @@ export default function RootLayout() {
     'SpaceMono-Bold': require('../assets/fonts/SpaceMono-Bold.ttf'),
   });
 
-  // Rota atual em ref: os drenos do dismiss do AlarmKit rodam em callbacks de
-  // efeito, fora do render. Mesmo padrão do AlarmNotificationHandler.
-  const pathname = usePathname();
-  const pathnameRef = useRef(pathname);
-  useEffect(() => {
-    pathnameRef.current = pathname;
-  }, [pathname]);
-
   /**
    * Um dismiss do AlarmKit acabou de ser drenado: reenvia a confirmação e abre
    * a tela do alarme.
@@ -110,19 +102,30 @@ export default function RootLayout() {
    * remédio é (no caminho do AlarmKit é a primeira vez que o idoso ouve isso) e
    * mostrando "Confirmado".
    *
-   * O perigo que docs/claude/alarmes.md descreve ao navegar para /alarm-ring
-   * por fora do deep link é a instância empilhada que expira e escala sozinha.
-   * Aqui o countdown não roda, então ela não escala — mas ainda assim não
-   * empilhamos: com a tela já aberta, não navegamos de novo.
+   * ⚠️ NÃO acrescente uma guarda de rota aqui ("só navega se não estiver na
+   * alarm-ring"). Ela já existiu e foi removida: para saber a rota atual, a
+   * RAIZ precisa assinar o store do router (`usePathname` →
+   * `useSyncExternalStore`), e aí o RootLayout — que hoje renderiza uma vez —
+   * passa a renderizar a cada troca de rota, inclusive troca de aba. Como o
+   * `content` é montado inline sem `useMemo`, isso arrasta a cadeia inteira de
+   * providers, e o AppContext publica `value` como objeto literal novo a cada
+   * render: invalida o contexto para os 28 arquivos que usam `useAppContext()`.
+   * Caro num Samsung A / Moto G, que é o aparelho do nosso público.
    *
-   * Deps [] de propósito: `router` é o singleton imperativo do expo-router, não
-   * o hook. Assim esta função tem identidade fixa e o efeito de init abaixo (que
-   * também pede autorização e cria canais de notificação) continua rodando uma
-   * vez só.
+   * E a guarda é redundante. A proteção contra dreno duplo é anterior e mais
+   * forte: `takeDismissal()` → `getLaunchPayload()` CONSOME o payload na
+   * leitura, então boot e AppState nunca navegam duas vezes pelo mesmo dismiss.
+   * O que sobra descoberto é outra alarm-ring já aberta quando chega um dismiss
+   * NOVO — e aí empilhar não tem risco para o dead man's switch: a confirmação
+   * desse dismiss já foi enfileirada antes desta chamada, e o perigo que
+   * docs/claude/alarmes.md descreve (a instância soterrada que expira e escala
+   * sozinha) depende do countdown, que não roda no ramo `fromAlarmKit=1`.
+   *
+   * Deps [] de propósito: esta função não lê nada do render — `router` é o
+   * singleton imperativo do expo-router.
    */
   const aoDrenarDismiss = useCallback((alarmId: string) => {
     reenviarConfirmacao();
-    if (pathnameRef.current?.startsWith('/alarm-ring')) return;
     router.push(`/alarm-ring?alarmId=${encodeURIComponent(alarmId)}&fromAlarmKit=1`);
   }, []);
 

@@ -123,8 +123,19 @@ describe("navegação depois do dismiss do AlarmKit", () => {
     );
   });
 
-  it("não empilha uma segunda alarm-ring por cima da aberta", () => {
-    expect(layout).toMatch(/pathnameRef\.current\?\.startsWith\('\/alarm-ring'\)\) return;/);
+  it("não assina o store de rota na raiz do app", () => {
+    // `usePathname()` na RAIZ (useSyncExternalStore) faria o RootLayout, que
+    // hoje renderiza uma vez, renderizar a cada troca de rota — inclusive troca
+    // de aba. O `content` é inline sem useMemo, então isso arrasta a cadeia de
+    // providers, e o AppContext publica `value` literal novo a cada render:
+    // invalida o contexto para os 28 arquivos com useAppContext(). Caro no
+    // Samsung A / Moto G do nosso público.
+    //
+    // Chegou a existir aqui, como guarda anti-empilhamento, e é redundante: o
+    // dreno duplo já é impossível porque takeDismissal() consome o payload na
+    // leitura. (O nome sobrevive num comentário explicando isso — por isso a
+    // asserção mira o import.)
+    expect(layout).not.toMatch(/^import .*usePathname/m);
   });
 });
 
