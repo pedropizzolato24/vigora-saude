@@ -17,6 +17,12 @@ import { getApiBaseUrl } from "@/constants/oauth";
 import { Alarm } from "./app-context";
 import { nextAlarmFireMs } from "./alarm-fire-times";
 import * as Auth from "./_core/auth";
+import {
+  enqueueConfirmation,
+  dequeueConfirmation,
+  listPendingConfirmations,
+  type ConfirmationStatus,
+} from "./pending-confirmations";
 
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -303,6 +309,53 @@ export async function createPendingAlarmEvent(
 }
 
 /**
+ * Envia uma confirmação e só tira da fila local se o servidor aceitou.
+ *
+ * `trpcMutation` devolve `null` em TODA falha (sem sessão, 4xx, 5xx, timeout)
+ * sem nunca lançar — por isso a decisão é pelo retorno, não por try/catch. O
+ * que não sair fica na fila e é reenviado por flushPendingConfirmations.
+ */
+async function sendConfirmation(
+  alarmId: string,
+  scheduledAtIso: string,
+  status: ConfirmationStatus
+): Promise<void> {
+  await enqueueConfirmation({ alarmId, scheduledAtIso, status });
+  const result = await trpcMutation("monitoring.confirmEvent", {
+    alarmId,
+    scheduledAt: scheduledAtIso,
+    status,
+  });
+  if (result === null) {
+    console.warn(`[Monitoring] Confirmação de ${alarmId} não chegou — fica na fila`);
+    return;
+  }
+  await dequeueConfirmation(alarmId, scheduledAtIso);
+  console.log(`[Monitoring] Alarm ${alarmId} confirmed as ${status}`);
+}
+
+/**
+ * Reenvia as confirmações que não chegaram ao servidor. Chamada no bootstrap
+ * autenticado do MonitoringInitializer: é a rede de segurança para o idoso que
+ * respondeu o alarme com a rede caída (ou com o app morrendo logo em seguida)
+ * e cuja família seria avisada de um alarme perdido que não existiu.
+ */
+export async function flushPendingConfirmations(): Promise<void> {
+  const pending = await listPendingConfirmations();
+  if (pending.length === 0) return;
+  console.log(`[Monitoring] Reenviando ${pending.length} confirmação(ões) pendente(s)`);
+  for (const entry of pending) {
+    const result = await trpcMutation("monitoring.confirmEvent", {
+      alarmId: entry.alarmId,
+      scheduledAt: entry.scheduledAtIso,
+      status: entry.status,
+    });
+    if (result === null) continue; // próximo boot tenta de novo
+    await dequeueConfirmation(entry.alarmId, entry.scheduledAtIso);
+  }
+}
+
+/**
  * Confirm an alarm event as responded.
  * Call this when the user dismisses or snoozes the alarm.
  */
@@ -310,12 +363,7 @@ export async function confirmAlarmResponded(
   alarm: Alarm,
   scheduledAt: Date
 ): Promise<void> {
-  await trpcMutation("monitoring.confirmEvent", {
-    alarmId: alarm.id,
-    scheduledAt: scheduledAt.toISOString(),
-    status: "responded",
-  });
-  console.log(`[Monitoring] Alarm ${alarm.id} confirmed as responded`);
+  await sendConfirmation(alarm.id, scheduledAt.toISOString(), "responded");
 }
 
 /**
@@ -326,12 +374,7 @@ export async function confirmAlarmMissed(
   alarm: Alarm,
   scheduledAt: Date
 ): Promise<void> {
-  await trpcMutation("monitoring.confirmEvent", {
-    alarmId: alarm.id,
-    scheduledAt: scheduledAt.toISOString(),
-    status: "missed",
-  });
-  console.log(`[Monitoring] Alarm ${alarm.id} confirmed as missed`);
+  await sendConfirmation(alarm.id, scheduledAt.toISOString(), "missed");
 }
 
 /**
