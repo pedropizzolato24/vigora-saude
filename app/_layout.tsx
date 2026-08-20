@@ -19,6 +19,15 @@ import { AppLockGate } from '@/components/app-lock-gate';
 import { UpdateBanner } from '@/components/update-banner';
 import { syncAlarmsOnStartup } from "@/lib/alarm-sync";
 import { setupNotificationChannels, requestNotificationPermissions } from "@/lib/notifications-utils";
+import { alarmKit } from "@/lib/_core/ios-alarm-kit-bridge";
+import {
+  APP_GROUP,
+  isAlarmKitAvailable,
+  requestAlarmKitAuthorization,
+  confirmAlarmKitDismissal,
+} from "@/lib/ios-alarm-kit";
+import { flushPendingConfirmations } from "@/lib/monitoring-service";
+import { loadCurrentAppStateRaw } from "@/lib/app-state-storage";
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
@@ -84,6 +93,33 @@ export default function RootLayout() {
   // Set up notification channels and request permissions on startup
   useEffect(() => {
     const init = async () => {
+      // AlarmKit (iOS 26+): configure() PRECISA vir antes de qualquer outra
+      // chamada — sem o App Group o intent de dismiss não registra nada
+      // (medido na Fase 0: configure devolve false e o dismiss se perde).
+      if (isAlarmKitAvailable()) {
+        alarmKit?.configure(APP_GROUP);
+
+        // O app pode ter sido aberto pelo "Desligar" do alarme, e esse toque É
+        // a resposta do idoso. Confirmar aqui, no boot, é o caminho normal do
+        // dead man's switch: sem isso o monitoring-job escala um alarme que foi
+        // atendido e a família recebe mensagem à toa.
+        //
+        // Vem antes de requestAlarmKitAuthorization de propósito: a autorização
+        // pode ficar parada num diálogo do sistema, e a confirmação não depende
+        // dela (o payload do dismiss só precisa do App Group).
+        const confirmado = await confirmAlarmKitDismissal(loadCurrentAppStateRaw);
+        if (confirmado) {
+          // Sem await: a fila local já guarda a confirmação e o
+          // MonitoringInitializer reenvia no bootstrap autenticado. Segurar o
+          // boot por até 15s de timeout de rede não compra nada.
+          flushPendingConfirmations().catch((e) =>
+            console.warn('[RootLayout] reenvio da confirmação do dismiss falhou:', e),
+          );
+        }
+
+        await requestAlarmKitAuthorization();
+      }
+
       await setupNotificationChannels();
       await requestNotificationPermissions();
     };

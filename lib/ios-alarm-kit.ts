@@ -8,7 +8,8 @@
  *   - agendamento recusado → Promise<boolean> false
  */
 import { alarmKit } from './_core/ios-alarm-kit-bridge';
-import { firingJsDays } from './alarm-fire-times';
+import { firingJsDays, lastAlarmFireMs } from './alarm-fire-times';
+import { enqueueConfirmation } from './pending-confirmations';
 import type { Alarm } from './app-context';
 
 export const APP_GROUP = 'group.com.vigora.saude.alarms';
@@ -94,4 +95,61 @@ export function listAlarmKitAlarmIds(): string[] {
 export function takeDismissal(): { alarmId: string; payload: string | null } | null {
   if (!alarmKit) return null;
   return alarmKit.getLaunchPayload();
+}
+
+/**
+ * Alarme lido do estado PERSISTIDO. No boot por dismiss o app acabou de subir e
+ * o contexto em memória ainda não hidratou — mesmo motivo pelo qual
+ * `shouldVibrate` (lib/_core/alarm-vibration.ts) lê daqui. `loadRaw` é injetado
+ * (o caller passa `loadCurrentAppStateRaw`) para o teste conseguir exercitar.
+ */
+async function alarmePersistido(
+  alarmId: string,
+  loadRaw: () => Promise<string | null>,
+): Promise<Alarm | null> {
+  try {
+    const raw = await loadRaw();
+    if (!raw) return null;
+    const alarms = JSON.parse(raw)?.alarms;
+    if (!Array.isArray(alarms)) return null;
+    return alarms.find((a: Alarm) => a?.id === alarmId) ?? null;
+  } catch (error) {
+    console.warn('[AlarmKit] estado persistido ilegível ao confirmar o dismiss:', error);
+    return null;
+  }
+}
+
+/**
+ * Confirma ao servidor o alarme que o idoso desligou na tela do AlarmKit.
+ *
+ * Enfileira em vez de mandar direto: o app pode ter aberto sem rede (o alarme
+ * da madrugada é o caso típico), e a fila já reenvia no bootstrap autenticado
+ * do MonitoringInitializer. Devolve o alarmId confirmado, ou null.
+ *
+ * O horário mandado é o do DISPARO, não o de agora: o servidor casa o evento
+ * por (alarmId, scheduledAt) e "agora" pode não casar com o pendente — a
+ * confirmação se perderia e a família seria avisada de um alarme atendido. É o
+ * mesmo horário canônico que a alarm-ring usa (lastAlarmFireMs). Sem o alarme
+ * (foi apagado) ou sem disparo calculável, confirma com `now` mesmo assim:
+ * perder a confirmação é pior que casá-la com horário aproximado.
+ *
+ * Só age sobre evidência: sem payload de dismiss, não confirma nada. Inferir
+ * "respondeu" pela ausência esconderia um remédio de fato perdido.
+ */
+export async function confirmAlarmKitDismissal(
+  loadRaw: () => Promise<string | null>,
+  now: Date = new Date(),
+): Promise<string | null> {
+  const dismissal = takeDismissal();
+  if (!dismissal?.alarmId) return null;
+
+  const alarm = await alarmePersistido(dismissal.alarmId, loadRaw);
+  const disparoMs = alarm ? lastAlarmFireMs(alarm, now) : null;
+
+  await enqueueConfirmation({
+    alarmId: dismissal.alarmId,
+    scheduledAtIso: new Date(disparoMs ?? now.getTime()).toISOString(),
+    status: 'responded',
+  });
+  return dismissal.alarmId;
 }
