@@ -859,7 +859,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   countdownLabel: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#94A3B8',
     textAlign: 'center',
   },
@@ -874,11 +874,16 @@ const styles = StyleSheet.create({
   },
   countdownTimerUrgent: {},
   countdownSub: {
-    fontSize: 12,
+    // 15 é o corpo mínimo do CLAUDE.md; era 12, o menor da tela, justo na
+    // linha que ensina a impedir o acionamento da família. O rótulo acima
+    // subiu junto (16) para o primário não ficar menor que o secundário.
+    fontSize: 15,
     // slate-400, não slate-500: o 500 dava 3,81:1 sobre o container.
     color: '#94A3B8',
     textAlign: 'center',
-    lineHeight: 18,
+    // Entrelinha do estilo COMPARTILHADO: o modo acessível troca o fontSize
+    // por af.xs (16) e herda esta linha — 18 apertava o texto lá também.
+    lineHeight: 21,
   },
   escalatedBox: {
     flexDirection: 'row',

@@ -207,3 +207,43 @@ describe("alarm-ring — modo normal, contraste sobre o container fixo", () => {
     expect(contrast("#64748B", FUNDO)).toBeLessThan(4.5); // slate-500 do countdownSub
   });
 });
+
+/**
+ * Mínimo de corpo do CLAUDE.md: >= 15px (o modo acessível sobrescreve com af.*).
+ * A instrução de como cancelar o envio de emergência estava em 12px — a linha
+ * que ensina a impedir o acionamento da família, no menor corpo do arquivo,
+ * para um público de 60+.
+ *
+ * O par também precisa manter a hierarquia: o rótulo acima do cronômetro é o
+ * primário, a instrução abaixo é o secundário. Subir só o secundário inverteria
+ * os dois.
+ */
+describe("alarm-ring — modo normal, corpo mínimo do texto", () => {
+  function bloco(estilo: string): string {
+    const m = SCREEN_SRC.match(new RegExp(estilo + String.raw`:\s*\{[\s\S]*?\n {2}\}`));
+    if (!m) throw new Error(`estilo ${estilo} não encontrado`);
+    return m[0];
+  }
+
+  function fontSize(estilo: string): number {
+    const m = bloco(estilo).match(/fontSize:\s*(\d+)/);
+    if (!m) throw new Error(`fontSize não encontrado em ${estilo}`);
+    return Number(m[1]);
+  }
+
+  it("põe a instrução de cancelar o envio no mínimo de corpo", () => {
+    expect(fontSize("countdownSub")).toBeGreaterThanOrEqual(15);
+  });
+
+  it("mantém o rótulo do cronômetro no mínimo e acima do secundário", () => {
+    expect(fontSize("countdownLabel")).toBeGreaterThanOrEqual(15);
+    expect(fontSize("countdownLabel")).toBeGreaterThan(fontSize("countdownSub"));
+  });
+
+  it("dá entrelinha compatível com o corpo do modo acessível (af.xs = 16)", () => {
+    // lineHeight é do estilo COMPARTILHADO: o ramo acessível sobrescreve
+    // fontSize com af.xs = 16, mas herda a entrelinha daqui.
+    const m = bloco("countdownSub").match(/lineHeight:\s*(\d+)/);
+    expect(Number(m?.[1])).toBeGreaterThanOrEqual(16 * 1.25);
+  });
+});
