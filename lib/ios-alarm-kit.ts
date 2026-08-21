@@ -127,18 +127,26 @@ async function alarmePersistido(
  * da madrugada é o caso típico), e a fila já reenvia no bootstrap autenticado
  * do MonitoringInitializer. Devolve o alarmId confirmado, ou null.
  *
- * O horário mandado é o do DISPARO, não o de agora: o servidor casa o evento
- * por (alarmId, scheduledAt) EXATO e não cria evento nenhum quando não casa. É
- * o mesmo horário canônico que a alarm-ring usa (lastAlarmFireMs).
+ * O horário mandado é o do DISPARO, não o de agora. O servidor
+ * (pickPendingEvent, server/_core/pick-pending-event.ts) não exige igualdade
+ * exata: escolhe, entre os pendentes daquele alarme, o scheduledAt MAIS
+ * PRÓXIMO da referência enviada, dentro de uma janela de 12h
+ * (MAX_MATCH_WINDOW_MS em server/db-monitoring.ts). No caso comum — dismiss
+ * chega segundos depois do disparo — `now` cru já casaria. O problema é o
+ * caso que motivou watchAlarmKitDismissals: o app pode ficar SUSPENSO com o
+ * payload gravado e só drenar quando volta ao primeiro plano, horas depois.
+ * Aí `now` pode estar mais perto do pendente de AMANHÃ do que do disparo
+ * real — a mesma armadilha que o cabeçalho de pick-pending-event.ts descreve
+ * para o check-in atrasado, só que aqui o atraso é do app suspenso, não de
+ * rede. `lastAlarmFireMs` não sofre disso: é o mesmo horário canônico que a
+ * alarm-ring usa.
  *
  * Sem o alarme (foi apagado) ou sem disparo calculável, sobra melhor esforço:
- * `now` arredondado PARA BAIXO até o minuto cheio. `now` cru não seria
- * aproximado, seria perdido — o dismiss chega em 08:31:07.234 e o pendente é
- * 08:30:00.000, então os segundos nunca casam, o servidor descarta em silêncio,
- * a entrada sai da fila local e a família é avisada assim mesmo. O alarme
- * dispara sempre em HH:MM:00 e o dismiss chega em segundos, então o minuto
- * cheio casa no caso comum. Onde não casar, a confirmação se perde do mesmo
- * jeito — isto é melhor esforço, não garantia.
+ * `now` arredondado PARA BAIXO até o minuto cheio. É só uma aproximação
+ * melhor que `now` cru quando o alarme não pôde ser resolvido pelo estado
+ * persistido — o servidor não exige o minuto exato. Onde a suspensão for
+ * longa o bastante para furar a janela de 12h, a confirmação se perde do
+ * mesmo jeito — isto é melhor esforço, não garantia.
  *
  * Só age sobre evidência: sem payload de dismiss, não confirma nada. Inferir
  * "respondeu" pela ausência esconderia um remédio de fato perdido.

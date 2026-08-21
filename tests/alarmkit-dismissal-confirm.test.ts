@@ -115,11 +115,12 @@ describe("confirmação pelo dismiss", () => {
   });
 
   it("alarme apagado do estado: confirma no minuto cheio, nunca com os segundos", async () => {
-    // `now` cru é confirmação PERDIDA, não aproximada: confirmEvent casa por
-    // (alarmId, scheduledAt) EXATO e não cria evento, então 08:30:07.234 nunca
-    // casa com o pendente das 08:30:00.000 — a confirmação sai da fila local e
-    // a família é avisada assim mesmo. O minuto cheio casa no caso comum,
-    // porque o alarme dispara em HH:MM:00 e o dismiss chega em segundos.
+    // O servidor (pickPendingEvent) não exige igualdade exata: casa o
+    // pendente mais PRÓXIMO da referência, dentro de uma janela de 12h. Um
+    // `now` cru como 08:30:07.234 já cairia nessa janela sem arredondar —
+    // arredondar para o minuto cheio não é para "conseguir casar", é só uma
+    // aproximação melhor do horário real do disparo (sempre HH:MM:00) para
+    // quando não há alarme persistido para resolver via lastAlarmFireMs.
     payload = { alarmId: "a1", payload: "a1" };
 
     const id = await confirmAlarmKitDismissal(estadoCom([]), segundosDepois);
