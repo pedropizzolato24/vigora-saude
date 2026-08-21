@@ -69,4 +69,29 @@ describe("padrão de UI — corpo mínimo de 15px", () => {
     }
     expect(apertados).toEqual([]);
   });
+
+  /**
+   * Ponto cego do teste acima: tamanho definido por ternário
+   * (`const fs = accessible ? 16 : 13`) não é literal em `fontSize:` e passava
+   * batido. Era assim que o painel de monitoramento — o que diz se o dead
+   * man's switch está vivo — renderizava inteiro a 13px, e a 12px em sete
+   * rótulos que usam `fs - 1`.
+   *
+   * Convenção: o primeiro ramo é o acessível (>= 18), o segundo o normal (>= 15).
+   */
+  it("respeita os mínimos também nos tamanhos definidos por ternário", () => {
+    const fora: string[] = [];
+    for (const rel of ARQUIVOS) {
+      const src = readFileSync(path.join(ROOT, rel), "utf8");
+      for (const m of src.matchAll(/const\s+(\w*(?:[fF]ont|[fF]s|[sS]ize)\w*)\s*=\s*[^;\n]*\?\s*(\d+)\s*:\s*(\d+)/g)) {
+        const [, nome, acess, normal] = m;
+        // Tamanho de ícone não é corpo de texto — regra diferente.
+        if (/icon/i.test(nome)) continue;
+        if (Number(acess) < 18 || Number(normal) < MINIMO) {
+          fora.push(rel + "  " + nome + " = " + acess + " : " + normal);
+        }
+      }
+    }
+    expect(fora).toEqual([]);
+  });
 });

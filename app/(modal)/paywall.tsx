@@ -164,7 +164,7 @@ export default function PaywallScreen() {
 
   const baseTextSize = isAccessible ? 18 : 15;
   const titleSize = isAccessible ? 26 : 22;
-  const subtitleSize = isAccessible ? 17 : 14;
+  const subtitleSize = isAccessible ? 18 : 15;
   // Botões: mínimo 16px (19px no modo acessível) — regras de tipografia do app
   const buttonTextSize = isAccessible ? 19 : Math.max(fs.md, 16);
   const buttonMinHeight = isAccessible ? 60 : 56;
