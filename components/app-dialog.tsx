@@ -61,15 +61,29 @@ export interface AppDialogProps {
 
 type IconName = React.ComponentProps<typeof MaterialIcons>['name'];
 
-const VARIANT_CONFIG: Record<DialogVariant, { icon: IconName; bgLight: string; bgDark: string; iconBg: string }> = {
-  info:    { icon: 'info',            bgLight: '#0a7ea4', bgDark: '#0a7ea4', iconBg: '#0a7ea418' },
-  success: { icon: 'check-circle',    bgLight: '#0F8A4A', bgDark: '#2CB966', iconBg: '#0F8A4A18' },
-  warning: { icon: 'warning',         bgLight: '#F0C24A', bgDark: '#F5D06E', iconBg: '#F0C24A18' },
-  error:   { icon: 'error',           bgLight: '#D6161C', bgDark: '#F04040', iconBg: '#D6161C18' },
-  confirm: { icon: 'help',            bgLight: '#0a7ea4', bgDark: '#0a7ea4', iconBg: '#0a7ea418' },
-  select:  { icon: 'list',            bgLight: '#0a7ea4', bgDark: '#0a7ea4', iconBg: '#0a7ea418' },
-  sos:     { icon: 'emergency',       bgLight: '#D6161C', bgDark: '#F04040', iconBg: '#D6161C18' },
+/**
+ * Acento por variante — o TOKEN, não o valor. A tabela antiga guardava
+ * `bgLight` e `bgDark` copiados do theme.config.js e o componente só lia o
+ * `bgLight`: no modo escuro todo diálogo usava o acento do tema claro. O
+ * token resolve o esquema sozinho, então o bug não tem mais onde existir.
+ *
+ * info/confirm/select usavam '#0a7ea4', um teal que não existe na paleta
+ * (sobra do template do Expo) — agora usam o azul da marca.
+ */
+type VariantToken = 'primary' | 'success' | 'warning' | 'error' | 'emergency';
+
+const VARIANT_CONFIG: Record<DialogVariant, { icon: IconName; token: VariantToken }> = {
+  info:    { icon: 'info',            token: 'primary' },
+  success: { icon: 'check-circle',    token: 'success' },
+  warning: { icon: 'warning',         token: 'warning' },
+  error:   { icon: 'error',           token: 'error' },
+  confirm: { icon: 'help',            token: 'primary' },
+  select:  { icon: 'list',            token: 'primary' },
+  sos:     { icon: 'emergency',       token: 'emergency' },
 };
+
+/** Tinte do círculo do ícone: o próprio acento a ~9% de alfa. */
+const TINTE_ICONE = '18';
 
 // --- Componente de Ícone Animado ----------------------------------------------
 
@@ -172,7 +186,7 @@ function AnimatedDialogIcon({
           width: circleSize,
           height: circleSize,
           borderRadius: circleSize / 2,
-          backgroundColor: isSos ? accentColor + '20' : config.iconBg,
+          backgroundColor: accentColor + (isSos ? '20' : TINTE_ICONE),
           borderWidth: isSos ? 2.5 : 0,
           borderColor: isSos ? accentColor : 'transparent',
           justifyContent: 'center',
@@ -231,8 +245,8 @@ export function AppDialog({
     }
   }, [visible]);
 
-  // Cor de acento por variante (respeita tema claro/escuro)
-  const accentColor = isSos ? config.bgLight : config.bgLight;
+  // Acento da variante pelo token: respeita claro/escuro de verdade.
+  const accentColor = colors[config.token];
 
   const isSelect = variant === 'select' && options && options.length > 0;
 
@@ -347,7 +361,7 @@ export function AppDialog({
                         style={[
                           styles.buttonTextA11y,
                           {
-                            color: isPrimary ? '#fff' : btnColor,
+                            color: isPrimary ? ac.onPrimary : btnColor,
                             fontSize: af.md,
                           },
                         ]}
@@ -487,7 +501,7 @@ export function AppDialog({
                     <Text
                       style={[
                         styles.buttonText,
-                        { color: isPrimary ? '#fff' : (isSos ? '#FF8888' : colors.muted), fontSize: fs.base },
+                        { color: isPrimary ? colors.onPrimary : (isSos ? '#FF8888' : colors.muted), fontSize: fs.base },
                       ]}
                     >
                       {btn.text}

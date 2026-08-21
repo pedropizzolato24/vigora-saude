@@ -55,11 +55,19 @@ export interface AppToastProps {
 
 type IconName = React.ComponentProps<typeof MaterialIcons>['name'];
 
-const TOAST_CONFIG: Record<ToastVariant, { icon: IconName; color: string; darkColor: string }> = {
-  success: { icon: 'check-circle',  color: '#0F8A4A', darkColor: '#2CB966' },
-  info:    { icon: 'info',          color: '#0a7ea4', darkColor: '#38BDF8' },
-  warning: { icon: 'warning',       color: '#F0C24A', darkColor: '#F5D06E' },
-  error:   { icon: 'error',         color: '#D6161C', darkColor: '#F04040' },
+/**
+ * Acento por variante — o TOKEN, não o valor. A tabela antiga tinha `color` e
+ * `darkColor` copiados do theme.config.js e o componente só lia o `color`:
+ * no modo escuro todo toast usava a cor do tema claro. Mesmo defeito que o
+ * app-dialog tinha. Com o token, o esquema é resolvido por quem já sabe.
+ *
+ * 'info' usava '#0a7ea4', teal que não existe na paleta — agora é o azul da marca.
+ */
+const TOAST_CONFIG: Record<ToastVariant, { icon: IconName; token: 'primary' | 'success' | 'warning' | 'error' }> = {
+  success: { icon: 'check-circle',  token: 'success' },
+  info:    { icon: 'info',          token: 'primary' },
+  warning: { icon: 'warning',       token: 'warning' },
+  error:   { icon: 'error',         token: 'error' },
 };
 
 // --- Componente ---------------------------------------------------------------
@@ -79,6 +87,7 @@ export function AppToast({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const config = TOAST_CONFIG[variant];
+  const cor = colors[config.token];
 
   const hide = useCallback(() => {
     Animated.parallel([
@@ -155,20 +164,20 @@ export function AppToast({
         styles.container,
         {
           backgroundColor: colors.surface,
-          borderColor: config.color + '44',
+          borderColor: cor + '44',
           bottom: bottomOffset,
           transform: [{ translateY }],
           opacity: opacityAnim,
-          shadowColor: config.color,
+          shadowColor: cor,
         },
       ]}
       pointerEvents="box-none"
     >
       {/* Linha de acento lateral */}
-      <View style={[styles.accentLine, { backgroundColor: config.color }]} />
+      <View style={[styles.accentLine, { backgroundColor: cor }]} />
 
       {/* Ícone */}
-      <MaterialIcons name={config.icon} size={22} color={config.color} />
+      <MaterialIcons name={config.icon} size={22} color={cor} />
 
       {/* Mensagem */}
       <Text
@@ -185,7 +194,7 @@ export function AppToast({
           activeOpacity={0.7}
           style={styles.actionButton}
         >
-          <Text style={[styles.actionText, { color: config.color }]}>
+          <Text style={[styles.actionText, { color: cor }]}>
             {action.label}
           </Text>
         </TouchableOpacity>
