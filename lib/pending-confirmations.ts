@@ -61,18 +61,40 @@ async function writeAll(entries: PendingConfirmation[]): Promise<void> {
 }
 
 /**
+ * Última operação da fila. Toda função pública é encadeada aqui, porque as três
+ * são read-modify-write sobre a MESMA chave: sobrepostas, uma gravação
+ * sobrescreve a leitura da outra e o que some é um "respondeu" real do idoso —
+ * que vira WhatsApp de alarme perdido para a família.
+ *
+ * A guarda do `flushEmAndamento` (monitoring-service) fecha a corrida entre dois
+ * FLUSHES, não esta: no boot por dismiss a confirmação é enfileirada enquanto o
+ * MonitoringInitializer já pode estar drenando.
+ */
+let ultimaOperacao: Promise<unknown> = Promise.resolve();
+
+function emSerie<T>(operacao: () => Promise<T>): Promise<T> {
+  const resultado = ultimaOperacao.then(operacao);
+  // O elo seguinte não pode herdar a rejeição do anterior: uma falha isolada
+  // travaria a fila inteira para sempre.
+  ultimaOperacao = resultado.catch(() => undefined);
+  return resultado;
+}
+
+/**
  * Registra a resposta ANTES de tentar a rede. Reconfirmar o mesmo disparo
  * atualiza a entrada em vez de duplicar — o dismiss pode ser reprocessado
  * (tela empilhada, deep link) e a fila não pode virar N reenvios do mesmo
  * evento.
  */
-export async function enqueueConfirmation(
+export function enqueueConfirmation(
   entry: Omit<PendingConfirmation, 'queuedAt'>
 ): Promise<void> {
-  const entries = await readAll();
-  const withoutDuplicate = entries.filter((e) => keyOf(e) !== keyOf(entry));
-  withoutDuplicate.push({ ...entry, queuedAt: Date.now() });
-  await writeAll(withoutDuplicate);
+  return emSerie(async () => {
+    const entries = await readAll();
+    const withoutDuplicate = entries.filter((e) => keyOf(e) !== keyOf(entry));
+    withoutDuplicate.push({ ...entry, queuedAt: Date.now() });
+    await writeAll(withoutDuplicate);
+  });
 }
 
 /**
@@ -82,22 +104,26 @@ export async function enqueueConfirmation(
  * scheduledAt), e o cliente não tem como distinguir. O que a fila garante é
  * entrega, não casamento.
  */
-export async function dequeueConfirmation(
+export function dequeueConfirmation(
   alarmId: string,
   scheduledAtIso: string
 ): Promise<void> {
-  const entries = await readAll();
-  await writeAll(entries.filter((e) => keyOf(e) !== keyOf({ alarmId, scheduledAtIso })));
+  return emSerie(async () => {
+    const entries = await readAll();
+    await writeAll(entries.filter((e) => keyOf(e) !== keyOf({ alarmId, scheduledAtIso })));
+  });
 }
 
 /** Pendências ainda úteis de reenviar. Expirados são descartados de vez. */
-export async function listPendingConfirmations(): Promise<PendingConfirmation[]> {
-  const entries = await readAll();
-  const cutoff = Date.now() - TTL_MS;
-  const alive = entries.filter((e) => e.queuedAt > cutoff);
-  if (alive.length !== entries.length) {
-    console.log(`[PendingConfirm] ${entries.length - alive.length} confirmação(ões) expirada(s) descartada(s)`);
-    await writeAll(alive);
-  }
-  return alive;
+export function listPendingConfirmations(): Promise<PendingConfirmation[]> {
+  return emSerie(async () => {
+    const entries = await readAll();
+    const cutoff = Date.now() - TTL_MS;
+    const alive = entries.filter((e) => e.queuedAt > cutoff);
+    if (alive.length !== entries.length) {
+      console.log(`[PendingConfirm] ${entries.length - alive.length} confirmação(ões) expirada(s) descartada(s)`);
+      await writeAll(alive);
+    }
+    return alive;
+  });
 }

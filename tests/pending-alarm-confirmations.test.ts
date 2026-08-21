@@ -187,3 +187,84 @@ describe("flush no boot", () => {
     expect(await queue.listPendingConfirmations()).toHaveLength(0);
   });
 });
+
+/**
+ * A guarda do `flushEmAndamento` fecha a corrida entre DOIS FLUSHES — não a da
+ * fila. Toda operação daqui é read-modify-write sobre a mesma chave, e o
+ * AlarmKit criou justamente o cenário de sobreposição: no boot por dismiss a
+ * confirmação é enfileirada enquanto o MonitoringInitializer já pode estar
+ * drenando. Intercaladas, uma gravação sobrescreve a outra — e o que some é um
+ * "respondeu" real do idoso, que vira WhatsApp de alarme perdido para a
+ * família.
+ */
+describe("operações concorrentes na fila", () => {
+  const OUTRO = new Date("2026-08-13T22:00:00.000Z");
+
+  it("dois enfileiramentos ao mesmo tempo não perdem nenhum dos dois", async () => {
+    const queue = await import("../lib/pending-confirmations");
+
+    await Promise.all([
+      queue.enqueueConfirmation({
+        alarmId: "a1",
+        scheduledAtIso: SCHEDULED.toISOString(),
+        status: "responded",
+      }),
+      queue.enqueueConfirmation({
+        alarmId: "a2",
+        scheduledAtIso: OUTRO.toISOString(),
+        status: "responded",
+      }),
+    ]);
+
+    const pendentes = await queue.listPendingConfirmations();
+    expect(pendentes.map((p) => p.alarmId).sort()).toEqual(["a1", "a2"]);
+  });
+
+  it("enfileirar durante o dreno não ressuscita o que saiu nem some com o novo", async () => {
+    const queue = await import("../lib/pending-confirmations");
+    await queue.enqueueConfirmation({
+      alarmId: "a1",
+      scheduledAtIso: SCHEDULED.toISOString(),
+      status: "responded",
+    });
+
+    await Promise.all([
+      queue.dequeueConfirmation("a1", SCHEDULED.toISOString()),
+      queue.enqueueConfirmation({
+        alarmId: "a2",
+        scheduledAtIso: OUTRO.toISOString(),
+        status: "responded",
+      }),
+    ]);
+
+    const pendentes = await queue.listPendingConfirmations();
+    expect(pendentes.map((p) => p.alarmId)).toEqual(["a2"]);
+  });
+
+  it("a limpeza de expirados não apaga uma confirmação enfileirada em paralelo", async () => {
+    // listPendingConfirmations também grava (descarta os expirados): é o
+    // terceiro read-modify-write sobre a mesma chave.
+    const queue = await import("../lib/pending-confirmations");
+    await queue.enqueueConfirmation({
+      alarmId: "velha",
+      scheduledAtIso: SCHEDULED.toISOString(),
+      status: "responded",
+    });
+    const raw = JSON.parse(storage.get("vigora_pending_alarm_confirmations")!);
+    raw[0].queuedAt = Date.now() - 25 * 60 * 60 * 1000;
+    storage.set("vigora_pending_alarm_confirmations", JSON.stringify(raw));
+
+    await Promise.all([
+      queue.listPendingConfirmations(),
+      queue.enqueueConfirmation({
+        alarmId: "a2",
+        scheduledAtIso: OUTRO.toISOString(),
+        status: "responded",
+      }),
+    ]);
+
+    expect((await queue.listPendingConfirmations()).map((p) => p.alarmId)).toEqual([
+      "a2",
+    ]);
+  });
+});
