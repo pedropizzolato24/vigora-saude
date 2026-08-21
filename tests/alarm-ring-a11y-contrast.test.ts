@@ -246,4 +246,20 @@ describe("alarm-ring — modo normal, corpo mínimo do texto", () => {
     const m = bloco("countdownSub").match(/lineHeight:\s*(\d+)/);
     expect(Number(m?.[1])).toBeGreaterThanOrEqual(16 * 1.25);
   });
+
+  it("põe o rótulo ALARME no mínimo de corpo", () => {
+    expect(fontSize("alarmLabel")).toBeGreaterThanOrEqual(15);
+  });
+
+  it("põe o aviso de emergência enviada no mínimo, e não abaixo do que ele substitui", () => {
+    // A caixa de escalação ocupa o lugar do bloco do cronômetro quando o
+    // tempo acaba — não pode chegar menor do que o rótulo que ela substitui.
+    expect(fontSize("escalatedText")).toBeGreaterThanOrEqual(15);
+    expect(fontSize("escalatedText")).toBeGreaterThanOrEqual(fontSize("countdownLabel"));
+  });
+
+  it("acompanha a entrelinha do aviso ao novo corpo", () => {
+    const m = bloco("escalatedText").match(/lineHeight:\s*(\d+)/);
+    expect(Number(m?.[1])).toBeGreaterThanOrEqual(fontSize("escalatedText") * 1.35);
+  });
 });

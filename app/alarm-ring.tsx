@@ -808,7 +808,8 @@ const styles = StyleSheet.create({
     elevation: 20,
   },
   alarmLabel: {
-    fontSize: 13,
+    // 15 é o corpo mínimo do CLAUDE.md; era 13.
+    fontSize: 15,
     fontWeight: '700',
     color: '#94A3B8',
     letterSpacing: 4,
@@ -895,10 +896,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   escalatedText: {
-    fontSize: 14,
+    // Esta caixa ocupa o lugar do bloco do cronômetro quando o tempo acaba,
+    // então o aviso de que a família já foi acionada não pode chegar menor
+    // que o rótulo que ele substitui (countdownLabel, 16). Era 14.
+    fontSize: 16,
     fontWeight: '600',
     flex: 1,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   bottomSection: {
     width: '100%',
