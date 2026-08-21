@@ -449,7 +449,7 @@ export default function OnboardingScreen() {
                   {
                     width: dotWidth,
                     opacity: dotOpacity,
-                    backgroundColor: colors.primary,
+                    backgroundColor: colors.primarySurface,
                   },
                 ]}
               />
@@ -464,7 +464,7 @@ export default function OnboardingScreen() {
           style={({ pressed }) => [
             styles.nextButton,
             {
-              backgroundColor: colors.primary,
+              backgroundColor: colors.primarySurface,
               opacity: pressed || requestingPermission ? 0.75 : 1,
             },
           ]}

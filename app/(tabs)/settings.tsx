@@ -443,7 +443,7 @@ export default function SettingsScreen() {
           {/* Accessibility toggle - always visible at top */}
           <Pressable
             onPress={handleToggleAccessibility}
-            style={({ pressed }) => [{ borderRadius: 20, borderWidth: 3, borderColor: colors.primary, backgroundColor: colors.primary, padding: 20, flexDirection: 'row', alignItems: 'center', gap: 14, opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [{ borderRadius: 20, borderWidth: 3, borderColor: colors.primary, backgroundColor: colors.primarySurface, padding: 20, flexDirection: 'row', alignItems: 'center', gap: 14, opacity: pressed ? 0.85 : 1 }]}
           >
             <MaterialIcons name="accessibility-new" size={36} color={colors.onPrimary} />
             <View style={{ flex: 1 }}>
@@ -605,7 +605,7 @@ export default function SettingsScreen() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 12,
-                backgroundColor: countdownTestActive ? colors.emergency : ac.primary,
+                backgroundColor: countdownTestActive ? colors.emergencySurface : ac.primary,
                 borderRadius: 16,
                 paddingVertical: as_.buttonPadding,
                 borderWidth: 3,
@@ -628,7 +628,7 @@ export default function SettingsScreen() {
               <View style={{ height: 10, backgroundColor: ac.border, borderRadius: 5, overflow: 'hidden' }}>
                 <View style={{
                   height: 10,
-                  backgroundColor: colors.emergency,
+                  backgroundColor: colors.emergencySurface,
                   borderRadius: 5,
                   width: `${(countdownTestSecondsLeft / TEST_DURATION) * 100}%` as any,
                 }} />
@@ -750,14 +750,14 @@ export default function SettingsScreen() {
             borderRadius: 24,
             borderWidth: 3,
             borderColor: colors.primary,
-            backgroundColor: settings.accessibilityMode ? colors.primary : colors.surface,
+            backgroundColor: settings.accessibilityMode ? colors.primarySurface : colors.surface,
             overflow: 'hidden',
             opacity: pressed ? 0.88 : 1,
           }]}
         >
           {/* Top banner strip */}
           <View style={{
-            backgroundColor: colors.primary,
+            backgroundColor: colors.primarySurface,
             paddingHorizontal: 18,
             paddingVertical: 10,
             flexDirection: 'row',
@@ -848,7 +848,7 @@ export default function SettingsScreen() {
               <View
                 style={[
                   styles.volumeBarFill,
-                  { backgroundColor: colors.primary, width: `${settings.alarmVolume}%` },
+                  { backgroundColor: colors.primarySurface, width: `${settings.alarmVolume}%` },
                 ]}
               />
             </View>
@@ -867,7 +867,7 @@ export default function SettingsScreen() {
                 onPress={() => handleVolumeChange(10)}
                 style={({ pressed }) => [
                   styles.volumeBtn,
-                  { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 },
+                  { backgroundColor: colors.primarySurface, opacity: pressed ? 0.7 : 1 },
                 ]}
               >
                 <MaterialIcons name="volume-up" size={18} color={colors.onPrimary} />
@@ -892,7 +892,7 @@ export default function SettingsScreen() {
               <View
                 style={[
                   styles.volumeBarFill,
-                  { backgroundColor: colors.primary, width: `${settings.speechVolume}%` },
+                  { backgroundColor: colors.primarySurface, width: `${settings.speechVolume}%` },
                 ]}
               />
             </View>
@@ -911,7 +911,7 @@ export default function SettingsScreen() {
                 onPress={() => handleSpeechVolumeChange(10)}
                 style={({ pressed }) => [
                   styles.volumeBtn,
-                  { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 },
+                  { backgroundColor: colors.primarySurface, opacity: pressed ? 0.7 : 1 },
                 ]}
               >
                 <MaterialIcons name="volume-up" size={18} color={colors.onPrimary} />
@@ -935,7 +935,7 @@ export default function SettingsScreen() {
                   style={({ pressed }) => [
                     styles.fontSizeBtn,
                     {
-                      backgroundColor: settings.speechRate === opt.value ? colors.primary : colors.background,
+                      backgroundColor: settings.speechRate === opt.value ? colors.primarySurface : colors.background,
                       borderColor: settings.speechRate === opt.value ? colors.primary : colors.border,
                       opacity: pressed ? 0.7 : 1,
                     },
@@ -975,7 +975,7 @@ export default function SettingsScreen() {
                   style={({ pressed }) => [
                     styles.fontSizeBtn,
                     {
-                      backgroundColor: settings.timerDuration === opt.value ? colors.primary : colors.background,
+                      backgroundColor: settings.timerDuration === opt.value ? colors.primarySurface : colors.background,
                       borderColor: settings.timerDuration === opt.value ? colors.primary : colors.border,
                       opacity: pressed ? 0.7 : 1,
                     },
@@ -1015,7 +1015,7 @@ export default function SettingsScreen() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 10,
-                backgroundColor: countdownTestActive ? colors.error : colors.primary,
+                backgroundColor: countdownTestActive ? colors.error : colors.primarySurface,
                 borderRadius: 14,
                 paddingVertical: 14,
                 paddingHorizontal: 20,
@@ -1275,7 +1275,7 @@ export default function SettingsScreen() {
             <Pressable
               onPress={handleOpenLocationSettings}
               style={({ pressed }) => [{
-                backgroundColor: colors.primary,
+                backgroundColor: colors.primarySurface,
                 paddingHorizontal: 12,
                 paddingVertical: 7,
                 borderRadius: 8,
@@ -1320,7 +1320,7 @@ export default function SettingsScreen() {
                 }}
                 style={({ pressed }) => [
                   styles.thresholdBtn,
-                  { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 },
+                  { backgroundColor: colors.primarySurface, opacity: pressed ? 0.7 : 1 },
                 ]}
               >
                 <MaterialIcons name="add" size={20} color={colors.onPrimary} />
@@ -1427,7 +1427,7 @@ export default function SettingsScreen() {
                   style={({ pressed }) => [
                     styles.fontSizeBtn,
                     {
-                      backgroundColor: settings.fontSize === size ? colors.primary : colors.background,
+                      backgroundColor: settings.fontSize === size ? colors.primarySurface : colors.background,
                       borderColor: settings.fontSize === size ? colors.primary : colors.border,
                       opacity: pressed ? 0.7 : 1,
                     },

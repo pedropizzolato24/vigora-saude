@@ -87,7 +87,7 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
           styles.fab,
           {
             bottom: bottomOffset + insets.bottom + 12,
-            backgroundColor: colors.primary,
+            backgroundColor: colors.primarySurface,
             shadowColor: colors.primary,
             borderColor: colors.onPrimary,
           },

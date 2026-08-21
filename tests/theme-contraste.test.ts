@@ -20,14 +20,22 @@ const ROOT = path.resolve(__dirname, "..");
 const TEMA = readFileSync(path.join(ROOT, "theme.config.js"), "utf8");
 
 /**
- * Pares que passam no mínimo de texto GRANDE (3:1) mas não no de texto
- * normal (4,5:1). Só valem em rótulo de botão grande e em ícone.
- * Trocar exige decidir a aparência de centenas de telas — é chamada do dono.
+ * Não há isenção: os quatro pares passam nos dois esquemas.
+ *
+ * `onPrimary`/`onEmergency` sobre `primary`/`emergency` no escuro davam 4,14 e
+ * 3,81 e não tinham conserto por troca de valor — a janela é VAZIA. Para o
+ * branco funcionar por cima, a cor precisa ter luminância <= 0,1833; para ela
+ * ser legível COMO TEXTO sobre o fundo escuro, >= 0,2045. Nenhum valor único
+ * serve aos dois papéis.
+ *
+ * Trocar o on-color para escuro também não servia: os dois viraram o "branco
+ * genérico" do app (o título do diálogo SOS usa onEmergency sobre #1C0000,
+ * quase preto — teria sumido).
+ *
+ * Por isso os papéis foram separados: primary/emergency seguem sendo o acento
+ * (texto e ícone), e primarySurface/emergencySurface são o fundo de botão.
  */
-const SO_TEXTO_GRANDE: Record<string, string> = {
-  "onPrimary/primary/dark": "4,14:1 — 160 usos, é o botão principal do app",
-  "onEmergency/emergency/dark": "3,81:1 — 27 usos, inclui o dead man's switch",
-};
+const SO_TEXTO_GRANDE: Record<string, string> = {};
 
 function luminancia(hex: string): number {
   const canal = (v: number) => {
@@ -55,11 +63,18 @@ function paleta(): Record<string, { light: string; dark: string }> {
 
 const P = paleta();
 const PARES: [string, string][] = [
-  ["onPrimary", "primary"],
+  ["onPrimary", "primarySurface"],
   ["onSuccess", "success"],
   ["onWarning", "warning"],
-  ["onEmergency", "emergency"],
+  ["onEmergency", "emergencySurface"],
 ];
+
+/**
+ * O outro papel: a cor de acento precisa ser legível COMO TEXTO sobre o fundo
+ * do próprio esquema. É este teste que impede alguém de "consertar" o par
+ * acima escurecendo o acento e apagando os 30 textos que o usam.
+ */
+const ACENTOS = ["primary", "emergency", "success", "error"];
 
 describe("tema — o token on-color é legível sobre o seu fundo", () => {
   it("lê os pares do theme.config.js", () => {
@@ -77,6 +92,17 @@ describe("tema — o token on-color é legível sobre o seu fundo", () => {
         if (SO_TEXTO_GRANDE[chave]) continue;
         const r = contraste(P[frente][esquema], P[fundo][esquema]);
         if (r < 4.5) fracos.push(chave + " = " + r.toFixed(2) + ":1");
+      }
+    }
+    expect(fracos).toEqual([]);
+  });
+
+  it("a cor de acento continua legível como texto sobre o fundo", () => {
+    const fracos: string[] = [];
+    for (const nome of ACENTOS) {
+      for (const esquema of ["light", "dark"] as const) {
+        const r = contraste(P[nome][esquema], P.background[esquema]);
+        if (r < 4.5) fracos.push(nome + "/" + esquema + " = " + r.toFixed(2) + ":1");
       }
     }
     expect(fracos).toEqual([]);

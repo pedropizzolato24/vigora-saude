@@ -320,7 +320,7 @@ export default function ProfileScreen() {
                 <MaterialIcons name="person" size={60} color={colors.primary} />
               </View>
             )}
-            <View style={[styles.cameraButton, { backgroundColor: colors.primary, borderColor: colors.onPrimary }]}>
+            <View style={[styles.cameraButton, { backgroundColor: colors.primarySurface, borderColor: colors.onPrimary }]}>
               <MaterialIcons name="camera-alt" size={18} color={colors.onPrimary} />
             </View>
           </TouchableOpacity>
@@ -396,7 +396,7 @@ export default function ProfileScreen() {
                 style={[
                   styles.bloodTypeBtn,
                   {
-                    backgroundColor: bloodType === type ? colors.emergency : colors.surface,
+                    backgroundColor: bloodType === type ? colors.emergencySurface : colors.surface,
                     borderColor: bloodType === type ? colors.emergency : colors.border,
                     minHeight: fs.touch(48),
                   },

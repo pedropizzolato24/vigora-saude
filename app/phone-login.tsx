@@ -184,7 +184,7 @@ export default function PhoneLoginScreen() {
           style={({ pressed }) => [
             styles.submitButton,
             {
-              backgroundColor: colors.primary,
+              backgroundColor: colors.primarySurface,
               opacity: pressed || loading ? 0.75 : 1,
             },
           ]}

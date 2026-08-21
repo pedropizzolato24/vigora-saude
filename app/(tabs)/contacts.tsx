@@ -518,7 +518,7 @@ export default function ContactsScreen() {
           onPress={openAddModal}
           style={({ pressed }) => [
             styles.addBtn,
-            { backgroundColor: colors.emergency, minHeight: fs.touch(56), opacity: pressed ? 0.85 : 1 },
+            { backgroundColor: colors.emergencySurface, minHeight: fs.touch(56), opacity: pressed ? 0.85 : 1 },
           ]}
           accessibilityRole="button"
           accessibilityLabel="Adicionar contato de emergência"
@@ -574,7 +574,7 @@ export default function ContactsScreen() {
                           style={[
                             styles.relationOption,
                             {
-                              backgroundColor: selected ? colors.emergency : colors.surface,
+                              backgroundColor: selected ? colors.emergencySurface : colors.surface,
                               borderColor: selected ? colors.emergency : colors.border,
                               minHeight: fs.touch(80),
                             },

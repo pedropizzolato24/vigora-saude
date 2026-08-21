@@ -326,7 +326,7 @@ export default function AmbulanceScreen() {
             'Desbloqueie o acesso para a ambulância',
           ].map((instruction, i) => (
             <View key={i} style={styles.instructionRow}>
-              <View style={[styles.instructionBullet, { backgroundColor: colors.primary }]}>
+              <View style={[styles.instructionBullet, { backgroundColor: colors.primarySurface }]}>
                 <Text style={[styles.instructionNumber, { color: colors.onPrimary }]}>{i + 1}</Text>
               </View>
               <Text style={[styles.instructionText, { color: colors.foreground }]}>

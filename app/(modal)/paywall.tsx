@@ -218,7 +218,7 @@ export default function PaywallScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero */}
-        <View style={[styles.heroCard, { backgroundColor: colors.primary }]}>
+        <View style={[styles.heroCard, { backgroundColor: colors.primarySurface }]}>
           <Text style={[styles.heroEmoji]}>❤️‍🔥</Text>
           <Text style={[styles.heroTitle, { fontSize: titleSize + 2 }]}>
             Proteção Completa
@@ -276,7 +276,7 @@ export default function PaywallScreen() {
                   style={({ pressed }) => [
                     styles.planCard,
                     {
-                      backgroundColor: isLifetime ? colors.primary : colors.surface,
+                      backgroundColor: isLifetime ? colors.primarySurface : colors.surface,
                       borderColor: isLifetime ? colors.primary : colors.border,
                       opacity: pressed ? 0.85 : 1,
                     },
@@ -337,7 +337,7 @@ export default function PaywallScreen() {
               accessibilityLabel="Ver planos disponíveis"
               style={({ pressed }) => [
                 styles.primaryButton,
-                { backgroundColor: colors.primary, minHeight: buttonMinHeight, opacity: pressed || presenting ? 0.7 : 1 },
+                { backgroundColor: colors.primarySurface, minHeight: buttonMinHeight, opacity: pressed || presenting ? 0.7 : 1 },
               ]}
             >
               <Text style={[styles.primaryButtonText, { color: colors.onPrimary, fontSize: buttonTextSize }]}>
@@ -356,7 +356,7 @@ export default function PaywallScreen() {
             accessibilityLabel="Assinar agora"
             style={({ pressed }) => [
               styles.primaryButton,
-              { backgroundColor: colors.primary, minHeight: buttonMinHeight, opacity: pressed || presenting ? 0.7 : 1 },
+              { backgroundColor: colors.primarySurface, minHeight: buttonMinHeight, opacity: pressed || presenting ? 0.7 : 1 },
             ]}
           >
             {presenting ? (

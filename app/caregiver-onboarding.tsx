@@ -109,7 +109,7 @@ export default function CaregiverOnboardingScreen() {
             style={[
               styles.dot,
               {
-                backgroundColor: i === index ? colors.primary : colors.border,
+                backgroundColor: i === index ? colors.primarySurface : colors.border,
                 width: i === index ? 24 : 8,
               },
             ]}
@@ -122,7 +122,7 @@ export default function CaregiverOnboardingScreen() {
           <>
             <Pressable
               onPress={() => finish('/(caregiver-tabs)/link')}
-              style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
+              style={({ pressed }) => [styles.primary, { backgroundColor: colors.primarySurface, opacity: pressed ? 0.85 : 1 }]}
             >
               <Text style={styles.primaryText}>Vincular agora</Text>
             </Pressable>
@@ -133,7 +133,7 @@ export default function CaregiverOnboardingScreen() {
         ) : (
           <Pressable
             onPress={goNext}
-            style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [styles.primary, { backgroundColor: colors.primarySurface, opacity: pressed ? 0.85 : 1 }]}
           >
             <Text style={styles.primaryText}>Continuar</Text>
           </Pressable>

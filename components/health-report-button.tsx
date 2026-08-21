@@ -44,9 +44,15 @@ export function HealthReportButton({ compact = false }: HealthReportButtonProps)
 
   // No modo de acessibilidade o botão segue a paleta de alto contraste —
   // antes ele ficava com o tema normal e destoava do resto da tela.
+  // primarySurface é o fundo do botão; a paleta acessível não separa os dois
+  // papéis porque o azul dela já é escuro o bastante para o branco por cima.
   const colors = isAccessibilityMode
-    ? { primary: ac.primary, onPrimary: ac.onPrimary }
-    : { primary: themeColors.primary, onPrimary: themeColors.onPrimary };
+    ? { primary: ac.primary, onPrimary: ac.onPrimary, primarySurface: ac.primary }
+    : {
+        primary: themeColors.primary,
+        onPrimary: themeColors.onPrimary,
+        primarySurface: themeColors.primarySurface,
+      };
   const labelFontSize = isAccessibilityMode ? af.md : 15;
   const minHeight = isAccessibilityMode ? 64 : undefined;
 
@@ -143,7 +149,7 @@ export function HealthReportButton({ compact = false }: HealthReportButtonProps)
       style={({ pressed }) => [
         styles.fullButton,
         {
-          backgroundColor: colors.primary,
+          backgroundColor: colors.primarySurface,
           opacity: pressed || isGenerating ? 0.8 : 1,
           minHeight,
         },

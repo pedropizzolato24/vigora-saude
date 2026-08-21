@@ -109,7 +109,7 @@ export function CustomTabBar() {
                 <View
                   style={[
                     styles.badge,
-                    { backgroundColor: isAccessibilityMode ? ac.primary : colors.primary },
+                    { backgroundColor: isAccessibilityMode ? ac.primary : colors.primarySurface },
                   ]}
                 >
                   <Text style={styles.badgeText}>

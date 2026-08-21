@@ -211,7 +211,7 @@ export default function RegisterScreen() {
           <Text style={[styles.backButtonText, { color: colors.foreground }]}>Voltar</Text>
         </Pressable>
 
-        <View style={[styles.iconCircle, { backgroundColor: colors.primary }]}>
+        <View style={[styles.iconCircle, { backgroundColor: colors.primarySurface }]}>
           <MaterialIcons name="person-add" size={48} color={colors.onPrimary} />
         </View>
 
@@ -281,7 +281,7 @@ export default function RegisterScreen() {
                   style={({ pressed }) => [
                     styles.bloodOption,
                     {
-                      backgroundColor: selected ? colors.primary : colors.surface,
+                      backgroundColor: selected ? colors.primarySurface : colors.surface,
                       borderColor: selected ? colors.primary : colors.border,
                       opacity: pressed ? 0.85 : 1,
                     },
@@ -354,7 +354,7 @@ export default function RegisterScreen() {
           style={({ pressed }) => [
             styles.submit,
             {
-              backgroundColor: colors.primary,
+              backgroundColor: colors.primarySurface,
               opacity: pressed || loading ? 0.7 : 1,
             },
           ]}
@@ -391,7 +391,7 @@ function TypeOption({
       style={({ pressed }) => [
         styles.typeOption,
         {
-          backgroundColor: selected ? colors.primary : colors.surface,
+          backgroundColor: selected ? colors.primarySurface : colors.surface,
           borderColor: selected ? colors.primary : colors.border,
           opacity: pressed ? 0.85 : 1,
         },

@@ -323,7 +323,7 @@ export default function AnamnesisScreen() {
                       style={[
                         styles.genderOption,
                         {
-                          backgroundColor: form.gender === opt.value ? colors.primary : colors.surface,
+                          backgroundColor: form.gender === opt.value ? colors.primarySurface : colors.surface,
                           borderColor: form.gender === opt.value ? colors.primary : colors.border,
                           minHeight: fs.touch(48),
                           flex: 1,

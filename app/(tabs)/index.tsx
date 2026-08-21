@@ -139,7 +139,7 @@ export default function DashboardScreen() {
               onPressIn={() => setSosPressing(true)}
               onPressOut={() => setSosPressing(false)}
               style={({ pressed }) => [{
-                backgroundColor: colors.emergency,
+                backgroundColor: colors.emergencySurface,
                 borderRadius: 24,
                 paddingVertical: 36,
                 alignItems: 'center',
@@ -163,7 +163,7 @@ export default function DashboardScreen() {
           <Pressable
             onPress={() => navigate('/(tabs)/ambulance')}
             style={({ pressed }) => [{
-              backgroundColor: colors.primary,
+              backgroundColor: colors.primarySurface,
               borderRadius: 20,
               paddingVertical: as_.buttonPadding,
               paddingHorizontal: 24,
@@ -222,7 +222,7 @@ export default function DashboardScreen() {
             <Pressable
               onPress={() => navigate('/(tabs)/alarms')}
               style={({ pressed }) => [{
-                backgroundColor: colors.primary,
+                backgroundColor: colors.primarySurface,
                 borderRadius: 20,
                 paddingVertical: as_.buttonPadding,
                 flexDirection: 'row',
