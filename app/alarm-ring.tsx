@@ -741,9 +741,12 @@ export default function AlarmRingScreen() {
             </Text>
           </>
         ) : (
-          <View style={[styles.escalatedBox, { backgroundColor: colors.errorLight, borderColor: colors.error }]}>
-            <MaterialIcons name="warning" size={28} color={colors.error} />
-            <Text style={[styles.escalatedText, { color: colors.error }]}>
+          // O container do modo normal é um azul-escuro FIXO, então a caixa
+          // também precisa ser: `colors.error` no tema claro é um vermelho
+          // ESCURO (calibrado para fundo claro) e dava 3,37:1 sobre o azul.
+          <View style={[styles.escalatedBox, { backgroundColor: '#F0404020', borderColor: '#F04040' }]}>
+            <MaterialIcons name="warning" size={28} color="#F04040" />
+            <Text style={[styles.escalatedText, { color: '#FCA5A5' }]}>
               Mensagem de emergência enviada para seus contatos
             </Text>
           </View>
@@ -872,7 +875,8 @@ const styles = StyleSheet.create({
   countdownTimerUrgent: {},
   countdownSub: {
     fontSize: 12,
-    color: '#64748B',
+    // slate-400, não slate-500: o 500 dava 3,81:1 sobre o container.
+    color: '#94A3B8',
     textAlign: 'center',
     lineHeight: 18,
   },

@@ -134,3 +134,76 @@ describe("alarm-ring — modo normal", () => {
     expect(SCREEN_SRC).toMatch(/container:\s*\{[\s\S]*?backgroundColor:\s*'#0A1628'/);
   });
 });
+
+/**
+ * O mesmo defeito do ramo acessível, invertido: aqui o container é um azul-
+ * escuro FIXO (`#0A1628`, não muda com o tema) e quem varia são os `colors.*`
+ * usados por cima dele. No tema claro `colors.error` é vermelho ESCURO — feito
+ * para fundo claro — e cai sobre o azul quase preto: 3,37:1 no aviso de que a
+ * família já foi acionada.
+ *
+ * `colors.errorLight` é translúcido (`#D6161C12`, 7% de alfa), então o fundo
+ * real da caixa é a composição sobre o container — é essa cor achatada que o
+ * teste mede, não o token.
+ */
+describe("alarm-ring — modo normal, contraste sobre o container fixo", () => {
+  const NORMAL = SCREEN_SRC.slice(branchEnd);
+  const FUNDO = "#0A1628";
+
+  /** `#RRGGBBAA` composto sobre um fundo opaco → o hex que o olho vê. */
+  function achatar(cor: string, fundo: string): string {
+    if (cor.length === 7) return cor;
+    const alfa = parseInt(cor.slice(7, 9), 16) / 255;
+    const frente = parseInt(cor.slice(1, 7), 16);
+    const atras = parseInt(fundo.slice(1), 16);
+    const canal = (desloc: number) =>
+      Math.round(
+        (((frente >> desloc) & 0xff) * alfa) + (((atras >> desloc) & 0xff) * (1 - alfa))
+      );
+    return "#" + [16, 8, 0].map((d) => canal(d).toString(16).padStart(2, "0")).join("");
+  }
+
+  /** Valor literal de uma prop de cor; falha se ainda for token de tema. */
+  function corFixa(trecho: string, prop: string): string {
+    const m = trecho.match(
+      new RegExp(prop + String.raw`\s*[:=]\s*\{?\s*(?:['"](#[0-9A-Fa-f]{6,8})['"]|(\S+?))[,}\s/]`)
+    );
+    if (!m) throw new Error(`${prop} não encontrado em: ${trecho.trim()}`);
+    if (!m[1]) throw new Error(`${prop} usa o token de tema \`${m[2]}\` sobre o container fixo ${FUNDO}`);
+    return m[1];
+  }
+
+  const caixa = NORMAL.match(/styles\.escalatedBox,\s*\{([^}]*)\}/)?.[1] ?? "";
+  const texto = NORMAL.match(/styles\.escalatedText,\s*\{([^}]*)\}/)?.[1] ?? "";
+  const icone = NORMAL.match(/<MaterialIcons name="warning"[^/]*?\/>/)?.[0] ?? "";
+
+  it("recorta a caixa de escalação do modo normal", () => {
+    expect(caixa).not.toBe("");
+    expect(texto).not.toBe("");
+    expect(icone).not.toBe("");
+  });
+
+  it("aprova o texto do aviso de emergência enviada (AA, 14px semibold)", () => {
+    const fundoCaixa = achatar(corFixa(caixa, "backgroundColor"), FUNDO);
+    expect(contrast(corFixa(texto, "color"), fundoCaixa)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("aprova o ícone e a borda da caixa (gráfico, 3:1)", () => {
+    const fundoCaixa = achatar(corFixa(caixa, "backgroundColor"), FUNDO);
+    expect(contrast(corFixa(icone, "color"), fundoCaixa)).toBeGreaterThanOrEqual(3);
+    expect(contrast(corFixa(caixa, "borderColor"), FUNDO)).toBeGreaterThanOrEqual(3);
+  });
+
+  it("aprova a instrução de como cancelar o envio (countdownSub)", () => {
+    const estilo = SCREEN_SRC.match(/countdownSub:\s*\{[\s\S]*?\n {2}\}/)?.[0] ?? "";
+    expect(contrast(corFixa(estilo, "color"), FUNDO)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("mantém reprovados os valores que causaram o defeito", () => {
+    // Guarda a premissa: se um dia o tema clarear esses vermelhos o bastante
+    // para passarem sobre o azul-escuro, este teste falha e a regra é revista.
+    expect(contrast("#D6161C", achatar("#D6161C12", FUNDO))).toBeLessThan(4.5); // error claro
+    expect(contrast("#F04040", achatar("#F0404020", FUNDO))).toBeLessThan(4.5); // error escuro
+    expect(contrast("#64748B", FUNDO)).toBeLessThan(4.5); // slate-500 do countdownSub
+  });
+});
