@@ -128,11 +128,17 @@ async function alarmePersistido(
  * do MonitoringInitializer. Devolve o alarmId confirmado, ou null.
  *
  * O horário mandado é o do DISPARO, não o de agora: o servidor casa o evento
- * por (alarmId, scheduledAt) e "agora" pode não casar com o pendente — a
- * confirmação se perderia e a família seria avisada de um alarme atendido. É o
- * mesmo horário canônico que a alarm-ring usa (lastAlarmFireMs). Sem o alarme
- * (foi apagado) ou sem disparo calculável, confirma com `now` mesmo assim:
- * perder a confirmação é pior que casá-la com horário aproximado.
+ * por (alarmId, scheduledAt) EXATO e não cria evento nenhum quando não casa. É
+ * o mesmo horário canônico que a alarm-ring usa (lastAlarmFireMs).
+ *
+ * Sem o alarme (foi apagado) ou sem disparo calculável, sobra melhor esforço:
+ * `now` arredondado PARA BAIXO até o minuto cheio. `now` cru não seria
+ * aproximado, seria perdido — o dismiss chega em 08:31:07.234 e o pendente é
+ * 08:30:00.000, então os segundos nunca casam, o servidor descarta em silêncio,
+ * a entrada sai da fila local e a família é avisada assim mesmo. O alarme
+ * dispara sempre em HH:MM:00 e o dismiss chega em segundos, então o minuto
+ * cheio casa no caso comum. Onde não casar, a confirmação se perde do mesmo
+ * jeito — isto é melhor esforço, não garantia.
  *
  * Só age sobre evidência: sem payload de dismiss, não confirma nada. Inferir
  * "respondeu" pela ausência esconderia um remédio de fato perdido.
@@ -147,9 +153,14 @@ export async function confirmAlarmKitDismissal(
   const alarm = await alarmePersistido(dismissal.alarmId, loadRaw);
   const disparoMs = alarm ? lastAlarmFireMs(alarm, now) : null;
 
+  // Minuto cheio no fuso do aparelho (setSeconds, não aritmética de epoch): é
+  // em HH:MM:00 local que o alarme dispara.
+  const minutoCheio = new Date(now);
+  minutoCheio.setSeconds(0, 0);
+
   await enqueueConfirmation({
     alarmId: dismissal.alarmId,
-    scheduledAtIso: new Date(disparoMs ?? now.getTime()).toISOString(),
+    scheduledAtIso: new Date(disparoMs ?? minutoCheio.getTime()).toISOString(),
     status: 'responded',
   });
   return dismissal.alarmId;

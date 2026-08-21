@@ -156,7 +156,17 @@ export default function RootLayout() {
       // chamada. O payload do dismiss NÃO depende do App Group: o intent grava
       // um static dentro do processo do app.
       if (isAlarmKitAvailable()) {
-        alarmKit?.configure(APP_GROUP);
+        const appGroupOk = alarmKit?.configure(APP_GROUP);
+        if (!appGroupOk) {
+          // A Fase 0 mediu: sem o App Group no entitlement, configure() devolve
+          // false. Aí getAllAlarms() volta vazio para sempre, TODO alarme parece
+          // faltando e é reagendado a cada abertura do app — a mesma classe de
+          // bug das ~15-20 notificações simultâneas do iPhone, agora do lado do
+          // AlarmKit. Sem este log a falha não aparece em lugar nenhum.
+          console.error(
+            `[AlarmKit] configure() recusou o App Group ${APP_GROUP} — o UserDefaults compartilhado não abriu; agendar e listar alarmes vão falhar`,
+          );
+        }
 
         // O app pode ter sido aberto pelo "Desligar" do alarme, e esse toque É
         // a resposta do idoso. Confirmar aqui, no boot, é o caminho normal do
