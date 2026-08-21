@@ -50,10 +50,11 @@ vi.mock("../lib/notifications-utils", () => ({
 
 let listaAlarmKit: string[] = [];
 const agendarAlarmKit = vi.fn(async () => {});
+const cancelarAlarmKit = vi.fn(async () => {});
 vi.mock("../lib/ios-alarm-kit", () => ({
   isAlarmKitAvailable: () => true,
   scheduleAlarmKitAlarm: (...a: unknown[]) => agendarAlarmKit(...(a as [])),
-  cancelAlarmKitAlarm: vi.fn(async () => {}),
+  cancelAlarmKitAlarm: (...a: unknown[]) => cancelarAlarmKit(...(a as [])),
   listAlarmKitAlarmIds: () => listaAlarmKit,
 }));
 
@@ -94,5 +95,42 @@ describe("syncAlarmsOnStartup com AlarmKit ativo", () => {
     listaAlarmKit = ["a1"];
     await syncAlarmsOnStartup([ALARME]);
     expect(agendarAlarmKit).toHaveBeenCalled();
+  });
+});
+
+/**
+ * As duas varreduras existem para o fluxo ANORMAL: alarme apagado ou desligado
+ * em OUTRO aparelho e propagado pelo cloud backup nunca passa por
+ * cancelFullAlarm neste aqui. Foi esse fluxo que produziu ~15-20 notificações
+ * fantasma num iPhone real — e no 26+ o resultado é pior: um alarme de sistema
+ * tocando em loop que ninguém consegue mais desligar pelo app, porque nada no
+ * app conhece o id.
+ */
+describe("varredura de órfãos com AlarmKit ativo", () => {
+  it("cancela no AlarmKit o alarme que não pertence a nenhum alarme atual", async () => {
+    listaAlarmKit = ["a1", "apagado-em-outro-aparelho"];
+
+    await syncAlarmsOnStartup([ALARME]);
+
+    expect(cancelarAlarmKit).toHaveBeenCalledWith("apagado-em-outro-aparelho");
+  });
+
+  it("não encosta no alarme que ainda existe", async () => {
+    listaAlarmKit = ["a1"];
+
+    await syncAlarmsOnStartup([ALARME]);
+
+    expect(cancelarAlarmKit).not.toHaveBeenCalled();
+  });
+});
+
+describe("alarme desabilitado com AlarmKit ativo", () => {
+  it("cancela o alarme do AlarmKit — senão ele segue tocando desligado", async () => {
+    listaAlarmKit = ["a1"];
+
+    await syncAlarmsOnStartup([{ ...(ALARME as object), enabled: false } as never]);
+
+    expect(cancelarAlarmKit).toHaveBeenCalledWith("a1");
+    expect(agendarAlarmKit).not.toHaveBeenCalled();
   });
 });
