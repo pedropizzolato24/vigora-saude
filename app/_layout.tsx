@@ -29,7 +29,7 @@ import { MonitoringInitializer } from '@/components/monitoring-initializer';
 import { CheckinInitializer } from '@/components/checkin-initializer';
 import { OnboardingGate } from '@/components/onboarding-gate';
 import { refreshSessionOnStartup } from "@/lib/session-refresh";
-import { subscribeSessionExpired } from "@/lib/_core/auth";
+import { subscribeSessionExpired, migrateKeychainAccessibility } from "@/lib/_core/auth";
 import {
   SafeAreaFrameContext,
   SafeAreaInsetsContext,
@@ -95,7 +95,12 @@ export default function RootLayout() {
   // dead man's switch (heartbeat/sync/events all 401). If the server rejects
   // the session (token expired / user deleted), route the user back to login.
   useEffect(() => {
-    refreshSessionOnStartup();
+    // A migração vem ANTES do refresh: ela apaga e regrava a credencial, e um
+    // refresh escrevendo token no meio disso perderia a corrida. É no-op depois
+    // da primeira vez (e no Android sempre).
+    migrateKeychainAccessibility()
+      .catch(() => {})
+      .finally(() => refreshSessionOnStartup());
     const unsubscribe = subscribeSessionExpired(() => {
       const { router } = require('expo-router');
       router.replace('/login');

@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import { SESSION_TOKEN_KEY, USER_INFO_KEY } from "@/constants/oauth";
 
@@ -116,6 +117,74 @@ export async function handleUnauthorized(): Promise<void> {
 }
 
 /**
+ * Acessibilidade de TODA credencial de sessão gravada pelo app.
+ *
+ * O padrão do expo-secure-store é WHEN_UNLOCKED: com o aparelho bloqueado nem
+ * o próprio app lê o item. Isso quebra qualquer boot que aconteça por trás da
+ * lock screen — o app subia sem conta, roteava errado (já caiu em /login, em
+ * /onboarding e até nas abas de CUIDADOR sem conta nenhuma) e, antes do fix de
+ * readSecure, chegava a apagar credencial válida.
+ *
+ * AFTER_FIRST_UNLOCK mantém o item legível a partir do primeiro desbloqueio
+ * desde que o aparelho ligou. Continua protegido em repouso (aparelho
+ * desligado/nunca desbloqueado), que é a ameaça real para um token de sessão.
+ */
+const SECURE_WRITE_OPTIONS: SecureStore.SecureStoreOptions = {
+  keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
+};
+
+const KEYCHAIN_MIGRATION_FLAG = "vigora_keychain_after_first_unlock_migrado";
+
+/**
+ * Regrava as credenciais já existentes com a acessibilidade nova.
+ *
+ * Precisa apagar antes de gravar: `setItemAsync` sobre chave existente cai em
+ * `SecItemUpdate`, e o expo-secure-store manda SOMENTE kSecValueData no
+ * updateDictionary (ios/SecureStoreModule.swift). O kSecAttrAccessible do item
+ * antigo ficaria intocado e a migração seria um no-op silencioso em todo mundo
+ * que já tem o app instalado.
+ *
+ * Rodar com o aparelho bloqueado não migra nada (a leitura falha) e NÃO marca
+ * a flag — tenta de novo no próximo boot. Chamada uma vez no startup, antes
+ * de qualquer coisa que escreva sessão, para não competir com o delete.
+ */
+export async function migrateKeychainAccessibility(): Promise<void> {
+  // Android usa EncryptedSharedPreferences: não existe acessibilidade por
+  // estado de bloqueio, e apagar/regravar só criaria risco à toa.
+  if (Platform.OS !== "ios") return;
+  if (await AsyncStorage.getItem(KEYCHAIN_MIGRATION_FLAG)) return;
+
+  for (const key of [SESSION_TOKEN_KEY, USER_INFO_KEY]) {
+    const read = await readSecure(key);
+    // Ilegível = aparelho bloqueado. Aborta a migração inteira sem marcar a
+    // flag: migrar só metade e dizer que acabou deixaria a outra chave presa
+    // no WHEN_UNLOCKED para sempre.
+    if (!read.ok) {
+      console.log("[Auth] Migração do keychain adiada: aparelho bloqueado");
+      return;
+    }
+    if (!read.value) continue;
+
+    try {
+      await SecureStore.deleteItemAsync(key);
+      await SecureStore.setItemAsync(key, read.value, SECURE_WRITE_OPTIONS);
+    } catch (error) {
+      // A chave acabou de ser apagada e o valor só existe nesta variável:
+      // uma segunda tentativa é a diferença entre migrar e deslogar o usuário.
+      console.error(`[Auth] Falha ao regravar ${key}, tentando de novo:`, error);
+      try {
+        await SecureStore.setItemAsync(key, read.value, SECURE_WRITE_OPTIONS);
+      } catch (retryError) {
+        console.error(`[Auth] Regravação de ${key} falhou de novo:`, retryError);
+        return; // sem flag: próximo boot tenta outra vez
+      }
+    }
+  }
+
+  await AsyncStorage.setItem(KEYCHAIN_MIGRATION_FLAG, "1");
+}
+
+/**
  * Leitura crua do SecureStore que distingue "não tem valor" de "não deu para
  * ler". Existe porque as duas coisas viravam `null` e um consumidor (o
  * handleUnauthorized) toma decisão DESTRUTIVA com base nisso — ver o comentário
@@ -159,7 +228,7 @@ export async function setSessionToken(token: string): Promise<void> {
 
     // Use SecureStore for native
     console.log("[Auth] Setting session token...");
-    await SecureStore.setItemAsync(SESSION_TOKEN_KEY, token);
+    await SecureStore.setItemAsync(SESSION_TOKEN_KEY, token, SECURE_WRITE_OPTIONS);
     console.log("[Auth] Session token stored in SecureStore successfully");
   } catch (error) {
     console.error("[Auth] Failed to set session token:", error);
@@ -226,7 +295,7 @@ export async function setUserInfo(user: User): Promise<void> {
     }
 
     // Use SecureStore for native
-    await SecureStore.setItemAsync(USER_INFO_KEY, JSON.stringify(user));
+    await SecureStore.setItemAsync(USER_INFO_KEY, JSON.stringify(user), SECURE_WRITE_OPTIONS);
     console.log("[Auth] User info stored in SecureStore successfully");
     notifyActiveUser(user.openId);
   } catch (error) {

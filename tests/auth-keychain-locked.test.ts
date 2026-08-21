@@ -29,6 +29,11 @@ vi.mock("expo-secure-store", () => ({
   getItemAsync: (...args: unknown[]) => getItemAsync(...(args as [string])),
   setItemAsync: vi.fn(async () => {}),
   deleteItemAsync: (...args: unknown[]) => deleteItemAsync(...(args as [string])),
+  AFTER_FIRST_UNLOCK: "AFTER_FIRST_UNLOCK",
+}));
+
+vi.mock("@react-native-async-storage/async-storage", () => ({
+  default: { getItem: async () => null, setItem: async () => {} },
 }));
 
 vi.mock("react-native", () => ({
