@@ -522,7 +522,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   title: { fontSize: 24, fontWeight: '800' },
-  subtitle: { fontSize: 14, marginTop: 2 },
+  subtitle: { fontSize: 16, marginTop: 2 },
   exportBtn: {
     flexDirection: 'row',
     alignItems: 'center',

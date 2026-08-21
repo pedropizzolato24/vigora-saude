@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   title: { fontSize: 28, fontWeight: '800' },
-  subtitle: { fontSize: 14, marginTop: 2 },
+  subtitle: { fontSize: 16, marginTop: 2 },
   headerIcon: {
     width: 48,
     height: 48,
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
   },
-  privacyText: { flex: 1, fontSize: 13, lineHeight: 18 },
+  privacyText: { flex: 1, fontSize: 16, lineHeight: 22 },
   getLocationBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   locationCardTitle: { fontSize: 16, fontWeight: '700' },
-  locationTime: { fontSize: 13, marginTop: 2 },
+  locationTime: { fontSize: 16, marginTop: 2 },
   addressText: { fontSize: 15, lineHeight: 21 },
   coordsRow: { flexDirection: 'row', gap: 8 },
   coordBadge: {
@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
   },
-  coordText: { fontSize: 12, fontWeight: '500' },
+  coordText: { fontSize: 15, fontWeight: '500' },
   locationActions: { flexDirection: 'row', gap: 10 },
   locationActionBtn: {
     flex: 1,
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
   },
-  locationActionText: { fontSize: 14, fontWeight: '600' },
+  locationActionText: { fontSize: 16, fontWeight: '600' },
   historyTitle: { fontSize: 17, fontWeight: '700', marginTop: 4 },
   historyCard: {
     flexDirection: 'row',
@@ -425,8 +425,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
-  historyAddress: { fontSize: 14, fontWeight: '500' },
-  historyTime: { fontSize: 12, marginTop: 2 },
+  historyAddress: { fontSize: 16, fontWeight: '500' },
+  historyTime: { fontSize: 15, marginTop: 2 },
   reshareBtn: { padding: 6 },
   instructionsCard: {
     borderRadius: 14,
@@ -435,5 +435,5 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   instructionsTitle: { fontSize: 15, fontWeight: '700' },
-  instructionsText: { fontSize: 14, lineHeight: 22 },
+  instructionsText: { fontSize: 16, lineHeight: 22 },
 });

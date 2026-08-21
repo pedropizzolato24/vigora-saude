@@ -141,11 +141,11 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   title: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
   },
   description: {
-    fontSize: 12,
+    fontSize: 15,
   },
   ctaButton: {
     width: 36,

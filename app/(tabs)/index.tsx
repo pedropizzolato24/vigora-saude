@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   greeting: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '500',
   },
   appName: {

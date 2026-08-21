@@ -1036,7 +1036,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   title: { fontSize: 24, fontWeight: '800' },
-  subtitle: { fontSize: 14, marginTop: 2 },
+  subtitle: { fontSize: 16, marginTop: 2 },
   warningBanner: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -1166,7 +1166,7 @@ const styles = StyleSheet.create({
   },
   toggleLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   toggleLabel: { fontSize: 16, fontWeight: '500' },
-  toggleSubLabel: { fontSize: 13, marginTop: 1 },
+  toggleSubLabel: { fontSize: 16, marginTop: 1 },
   previewCard: {
     borderRadius: 14,
     borderWidth: 1,

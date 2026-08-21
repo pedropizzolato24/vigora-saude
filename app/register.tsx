@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
   },
   input: {
@@ -480,8 +480,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   typeDescription: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 15,
+    lineHeight: 21,
   },
   bloodGrid: {
     flexDirection: 'row',
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 16,
     lineHeight: 20,
   },
   consentBox: {

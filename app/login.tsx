@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontFamily: "PlusJakartaSans",
-    fontSize: 14,
+    fontSize: 16,
     lineHeight: 20,
   },
   appleButton: {
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
   },
   privacyNote: {
     fontFamily: "PlusJakartaSans",
-    fontSize: 12,
+    fontSize: 15,
     textAlign: "center",
     lineHeight: 18,
   },
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
   },
   linkHint: {
     fontFamily: "PlusJakartaSans",
-    fontSize: 14,
+    fontSize: 16,
     textAlign: "center",
     lineHeight: 20,
   },

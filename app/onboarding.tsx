@@ -491,12 +491,12 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   pageIndicator: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
   },
   onboardingDisclaimer: {
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 15,
+    lineHeight: 21,
     textAlign: 'center',
     marginTop: 12,
     paddingHorizontal: 8,
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
   },
   permissionInfoText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 16,
     lineHeight: 20,
   },
   guideBox: {
@@ -596,12 +596,12 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   guideStepNumberText: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '700',
   },
   guideStepText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 16,
     lineHeight: 20,
   },
   settingsButton: {
@@ -618,9 +618,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   skipHint: {
-    fontSize: 13,
+    fontSize: 16,
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 22,
   },
   bottomSection: {
     paddingHorizontal: 24,

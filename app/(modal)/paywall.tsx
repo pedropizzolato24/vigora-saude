@@ -385,7 +385,7 @@ export default function PaywallScreen() {
         </Pressable>
 
         {/* Termos */}
-        <Text style={[styles.termsText, { color: colors.muted, fontSize: 12 }]}>
+        <Text style={[styles.termsText, { color: colors.muted, fontSize: 15 }]}>
           A assinatura é renovada automaticamente. Cancele a qualquer momento nas configurações da
           loja. Ao assinar, você concorda com os Termos de Uso e Política de Privacidade.
         </Text>
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   },
   bestValueText: {
     color: "#fff",
-    fontSize: 11,
+    fontSize: 15,
     fontWeight: "700",
   },
   planTitle: {

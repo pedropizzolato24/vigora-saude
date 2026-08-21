@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   },
   message: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '500',
     lineHeight: 20,
     paddingLeft: 4,
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   actionText: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '700',
   },
   closeButton: {

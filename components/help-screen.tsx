@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   welcomeSubtitle: {
-    fontSize: 14,
+    fontSize: 16,
     lineHeight: 20,
   },
   sectionContainer: {
@@ -490,7 +490,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   countText: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '700',
   },
   sectionContent: {
@@ -540,7 +540,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   supportText: {
-    fontSize: 14,
+    fontSize: 16,
     lineHeight: 20,
     textAlign: 'center',
   },

@@ -72,7 +72,9 @@ export function CaregiverTabBar() {
           ? (active ? ac.primary : ac.muted)
           : (active ? colors.primary : colors.muted);
         const iconSize = isAccessibilityMode ? 32 : 24;
-        const labelSize = isAccessibilityMode ? 13 : 11;
+        // 15 normal / 18 acessível: os mínimos do CLAUDE.md. Eram 11 e 13, e o
+  // fontSize: 11 do stylesheet nunca chegou a valer — esta linha o sobrepõe.
+  const labelSize = isAccessibilityMode ? 18 : 15;
         return (
           <Pressable
             key={tab.label}
@@ -97,7 +99,7 @@ export function CaregiverTabBar() {
                 <MaterialIcons name={tab.icon} size={iconSize} color={tint} />
               </View>
             </View>
-            <Text style={[styles.label, { color: tint, fontSize: labelSize }, active && styles.labelActive]}>
+            <Text numberOfLines={1} style={[styles.label, { color: tint, fontSize: labelSize }, active && styles.labelActive]}>
               {tab.label}
             </Text>
           </Pressable>
@@ -116,6 +118,6 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   iconBackground: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  label: { fontSize: 11, fontWeight: '500', textAlign: 'center' },
+  label: { fontWeight: '500', textAlign: 'center' },
   labelActive: { fontWeight: '700' },
 });

@@ -1741,7 +1741,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   fontPreviewLabel: {
-    fontSize: 11,
+    fontSize: 15,
     fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -1808,7 +1808,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   footerVersion: {
-    fontSize: 12,
+    fontSize: 15,
   },
   footerLinks: {
     flexDirection: 'row',
@@ -1817,16 +1817,16 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   footerLink: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '500',
   },
   footerDot: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
   },
   footerCopyright: {
-    fontSize: 11,
+    fontSize: 15,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 21,
   },
 });

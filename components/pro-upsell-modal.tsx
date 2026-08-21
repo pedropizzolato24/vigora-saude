@@ -151,7 +151,7 @@ export function useProUpsell() {
               </View>
               {/* Badge PRO */}
               <View style={[styles.proBadge, { backgroundColor: colors.primary }]}>
-                <MaterialIcons name="star" size={10} color="#fff" />
+                <MaterialIcons name="star" size={14} color="#fff" />
                 <Text style={styles.proBadgeText}>PRO</Text>
               </View>
             </View>
@@ -286,7 +286,8 @@ const styles = StyleSheet.create({
   },
   proBadgeText: {
     color: "#fff",
-    fontSize: 9,
+    // 9px era ilegível; o chip e a estrela cresceram junto.
+    fontSize: 15,
     fontWeight: "800",
     letterSpacing: 0.5,
   },
