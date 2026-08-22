@@ -71,7 +71,9 @@ export function CustomTabBar() {
           ? (active ? ac.primary : ac.muted)
           : (active ? colors.primary : colors.muted);
         const iconSize = isAccessibilityMode ? 34 : 30;
-        const labelSize = isAccessibilityMode ? 15 : 13;
+        // 15 normal / 18 acessível: os mínimos do CLAUDE.md. Eram 13 e 15, e o
+  // fontSize: 11 do stylesheet nunca chegou a valer — esta linha o sobrepõe.
+  const labelSize = isAccessibilityMode ? 18 : 15;
         return (
           <PressableScale
             key={tab.label}
@@ -107,7 +109,7 @@ export function CustomTabBar() {
                 <View
                   style={[
                     styles.badge,
-                    { backgroundColor: isAccessibilityMode ? ac.primary : colors.primary },
+                    { backgroundColor: isAccessibilityMode ? ac.primary : colors.primarySurface },
                   ]}
                 >
                   <Text style={styles.badgeText}>
@@ -117,6 +119,7 @@ export function CustomTabBar() {
               )}
             </View>
             <Text
+              numberOfLines={1}
               style={[
                 styles.label,
                 { color: labelColor, fontSize: labelSize },
@@ -164,7 +167,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   label: {
-    fontSize: 11,
     fontWeight: '700',
     textAlign: 'center',
   },
@@ -175,9 +177,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -4,
     right: -4,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 3,
@@ -185,9 +187,11 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
   },
   badgeText: {
-    fontSize: 9,
+    // O contador diz quantos remédios estão ligados; a 9px ninguém de 60+
+    // lia. O círculo cresceu junto (16 -> 22) para caber o número.
+    fontSize: 15,
     fontWeight: '800',
     color: '#FFFFFF',
-    lineHeight: 12,
+    lineHeight: 18,
   },
 });

@@ -23,7 +23,7 @@ export function SosStrip({ onPress }: SosStripProps) {
       style={({ pressed }) => [
         styles.container,
         {
-          backgroundColor: colors.emergency,
+          backgroundColor: colors.emergencySurface,
           borderBottomColor: colors.emergencyDark,
           shadowColor: colors.emergency,
         },

@@ -60,7 +60,7 @@ export function AdBanner({
           <View
             style={[
               styles.iconContainer,
-              { backgroundColor: colors.primary },
+              { backgroundColor: colors.primarySurface },
             ]}
           >
             <MaterialIcons name={icon} size={32} color={colors.onPrimary} />
@@ -90,7 +90,7 @@ export function AdBanner({
             style={({ pressed }) => [
               styles.ctaButton,
               {
-                backgroundColor: colors.primary,
+                backgroundColor: colors.primarySurface,
                 opacity: pressed ? 0.8 : 1,
               },
             ]}
@@ -141,11 +141,11 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   title: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
   },
   description: {
-    fontSize: 12,
+    fontSize: 15,
   },
   ctaButton: {
     width: 36,

@@ -326,7 +326,7 @@ export default function AmbulanceScreen() {
             'Desbloqueie o acesso para a ambulância',
           ].map((instruction, i) => (
             <View key={i} style={styles.instructionRow}>
-              <View style={[styles.instructionBullet, { backgroundColor: colors.primary }]}>
+              <View style={[styles.instructionBullet, { backgroundColor: colors.primarySurface }]}>
                 <Text style={[styles.instructionNumber, { color: colors.onPrimary }]}>{i + 1}</Text>
               </View>
               <Text style={[styles.instructionText, { color: colors.foreground }]}>
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   title: { fontSize: 28, fontWeight: '800' },
-  subtitle: { fontSize: 14, marginTop: 2 },
+  subtitle: { fontSize: 16, marginTop: 2 },
   headerIcon: {
     width: 48,
     height: 48,
@@ -368,8 +368,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
-  emergencyText: { flex: 1, fontSize: 14, lineHeight: 20 },
-  sectionLabel: { fontSize: 12, fontWeight: '600', letterSpacing: 0.8, marginTop: 4 },
+  emergencyText: { flex: 1, fontSize: 16, lineHeight: 20 },
+  sectionLabel: { fontSize: 15, fontWeight: '600', letterSpacing: 0.8, marginTop: 4 },
   optionsGrid: { flexDirection: 'row', gap: 10 },
   optionCard: {
     flex: 1,
@@ -387,8 +387,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  optionLabel: { fontSize: 13, fontWeight: '700', textAlign: 'center' },
-  optionDesc: { fontSize: 11, textAlign: 'center', lineHeight: 15 },
+  optionLabel: { fontSize: 16, fontWeight: '700', textAlign: 'center' },
+  optionDesc: { fontSize: 15, textAlign: 'center', lineHeight: 21 },
   selectedBadge: {
     position: 'absolute',
     top: 8,
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
   },
-  detailLabel: { fontSize: 14, fontWeight: '500' },
+  detailLabel: { fontSize: 16, fontWeight: '500' },
   detailValue: { fontSize: 15, fontWeight: '600' },
   detailPhone: { fontSize: 22, fontWeight: '800', letterSpacing: 1 },
   detailDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: 16 },
@@ -442,6 +442,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  instructionNumber: { fontSize: 12, fontWeight: '700' },
-  instructionText: { flex: 1, fontSize: 14, lineHeight: 20 },
+  instructionNumber: { fontSize: 15, fontWeight: '700' },
+  instructionText: { flex: 1, fontSize: 16, lineHeight: 20 },
 });

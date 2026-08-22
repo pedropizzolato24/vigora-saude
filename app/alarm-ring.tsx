@@ -571,6 +571,15 @@ export default function AlarmRingScreen() {
 
   // --- Accessibility Mode ---------------------------------------------------
   if (isAccessibilityMode) {
+    // A paleta acessível é FIXA (fundo creme, clara em qualquer tema), enquanto
+    // colors.* muda com claro/escuro e foi calibrado para o azul-escuro do modo
+    // normal. Misturar os dois some com o alarme sobre o creme: colors.warning
+    // dava 1,46:1 (claro) e 1,30:1 (escuro) contra ac.background — o ícone
+    // branco dentro do círculo âmbar ficava em 1,68:1 / 1,49:1, longe dos 3:1
+    // de gráfico da WCAG 1.4.11. Por isso o estado do alarme aqui sai SÓ do
+    // ac.*: ac.warning (#7A5200) dá 6,04:1 contra o creme e 6,92:1 contra o
+    // ícone branco, e ac.error (#B5070D) dá 6,11:1 / 7,00:1.
+    const a11yAlarmColor = isExpired ? ac.error : isUrgent ? ac.warning : ac.primary;
     return (
       <SafeAreaView
         style={[styles.container, { backgroundColor: ac.background }]}
@@ -578,7 +587,7 @@ export default function AlarmRingScreen() {
       >
         {/* Icon */}
         <View style={styles.topSection}>
-          <RippleHalo size={180} color={alarmColor}>
+          <RippleHalo size={180} color={a11yAlarmColor}>
             <View
               style={[
                 styles.iconCircle,
@@ -586,8 +595,8 @@ export default function AlarmRingScreen() {
                   width: 180,
                   height: 180,
                   borderRadius: 90,
-                  backgroundColor: alarmColor,
-                  shadowColor: alarmColor,
+                  backgroundColor: a11yAlarmColor,
+                  shadowColor: a11yAlarmColor,
                 },
               ]}
             >
@@ -651,10 +660,14 @@ export default function AlarmRingScreen() {
             </View>
           ) : !isExpired ? (
             <>
-              <Text style={[styles.countdownLabel, { color: isUrgent ? colors.warning : ac.muted, fontSize: af.sm, fontWeight: isUrgent ? '700' : '400' }]}>
+              {/* ac.warning, não colors.warning: o âmbar do tema (#F0C24A claro /
+                  #F5D06E escuro) sobre o creme fixo desta paleta dá 1,46:1 e
+                  1,30:1 — o aviso de que a mensagem de emergência está a caminho
+                  sumia justamente nos segundos finais. ac.warning dá 6,04:1. */}
+              <Text style={[styles.countdownLabel, { color: isUrgent ? ac.warning : ac.muted, fontSize: af.sm, fontWeight: isUrgent ? '700' : '400' }]}>
                 {isUrgent ? '⚠️ Mensagem de emergência em' : 'Mensagem de emergência em'}
               </Text>
-              <Text style={[styles.countdownTimer, { color: isUrgent ? colors.warning : ac.foreground, fontSize: 56 }]}>
+              <Text style={[styles.countdownTimer, { color: isUrgent ? ac.warning : ac.foreground, fontSize: 56 }]}>
                 {formatTime(secondsLeft)}
               </Text>
               <Text style={[styles.countdownSub, { color: ac.muted, fontSize: af.xs }]}>
@@ -662,9 +675,17 @@ export default function AlarmRingScreen() {
               </Text>
             </>
           ) : (
-            <View style={[styles.escalatedBox, { backgroundColor: colors.errorLight, borderColor: colors.error, borderWidth: 3 }]}>
-              <MaterialIcons name="warning" size={36} color={colors.error} />
-              <Text style={[styles.escalatedText, { color: colors.error, fontSize: af.md, lineHeight: af.md * 1.4 }]}>
+            /* Tokens ac.*, não colors.*: o tinte colors.errorLight assume o
+               fundo do modo normal; sobre o creme ele deixava o texto em
+               4,11:1 (claro) e 2,84:1 (escuro) — no escuro reprovava até o
+               mínimo de texto grande (3:1) e o ícone de 36px. A paleta
+               acessível não tem token de tinte de erro, então a caixa usa
+               ac.surface (branco, já usado no botão de soneca) com borda e
+               texto em ac.error: 7,00:1 no texto e 6,11:1 da borda contra o
+               fundo, que é o que delimita a caixa. */
+            <View style={[styles.escalatedBox, { backgroundColor: ac.surface, borderColor: ac.error, borderWidth: 3 }]}>
+              <MaterialIcons name="warning" size={36} color={ac.error} />
+              <Text style={[styles.escalatedText, { color: ac.error, fontSize: af.md, lineHeight: af.md * 1.4 }]}>
                 Mensagem de emergência enviada para seus contatos
               </Text>
             </View>
@@ -692,18 +713,29 @@ export default function AlarmRingScreen() {
               </Text>
             </Pressable>
           )}
+          {/* styles.dismissButton NÃO traz backgroundColor — quem o define é
+              cada modo (no normal, colors.error logo abaixo). Sem ele aqui, o
+              botão ficava transparente sobre o creme com o texto branco fixo do
+              estilo: 1,15:1, ou seja, invisível — o botão mais importante do
+              app, no modo feito para quem enxerga pior. ac.error/ac.onEmergency
+              (o mesmo par do modo normal) põe o contraste em 7,00:1. */}
           <Pressable
             style={({ pressed }) => [
               styles.dismissButton,
-              { minHeight: 88, paddingVertical: 26 },
-              vindoDoAlarmKit && { backgroundColor: ac.success, shadowColor: ac.success },
+              // vindoDoAlarmKit muda a cor de sucesso -> emergência, mas o
+              // fundo sempre existe. A branch do AlarmKit tinha essa condição
+              // sem fallback: no caminho comum o botão ficava sem
+              // backgroundColor — o mesmo defeito de 1,15:1 que o creme fixo
+              // já expôs uma vez neste arquivo (ver comentário acima).
+              { minHeight: 88, paddingVertical: 26, backgroundColor: vindoDoAlarmKit ? ac.success : ac.error },
+              vindoDoAlarmKit && { shadowColor: ac.success },
               pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
             ]}
             onPress={handleDismiss}
             accessibilityLabel={vindoDoAlarmKit ? 'Confirmado, fechar' : 'Desligar alarme'}
           >
-            <MaterialIcons name={vindoDoAlarmKit ? 'check' : 'alarm-off'} size={44} color={vindoDoAlarmKit ? ac.onPrimary : '#FFFFFF'} />
-            <Text style={[styles.dismissText, { fontSize: af.lg, fontWeight: '900' }, vindoDoAlarmKit && { color: ac.onPrimary }]}>
+            <MaterialIcons name={vindoDoAlarmKit ? 'check' : 'alarm-off'} size={44} color={vindoDoAlarmKit ? ac.onPrimary : ac.onEmergency} />
+            <Text style={[styles.dismissText, { fontSize: af.lg, fontWeight: '900', color: vindoDoAlarmKit ? ac.onPrimary : ac.onEmergency }]}>
               {vindoDoAlarmKit ? 'Confirmado' : 'Desligar Alarme'}
             </Text>
           </Pressable>
@@ -765,9 +797,14 @@ export default function AlarmRingScreen() {
           AlarmKit o alarme já foi respondido, não há contagem. */}
       <View style={styles.countdownSection}>
         {vindoDoAlarmKit ? (
-          <View style={[styles.escalatedBox, { backgroundColor: colors.successLight, borderColor: colors.success }]}>
-            <MaterialIcons name="check-circle" size={28} color={colors.success} />
-            <Text style={[styles.escalatedText, { color: colors.success }]}>
+          // Mesma regra da caixa de erro logo abaixo: o container deste
+          // arquivo é um azul-escuro FIXO (não muda com o tema), então a cor
+          // por cima também precisa ser. `colors.success` claro (#0C7A40) foi
+          // escurecido para funcionar sobre um fundo CLARO — sobre este
+          // container dava 3,14:1 como texto e 3,34:1 como ícone/borda.
+          <View style={[styles.escalatedBox, { backgroundColor: '#22C55E20', borderColor: '#22C55E' }]}>
+            <MaterialIcons name="check-circle" size={28} color="#22C55E" />
+            <Text style={[styles.escalatedText, { color: '#86EFAC' }]}>
               Alarme desligado. Não precisa fazer mais nada.
             </Text>
           </View>
@@ -784,9 +821,12 @@ export default function AlarmRingScreen() {
             </Text>
           </>
         ) : (
-          <View style={[styles.escalatedBox, { backgroundColor: colors.errorLight, borderColor: colors.error }]}>
-            <MaterialIcons name="warning" size={28} color={colors.error} />
-            <Text style={[styles.escalatedText, { color: colors.error }]}>
+          // O container do modo normal é um azul-escuro FIXO, então a caixa
+          // também precisa ser: `colors.error` no tema claro é um vermelho
+          // ESCURO (calibrado para fundo claro) e dava 3,37:1 sobre o azul.
+          <View style={[styles.escalatedBox, { backgroundColor: '#F0404020', borderColor: '#F04040' }]}>
+            <MaterialIcons name="warning" size={28} color="#F04040" />
+            <Text style={[styles.escalatedText, { color: '#FCA5A5' }]}>
               Mensagem de emergência enviada para seus contatos
             </Text>
           </View>
@@ -853,7 +893,8 @@ const styles = StyleSheet.create({
     elevation: 20,
   },
   alarmLabel: {
-    fontSize: 13,
+    // 15 é o corpo mínimo do CLAUDE.md; era 13.
+    fontSize: 15,
     fontWeight: '700',
     color: '#94A3B8',
     letterSpacing: 4,
@@ -904,7 +945,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   countdownLabel: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#94A3B8',
     textAlign: 'center',
   },
@@ -919,10 +960,16 @@ const styles = StyleSheet.create({
   },
   countdownTimerUrgent: {},
   countdownSub: {
-    fontSize: 12,
-    color: '#64748B',
+    // 15 é o corpo mínimo do CLAUDE.md; era 12, o menor da tela, justo na
+    // linha que ensina a impedir o acionamento da família. O rótulo acima
+    // subiu junto (16) para o primário não ficar menor que o secundário.
+    fontSize: 15,
+    // slate-400, não slate-500: o 500 dava 3,81:1 sobre o container.
+    color: '#94A3B8',
     textAlign: 'center',
-    lineHeight: 18,
+    // Entrelinha do estilo COMPARTILHADO: o modo acessível troca o fontSize
+    // por af.xs (16) e herda esta linha — 18 apertava o texto lá também.
+    lineHeight: 21,
   },
   escalatedBox: {
     flexDirection: 'row',
@@ -934,10 +981,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   escalatedText: {
-    fontSize: 14,
+    // Esta caixa ocupa o lugar do bloco do cronômetro quando o tempo acaba,
+    // então o aviso de que a família já foi acionada não pode chegar menor
+    // que o rótulo que ele substitui (countdownLabel, 16). Era 14.
+    fontSize: 16,
     fontWeight: '600',
     flex: 1,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   bottomSection: {
     width: '100%',

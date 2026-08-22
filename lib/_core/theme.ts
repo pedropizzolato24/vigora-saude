@@ -46,6 +46,8 @@ type RuntimePalette = SchemePaletteItem & {
   warningDark: string;
   emergencyDark: string;
   errorLight: string;
+  primarySurface: string;
+  emergencySurface: string;
   accent: string;
 };
 
@@ -82,6 +84,8 @@ function buildRuntimePalette(scheme: ColorScheme): RuntimePalette {
     warningDark: base.warningDark,
     emergencyDark: base.emergencyDark,
     errorLight: base.errorLight,
+    primarySurface: base.primarySurface,
+    emergencySurface: base.emergencySurface,
     accent: BRAND_ACCENT[scheme],
     accentLight: BRAND_ACCENT_LIGHT[scheme],
   };

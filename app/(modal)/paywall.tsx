@@ -164,7 +164,7 @@ export default function PaywallScreen() {
 
   const baseTextSize = isAccessible ? 18 : 15;
   const titleSize = isAccessible ? 26 : 22;
-  const subtitleSize = isAccessible ? 17 : 14;
+  const subtitleSize = isAccessible ? 18 : 15;
   // Botões: mínimo 16px (19px no modo acessível) — regras de tipografia do app
   const buttonTextSize = isAccessible ? 19 : Math.max(fs.md, 16);
   const buttonMinHeight = isAccessible ? 60 : 56;
@@ -218,7 +218,7 @@ export default function PaywallScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero */}
-        <View style={[styles.heroCard, { backgroundColor: colors.primary }]}>
+        <View style={[styles.heroCard, { backgroundColor: colors.primarySurface }]}>
           <Text style={[styles.heroEmoji]}>❤️‍🔥</Text>
           <Text style={[styles.heroTitle, { fontSize: titleSize + 2 }]}>
             Proteção Completa
@@ -276,7 +276,7 @@ export default function PaywallScreen() {
                   style={({ pressed }) => [
                     styles.planCard,
                     {
-                      backgroundColor: isLifetime ? colors.primary : colors.surface,
+                      backgroundColor: isLifetime ? colors.primarySurface : colors.surface,
                       borderColor: isLifetime ? colors.primary : colors.border,
                       opacity: pressed ? 0.85 : 1,
                     },
@@ -337,7 +337,7 @@ export default function PaywallScreen() {
               accessibilityLabel="Ver planos disponíveis"
               style={({ pressed }) => [
                 styles.primaryButton,
-                { backgroundColor: colors.primary, minHeight: buttonMinHeight, opacity: pressed || presenting ? 0.7 : 1 },
+                { backgroundColor: colors.primarySurface, minHeight: buttonMinHeight, opacity: pressed || presenting ? 0.7 : 1 },
               ]}
             >
               <Text style={[styles.primaryButtonText, { color: colors.onPrimary, fontSize: buttonTextSize }]}>
@@ -356,7 +356,7 @@ export default function PaywallScreen() {
             accessibilityLabel="Assinar agora"
             style={({ pressed }) => [
               styles.primaryButton,
-              { backgroundColor: colors.primary, minHeight: buttonMinHeight, opacity: pressed || presenting ? 0.7 : 1 },
+              { backgroundColor: colors.primarySurface, minHeight: buttonMinHeight, opacity: pressed || presenting ? 0.7 : 1 },
             ]}
           >
             {presenting ? (
@@ -385,7 +385,7 @@ export default function PaywallScreen() {
         </Pressable>
 
         {/* Termos */}
-        <Text style={[styles.termsText, { color: colors.muted, fontSize: 12 }]}>
+        <Text style={[styles.termsText, { color: colors.muted, fontSize: 15 }]}>
           A assinatura é renovada automaticamente. Cancele a qualquer momento nas configurações da
           loja. Ao assinar, você concorda com os Termos de Uso e Política de Privacidade.
         </Text>
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   },
   bestValueText: {
     color: "#fff",
-    fontSize: 11,
+    fontSize: 15,
     fontWeight: "700",
   },
   planTitle: {

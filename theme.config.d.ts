@@ -10,6 +10,8 @@ export const themeColors: {
   warning: { light: string; dark: string };
   error: { light: string; dark: string };
   emergency: { light: string; dark: string };
+  primarySurface: { light: string; dark: string };
+  emergencySurface: { light: string; dark: string };
   onPrimary: { light: string; dark: string };
   onEmergency: { light: string; dark: string };
   onSuccess: { light: string; dark: string };

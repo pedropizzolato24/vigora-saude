@@ -155,7 +155,7 @@ export default function CaregiverAlertsScreen() {
               style={({ pressed }) => [
                 styles.filter,
                 {
-                  backgroundColor: selected ? colors.primary : colors.surface,
+                  backgroundColor: selected ? colors.primarySurface : colors.surface,
                   borderColor: selected ? colors.primary : colors.border,
                   opacity: pressed ? 0.85 : 1,
                 },

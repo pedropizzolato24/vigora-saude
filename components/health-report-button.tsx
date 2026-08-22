@@ -14,7 +14,6 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   Pressable,
   StyleSheet,
@@ -29,6 +28,7 @@ import { useAppContext } from '@/lib/app-context';
 import { buildReportHtml } from '@/lib/health-report-generator';
 import { useColors } from '@/hooks/use-colors';
 import { useAccessibility } from '@/lib/accessibility-context';
+import { AppToast, useAppToast } from '@/components/app-toast';
 
 interface HealthReportButtonProps {
   /** Estilo compacto (apenas ícone) ou completo (ícone + texto) */
@@ -37,15 +37,22 @@ interface HealthReportButtonProps {
 
 export function HealthReportButton({ compact = false }: HealthReportButtonProps) {
   const { state } = useAppContext();
+  const { showToast, toastProps } = useAppToast();
   const themeColors = useColors();
   const { isAccessibilityMode, a11yColors: ac, a11yFontSize: af } = useAccessibility();
   const [isGenerating, setIsGenerating] = useState(false);
 
   // No modo de acessibilidade o botão segue a paleta de alto contraste —
   // antes ele ficava com o tema normal e destoava do resto da tela.
+  // primarySurface é o fundo do botão; a paleta acessível não separa os dois
+  // papéis porque o azul dela já é escuro o bastante para o branco por cima.
   const colors = isAccessibilityMode
-    ? { primary: ac.primary, onPrimary: ac.onPrimary }
-    : { primary: themeColors.primary, onPrimary: themeColors.onPrimary };
+    ? { primary: ac.primary, onPrimary: ac.onPrimary, primarySurface: ac.primary }
+    : {
+        primary: themeColors.primary,
+        onPrimary: themeColors.onPrimary,
+        primarySurface: themeColors.primarySurface,
+      };
   const labelFontSize = isAccessibilityMode ? af.md : 15;
   const minHeight = isAccessibilityMode ? 64 : undefined;
 
@@ -90,18 +97,18 @@ export function HealthReportButton({ compact = false }: HealthReportButtonProps)
         if (Platform.OS === 'web') {
           await Print.printAsync({ html });
         } else {
-          Alert.alert(
-            'Compartilhamento indisponível',
-            'Não foi possível abrir o compartilhamento neste dispositivo.',
-          );
+          showToast({
+            message: 'Este celular não oferece a opção de compartilhar.',
+            variant: 'error',
+          });
         }
       }
     } catch (error: any) {
       console.error('[HealthReport] Erro ao gerar relatório:', error);
-      Alert.alert(
-        'Erro ao gerar relatório',
-        'Não foi possível gerar o relatório. Tente novamente.',
-      );
+      showToast({
+        message: 'Não foi possível gerar o relatório. Tente de novo.',
+        variant: 'error',
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -109,6 +116,7 @@ export function HealthReportButton({ compact = false }: HealthReportButtonProps)
 
   if (compact) {
     return (
+      <>
       <Pressable
         onPress={handleGenerateReport}
         disabled={isGenerating}
@@ -128,17 +136,20 @@ export function HealthReportButton({ compact = false }: HealthReportButtonProps)
           <MaterialIcons name="picture-as-pdf" size={22} color={colors.primary} />
         )}
       </Pressable>
+      <AppToast {...toastProps} />
+      </>
     );
   }
 
   return (
+    <>
     <Pressable
       onPress={handleGenerateReport}
       disabled={isGenerating}
       style={({ pressed }) => [
         styles.fullButton,
         {
-          backgroundColor: colors.primary,
+          backgroundColor: colors.primarySurface,
           opacity: pressed || isGenerating ? 0.8 : 1,
           minHeight,
         },
@@ -158,6 +169,8 @@ export function HealthReportButton({ compact = false }: HealthReportButtonProps)
         </>
       )}
     </Pressable>
+    <AppToast {...toastProps} />
+    </>
   );
 }
 

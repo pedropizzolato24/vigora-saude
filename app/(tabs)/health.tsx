@@ -696,7 +696,7 @@ export default function HealthScreen() {
                             },
                           ]}
                         >
-                          <View style={[styles.typeCardIcon, { backgroundColor: selected ? colors.primary : colors.primaryLight }]}>
+                          <View style={[styles.typeCardIcon, { backgroundColor: selected ? colors.primarySurface : colors.primaryLight }]}>
                             <MaterialIcons name={cfg.icon} size={24} color={selected ? colors.onPrimary : colors.primary} />
                           </View>
                           <View style={{ flex: 1 }}>

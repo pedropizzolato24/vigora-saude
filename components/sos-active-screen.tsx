@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
   },
   headerElapsed: {
     marginTop: 6,
-    fontSize: 14,
+    fontSize: 16,
     color: '#FCA5A5',
     fontWeight: '500',
   },

@@ -125,7 +125,7 @@ export function WizardStep({
           style={({ pressed }) => [
             styles.button,
             styles.primaryButton,
-            { backgroundColor: colors.primary, minHeight: fs.touch(56) },
+            { backgroundColor: colors.primarySurface, minHeight: fs.touch(56) },
             nextDisabled && { opacity: 0.5 },
             pressed && !nextDisabled && { opacity: 0.9 },
           ]}

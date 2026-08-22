@@ -39,7 +39,10 @@ interface OnboardingSlide {
   type: SlideType;
   icon: string;
   iconColor: string;
-  iconBg: string;
+  /** Fundo decorativo do círculo. Ausente quando o slide usa `iconToken`. */
+  iconBg?: string;
+  /** Slides semânticos (marca, emergência, alarme, confirmação) seguem o tema. */
+  iconToken?: 'primary' | 'emergency' | 'warning' | 'success';
   title: string;
   description: string;
 }
@@ -50,7 +53,7 @@ const SLIDES: OnboardingSlide[] = [
     type: 'info',
     icon: 'favorite',
     iconColor: '#FFFFFF',
-    iconBg: '#1E4D8C',
+    iconToken: 'primary',
     title: 'Bem-vindo ao Vigora',
     description:
       'Seu assistente pessoal de saúde e segurança. Monitore sua saúde, configure alarmes de medicamentos e tenha acesso rápido a serviços de emergência.',
@@ -60,7 +63,7 @@ const SLIDES: OnboardingSlide[] = [
     type: 'info',
     icon: 'warning',
     iconColor: '#FFFFFF',
-    iconBg: '#D6161C',
+    iconToken: 'emergency',
     title: 'Botão SOS',
     description:
       'Em caso de emergência, pressione o botão SOS na tela inicial. Seus contatos de emergência serão notificados automaticamente via WhatsApp com sua localização.',
@@ -70,7 +73,7 @@ const SLIDES: OnboardingSlide[] = [
     type: 'info',
     icon: 'alarm',
     iconColor: '#FFFFFF',
-    iconBg: '#F0C24A',
+    iconToken: 'warning',
     title: 'Alarmes Inteligentes',
     description:
       'Configure até 24 alarmes para medicamentos e consultas. Se você não responder, o app notifica automaticamente seus contatos de emergência.',
@@ -80,7 +83,7 @@ const SLIDES: OnboardingSlide[] = [
     type: 'info',
     icon: 'people',
     iconColor: '#FFFFFF',
-    iconBg: '#0F8A4A',
+    iconToken: 'success',
     title: 'Contatos de Emergência',
     description:
       'Cadastre contatos de emergência ou importe direto da agenda do celular. Eles serão notificados via WhatsApp em situações de emergência.',
@@ -270,7 +273,7 @@ export default function OnboardingScreen() {
   const renderLocationForegroundSlide = (item: OnboardingSlide) => (
     <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
       <View style={styles.slideContent}>
-        <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
+        <View style={[styles.iconCircle, { backgroundColor: item.iconToken ? colors[item.iconToken] : item.iconBg }]}>
           <MaterialIcons name={item.icon as any} size={56} color={item.iconColor} />
         </View>
         <Text style={[styles.slideTitle, { color: colors.foreground }]}>{item.title}</Text>
@@ -303,7 +306,7 @@ export default function OnboardingScreen() {
         contentContainerStyle={[styles.slideContent, { paddingBottom: 16 }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
+        <View style={[styles.iconCircle, { backgroundColor: item.iconToken ? colors[item.iconToken] : item.iconBg }]}>
           <MaterialIcons name={item.icon as any} size={56} color={item.iconColor} />
         </View>
         <Text style={[styles.slideTitle, { color: colors.foreground }]}>{item.title}</Text>
@@ -327,7 +330,7 @@ export default function OnboardingScreen() {
               </Text>
               {BACKGROUND_LOCATION_GUIDE.steps.map((step, i) => (
                 <View key={i} style={styles.guideStep}>
-                  <View style={[styles.guideStepNumber, { backgroundColor: item.iconBg }]}>
+                  <View style={[styles.guideStepNumber, { backgroundColor: item.iconToken ? colors[item.iconToken] : item.iconBg }]}>
                     <Text style={[styles.guideStepNumberText, { color: colors.onPrimary }]}>{i + 1}</Text>
                   </View>
                   <Text style={[styles.guideStepText, { color: colors.foreground }]}>{step}</Text>
@@ -339,7 +342,7 @@ export default function OnboardingScreen() {
               onPress={handleOpenSettings}
               style={({ pressed }) => [
                 styles.settingsButton,
-                { backgroundColor: item.iconBg, opacity: pressed ? 0.85 : 1 },
+                { backgroundColor: item.iconToken ? colors[item.iconToken] : item.iconBg, opacity: pressed ? 0.85 : 1 },
               ]}
             >
               <MaterialIcons name="settings" size={20} color={colors.onPrimary} />
@@ -366,7 +369,7 @@ export default function OnboardingScreen() {
     return (
       <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
         <View style={styles.slideContent}>
-          <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
+          <View style={[styles.iconCircle, { backgroundColor: item.iconToken ? colors[item.iconToken] : item.iconBg }]}>
             <MaterialIcons name={item.icon as any} size={56} color={item.iconColor} />
           </View>
           <Text style={[styles.slideTitle, { color: colors.foreground }]}>{item.title}</Text>
@@ -446,7 +449,7 @@ export default function OnboardingScreen() {
                   {
                     width: dotWidth,
                     opacity: dotOpacity,
-                    backgroundColor: colors.primary,
+                    backgroundColor: colors.primarySurface,
                   },
                 ]}
               />
@@ -461,7 +464,7 @@ export default function OnboardingScreen() {
           style={({ pressed }) => [
             styles.nextButton,
             {
-              backgroundColor: colors.primary,
+              backgroundColor: colors.primarySurface,
               opacity: pressed || requestingPermission ? 0.75 : 1,
             },
           ]}
@@ -491,12 +494,12 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   pageIndicator: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
   },
   onboardingDisclaimer: {
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 15,
+    lineHeight: 21,
     textAlign: 'center',
     marginTop: 12,
     paddingHorizontal: 8,
@@ -567,7 +570,7 @@ const styles = StyleSheet.create({
   },
   permissionInfoText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 16,
     lineHeight: 20,
   },
   guideBox: {
@@ -596,12 +599,12 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   guideStepNumberText: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '700',
   },
   guideStepText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 16,
     lineHeight: 20,
   },
   settingsButton: {
@@ -618,9 +621,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   skipHint: {
-    fontSize: 13,
+    fontSize: 16,
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 22,
   },
   bottomSection: {
     paddingHorizontal: 24,
