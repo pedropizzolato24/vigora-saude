@@ -12,10 +12,119 @@ index 83351543845b08852d1c2042a5597a1260bb4e7c..51a176f193ad205c9bce70c73e86733e
    s.swift_version  = '5.9'
    s.source         = { git: 'https://github.com/nickdeupree/expo-alarm-kit' }
 diff --git a/ios/ExpoAlarmKitModule.swift b/ios/ExpoAlarmKitModule.swift
-index eadb113dd4afecf6ca40e750a385fafb335e3ea5..52d80f34fea3dd3ccc284cf65582c42ec978312b 100644
+index eadb113dd4afecf6ca40e750a385fafb335e3ea5..d20ed69c8a38bb9d46e32b387f06457cfbf85a70 100644
 --- a/ios/ExpoAlarmKitModule.swift
 +++ b/ios/ExpoAlarmKitModule.swift
-@@ -584,8 +584,18 @@ public class ExpoAlarmKitModule: Module {
+@@ -9,7 +9,11 @@ private let alarmKeyPrefix = "ExpoAlarmKit.alarm:"
+ private let launchAppKeyPrefix = "ExpoAlarmKit.launchApp:"
+ 
+ // MARK: - App Group Storage Manager
+-@available(iOS 26.0, *)
++// PATCH (Vigora): o `@available(iOS 26.0, *)` saiu daqui.
++// O ExpoModulesProvider gerado pelo autolinking referencia esta declaração
++// SEM guarda, e o app tem alvo 15.1 — com a anotação, o build quebrava com
++// "'ExpoAlarmKitModule' is only available in iOS 26.0 or newer". Nada nesta
++// declaração usa AlarmKit; a anotação era abrangente demais.
+ public class ExpoAlarmKitStorage {
+     public static var appGroupIdentifier: String? = nil
+     
+@@ -64,7 +68,11 @@ public class ExpoAlarmKitStorage {
+ }
+ 
+ // MARK: - Record Structs for Expo Module
+-@available(iOS 26.0, *)
++// PATCH (Vigora): o `@available(iOS 26.0, *)` saiu daqui.
++// O ExpoModulesProvider gerado pelo autolinking referencia esta declaração
++// SEM guarda, e o app tem alvo 15.1 — com a anotação, o build quebrava com
++// "'ExpoAlarmKitModule' is only available in iOS 26.0 or newer". Nada nesta
++// declaração usa AlarmKit; a anotação era abrangente demais.
+ struct ScheduleAlarmOptions: Record {
+     @Field var id: String
+     @Field var epochSeconds: Double
+@@ -83,7 +91,11 @@ struct ScheduleAlarmOptions: Record {
+     @Field var snoozeDuration: Int?
+ }
+ 
+-@available(iOS 26.0, *)
++// PATCH (Vigora): o `@available(iOS 26.0, *)` saiu daqui.
++// O ExpoModulesProvider gerado pelo autolinking referencia esta declaração
++// SEM guarda, e o app tem alvo 15.1 — com a anotação, o build quebrava com
++// "'ExpoAlarmKitModule' is only available in iOS 26.0 or newer". Nada nesta
++// declaração usa AlarmKit; a anotação era abrangente demais.
+ struct ScheduleRepeatingAlarmOptions: Record {
+     @Field var id: String
+     @Field var hour: Int
+@@ -104,7 +116,11 @@ struct ScheduleRepeatingAlarmOptions: Record {
+     @Field var snoozeDuration: Int?
+ }
+ 
+-@available(iOS 26.0, *)
++// PATCH (Vigora): o `@available(iOS 26.0, *)` saiu daqui.
++// O ExpoModulesProvider gerado pelo autolinking referencia esta declaração
++// SEM guarda, e o app tem alvo 15.1 — com a anotação, o build quebrava com
++// "'ExpoAlarmKitModule' is only available in iOS 26.0 or newer". Nada nesta
++// declaração usa AlarmKit; a anotação era abrangente demais.
+ struct ScheduleTimerOptions: Record {
+     @Field var id: String
+     @Field var duration: Double
+@@ -258,7 +274,11 @@ public struct AlarmSnoozeIntentWithLaunch: LiveActivityIntent {
+ }
+ 
+ // MARK: - Expo Module
+-@available(iOS 26.0, *)
++// PATCH (Vigora): o `@available(iOS 26.0, *)` saiu daqui.
++// O ExpoModulesProvider gerado pelo autolinking referencia esta declaração
++// SEM guarda, e o app tem alvo 15.1 — com a anotação, o build quebrava com
++// "'ExpoAlarmKitModule' is only available in iOS 26.0 or newer". Nada nesta
++// declaração usa AlarmKit; a anotação era abrangente demais.
+ public class ExpoAlarmKitModule: Module {
+     // Static payload for app launch detection
+     public static var launchPayload: [String: Any]? = nil
+@@ -281,6 +301,10 @@ public class ExpoAlarmKitModule: Module {
+         
+         // MARK: - Request Authorization
+         AsyncFunction("requestAuthorization") { () -> String in
++            // PATCH (Vigora): a classe nao e mais @available, entao cada
++            // corpo que toca AlarmKit se guarda. Defesa em profundidade —
++            // isAlarmKitAvailable() no JS ja checa Platform.Version.
++            guard #available(iOS 26.0, *) else { return "denied" }
+             let status = AlarmManager.shared.authorizationState
+             switch status {
+             case .authorized:
+@@ -329,6 +353,10 @@ public class ExpoAlarmKitModule: Module {
+         
+         // MARK: - Schedule One-Time Alarm
+         AsyncFunction("scheduleAlarm") { (options: ScheduleAlarmOptions) async throws -> Bool in
++            // PATCH (Vigora): a classe nao e mais @available, entao cada
++            // corpo que toca AlarmKit se guarda. Defesa em profundidade —
++            // isAlarmKitAvailable() no JS ja checa Platform.Version.
++            guard #available(iOS 26.0, *) else { return false }
+             struct Meta: AlarmMetadata {}
+             
+             let date = Date(timeIntervalSince1970: options.epochSeconds)
+@@ -430,6 +458,10 @@ public class ExpoAlarmKitModule: Module {
+         
+         // MARK: - Schedule Repeating Alarm
+         AsyncFunction("scheduleRepeatingAlarm") { ( options: ScheduleRepeatingAlarmOptions) async throws -> Bool in
++            // PATCH (Vigora): a classe nao e mais @available, entao cada
++            // corpo que toca AlarmKit se guarda. Defesa em profundidade —
++            // isAlarmKitAvailable() no JS ja checa Platform.Version.
++            guard #available(iOS 26.0, *) else { return false }
+             struct Meta: AlarmMetadata {}
+             
+             guard let uuid = UUID(uuidString: options.id) else {
+@@ -550,6 +582,10 @@ public class ExpoAlarmKitModule: Module {
+         
+         // MARK: - Schedule Timer Alarm
+         AsyncFunction("scheduleTimerAlarm") { (options: ScheduleTimerOptions) async throws -> Bool in
++            // PATCH (Vigora): a classe nao e mais @available, entao cada
++            // corpo que toca AlarmKit se guarda. Defesa em profundidade —
++            // isAlarmKitAvailable() no JS ja checa Platform.Version.
++            guard #available(iOS 26.0, *) else { return false }
+             struct Meta: AlarmMetadata {}
+             
+             guard let uuid = UUID(uuidString: options.id) else {
+@@ -584,8 +620,18 @@ public class ExpoAlarmKitModule: Module {
              )
              
              // Create alert presentation for when timer fires
@@ -35,3 +144,14 @@ index eadb113dd4afecf6ca40e750a385fafb335e3ea5..52d80f34fea3dd3ccc284cf65582c42e
              )
              
              let presentation = AlarmPresentation(alert: alert, countdown: countdown, paused: paused)
+@@ -632,6 +678,10 @@ public class ExpoAlarmKitModule: Module {
+         
+         // MARK: - Cancel Alarm
+         AsyncFunction("cancelAlarm") { (id: String) -> Bool in
++            // PATCH (Vigora): a classe nao e mais @available, entao cada
++            // corpo que toca AlarmKit se guarda. Defesa em profundidade —
++            // isAlarmKitAvailable() no JS ja checa Platform.Version.
++            guard #available(iOS 26.0, *) else { return false }
+             guard let uuid = UUID(uuidString: id) else {
+                 print("[ExpoAlarmKit] Invalid UUID string: \(id)")
+                 return false

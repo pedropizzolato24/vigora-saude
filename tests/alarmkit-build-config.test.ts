@@ -27,6 +27,35 @@ describe("configuração de build do AlarmKit", () => {
     expect(adicionadas).toMatch(/:ios\s*=>\s*'15\.1'/);
   });
 
+  it("tira o @available da classe do módulo — foi o que quebrou o portão", () => {
+    // O ExpoModulesProvider gerado pelo autolinking referencia
+    // `ExpoAlarmKitModule.self` SEM guarda de versão, e o app tem alvo 15.1.
+    // Com `@available(iOS 26.0, *)` na classe o build morre com
+    // "'ExpoAlarmKitModule' is only available in iOS 26.0 or newer".
+    const removidas = patch
+      .split("\n")
+      .filter((l) => l.startsWith("-") && !l.startsWith("---"))
+      .join("\n");
+    expect(removidas).toMatch(/@available\(iOS 26\.0, \*\)/);
+
+    const adicionadas = patch
+      .split("\n")
+      .filter((l) => l.startsWith("+") && !l.startsWith("+++"))
+      .join("\n");
+    // A declaração da classe é linha de CONTEXTO no diff (só a anotação acima
+    // saiu), então o invariante é: nenhuma linha `@available` sobrevive
+    // imediatamente antes dela no arquivo final.
+    expect(patch).not.toMatch(
+      /^\+@available\(iOS 26\.0, \*\)\s*\n[ +]public class ExpoAlarmKitModule/m
+    );
+    expect(patch).toMatch(
+      /^-@available\(iOS 26\.0, \*\)[\s\S]{0,600}?^[ ]public class ExpoAlarmKitModule/m
+    );
+    // ...e cada corpo que toca AlarmKit se guarda sozinho.
+    const guardas = adicionadas.match(/guard #available\(iOS 26\.0, \*\)/g) ?? [];
+    expect(guardas.length).toBeGreaterThanOrEqual(5);
+  });
+
   it("declara o App Group — sem ele o intent de dismiss não registra nada", () => {
     expect(appConfig).toMatch(
       /com\.apple\.security\.application-groups/

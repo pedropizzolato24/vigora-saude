@@ -34,7 +34,11 @@ vi.mock("../lib/_core/ios-alarm-kit-bridge", () => ({
   },
 }));
 
-vi.mock("react-native", () => ({ Platform: { OS: "ios" } }));
+// Version entra no mock porque isAlarmKitAvailable() passou a olhar a
+// versão do sistema: depois do fix de build a classe Swift registra em
+// qualquer iPhone, então "o módulo carregou" deixou de provar que o
+// AlarmKit existe. Ver tests/alarmkit-versao-ios.test.ts.
+vi.mock("react-native", () => ({ Platform: { OS: "ios", Version: "26.0" } }));
 
 import {
   isAlarmKitAvailable,

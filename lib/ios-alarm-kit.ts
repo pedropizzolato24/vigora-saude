@@ -7,7 +7,7 @@
  *   - id fora do formato UUID → `guard let uuid = UUID(uuidString:)` → false
  *   - agendamento recusado → Promise<boolean> false
  */
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, Platform } from 'react-native';
 import { alarmKit } from './_core/ios-alarm-kit-bridge';
 import { firingJsDays, lastAlarmFireMs } from './alarm-fire-times';
 import { enqueueConfirmation } from './pending-confirmations';
@@ -18,8 +18,30 @@ export const APP_GROUP = 'group.com.vigora.saude.alarms';
 /** RFC 4122 — o mesmo formato que Crypto.randomUUID() (generateId) produz. */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Primeira versão do iOS com AlarmKit. Abaixo disso a API não existe. */
+const IOS_MINIMO_ALARMKIT = 26;
+
+/**
+ * Presença do módulo NÃO basta.
+ *
+ * Antes do build do portão a classe Swift era `@available(iOS 26.0, *)`, então
+ * abaixo do 26 ela nem registrava e "o módulo carregou?" respondia certo por
+ * acidente. Só que era esse mesmo `@available` na classe que quebrava a
+ * compilação — o ExpoModulesProvider gerado pelo autolinking referencia a
+ * classe sem guarda, com o app em alvo 15.1. Tirando o `@available` da classe,
+ * o módulo passa a registrar em QUALQUER iPhone, e a pergunta antiga passou a
+ * responder `true` num iOS 15.
+ *
+ * Sem esta checagem, todo iPhone antigo tentaria agendar pelo AlarmKit e cairia
+ * no caminho de erro para chegar à notificação — justamente no aparelho de quem
+ * mais depende do alarme de remédio funcionar.
+ */
 export function isAlarmKitAvailable(): boolean {
-  return alarmKit !== null;
+  if (Platform.OS !== 'ios' || alarmKit === null) return false;
+  // Platform.Version vem como '26.0' no iOS (string) — parseInt basta e não
+  // depende de a string ter minor/patch.
+  const versao = parseInt(String(Platform.Version), 10);
+  return Number.isFinite(versao) && versao >= IOS_MINIMO_ALARMKIT;
 }
 
 /**
