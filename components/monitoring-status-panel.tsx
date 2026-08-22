@@ -14,7 +14,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  Alert,
   Platform,
 } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -22,6 +21,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useAccessibility } from "@/lib/accessibility-context";
 import { useMonitoringStatus } from "@/hooks/use-monitoring-status";
 import { getApiBaseUrl } from "@/constants/oauth";
+import { AppDialog, useAppDialog } from "@/components/app-dialog";
 
 type Props = {
   /** Se true, usa o layout do modo de acessibilidade (fonte maior, mais espaçamento) */
@@ -31,12 +31,15 @@ type Props = {
 /** Botão de diagnóstico que testa a conexão com o servidor e mostra o resultado */
 function DiagnosticButton({ accessible, colors, fs }: { accessible: boolean; colors: any; fs: number }) {
   const [diagnosing, setDiagnosing] = useState(false);
+  const { dialogProps, showDialog } = useAppDialog();
 
   const runDiagnostic = async () => {
     setDiagnosing(true);
     const baseUrl = getApiBaseUrl();
     const testUrl = `${baseUrl}/api/trpc/monitoring.getStatus?input=${encodeURIComponent(JSON.stringify({ json: { deviceId: "diag-test" } }))}`;
-    let result = `URL: ${baseUrl}\nPlataforma: ${Platform.OS}\n\n`;
+    // O detalhe técnico vai para o console: quem lê esta tela tem 60+.
+    let tecnico = `URL: ${baseUrl}\nPlataforma: ${Platform.OS}\n`;
+    let ok = false;
 
     try {
       const controller = new AbortController();
@@ -46,18 +49,27 @@ function DiagnosticButton({ accessible, colors, fs }: { accessible: boolean; col
       clearTimeout(timer);
       const elapsed = Date.now() - start;
       const body = await res.text().catch(() => "(sem corpo)");
-      result += `Status: ${res.status}\nTempo: ${elapsed}ms\n\nResposta:\n${body.substring(0, 200)}`;
+      ok = res.ok;
+      tecnico += `Status: ${res.status}\nTempo: ${elapsed}ms\nResposta: ${body.substring(0, 200)}`;
     } catch (err: any) {
       const msg = err?.name === "AbortError" ? "Timeout (10s)" : err?.message ?? String(err);
-      result += `Erro: ${msg}`;
+      tecnico += `Erro: ${msg}`;
     }
 
     setDiagnosing(false);
-    Alert.alert("Diagnóstico de Conexão", result);
+    console.log("[Diagnóstico]", tecnico);
+    showDialog({
+      title: ok ? "Conexão funcionando" : "Sem conexão com o servidor",
+      message: ok
+        ? "O aplicativo está conseguindo falar com o servidor normalmente."
+        : "Não foi possível falar com o servidor agora. Veja se o celular está conectado à internet e tente de novo em alguns minutos.",
+      variant: ok ? "success" : "error",
+    });
   };
 
   return (
-    <TouchableOpacity
+    <>
+      <TouchableOpacity
       onPress={runDiagnostic}
       disabled={diagnosing}
       style={[
@@ -73,7 +85,9 @@ function DiagnosticButton({ accessible, colors, fs }: { accessible: boolean; col
       <Text style={[styles.diagText, { color: colors.muted, fontSize: fs - 1 }]}>
         {diagnosing ? "Testando..." : "Testar conexão"}
       </Text>
-    </TouchableOpacity>
+      </TouchableOpacity>
+      <AppDialog {...dialogProps} />
+    </>
   );
 }
 
@@ -102,7 +116,9 @@ export function MonitoringStatusPanel({ accessible = false }: Props) {
     (status?.recentEvents.missedCount ?? 0) +
     (status?.recentEvents.notSentCount ?? 0);
 
-  const fs = accessible ? 16 : 13;
+  // 19/16 e não 16/13: sete rótulos abaixo usam `fs - 1`, então o menor
+  // texto do painel fica em 18 (acessível) e 15 (normal), os mínimos.
+  const fs = accessible ? 19 : 16;
   const titleFs = accessible ? 18 : 15;
 
   return (

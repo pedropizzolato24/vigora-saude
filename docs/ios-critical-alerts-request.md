@@ -71,8 +71,26 @@ Profiles → Identifiers. O formulário pede isso feito primeiro.
 
 ## Status
 
-- [ ] Capability habilitada no App ID
-- [ ] Formulário enviado
-- [ ] Aprovado pela Apple
-- [ ] Entitlement adicionado ao app.config.ts
-- [ ] `interruptionLevel: 'critical'` aplicado nas notificações de alarme
+- [x] Capability habilitada no App ID
+- [x] Formulário enviado (2026-07-31)
+- [x] **Aprovado pela Apple (2026-08-12)**
+- [x] Entitlement adicionado ao `app.config.ts` (`ios.entitlements`)
+- [x] `interruptionLevel: 'critical'` aplicado nas notificações de alarme
+- [x] Som trocado para `defaultCritical` no iOS (ver ressalva abaixo)
+- [ ] Validado em aparelho: alarme toca com a chavinha lateral no silencioso
+
+### Ressalva — som do alerta crítico
+
+Um som só fura o silencioso se for **crítico**. O `expo-notifications` mapeia
+apenas `'defaultCritical'` → `UNNotificationSound.defaultCritical`; qualquer
+outro nome vira `UNNotificationSound(named:)`, que o silencioso cala
+(`node_modules/expo-notifications/ios/EXNotifications/Notifications/Records.swift`).
+
+Ou seja: no iOS o alerta agora usa o som **padrão** crítico, não o
+`alarm_notification.wav`. O som próprio do alarme (`alarm.mp3`, em loop) entra
+assim que a tela `alarm-ring` abre.
+
+Para manter o timbre próprio TAMBÉM no alerta seria preciso patchar o
+expo-notifications para expor `UNNotificationSound.criticalSoundNamed(_:withAudioVolume:)`
+— que, de quebra, permitiria forçar o volume em 100% independente do aparelho.
+Vale se o som padrão se mostrar fraco no teste com idoso.

@@ -211,7 +211,7 @@ export default function RegisterScreen() {
           <Text style={[styles.backButtonText, { color: colors.foreground }]}>Voltar</Text>
         </Pressable>
 
-        <View style={[styles.iconCircle, { backgroundColor: colors.primary }]}>
+        <View style={[styles.iconCircle, { backgroundColor: colors.primarySurface }]}>
           <MaterialIcons name="person-add" size={48} color={colors.onPrimary} />
         </View>
 
@@ -227,6 +227,7 @@ export default function RegisterScreen() {
             onChangeText={setName}
             placeholder="Como devemos te chamar?"
             placeholderTextColor={colors.muted}
+            accessibilityLabel="Nome completo"
             style={[
               styles.input,
               { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border },
@@ -244,6 +245,7 @@ export default function RegisterScreen() {
             placeholder="(11) 99999-9999"
             placeholderTextColor={colors.muted}
             keyboardType="phone-pad"
+            accessibilityLabel="Telefone com DDD"
             style={[
               styles.input,
               { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border },
@@ -279,7 +281,7 @@ export default function RegisterScreen() {
                   style={({ pressed }) => [
                     styles.bloodOption,
                     {
-                      backgroundColor: selected ? colors.primary : colors.surface,
+                      backgroundColor: selected ? colors.primarySurface : colors.surface,
                       borderColor: selected ? colors.primary : colors.border,
                       opacity: pressed ? 0.85 : 1,
                     },
@@ -352,7 +354,7 @@ export default function RegisterScreen() {
           style={({ pressed }) => [
             styles.submit,
             {
-              backgroundColor: colors.primary,
+              backgroundColor: colors.primarySurface,
               opacity: pressed || loading ? 0.7 : 1,
             },
           ]}
@@ -389,7 +391,7 @@ function TypeOption({
       style={({ pressed }) => [
         styles.typeOption,
         {
-          backgroundColor: selected ? colors.primary : colors.surface,
+          backgroundColor: selected ? colors.primarySurface : colors.surface,
           borderColor: selected ? colors.primary : colors.border,
           opacity: pressed ? 0.85 : 1,
         },
@@ -450,7 +452,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
   },
   input: {
@@ -478,8 +480,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   typeDescription: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 15,
+    lineHeight: 21,
   },
   bloodGrid: {
     flexDirection: 'row',
@@ -509,7 +511,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 16,
     lineHeight: 20,
   },
   consentBox: {

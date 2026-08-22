@@ -423,8 +423,8 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   message: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 16,
+    lineHeight: 22,
     textAlign: 'center',
     paddingHorizontal: 24,
     paddingBottom: 16,

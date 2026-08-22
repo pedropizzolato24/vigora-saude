@@ -30,7 +30,7 @@ export function MonitoringStatusBadge({ accessible = false }: Props) {
   );
 
   const iconSize = accessible ? 18 : 14;
-  const fontSize = accessible ? 15 : 12;
+  const fontSize = accessible ? 18 : 15;
   const paddingH = accessible ? 12 : 8;
   const paddingV = accessible ? 8 : 5;
   const borderRadius = accessible ? 14 : 10;

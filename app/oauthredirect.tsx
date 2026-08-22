@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   },
   detail: {
     fontFamily: "PlusJakartaSans",
-    fontSize: 12,
+    fontSize: 15,
     opacity: 0.7,
     textAlign: "center",
     paddingHorizontal: 24,

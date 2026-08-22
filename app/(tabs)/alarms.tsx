@@ -134,7 +134,10 @@ export default function AlarmsScreen() {
       showDialog({
         title: 'Para o alarme tocar sempre',
         message:
-          'Alguns celulares desligam apps em segundo plano, o que pode impedir o alarme de tocar. Toque em "Continuar" e depois em "Permitir" quando o Android perguntar.' +
+          'Para economizar energia, o celular pode fechar o Vigora sozinho. Se isso acontecer, o alarme não toca.\n\n' +
+          'Vamos resolver:\n' +
+          '1. Toque em "Continuar" aqui embaixo\n' +
+          '2. Na pergunta que aparecer, escolha "Permitir"' +
           (hint ? `\n\n${hint}` : ''),
         variant: 'warning',
         buttons: [
@@ -178,35 +181,36 @@ export default function AlarmsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Android 14+: sem a permissão "Notificações em tela cheia" a notificação do
-  // alarme cai para heads-up e a tela cheia (alarm-ring) só abre se o usuário
-  // tocar nela — em vez de abrir sozinha como um alarme nativo. Ela deixou de ser
-  // concedida no install para apps fora da categoria alarme/chamada da Play Store.
-  // Mesmo padrão dos avisos acima: re-checa a cada visita e avisa 1x por sessão.
-  useEffect(() => {
+  // Sem a permissão "Notificações em tela cheia" (Android 14+) o alarme vira um
+  // aviso pequeno no alto da tela: a alarm-ring só abre se o idoso TOCAR nele,
+  // em vez de tomar a tela sozinha como um alarme de verdade. Ela deixou de ser
+  // concedida no install para apps fora da categoria alarme/chamada da loja.
+  //
+  // Este aviso NÃO roda no mount junto com os outros dois. Rodava, e perdia a
+  // vaga única da sessão para o de bateria — só aparecia numa visita posterior,
+  // que na prática caía DEPOIS do primeiro alarme já ter tocado sem tela cheia.
+  // Tarde demais: o alarme que ele conserta é justamente aquele. Agora sai na
+  // criação do alarme (ver handleSave), que é quando a permissão passa a valer
+  // e quando o idoso está olhando para o assunto.
+  const promptFullScreenIfNeeded = async () => {
     if (Platform.OS !== 'android') return;
-    let cancelled = false;
-    (async () => {
-      const granted = await canUseFullScreenIntent();
-      if (granted || cancelled || fullScreenPromptShown || alarmSetupPromptShownThisSession) return;
-      fullScreenPromptShown = true;
-      alarmSetupPromptShownThisSession = true;
-      showDialog({
-        title: 'Para o alarme abrir em tela cheia',
-        message:
-          'Para o alarme abrir a tela inteira sozinho (e não só uma notificação), o Vigora precisa da permissão "Notificações em tela cheia". Toque em "Abrir configurações" e ative a chave para o Vigora.',
-        variant: 'warning',
-        buttons: [
-          { text: 'Agora não', style: 'cancel' },
-          { text: 'Abrir configurações', onPress: () => { openFullScreenIntentSettings(); } },
-        ],
-      });
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (fullScreenPromptShown) return;
+    if (await canUseFullScreenIntent()) return;
+    fullScreenPromptShown = true;
+    showDialog({
+      title: 'Para o alarme aparecer na tela toda',
+      message:
+        'Do jeito que está, o alarme vai chegar como um aviso pequeno no alto da tela — e é fácil não perceber.\n\n' +
+        'Vamos resolver:\n' +
+        '1. Toque em "Abrir configurações" aqui embaixo\n' +
+        '2. Na tela que abrir, ligue a chave "Notificações em tela cheia"',
+      variant: 'warning',
+      buttons: [
+        { text: 'Agora não', style: 'cancel' },
+        { text: 'Abrir configurações', onPress: () => { openFullScreenIntentSettings(); } },
+      ],
+    });
+  };
 
   // Derived hour/minute from form.time for the split picker
   const [timeHour, timeMinute] = form.time.split(':');
@@ -355,9 +359,34 @@ export default function AlarmsScreen() {
       const desc = form.description ? `\n"${form.description}"` : '';
       const action = editingAlarm ? 'atualizado' : 'criado';
       showToast({ message: `Alarme ${action}: ${form.time} · ${repeatLabel}${desc}`, variant: 'success' });
+
+      // Depois do toast, e só na criação: agora existe um alarme para tocar, e
+      // é o momento em que a permissão de tela cheia significa alguma coisa. O
+      // atraso deixa o modal terminar de fechar — o AppDialog é irmão dele na
+      // árvore e apareceria por baixo se subisse junto.
+      if (!editingAlarm) {
+        setTimeout(() => { promptFullScreenIfNeeded(); }, 800);
+      }
     } catch (error) {
       console.error('Error scheduling alarm notification:', error);
-      showDialog({ title: 'Erro', message: 'Não foi possível agendar a notificação do alarme.', variant: 'error', buttons: [{ text: 'OK' }] });
+      // Na edição, cancelFullAlarm já derrubou o alarme ANTIGO antes desta
+      // tentativa. Deixá-lo ligado na lista mostraria um alarme que não vai
+      // mais tocar — a mesma mentira de antes, só que mais tarde e mais
+      // perigosa, porque o idoso já confiava nele.
+      if (editingAlarm) {
+        dispatch({
+          type: 'UPDATE_ALARM',
+          payload: { ...editingAlarm, enabled: false, notificationId: undefined, nativeAlarmUids: [] },
+        });
+      }
+      showDialog({
+        title: editingAlarm ? 'O alarme foi desligado' : 'O alarme não foi criado',
+        message: editingAlarm
+          ? 'Não foi possível salvar a mudança, e o alarme foi desligado por segurança. Ele NÃO vai tocar.\n\nAbra o alarme e ligue de novo.'
+          : 'O celular não aceitou este alarme. Ele NÃO vai tocar.\n\nTente criar de novo.',
+        variant: 'error',
+        buttons: [{ text: 'Entendi' }],
+      });
     }
   };
 
@@ -406,6 +435,17 @@ export default function AlarmsScreen() {
       }
     } catch (error) {
       console.error('Error toggling alarm notification:', error);
+      // Sem dispatch a chavinha volta sozinha para o estado anterior, e o
+      // usuário só via ela "pular de volta" sem nenhuma explicação. Se falhou
+      // ao LIGAR, o alarme não vai tocar e isso precisa ser dito.
+      showDialog({
+        title: newEnabled ? 'O alarme não foi ligado' : 'O alarme não foi desligado',
+        message: newEnabled
+          ? 'O celular não aceitou este alarme. Ele NÃO vai tocar.\n\nTente ligar de novo.'
+          : 'Não foi possível desligar o alarme. Ele ainda pode tocar.\n\nTente de novo.',
+        variant: 'error',
+        buttons: [{ text: 'Entendi' }],
+      });
     }
   };
 
@@ -839,7 +879,7 @@ export default function AlarmsScreen() {
           onPress={openAddModal}
           style={({ pressed }) => [
             styles.addBtn,
-            { backgroundColor: colors.primary, minHeight: fs.touch(56), opacity: pressed ? 0.85 : 1 },
+            { backgroundColor: colors.primarySurface, minHeight: fs.touch(56), opacity: pressed ? 0.85 : 1 },
           ]}
           accessibilityRole="button"
           accessibilityLabel="Adicionar lembrete de medicação"
@@ -918,7 +958,7 @@ export default function AlarmsScreen() {
                             style={[
                               styles.quickPickChip,
                               {
-                                backgroundColor: selected ? colors.primary : colors.surface,
+                                backgroundColor: selected ? colors.primarySurface : colors.surface,
                                 borderColor: selected ? colors.primary : colors.border,
                                 minHeight: fs.touch(44),
                               },
@@ -983,7 +1023,7 @@ export default function AlarmsScreen() {
                           style={[
                             styles.repeatOption,
                             {
-                              backgroundColor: form.repeat === opt.value ? colors.primary : colors.surface,
+                              backgroundColor: form.repeat === opt.value ? colors.primarySurface : colors.surface,
                               borderColor: form.repeat === opt.value ? colors.primary : colors.border,
                               minHeight: fs.touch(44),
                             },
@@ -1029,7 +1069,7 @@ export default function AlarmsScreen() {
                                 style={[
                                   styles.weekdayBtn,
                                   {
-                                    backgroundColor: selected ? colors.primary : colors.background,
+                                    backgroundColor: selected ? colors.primarySurface : colors.background,
                                     borderColor: selected ? colors.primary : colors.border,
                                     minHeight: fs.touch(52),
                                   },

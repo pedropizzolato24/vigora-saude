@@ -282,7 +282,7 @@ export default function LoginScreen() {
             "Informações criptografadas",
           ].map((item, i) => (
             <StaggeredItem key={item} index={i} staggerDelay={70} style={styles.valuePropRow}>
-              <View style={[styles.dot, { backgroundColor: colors.primary }]} />
+              <View style={[styles.dot, { backgroundColor: colors.primarySurface }]} />
               <Text style={[styles.valuePropText, { color: colors.foreground }]}>
                 {item}
               </Text>
@@ -323,7 +323,7 @@ export default function LoginScreen() {
           style={({ pressed }) => [
             styles.googleButton,
             {
-              backgroundColor: colors.primary,
+              backgroundColor: colors.primarySurface,
               opacity: pressed || loading || !request ? 0.75 : 1,
               transform: [{ scale: pressed ? 0.98 : 1 }],
             },
@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontFamily: "PlusJakartaSans",
-    fontSize: 14,
+    fontSize: 16,
     lineHeight: 20,
   },
   appleButton: {
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
   },
   privacyNote: {
     fontFamily: "PlusJakartaSans",
-    fontSize: 12,
+    fontSize: 15,
     textAlign: "center",
     lineHeight: 18,
   },
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
   },
   linkHint: {
     fontFamily: "PlusJakartaSans",
-    fontSize: 14,
+    fontSize: 16,
     textAlign: "center",
     lineHeight: 20,
   },

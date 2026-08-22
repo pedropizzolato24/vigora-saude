@@ -17,6 +17,7 @@ import {
   syncAlarmsToServer,
   checkOfflineAlarms,
   getWarningLog,
+  flushPendingConfirmations,
 } from "@/lib/monitoring-service";
 import * as Auth from "@/lib/_core/auth";
 import * as Location from "expo-location";
@@ -108,6 +109,12 @@ export function MonitoringInitializer() {
             stateRef.current.settings?.autoShareLocation ?? false
           )
         );
+
+        // ANTES de sincronizar: reenvia resposta de alarme que não chegou ao
+        // servidor (rede caída no dismiss, app morto logo depois). Se ficar
+        // para depois, o monitoring-job pode escalar para a família um alarme
+        // que o idoso respondeu.
+        await flushPendingConfirmations();
 
         // Sync current alarms
         await syncAlarmsToServer(s.alarms);

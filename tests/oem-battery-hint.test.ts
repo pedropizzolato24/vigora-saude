@@ -7,9 +7,11 @@ describe("oemBatteryHint", () => {
     expect(oemBatteryHint("Samsung")).toMatch(/Apps em suspensão/);
   });
 
-  it("Xiaomi/Redmi/POCO → passo extra de Autostart", () => {
+  // Era /Autostart/. O termo saiu em 14/08/2026: jargão em inglês para um
+  // público 60+. O rótulo em português é o que aparece no aparelho.
+  it('Xiaomi/Redmi/POCO → passo extra de "Iniciar automaticamente"', () => {
     for (const m of ["Xiaomi", "redmi", "POCO"]) {
-      expect(oemBatteryHint(m)).toMatch(/Autostart/);
+      expect(oemBatteryHint(m)).toMatch(/Iniciar automaticamente/);
     }
   });
 

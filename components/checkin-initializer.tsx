@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
     lineHeight: 27,
   },
   cardBody: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#388E3C',
     textAlign: 'center',
     lineHeight: 22,
@@ -234,13 +234,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tapHintText: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '600',
     color: '#2E7D32',
     textAlign: 'center',
   },
   cardHint: {
-    fontSize: 11,
+    fontSize: 15,
     color: '#81C784',
     textAlign: 'center',
     marginTop: 4,
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     lineHeight: 30,
   },
   confirmedBody: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#388E3C',
     textAlign: 'center',
   },

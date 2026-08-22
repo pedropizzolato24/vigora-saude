@@ -177,6 +177,7 @@ export function WheelPicker({
   }, [value, scrollToIndex, centreStart]);
 
   const totalItems = count * COPIES;
+  const unitLabel = label === 'min' ? 'minuto' : label || 'valor';
 
   // -- Colours resolved per mode ----------------------------------------------
   const primaryColor   = isAccessibilityMode ? ac.primary    : colors.primary;
@@ -189,6 +190,8 @@ export function WheelPicker({
       {/* ▲ - decreases value (scroll up = number goes down) */}
       <Pressable
         onPress={() => increment(-1)}
+        accessibilityRole="button"
+        accessibilityLabel={`Diminuir ${unitLabel}`}
         style={({ pressed }) => [
           styles.stepBtn,
           {
@@ -310,6 +313,8 @@ export function WheelPicker({
       {/* ▼ - increases value (scroll down = number goes up) */}
       <Pressable
         onPress={() => increment(1)}
+        accessibilityRole="button"
+        accessibilityLabel={`Aumentar ${unitLabel}`}
         style={({ pressed }) => [
           styles.stepBtn,
           {

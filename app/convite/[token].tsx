@@ -101,7 +101,7 @@ export default function AcceptInviteScreen() {
           </Text>
           <Pressable
             onPress={() => router.replace('/(caregiver-tabs)')}
-            style={({ pressed }) => [styles.primary, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [styles.primary, { backgroundColor: colors.primarySurface, opacity: pressed ? 0.85 : 1 }]}
           >
             <Text style={[styles.primaryText, { color: colors.onPrimary }]}>Voltar</Text>
           </Pressable>
@@ -147,7 +147,7 @@ export default function AcceptInviteScreen() {
               disabled={accept.isPending}
               style={({ pressed }) => [
                 styles.primary,
-                { backgroundColor: colors.primary, opacity: accept.isPending ? 0.6 : pressed ? 0.85 : 1 },
+                { backgroundColor: colors.primarySurface, opacity: accept.isPending ? 0.6 : pressed ? 0.85 : 1 },
               ]}
             >
               {accept.isPending ? (

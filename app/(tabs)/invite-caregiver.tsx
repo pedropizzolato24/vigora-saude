@@ -156,7 +156,7 @@ export default function InviteCaregiverScreen() {
               accessibilityLabel="Proteger minha conta"
               style={({ pressed }) => [
                 {
-                  backgroundColor: colors.primary,
+                  backgroundColor: colors.primarySurface,
                   minHeight: minTouch,
                   borderRadius: 14,
                   alignItems: 'center',
@@ -252,7 +252,7 @@ export default function InviteCaregiverScreen() {
                 disabled={createInvite.isPending}
                 style={({ pressed }) => [
                   styles.primaryBtn,
-                  { backgroundColor: colors.primary, minHeight: minTouch, opacity: createInvite.isPending ? 0.6 : pressed ? 0.85 : 1 },
+                  { backgroundColor: colors.primarySurface, minHeight: minTouch, opacity: createInvite.isPending ? 0.6 : pressed ? 0.85 : 1 },
                 ]}
               >
                 {createInvite.isPending ? (
@@ -281,7 +281,7 @@ export default function InviteCaregiverScreen() {
               key={c.caregiverOpenId}
               style={[styles.caregiverRow, { backgroundColor: colors.surface, borderColor: border }]}
             >
-              <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+              <View style={[styles.avatar, { backgroundColor: colors.primarySurface }]}>
                 <MaterialIcons name="person" size={22} color={colors.onPrimary} />
               </View>
               <View style={{ flex: 1 }}>

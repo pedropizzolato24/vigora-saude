@@ -36,6 +36,7 @@ import { getUserData } from "./db";
 import { getActiveCaregiversForMonitored } from "./db-links";
 import { getPushTokensForOpenIds } from "./db-push";
 import { sendExpoPush } from "./push";
+import { formatEventTime } from "./_core/format-event-time";
 
 /**
  * Rate limit por processo/usuário para o push de SOS aos cuidadores.
@@ -106,7 +107,8 @@ function isMissedAlarmPushRateLimited(openId: string): boolean {
 async function pushMissedAlarmToCaregivers(
   monitoredOpenId: string,
   alarmId: string,
-  scheduledAt: Date
+  scheduledAt: Date,
+  timezone: string | null
 ): Promise<void> {
   try {
     const caregivers = await getActiveCaregiversForMonitored(monitoredOpenId);
@@ -135,13 +137,7 @@ async function pushMissedAlarmToCaregivers(
       // mantém o nome genérico
     }
 
-    const scheduledStr = scheduledAt.toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-      // O Railway roda em UTC — sem timeZone o horario sai 3h adiantado
-      // para o cuidador/familia (21:00 virava "00:00").
-      timeZone: "America/Sao_Paulo",
-    });
+    const scheduledStr = formatEventTime(scheduledAt, timezone);
 
     // Check-in e alarme de medicação têm cópia/tipo de push DIFERENTES — e no
     // servidor, branches de escalação distintos (Passo 3 missed_checkin vs
@@ -238,6 +234,9 @@ export const monitoringRouter = router({
         alarmId: z.string(),
         alarmDescription: z.string(),
         scheduledAt: z.string(), // ISO string
+        // Nome IANA do fuso do aparelho. Opcional: clientes antigos não mandam
+        // e ROM sem ICU manda null — os dois caem no fallback de Brasília.
+        timezone: z.string().max(64).nullish(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -246,6 +245,7 @@ export const monitoringRouter = router({
         alarmId: input.alarmId,
         alarmDescription: input.alarmDescription,
         scheduledAt: new Date(input.scheduledAt),
+        timezone: input.timezone ?? null,
         status: "pending",
       });
       return { success: true, eventId: id };
@@ -280,7 +280,12 @@ export const monitoringRouter = router({
         transitioned &&
         !isMissedAlarmPushRateLimited(ctx.user.openId)
       ) {
-        await pushMissedAlarmToCaregivers(ctx.user.openId, input.alarmId, scheduledAt);
+        await pushMissedAlarmToCaregivers(
+          ctx.user.openId,
+          input.alarmId,
+          scheduledAt,
+          transitioned.timezone
+        );
       }
       return { success: true };
     }),

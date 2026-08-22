@@ -148,6 +148,14 @@ export const alarmEvents = mysqlTable(
     alarmId: varchar("alarmId", { length: 64 }).notNull(),
     alarmDescription: varchar("alarmDescription", { length: 255 }).notNull().default(""),
     scheduledAt: timestamp("scheduledAt").notNull(),
+    /**
+     * Nome IANA do fuso do aparelho quando o evento foi criado (ex.:
+     * "America/Rio_Branco"). Snapshot por evento — se a pessoa viajar, os
+     * eventos antigos mantêm o fuso em que dispararam. Usado só para EXIBIR o
+     * horário nas escalações; scheduledAt continua sendo instante absoluto.
+     * Null nas linhas anteriores a esta coluna → fallback America/Sao_Paulo.
+     */
+    timezone: varchar("timezone", { length: 64 }),
     status: mysqlEnum("status", ["pending", "responded", "missed", "not_sent"])
       .notNull()
       .default("pending"),

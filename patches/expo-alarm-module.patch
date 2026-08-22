@@ -1,3 +1,24 @@
+diff --git a/android/src/main/java/com/expoalarmmodule/Alarm.java b/android/src/main/java/com/expoalarmmodule/Alarm.java
+index 49daf38ac5620031fd3d1da8c52c0762d822b96a..b820d735baa9f668dd047d590d750e318eedcf16 100644
+--- a/android/src/main/java/com/expoalarmmodule/Alarm.java
++++ b/android/src/main/java/com/expoalarmmodule/Alarm.java
+@@ -55,6 +55,16 @@ public class Alarm implements Cloneable {
+     String dismissText;
+     String snoozeText;
+ 
++    /**
++     * Tocar o som do alarme? Vem da chave "Som" do formulario do Vigora.
++     *
++     * Boolean (objeto) de proposito, NAO boolean primitivo: os alarmes ja
++     * gravados no Storage foram serializados sem este campo, e o Gson preenche
++     * primitivo ausente com false -- todo alarme existente ficaria MUDO depois
++     * do update. Ausente vira null, e null significa "toca" (ver Manager.start).
++     */
++    Boolean sound;
++
+     Alarm(String uid, ArrayList<Integer> days, ZonedDateTime date, int hour, int minutes, boolean showDismiss, boolean showSnooze, int snoozeInterval, String title, String description, boolean repeating, boolean active, String dismissText, String snoozeText) {
+         this.uid = uid;
+         this.days = days;
 diff --git a/android/src/main/java/com/expoalarmmodule/AlarmDates.java b/android/src/main/java/com/expoalarmmodule/AlarmDates.java
 index 455375ae411fa22e853dbd8c945124690e703e18..fd2862ed2203539357e0943fb13c15554bba7b01 100644
 --- a/android/src/main/java/com/expoalarmmodule/AlarmDates.java
@@ -41,7 +62,7 @@ index 455375ae411fa22e853dbd8c945124690e703e18..fd2862ed2203539357e0943fb13c1555
          int currentDay = calendar.get(Calendar.DAY_OF_WEEK);
          for (Date date : dates) {
 diff --git a/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java b/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
-index 552911d58dbc4123c3eff79031d88bd8e4dc1ed9..af30feb7be43993c39a55707f456e426d06e9825 100644
+index 552911d58dbc4123c3eff79031d88bd8e4dc1ed9..23340a8b5a27c45302cfbdc30cba1de78042aae5 100644
 --- a/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
 +++ b/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
 @@ -93,6 +93,43 @@ public class ExpoAlarmModuleModule extends ReactContextBaseJavaModule {
@@ -88,6 +109,18 @@ index 552911d58dbc4123c3eff79031d88bd8e4dc1ed9..af30feb7be43993c39a55707f456e426
    @ReactMethod
    public void snooze (Promise promise) {
      Manager.snooze(reactContext);
+@@ -176,7 +213,10 @@ public class ExpoAlarmModuleModule extends ReactContextBaseJavaModule {
+         }
+       }
+     }
+-    return new Alarm(uid, days, date, hour, minutes, showDismiss, showSnooze, snoozeInterval, title, description, repeating, active, dismissText, snoozeText);
++    Alarm parsed = new Alarm(uid, days, date, hour, minutes, showDismiss, showSnooze, snoozeInterval, title, description, repeating, active, dismissText, snoozeText);
++    // Ausente = toca (compatibilidade com quem agenda sem informar a chave).
++    parsed.sound = alarm.hasKey("sound") ? alarm.getBoolean("sound") : Boolean.TRUE;
++    return parsed;
+   }
+ 
+   private WritableMap serializeAlarmObject (Alarm alarm) throws Exception {
 diff --git a/android/src/main/java/com/expoalarmmodule/Helper.java b/android/src/main/java/com/expoalarmmodule/Helper.java
 index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..fc798a2603b4b2ee51f62663d0616a812662c3de 100644
 --- a/android/src/main/java/com/expoalarmmodule/Helper.java
@@ -253,7 +286,7 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..fc798a2603b4b2ee51f62663d0616a81
       * Creates an intent for dismissing, snoozing or performing another action in the alarm notification.
       */
 diff --git a/android/src/main/java/com/expoalarmmodule/Manager.java b/android/src/main/java/com/expoalarmmodule/Manager.java
-index 004075da7464088c26edd8b5e6e2e5a191ec7633..e39f54dbf5926ba83752e5010fa3ec0c2d21a195 100644
+index 004075da7464088c26edd8b5e6e2e5a191ec7633..9388d9c798862cb6e5aee6d33678e4b0577bccd8 100644
 --- a/android/src/main/java/com/expoalarmmodule/Manager.java
 +++ b/android/src/main/java/com/expoalarmmodule/Manager.java
 @@ -11,12 +11,60 @@ public class Manager {
@@ -325,7 +358,7 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..e39f54dbf5926ba83752e5010fa3ec0c
              Storage.removeDates(context, alarm.uid);
              AlarmDates dates = alarm.getAlarmDates();
              Storage.saveDates(context, dates);
-@@ -112,6 +161,15 @@ public class Manager {
+@@ -112,13 +161,56 @@ public class Manager {
      }
  
      static void start(Context context, String alarmUid) {
@@ -339,9 +372,26 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..e39f54dbf5926ba83752e5010fa3ec0c
 +            sound.stop();
 +        }
          activeAlarmUid = alarmUid;
++
++        // "Som" desmarcado no formulario: o alarme continua valendo (tela cheia,
++        // notificacao, vibracao, voz e o dead man's switch), so nao toca. Antes
++        // o servico tocava sempre e quem calava era a tela do alarme ao iniciar
++        // a fala -- por isso o som saia por 1-2s mesmo com a opcao desmarcada.
++        // sound fica null, entao pauseSound/resumeSound viram no-op sozinhos.
++        Alarm alarm = Storage.getAlarm(context, alarmUid);
++        boolean soundEnabled = alarm == null || alarm.sound == null || alarm.sound;
++        if (!soundEnabled) {
++            // Zera a referencia: o stop() acima parou o som do disparo anterior
++            // mas nao soltou o objeto, e um resumeSound() (fim da fala do TTS)
++            // ressuscitaria o alarme ERRADO no meio de um alarme silencioso.
++            sound = null;
++            Log.d(TAG, "Alarme " + alarmUid + " configurado sem som - nao vai tocar");
++            return;
++        }
++
          sound = new Sound(context);
          sound.play("default");
-@@ -119,6 +177,23 @@ public class Manager {
+ 
          Log.d(TAG, "Starting " + activeAlarmUid);
      }
  
@@ -365,7 +415,7 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..e39f54dbf5926ba83752e5010fa3ec0c
      public static void stop(Context context) {
          Log.d(TAG, "Stopping " + activeAlarmUid);
  
-@@ -131,11 +206,21 @@ public class Manager {
+@@ -131,11 +223,21 @@ public class Manager {
              AlarmDates dates = Storage.getDates(context, activeAlarmUid);
              if(alarm != null) {
                  if (alarm.repeating) {
@@ -560,7 +610,7 @@ index 73b00616707cd5533258ce215fb1fb1e2deafb50..9b42dd7019fe96f019ec3d6a6cc77674
              int resId;
              if (context.getResources().getIdentifier(soundName, "raw", context.getPackageName()) != 0) {
 diff --git a/android/src/main/java/com/expoalarmmodule/Storage.java b/android/src/main/java/com/expoalarmmodule/Storage.java
-index acb1e33bce9bb27c708ef2b0592db2ccc2c70892..7fd1070862bd7e0a6cbb0cae4eedba554f0a080f 100644
+index acb1e33bce9bb27c708ef2b0592db2ccc2c70892..e342d838a5fbeafa500ef256d053959f0e7ee075 100644
 --- a/android/src/main/java/com/expoalarmmodule/Storage.java
 +++ b/android/src/main/java/com/expoalarmmodule/Storage.java
 @@ -4,7 +4,6 @@ import android.content.Context;
@@ -602,7 +652,7 @@ index acb1e33bce9bb27c708ef2b0592db2ccc2c70892..7fd1070862bd7e0a6cbb0cae4eedba55
  
  }
 diff --git a/android/src/main/res/values/strings.xml b/android/src/main/res/values/strings.xml
-index aa5b034b1438475db3b484b82b7e645f7ff5e9c0..72307857f58056b7f2883407e42fddbdda218df6 100644
+index aa5b034b1438475db3b484b82b7e645f7ff5e9c0..a3ce3a8cc41e7157cfc3348e81c6eb49bc5c0aa9 100644
 --- a/android/src/main/res/values/strings.xml
 +++ b/android/src/main/res/values/strings.xml
 @@ -1,6 +1,10 @@
@@ -619,3 +669,49 @@ index aa5b034b1438475db3b484b82b7e645f7ff5e9c0..72307857f58056b7f2883407e42fddbd
 +  <string name="notification_channel_name">Alarmes de medicamento</string>
 +  <string name="notification_channel_desc">Avisos dos seus alarmes de medicamento</string>
  </resources>
+diff --git a/lib/commonjs/models/Alarm.js b/lib/commonjs/models/Alarm.js
+index 125b8e88fe8e1b460734d1add901e0aa3aa80881..0fb280568b6b1128f3676a96b0f0218ae35a4278 100644
+--- a/lib/commonjs/models/Alarm.js
++++ b/lib/commonjs/models/Alarm.js
+@@ -19,6 +19,7 @@ class Alarm {
+     this.snoozeText = (0, _utils.getParam)(params, 'snoozeText');
+     this.repeating = (0, _utils.getParam)(params, 'repeating');
+     this.active = (0, _utils.getParam)(params, 'active');
++    this.sound = (0, _utils.getParam)(params, 'sound');
+     this.day = (0, _utils.getParam)(params, 'day');
+   }
+   static getEmpty() {
+diff --git a/lib/module/models/Alarm.js b/lib/module/models/Alarm.js
+index 5378c0ab6d1e1ff1335e3740d13243549a07b77a..4b22a9036bcf3361c503965aa18690974fceafa9 100644
+--- a/lib/module/models/Alarm.js
++++ b/lib/module/models/Alarm.js
+@@ -13,6 +13,7 @@ class Alarm {
+     this.snoozeText = getParam(params, 'snoozeText');
+     this.repeating = getParam(params, 'repeating');
+     this.active = getParam(params, 'active');
++    this.sound = getParam(params, 'sound');
+     this.day = getParam(params, 'day');
+   }
+   static getEmpty() {
+diff --git a/src/models/Alarm.tsx b/src/models/Alarm.tsx
+index c0bd28157e94e70e7c701f19718d90801069f913..fdf88db810cdf4b44dba0fe4c02e23a6962e9615 100644
+--- a/src/models/Alarm.tsx
++++ b/src/models/Alarm.tsx
+@@ -13,6 +13,9 @@ class Alarm {
+   snoozeText?: string | undefined;
+   repeating?: boolean | undefined;
+   active?: boolean | undefined;
++  // Vigora: sem esta linha o campo e' descartado pelo construtor abaixo e
++  // 'sound' nunca chega ao nativo -- todo alarme tocava.
++  sound?: boolean | undefined;
+   day?: string | Date | number[] | undefined;
+ 
+   constructor(params: any = null) {
+@@ -28,6 +31,7 @@ class Alarm {
+     this.snoozeText = getParam(params, 'snoozeText');
+     this.repeating = getParam(params, 'repeating');
+     this.active = getParam(params, 'active');
++    this.sound = getParam(params, 'sound');
+     this.day = getParam(params, 'day');
+   }
+ 

@@ -2,10 +2,14 @@
  * oem-battery-hint.ts
  *
  * Passo extra por fabricante para a isenção de otimização de bateria. A tela
- * padrão do Android (IGNORE_BATTERY_OPTIMIZATION_SETTINGS) resolve em
- * Motorola/Pixel/stock, mas Samsung e Xiaomi têm listas próprias que ainda
- * matam o app em segundo plano se não forem ajustadas — e juntos cobrem a
- * maior parte da base brasileira.
+ * padrão do sistema resolve em Motorola/Pixel/stock, mas Samsung e Xiaomi têm
+ * listas próprias que ainda fecham o app se não forem ajustadas — e juntos
+ * cobrem a maior parte da base brasileira.
+ *
+ * O texto NÃO cita a marca ("no seu Samsung"): o público 60+ não faz essa
+ * associação, e o passo já só aparece em quem tem o aparelho. Os nomes de tela
+ * ("Cuidado do dispositivo") ficam — é o que ele precisa achar. Continua a
+ * numeração dos passos do aviso (1 e 2 estão em alarms.tsx).
  *
  * Função pura (sem React Native) para ficar testável; o chamador passa
  * `Platform.constants.Manufacturer`.
@@ -16,10 +20,10 @@ export function oemBatteryHint(manufacturer: string): string | null {
   const m = manufacturer.trim().toLowerCase();
   if (!m) return null;
   if (m.includes("samsung")) {
-    return 'Depois, no seu Samsung, abra "Cuidado do dispositivo" › "Bateria" e remova o Vigora de "Apps em suspensão".';
+    return 'Neste celular tem mais um passo:\n3. Abra "Cuidado do dispositivo" › "Bateria" e tire o Vigora da lista "Apps em suspensão"';
   }
   if (["xiaomi", "redmi", "poco"].some((brand) => m.includes(brand))) {
-    return 'Depois, no seu Xiaomi/Redmi, ative "Iniciar automaticamente" (Autostart) para o Vigora nas configurações do app.';
+    return 'Neste celular tem mais um passo:\n3. Nas configurações do Vigora, ligue "Iniciar automaticamente"';
   }
   return null;
 }

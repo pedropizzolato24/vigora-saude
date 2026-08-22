@@ -17,6 +17,12 @@ import { getApiBaseUrl } from "@/constants/oauth";
 import { Alarm } from "./app-context";
 import { nextAlarmFireMs } from "./alarm-fire-times";
 import * as Auth from "./_core/auth";
+import {
+  enqueueConfirmation,
+  dequeueConfirmation,
+  listPendingConfirmations,
+  type ConfirmationStatus,
+} from "./pending-confirmations";
 
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -269,6 +275,20 @@ export async function syncAlarmsToServer(alarms: Alarm[]): Promise<void> {
 // --- Alarm Events -------------------------------------------------------------
 
 /**
+ * Nome IANA do fuso do aparelho (ex.: "America/Rio_Branco"). Em ROM enxuta sem
+ * dados de ICU o Intl pode não resolver o fuso — devolve null e o servidor cai
+ * no fallback de Brasília em vez de gravar um valor inventado.
+ */
+function deviceTimezone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch (error) {
+    console.warn('[Monitoring] fuso do aparelho indisponível:', error);
+    return null;
+  }
+}
+
+/**
  * Create a pending alarm event on the server.
  * Call this when an alarm is about to fire (e.g., in alarm-notification-handler).
  */
@@ -280,8 +300,81 @@ export async function createPendingAlarmEvent(
     alarmId: alarm.id,
     alarmDescription: alarm.description || alarm.time,
     scheduledAt: scheduledAt.toISOString(),
+    // Fuso do aparelho: o servidor usa isso para mostrar ao cuidador o mesmo
+    // horário que o idoso viu na tela. O Brasil tem quatro fusos — sem isso o
+    // Acre recebia "23:00" para um alarme das 21:00.
+    timezone: deviceTimezone(),
   });
   console.log(`[Monitoring] Created pending event for alarm ${alarm.id}`);
+}
+
+/**
+ * Envia uma confirmação e só tira da fila local se a chamada CHEGOU ao servidor
+ * (resposta OK). `trpcMutation` devolve `null` em TODA falha (sem sessão, 4xx,
+ * 5xx, timeout) sem nunca lançar — por isso a decisão é pelo retorno, não por
+ * try/catch. O que não sair fica na fila e é reenviado por
+ * flushPendingConfirmations.
+ *
+ * A fila garante ENTREGA, não casamento: `monitoring.confirmEvent` devolve
+ * `{ success: true }` mesmo quando nenhum evento pendente casou com
+ * (alarmId, scheduledAt), e o cliente não distingue os dois casos. Uma
+ * confirmação entregue para um evento inexistente sai da fila do mesmo jeito.
+ */
+async function sendConfirmation(
+  alarmId: string,
+  scheduledAtIso: string,
+  status: ConfirmationStatus
+): Promise<void> {
+  await enqueueConfirmation({ alarmId, scheduledAtIso, status });
+  const result = await trpcMutation("monitoring.confirmEvent", {
+    alarmId,
+    scheduledAt: scheduledAtIso,
+    status,
+  });
+  if (result === null) {
+    console.warn(`[Monitoring] Confirmação de ${alarmId} não chegou — fica na fila`);
+    return;
+  }
+  await dequeueConfirmation(alarmId, scheduledAtIso);
+  console.log(`[Monitoring] Alarm ${alarmId} confirmed as ${status}`);
+}
+
+/** Flush em curso, para dois chamadores não rodarem a mesma fila em paralelo. */
+let flushEmAndamento: Promise<void> | null = null;
+
+/**
+ * Reenvia as confirmações que não chegaram ao servidor. Chamada no bootstrap
+ * autenticado do MonitoringInitializer e logo depois de um dismiss do AlarmKit
+ * ser drenado: é a rede de segurança para o idoso que respondeu o alarme com a
+ * rede caída (ou com o app morrendo logo em seguida) e cuja família seria
+ * avisada de um alarme perdido que não existiu.
+ *
+ * Quem chega no meio de um flush reaproveita a promessa em curso. São dois
+ * disparos independentes no mesmo boot, e a fila é read-modify-write sem trava:
+ * rodando em paralelo, um `enqueueConfirmation` intercalado é sobrescrito pela
+ * gravação do outro — e o que some é uma resposta que o idoso deu de verdade.
+ */
+export function flushPendingConfirmations(): Promise<void> {
+  if (flushEmAndamento) return flushEmAndamento;
+  flushEmAndamento = executarFlush().finally(() => {
+    flushEmAndamento = null;
+  });
+  return flushEmAndamento;
+}
+
+async function executarFlush(): Promise<void> {
+  const pending = await listPendingConfirmations();
+  if (pending.length === 0) return;
+  console.log(`[Monitoring] Reenviando ${pending.length} confirmação(ões) pendente(s)`);
+  for (const entry of pending) {
+    const result = await trpcMutation("monitoring.confirmEvent", {
+      alarmId: entry.alarmId,
+      scheduledAt: entry.scheduledAtIso,
+      status: entry.status,
+    });
+    if (result === null) continue; // próximo boot tenta de novo
+    await dequeueConfirmation(entry.alarmId, entry.scheduledAtIso);
+  }
 }
 
 /**
@@ -292,12 +385,7 @@ export async function confirmAlarmResponded(
   alarm: Alarm,
   scheduledAt: Date
 ): Promise<void> {
-  await trpcMutation("monitoring.confirmEvent", {
-    alarmId: alarm.id,
-    scheduledAt: scheduledAt.toISOString(),
-    status: "responded",
-  });
-  console.log(`[Monitoring] Alarm ${alarm.id} confirmed as responded`);
+  await sendConfirmation(alarm.id, scheduledAt.toISOString(), "responded");
 }
 
 /**
@@ -308,12 +396,7 @@ export async function confirmAlarmMissed(
   alarm: Alarm,
   scheduledAt: Date
 ): Promise<void> {
-  await trpcMutation("monitoring.confirmEvent", {
-    alarmId: alarm.id,
-    scheduledAt: scheduledAt.toISOString(),
-    status: "missed",
-  });
-  console.log(`[Monitoring] Alarm ${alarm.id} confirmed as missed`);
+  await sendConfirmation(alarm.id, scheduledAt.toISOString(), "missed");
 }
 
 /**

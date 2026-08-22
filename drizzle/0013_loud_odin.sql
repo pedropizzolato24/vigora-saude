@@ -1,0 +1,1 @@
+ALTER TABLE `alarm_events` ADD `timezone` varchar(64);

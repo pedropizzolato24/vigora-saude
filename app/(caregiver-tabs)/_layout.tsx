@@ -21,7 +21,14 @@ export default function CaregiverTabLayout() {
   useEffect(() => {
     (async () => {
       const user = await Auth.getUserInfo();
-      if (user?.userType && user.userType !== 'caregiver') {
+      // Só um cuidador CONFIRMADO fica. A versão anterior exigia userType
+      // preenchido antes de comparar, o que a tornava fail-open: com user null
+      // ela não expulsava ninguém, e um boot que não conseguiu ler o keychain
+      // (aparelho bloqueado) renderizava as abas de cuidador SEM CONTA
+      // NENHUMA — visto no aparelho em 13/08/2026.
+      // Quem não é cuidador vai para /(tabs), onde o OnboardingGate aplica a
+      // tabela de decisão completa (onboarding / login / register).
+      if (user?.userType !== 'caregiver') {
         router.replace('/(tabs)');
         return;
       }
