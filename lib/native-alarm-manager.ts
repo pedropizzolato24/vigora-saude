@@ -104,6 +104,7 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         dismissText: 'Dispensar',
         snoozeText: 'Soneca',
         sound: alarm.sound !== false,
+        vibration: alarm.vibration !== false,
       });
       uids.push(baseUid);
 
@@ -128,6 +129,7 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
           dismissText: 'Dispensar',
           snoozeText: 'Soneca',
           sound: alarm.sound !== false,
+          vibration: alarm.vibration !== false,
         });
         uids.push(uid);
       }
@@ -148,6 +150,7 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         dismissText: 'Dispensar',
         snoozeText: 'Soneca',
         sound: alarm.sound !== false,
+        vibration: alarm.vibration !== false,
       });
       uids.push(baseUid);
     }
@@ -184,7 +187,8 @@ export async function snoozeNativeAlarm(alarm: Alarm, fireAt: Date): Promise<voi
       snoozeInterval: 0,
       dismissText: 'Dispensar',
       snoozeText: 'Soneca',
-        sound: alarm.sound !== false,
+      sound: alarm.sound !== false,
+      vibration: alarm.vibration !== false,
     });
     console.log(`[NativeAlarm] Snoozed alarm ${alarm.id} until ${fireAt.toISOString()}`);
   } catch (e) {
@@ -231,6 +235,27 @@ export async function stopNativeAlarm(): Promise<void> {
     console.log('[NativeAlarm] Alarm stopped');
   } catch (e) {
     console.warn('[NativeAlarm] Error stopping alarm:', e);
+  }
+}
+
+/**
+ * Envia a chave GLOBAL de vibração (Configurações) ao serviço nativo, que é
+ * quem vibra quando a tela do alarme não abre. Persistida pelo mesmo motivo do
+ * volume: o disparo acontece sem o app aberto.
+ *
+ * `undefined` vira `true`: o `LOAD_STATE` do app-context substitui `settings`
+ * inteiro sem merge com os defaults, então um blob salvo antes desta chave
+ * existir deixa `vibrationEnabled` indefinido. Sem este `!== false` o valor
+ * indefinido atravessaria a ponte para um parâmetro `boolean` do Java — ou
+ * lança, ou vira `false` e desliga a vibração de quem nunca pediu isso. É o
+ * mesmo default de `shouldVibrate`.
+ */
+export async function setNativeAlarmVibration(enabled?: boolean): Promise<void> {
+  if (Platform.OS !== 'android' || !alarmNativeModule?.setAlarmVibration) return;
+  try {
+    await alarmNativeModule.setAlarmVibration(enabled !== false);
+  } catch (e) {
+    console.warn('[NativeAlarm] Error setting alarm vibration:', e);
   }
 }
 

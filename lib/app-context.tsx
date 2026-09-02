@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useReducer } from 'react';
 import { updateAllWidgets } from './update-widgets';
-import { setNativeAlarmVolume } from './native-alarm-manager';
+import { setNativeAlarmVolume, setNativeAlarmVibration } from './native-alarm-manager';
 import { pullCloudData, pushCloudData, type CloudSnapshot } from './cloud-sync';
 import { switchAccount } from './_core/account-switch';
 import { appStateKeyFor, loadAppStateRaw } from './app-state-storage';
@@ -507,6 +507,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (state.isLoading) return;
     setNativeAlarmVolume(state.settings.alarmVolume);
   }, [state.settings.alarmVolume, state.isLoading]);
+
+  // Mesmo motivo para a vibração: sem a permissão de full-screen intent a tela
+  // do alarme não abre, e quem precisa vibrar é o serviço nativo. Ele combina
+  // esta chave global com a do próprio alarme (gravada no agendamento).
+  useEffect(() => {
+    if (state.isLoading) return;
+    setNativeAlarmVibration(state.settings.vibrationEnabled);
+  }, [state.settings.vibrationEnabled, state.isLoading]);
 
   return (
     <AppContext.Provider value={{ state, dispatch, reconcileFromCloud }}>

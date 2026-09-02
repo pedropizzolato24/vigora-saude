@@ -26,6 +26,9 @@ export let alarmNativeModule: {
   pauseSound?: () => Promise<void>;
   resumeSound?: () => Promise<void>;
   setAlarmVolume?: (volume: number) => Promise<void>;
+  // `boolean` estrito de propósito: o Java recebe um primitivo, e quem chama
+  // precisa resolver o `undefined` antes (ver setNativeAlarmVibration).
+  setAlarmVibration?: (enabled: boolean) => Promise<void>;
   previewSound?: () => Promise<void>;
 } | null = null;
 

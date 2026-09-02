@@ -85,7 +85,7 @@ function buildSpeechText(alarmDescription?: string, alarmTime?: string): string 
 
 export default function AlarmRingScreen() {
   const router = useRouter();
-  const { alarmId, expiresAt: expiresAtParam, snooze: snoozeParam } = useLocalSearchParams<{ alarmId: string; expiresAt?: string; snooze?: string }>();
+  const { alarmId, expiresAt: expiresAtParam, snooze: snoozeParam, dismiss: dismissParam } = useLocalSearchParams<{ alarmId: string; expiresAt?: string; snooze?: string; dismiss?: string }>();
   const { state, dispatch } = useAppContext();
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac } = useAccessibility();
   const colors = useColors();
@@ -243,14 +243,15 @@ export default function AlarmRingScreen() {
           // fechado. O caminho nativo é foreground service no STREAM_ALARM e
           // não depende do boot do JS. Ver docs/claude/alarmes.md.
 
-          // ÚNICA fonte de vibração do alarme: o canal de notificação e o
-          // serviço nativo não vibram mais (patch em expo-alarm-module). Eram
-          // três fontes somadas, e as duas nativas não conhecem as
-          // configurações — desligar a vibração no app não surtia efeito.
           // Respeita as DUAS chaves: a global (Configurações) e a do alarme
           // (formulário). Lê do storage pelo mesmo motivo do timerDuration
           // abaixo: no disparo a frio o state ainda não hidratou e os defaults
-          // (true) venceriam.
+          // (true) venceriam. O canal de notificação segue sem vibrar (ele não
+          // conhece as chaves), mas o serviço nativo agora vibra com as MESMAS
+          // duas chaves — senão o alarme não vibrava quando a tela não abria
+          // (sem permissão de full-screen intent). Quando os dois rodam não há
+          // vibração dobrada: o padrão é idêntico e a segunda chamada do mesmo
+          // app substitui a primeira.
           const vibrationOk = await shouldVibrate(
             { globalEnabled: state.settings.vibrationEnabled, alarmEnabled: alarm?.vibration },
             alarmId,
@@ -494,6 +495,17 @@ export default function AlarmRingScreen() {
     autoSnoozedRef.current = true;
     handleSnooze();
   }, [snoozeParam, alarm, handleSnooze]);
+
+  // Botão "Dispensar" da notificação: chega como deep link &dismiss=1, pelo
+  // mesmo motivo da soneca. O DISMISS_ACTION nativo parava o alarme só em Java —
+  // o servidor nunca recebia "responded", o evento vencia em 5 min e a família
+  // era avisada de um alarme que o idoso TINHA respondido.
+  const autoDismissedRef = useRef(false);
+  useEffect(() => {
+    if (dismissParam !== '1' || autoDismissedRef.current || !alarm) return;
+    autoDismissedRef.current = true;
+    handleDismiss();
+  }, [dismissParam, alarm, handleDismiss]);
 
   const handleSpeakAgain = useCallback(async () => {
     const speaking = await Speech.isSpeakingAsync();

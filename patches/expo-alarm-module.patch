@@ -1,8 +1,8 @@
 diff --git a/android/src/main/java/com/expoalarmmodule/Alarm.java b/android/src/main/java/com/expoalarmmodule/Alarm.java
-index 49daf38ac5620031fd3d1da8c52c0762d822b96a..b820d735baa9f668dd047d590d750e318eedcf16 100644
+index 49daf38ac5620031fd3d1da8c52c0762d822b96a..72e62129d5639568690d2ffc21ef86bae943a270 100644
 --- a/android/src/main/java/com/expoalarmmodule/Alarm.java
 +++ b/android/src/main/java/com/expoalarmmodule/Alarm.java
-@@ -55,6 +55,16 @@ public class Alarm implements Cloneable {
+@@ -55,6 +55,27 @@ public class Alarm implements Cloneable {
      String dismissText;
      String snoozeText;
  
@@ -15,6 +15,17 @@ index 49daf38ac5620031fd3d1da8c52c0762d822b96a..b820d735baa9f668dd047d590d750e31
 +     * do update. Ausente vira null, e null significa "toca" (ver Manager.start).
 +     */
 +    Boolean sound;
++
++    /**
++     * Vibrar no disparo? Vem da chave "Vibracao" do formulario do Vigora,
++     * combinada com a global das Configuracoes (Storage.getVibrationEnabled).
++     *
++     * Boolean (objeto) pelo mesmo motivo de `sound`: os alarmes ja gravados no
++     * Storage foram serializados sem este campo, e o Gson preencheria primitivo
++     * ausente com false -- todo alarme existente ficaria sem vibrar. Ausente =
++     * null = vibra (ver Manager.start).
++     */
++    Boolean vibration;
 +
      Alarm(String uid, ArrayList<Integer> days, ZonedDateTime date, int hour, int minutes, boolean showDismiss, boolean showSnooze, int snoozeInterval, String title, String description, boolean repeating, boolean active, String dismissText, String snoozeText) {
          this.uid = uid;
@@ -62,10 +73,10 @@ index 455375ae411fa22e853dbd8c945124690e703e18..fd2862ed2203539357e0943fb13c1555
          int currentDay = calendar.get(Calendar.DAY_OF_WEEK);
          for (Date date : dates) {
 diff --git a/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java b/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
-index 552911d58dbc4123c3eff79031d88bd8e4dc1ed9..23340a8b5a27c45302cfbdc30cba1de78042aae5 100644
+index 552911d58dbc4123c3eff79031d88bd8e4dc1ed9..e0f0a2d5caddc53ab3b16233c393efebdbb7860f 100644
 --- a/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
 +++ b/android/src/main/java/com/expoalarmmodule/ExpoAlarmModuleModule.java
-@@ -93,6 +93,43 @@ public class ExpoAlarmModuleModule extends ReactContextBaseJavaModule {
+@@ -93,6 +93,54 @@ public class ExpoAlarmModuleModule extends ReactContextBaseJavaModule {
      promise.resolve(null);
    }
  
@@ -77,6 +88,17 @@ index 552911d58dbc4123c3eff79031d88bd8e4dc1ed9..23340a8b5a27c45302cfbdc30cba1de7
 +  @ReactMethod
 +  public void setAlarmVolume (int volume, Promise promise) {
 +    Storage.saveAlarmVolume(reactContext, volume);
++    promise.resolve(null);
++  }
++
++  /**
++   * Vibracao ligada nas Configuracoes (chave global). Persistida pelo mesmo
++   * motivo do volume: quem vibra no disparo e' o AlarmService, que roda sem o
++   * app aberto -- nao da' para ler a configuracao na hora.
++   */
++  @ReactMethod
++  public void setAlarmVibration (boolean enabled, Promise promise) {
++    Storage.saveVibrationEnabled(reactContext, enabled);
 +    promise.resolve(null);
 +  }
 +
@@ -109,7 +131,7 @@ index 552911d58dbc4123c3eff79031d88bd8e4dc1ed9..23340a8b5a27c45302cfbdc30cba1de7
    @ReactMethod
    public void snooze (Promise promise) {
      Manager.snooze(reactContext);
-@@ -176,7 +213,10 @@ public class ExpoAlarmModuleModule extends ReactContextBaseJavaModule {
+@@ -176,7 +224,12 @@ public class ExpoAlarmModuleModule extends ReactContextBaseJavaModule {
          }
        }
      }
@@ -117,12 +139,14 @@ index 552911d58dbc4123c3eff79031d88bd8e4dc1ed9..23340a8b5a27c45302cfbdc30cba1de7
 +    Alarm parsed = new Alarm(uid, days, date, hour, minutes, showDismiss, showSnooze, snoozeInterval, title, description, repeating, active, dismissText, snoozeText);
 +    // Ausente = toca (compatibilidade com quem agenda sem informar a chave).
 +    parsed.sound = alarm.hasKey("sound") ? alarm.getBoolean("sound") : Boolean.TRUE;
++    // Ausente = vibra (compatibilidade com quem agenda sem informar a chave).
++    parsed.vibration = alarm.hasKey("vibration") ? alarm.getBoolean("vibration") : Boolean.TRUE;
 +    return parsed;
    }
  
    private WritableMap serializeAlarmObject (Alarm alarm) throws Exception {
 diff --git a/android/src/main/java/com/expoalarmmodule/Helper.java b/android/src/main/java/com/expoalarmmodule/Helper.java
-index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..fc798a2603b4b2ee51f62663d0616a812662c3de 100644
+index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..e817495a9846aea2664ed92056cdeff27115ffd5 100644
 --- a/android/src/main/java/com/expoalarmmodule/Helper.java
 +++ b/android/src/main/java/com/expoalarmmodule/Helper.java
 @@ -11,6 +11,7 @@ import android.content.res.Resources;
@@ -220,7 +244,7 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..fc798a2603b4b2ee51f62663d0616a81
          String channelId = context.getResources().getString(R.string.notification_channel_id);
      
          PendingIntent pendingIntentDismiss = createActionIntent(context, alarmUid, id, "DISMISS_ACTION");
-@@ -162,10 +201,11 @@ public class Helper {
+@@ -162,21 +201,30 @@ public class Helper {
                  .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                  .setCategory(NotificationCompat.CATEGORY_ALARM)
                  .setAutoCancel(true)
@@ -228,12 +252,20 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..fc798a2603b4b2ee51f62663d0616a81
 +                .setOngoing(true)
                  .setSound(null)
                  .setVibrate(null)
-                 .setContentIntent(createOnClickedIntent(context, alarmUid, id))
-+                .setFullScreenIntent(createOnClickedIntent(context, alarmUid, id), true)
+-                .setContentIntent(createOnClickedIntent(context, alarmUid, id))
++                .setContentIntent(createOpenIntent(context, alarmUid, id, ""))
++                .setFullScreenIntent(createOpenIntent(context, alarmUid, id, ""), true)
                  .setDeleteIntent(pendingIntentDismiss);
  
-         // If the dismiss button should be visible.
-@@ -174,9 +214,13 @@ public class Helper {
+-        // If the dismiss button should be visible.
++        // "Dispensar" via deep link (&dismiss=1), NAO via DISMISS_ACTION: o
++        // broadcast nativo so parava o som em Java e o JS nunca sabia -- o evento
++        // do dead man's switch ficava sem confirmacao e o servidor marcava como
++        // "missed" 5 min depois, avisando a familia de um alarme RESPONDIDO.
++        // Mesmo defeito (e mesma correcao) da soneca logo abaixo.
+         if(showDismiss) {
+-            builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, dismissText, pendingIntentDismiss);
++            builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, dismissText, createOpenIntent(context, alarmUid, id, "&dismiss=1"));
          }
  
          // If snooze is active, add a button for snoozing.
@@ -245,51 +277,72 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..fc798a2603b4b2ee51f62663d0616a81
          if(showSnooze) {
 -            PendingIntent pendingIntentSnoozee = createActionIntent(context, alarmUid, id, "SNOOZE_ACTION");
 -            builder.addAction(android.R.drawable.ic_menu_recent_history, snoozeText, pendingIntentSnoozee);
-+            builder.addAction(android.R.drawable.ic_menu_recent_history, snoozeText, createSnoozeOpenIntent(context, alarmUid, id));
++            builder.addAction(android.R.drawable.ic_menu_recent_history, snoozeText, createOpenIntent(context, alarmUid, id, "&snooze=1"));
          }
  
      
-@@ -195,6 +239,10 @@ public class Helper {
-     private static PendingIntent createOnClickedIntent(Context context, String alarmUid, int notificationID) {
-         Intent resultIntent = new Intent(context, Helper.getMainActivityClass(context));
-         resultIntent.putExtra("ALARM_UID", alarmUid);
-+        // Deep link explícito para a tela do alarme — roteia de forma determinística
-+        // no cold start do Android antigo (não depende do getAlarmState em memória).
-+        resultIntent.setAction(Intent.ACTION_VIEW);
-+        resultIntent.setData(Uri.parse("vigora://alarm-ring?uid=" + Uri.encode(alarmUid)));
- 
-         PendingIntent pendingIntent = null;
-         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {  
-@@ -214,6 +262,24 @@ public class Helper {
-         return pendingIntent;
+@@ -192,26 +240,28 @@ public class Helper {
+         return builder.build();
      }
  
+-    private static PendingIntent createOnClickedIntent(Context context, String alarmUid, int notificationID) {
 +    /**
-+     * Igual ao createOnClickedIntent, mas com &snooze=1 no deep link — a tela do
-+     * alarme executa a soneca automaticamente ao abrir. O requestCode pode repetir
-+     * o do content intent: o data URI diferente já os torna PendingIntents
-+     * distintos (Intent.filterEquals).
++     * PendingIntent que ABRE o app na tela do alarme. `extraQuery` acrescenta a
++     * acao ao deep link ("" = so abrir, "&snooze=1", "&dismiss=1") — quem executa
++     * e confirma no servidor e' sempre o JS (alarm-ring), nunca o Java.
++     *
++     * Deep link explicito (e nao so o ALARM_UID no extra) porque ele roteia de
++     * forma deterministica no cold start do Android antigo, sem depender do
++     * getAlarmState em memoria.
++     *
++     * O requestCode pode repetir entre as acoes: o data URI diferente ja as torna
++     * PendingIntents distintos (Intent.filterEquals).
 +     */
-+    private static PendingIntent createSnoozeOpenIntent(Context context, String alarmUid, int notificationID) {
-+        Intent resultIntent = new Intent(context, Helper.getMainActivityClass(context));
-+        resultIntent.putExtra("ALARM_UID", alarmUid);
++    private static PendingIntent createOpenIntent(Context context, String alarmUid, int notificationID, String extraQuery) {
+         Intent resultIntent = new Intent(context, Helper.getMainActivityClass(context));
+         resultIntent.putExtra("ALARM_UID", alarmUid);
 +        resultIntent.setAction(Intent.ACTION_VIEW);
-+        resultIntent.setData(Uri.parse("vigora://alarm-ring?uid=" + Uri.encode(alarmUid) + "&snooze=1"));
-+
++        resultIntent.setData(Uri.parse("vigora://alarm-ring?uid=" + Uri.encode(alarmUid) + extraQuery));
+ 
+-        PendingIntent pendingIntent = null;
+-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {  
+-            pendingIntent = PendingIntent.getActivity(
+-                context,
+-                notificationID,
+-                resultIntent,
+-                PendingIntent.FLAG_MUTABLE);
+-        } else {
+-            pendingIntent = PendingIntent.getActivity(
+-                context,
+-                notificationID,
+-                resultIntent,
+-                PendingIntent.FLAG_UPDATE_CURRENT);
 +        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
 +            return PendingIntent.getActivity(context, notificationID, resultIntent, PendingIntent.FLAG_MUTABLE);
-+        }
+         }
+-
+-        return pendingIntent;
 +        return PendingIntent.getActivity(context, notificationID, resultIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-+    }
-+
+     }
+ 
      /**
-      * Creates an intent for dismissing, snoozing or performing another action in the alarm notification.
-      */
 diff --git a/android/src/main/java/com/expoalarmmodule/Manager.java b/android/src/main/java/com/expoalarmmodule/Manager.java
-index 004075da7464088c26edd8b5e6e2e5a191ec7633..9388d9c798862cb6e5aee6d33678e4b0577bccd8 100644
+index 004075da7464088c26edd8b5e6e2e5a191ec7633..72d36112982269edffa7f8c01a22ebfe8cf9c2a1 100644
 --- a/android/src/main/java/com/expoalarmmodule/Manager.java
 +++ b/android/src/main/java/com/expoalarmmodule/Manager.java
-@@ -11,12 +11,60 @@ public class Manager {
+@@ -8,15 +8,72 @@ import java.util.Objects;
+ 
+ public class Manager {
+ 
++    /**
++     * Padrao IDENTICO ao da tela (alarm-ring): quando os dois rodam, a segunda
++     * chamada a vibrate() do MESMO app substitui a primeira -- mesmo padrao,
++     * nenhuma diferenca perceptivel. Padroes diferentes fariam a vibracao
++     * "pular" ao abrir a tela.
++     */
++    private static final long[] VIBRATION_PATTERN = new long[]{0, 500, 500, 500};
++    private static android.os.Vibrator vibrator;
++
      private static final String TAG = "AlarmManager";
      private static Sound sound;
      private static String activeAlarmUid;
@@ -350,7 +403,7 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..9388d9c798862cb6e5aee6d33678e4b0
          AlarmDates dates = alarm.getAlarmDates();
          for (Date date : dates.getDates()) {
              Helper.scheduleAlarm(context, alarm.uid, date.getTime(), dates.getNotificationId(date));
-@@ -28,6 +76,7 @@ public class Manager {
+@@ -28,6 +85,7 @@ public class Manager {
      public static void reschedule(Context context) {
          Alarm[] alarms = Storage.getAllAlarms(context);
          for (Alarm alarm : alarms) {
@@ -358,7 +411,15 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..9388d9c798862cb6e5aee6d33678e4b0
              Storage.removeDates(context, alarm.uid);
              AlarmDates dates = alarm.getAlarmDates();
              Storage.saveDates(context, dates);
-@@ -112,13 +161,56 @@ public class Manager {
+@@ -60,6 +118,7 @@ public class Manager {
+     }
+ 
+     static void remove(Context context, String alarmUid) {
++        stopVibration();
+         if (sound != null) {
+             sound.stop();
+         }
+@@ -112,16 +171,103 @@ public class Manager {
      }
  
      static void start(Context context, String alarmUid) {
@@ -386,15 +447,58 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..9388d9c798862cb6e5aee6d33678e4b0
 +            // ressuscitaria o alarme ERRADO no meio de um alarme silencioso.
 +            sound = null;
 +            Log.d(TAG, "Alarme " + alarmUid + " configurado sem som - nao vai tocar");
++            startVibration(context, alarm);
 +            return;
 +        }
 +
          sound = new Sound(context);
          sound.play("default");
++        // Depois do sound.play: o sound.stop() do inicio deste metodo cancela a
++        // vibracao do app inteiro (Vibrator.cancel e' por app), e comecar antes
++        // seria comecar para ser cancelado.
++        startVibration(context, alarm);
  
          Log.d(TAG, "Starting " + activeAlarmUid);
      }
  
++    /**
++     * Vibra enquanto o alarme toca. Fica AQUI, e nao na tela, porque a tela nem
++     * sempre abre: sem a permissao de full-screen intent (ou com o aparelho em
++     * uso), o disparo vira so' uma notificacao heads-up e o alarme ficava mudo
++     * de vibracao -- justamente onde o idoso mais depende dela.
++     *
++     * Nao vibra sempre, que era o motivo de ter sido removido daqui: le as DUAS
++     * chaves do app -- a global (persistida por setAlarmVibration) e a do proprio
++     * alarme (campo `vibration`, gravado no agendamento). A tela continua
++     * vibrando com as chaves lidas ao vivo; quando ambos rodam, a chamada da tela
++     * apenas substitui esta (mesmo padrao).
++     *
++     * Independente do som: "Som" desmarcado no formulario nao desliga a vibracao.
++     */
++    private static void startVibration(Context context, Alarm alarm) {
++        boolean alarmWants = alarm == null || alarm.vibration == null || alarm.vibration;
++        if (!alarmWants || !Storage.getVibrationEnabled(context)) {
++            Log.d(TAG, "Alarme " + activeAlarmUid + " sem vibracao (alarme=" + alarmWants
++                    + ", global=" + Storage.getVibrationEnabled(context) + ")");
++            return;
++        }
++        vibrator = (android.os.Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
++        if (vibrator == null || !vibrator.hasVibrator()) {
++            Log.w(TAG, "Aparelho sem vibrador - alarme so' com som");
++            return;
++        }
++        // repeat=0: repete o padrao do indice 0 ate cancel(). Todo caminho que
++        // encerra o disparo passa por stopVibration() -- sem isso vibra sempre.
++        vibrator.vibrate(VIBRATION_PATTERN, 0);
++    }
++
++    private static void stopVibration() {
++        if (vibrator != null) {
++            vibrator.cancel();
++            vibrator = null;
++        }
++    }
++
 +    /**
 +     * Silencia/retoma o som do alarme em curso, sem desmontá-lo. A tela do
 +     * alarme usa isto durante a fala (TTS) — `stop()` não serve porque também
@@ -415,7 +519,11 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..9388d9c798862cb6e5aee6d33678e4b0
      public static void stop(Context context) {
          Log.d(TAG, "Stopping " + activeAlarmUid);
  
-@@ -131,11 +223,21 @@ public class Manager {
++        stopVibration();
+         if(Objects.nonNull(sound)) {
+             sound.stop();
+         }
+@@ -131,11 +277,21 @@ public class Manager {
              AlarmDates dates = Storage.getDates(context, activeAlarmUid);
              if(alarm != null) {
                  if (alarm.repeating) {
@@ -439,6 +547,14 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..9388d9c798862cb6e5aee6d33678e4b0
                  } else {
                      alarm.active = false;
                      Storage.saveAlarm(context, alarm);
+@@ -149,6 +305,7 @@ public class Manager {
+     public static void snooze(Context context) {
+         Log.d(TAG, "Snoozing " + activeAlarmUid);
+ 
++        stopVibration();
+         if(Objects.nonNull(sound)) {
+             sound.stop();
+         }
 diff --git a/android/src/main/java/com/expoalarmmodule/Sound.java b/android/src/main/java/com/expoalarmmodule/Sound.java
 index 73b00616707cd5533258ce215fb1fb1e2deafb50..9b42dd7019fe96f019ec3d6a6cc77674d5573cda 100644
 --- a/android/src/main/java/com/expoalarmmodule/Sound.java
@@ -610,7 +726,7 @@ index 73b00616707cd5533258ce215fb1fb1e2deafb50..9b42dd7019fe96f019ec3d6a6cc77674
              int resId;
              if (context.getResources().getIdentifier(soundName, "raw", context.getPackageName()) != 0) {
 diff --git a/android/src/main/java/com/expoalarmmodule/Storage.java b/android/src/main/java/com/expoalarmmodule/Storage.java
-index acb1e33bce9bb27c708ef2b0592db2ccc2c70892..e342d838a5fbeafa500ef256d053959f0e7ee075 100644
+index acb1e33bce9bb27c708ef2b0592db2ccc2c70892..14d68e96bf6a02c95edf4ca047164465e0dfbc54 100644
 --- a/android/src/main/java/com/expoalarmmodule/Storage.java
 +++ b/android/src/main/java/com/expoalarmmodule/Storage.java
 @@ -4,7 +4,6 @@ import android.content.Context;
@@ -621,7 +737,7 @@ index acb1e33bce9bb27c708ef2b0592db2ccc2c70892..e342d838a5fbeafa500ef256d053959f
  import com.google.gson.Gson;
  
  import java.util.ArrayList;
-@@ -78,9 +77,27 @@ class Storage {
+@@ -78,9 +77,41 @@ class Storage {
          return sharedPreferences.edit();
      }
  
@@ -637,6 +753,20 @@ index acb1e33bce9bb27c708ef2b0592db2ccc2c70892..e342d838a5fbeafa500ef256d053959f
 +    /** 100 (máximo) quando o app ainda não escreveu — o comportamento de sempre. */
 +    static int getAlarmVolume(Context context) {
 +        return getSharedPreferences(context).getInt(VOLUME_KEY, 100);
++    }
++
++    /** Vibracao ligada nas Configuracoes, escrita via ExpoAlarmModule.setAlarmVibration. */
++    private static final String VIBRATION_KEY = "vigora_alarm_vibration";
++
++    static void saveVibrationEnabled(Context context, boolean enabled) {
++        SharedPreferences.Editor editor = getEditor(context);
++        editor.putBoolean(VIBRATION_KEY, enabled);
++        editor.apply();
++    }
++
++    /** true quando o app ainda nao escreveu -- nao vibrar por falta de informacao e' pior. */
++    static boolean getVibrationEnabled(Context context) {
++        return getSharedPreferences(context).getBoolean(VIBRATION_KEY, true);
 +    }
 +
      private static SharedPreferences getSharedPreferences(Context context) {
@@ -670,48 +800,52 @@ index aa5b034b1438475db3b484b82b7e645f7ff5e9c0..a3ce3a8cc41e7157cfc3348e81c6eb49
 +  <string name="notification_channel_desc">Avisos dos seus alarmes de medicamento</string>
  </resources>
 diff --git a/lib/commonjs/models/Alarm.js b/lib/commonjs/models/Alarm.js
-index 125b8e88fe8e1b460734d1add901e0aa3aa80881..0fb280568b6b1128f3676a96b0f0218ae35a4278 100644
+index 125b8e88fe8e1b460734d1add901e0aa3aa80881..0d4e01938486186a52c9e5204ae54c92365221f5 100644
 --- a/lib/commonjs/models/Alarm.js
 +++ b/lib/commonjs/models/Alarm.js
-@@ -19,6 +19,7 @@ class Alarm {
+@@ -19,6 +19,8 @@ class Alarm {
      this.snoozeText = (0, _utils.getParam)(params, 'snoozeText');
      this.repeating = (0, _utils.getParam)(params, 'repeating');
      this.active = (0, _utils.getParam)(params, 'active');
 +    this.sound = (0, _utils.getParam)(params, 'sound');
++    this.vibration = (0, _utils.getParam)(params, 'vibration');
      this.day = (0, _utils.getParam)(params, 'day');
    }
    static getEmpty() {
 diff --git a/lib/module/models/Alarm.js b/lib/module/models/Alarm.js
-index 5378c0ab6d1e1ff1335e3740d13243549a07b77a..4b22a9036bcf3361c503965aa18690974fceafa9 100644
+index 5378c0ab6d1e1ff1335e3740d13243549a07b77a..8a8e8e53fa7c43dc702787751f48f55aac6aa4ba 100644
 --- a/lib/module/models/Alarm.js
 +++ b/lib/module/models/Alarm.js
-@@ -13,6 +13,7 @@ class Alarm {
+@@ -13,6 +13,8 @@ class Alarm {
      this.snoozeText = getParam(params, 'snoozeText');
      this.repeating = getParam(params, 'repeating');
      this.active = getParam(params, 'active');
 +    this.sound = getParam(params, 'sound');
++    this.vibration = getParam(params, 'vibration');
      this.day = getParam(params, 'day');
    }
    static getEmpty() {
 diff --git a/src/models/Alarm.tsx b/src/models/Alarm.tsx
-index c0bd28157e94e70e7c701f19718d90801069f913..fdf88db810cdf4b44dba0fe4c02e23a6962e9615 100644
+index c0bd28157e94e70e7c701f19718d90801069f913..2e02f4d6e22dc2c7552a03422f2751bb8d0370d0 100644
 --- a/src/models/Alarm.tsx
 +++ b/src/models/Alarm.tsx
-@@ -13,6 +13,9 @@ class Alarm {
+@@ -13,6 +13,10 @@ class Alarm {
    snoozeText?: string | undefined;
    repeating?: boolean | undefined;
    active?: boolean | undefined;
 +  // Vigora: sem esta linha o campo e' descartado pelo construtor abaixo e
 +  // 'sound' nunca chega ao nativo -- todo alarme tocava.
 +  sound?: boolean | undefined;
++  vibration?: boolean | undefined;
    day?: string | Date | number[] | undefined;
  
    constructor(params: any = null) {
-@@ -28,6 +31,7 @@ class Alarm {
+@@ -28,6 +32,8 @@ class Alarm {
      this.snoozeText = getParam(params, 'snoozeText');
      this.repeating = getParam(params, 'repeating');
      this.active = getParam(params, 'active');
 +    this.sound = getParam(params, 'sound');
++    this.vibration = getParam(params, 'vibration');
      this.day = getParam(params, 'day');
    }
  
