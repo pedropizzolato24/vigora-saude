@@ -288,6 +288,17 @@ export const pushTokens = mysqlTable(
     openId: varchar("openId", { length: 64 }).notNull(),
     token: varchar("token", { length: 255 }).notNull().unique(),
     platform: mysqlEnum("platform", ["ios", "android", "web"]).notNull(),
+    /**
+     * Aparelho que registrou este token (lib/device-id.ts — UUID v4 CSPRNG no
+     * SecureStore). É a PROVA DE POSSE que autoriza o desregistro quando a
+     * linha está chaveada em outra conta (aparelho que entrou como cuidador e
+     * depois trocou para a conta monitorada). Sem ela, `push.unregister`
+     * apagava o token de qualquer conta só com o valor do token — bastava
+     * conhecê-lo para desarmar o alerta em tempo real do cuidador.
+     * Null nas linhas anteriores a esta coluna; elas ganham deviceId no
+     * próximo registro do aparelho.
+     */
+    deviceId: varchar("deviceId", { length: 64 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },

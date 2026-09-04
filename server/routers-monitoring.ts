@@ -37,6 +37,7 @@ import { getActiveCaregiversForMonitored } from "./db-links";
 import { getPushTokensForOpenIds } from "./db-push";
 import { sendExpoPush } from "./push";
 import { formatEventTime } from "./_core/format-event-time";
+import { parseLatLng } from "./_core/parse-lat-lng";
 
 /**
  * Rate limit por processo/usuário para o push de SOS aos cuidadores.
@@ -174,13 +175,13 @@ export const monitoringRouter = router({
     .input(
       z.object({
         deviceId: z.string().max(64).optional(),
-        lastLocation: z.string().optional(), // "lat,lng"
+        lastLocation: z.string().max(64).optional(), // "lat,lng"
       })
     )
     .mutation(async ({ ctx, input }) => {
       await recordHeartbeat(ctx.user.openId, {
         lastDeviceId: input.deviceId,
-        lastLocation: input.lastLocation,
+        lastLocation: parseLatLng(input.lastLocation) ?? undefined,
       });
       return { success: true };
     }),
@@ -197,7 +198,8 @@ export const monitoringRouter = router({
         deviceId: z.string().max(64).optional(),
         lastDeviceId: z.string().max(64).optional(),
         appVersion: z.string().optional(),
-        lastLocation: z.string().optional(),
+        /** "lat,lng" — saneado por parseLatLng antes de gravar (ver abaixo). */
+        lastLocation: z.string().max(64).optional(),
         /** Telemetria Android: isenção de otimização de bateria ativa. */
         batteryExempt: z.boolean().optional(),
       })
@@ -206,7 +208,9 @@ export const monitoringRouter = router({
       await recordHeartbeat(ctx.user.openId, {
         appVersion: input.appVersion,
         lastDeviceId: input.lastDeviceId ?? input.deviceId,
-        lastLocation: input.lastLocation,
+        // Coordenada malformada é DESCARTADA, não rejeitada: o heartbeat é o
+        // sinal de vida da pessoa e não pode falhar por telemetria opcional.
+        lastLocation: parseLatLng(input.lastLocation) ?? undefined,
         batteryExempt: input.batteryExempt,
       });
       return { success: true, timestamp: new Date().toISOString() };

@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 function parseCsv(raw: string | undefined): string[] {
   if (!raw) return [];
   return raw.split(",").map((s) => s.trim()).filter(Boolean);
@@ -18,34 +20,66 @@ export const ENV = {
 };
 
 /**
- * Fail-closed check for secrets that must never be empty in production.
- * Without it, JWT_SECRET silently fell back to "" (see `cookieSecret` above
- * and sdk.ts), so session JWTs would be signed AND verified with an empty
- * HMAC key — trivial token forgery for any openId. We refuse to boot rather
- * than run fail-open. Reads `env` live (default process.env) so it can be
- * unit-tested with a fake environment.
+ * Escape hatch EXPLÍCITA para desenvolvimento local sem segredo/banco.
+ * Precisa ser ligada de propósito e não vale em produção.
+ */
+export const DEV_INSECURE_FLAG = "ALLOW_INSECURE_DEV_BOOT";
+
+/**
+ * Fail-closed check for secrets that must never be empty.
+ *
+ * Sem isto, JWT_SECRET cai silenciosamente para "" (ver `cookieSecret` acima e
+ * sdk.ts), e as sessões seriam assinadas E verificadas com uma chave HMAC vazia
+ * — forja trivial de token para qualquer openId.
+ *
+ * A decisão é pela PRESENÇA do segredo, não por NODE_ENV. A versão anterior
+ * liberava o boot sempre que `NODE_ENV !== "production"`, então qualquer desvio
+ * ("Production", "prod", ou a variável sumindo porque um Start Command
+ * customizado substituiu o script `start`) fazia o servidor subir em modo
+ * permissivo com apenas um aviso no log. Agora o padrão é recusar, e o modo
+ * permissivo exige ligar ALLOW_INSECURE_DEV_BOOT de propósito — que, por sua
+ * vez, nunca vale em produção.
+ *
+ * Lê `env` ao vivo (default process.env) para poder ser testado com um
+ * ambiente falso.
  */
 export function assertRequiredSecrets(env: NodeJS.ProcessEnv = process.env): void {
   const isProduction = env.NODE_ENV === "production";
+  const devPermissivo = env[DEV_INSECURE_FLAG] === "1" && !isProduction;
   const secret = env.JWT_SECRET ?? "";
-  if (!isProduction) {
-    if (secret.length === 0) {
-      console.warn(
-        "[api] AVISO: JWT_SECRET ausente — usando segredo vazio (apenas DEV). " +
-          "Em produção o servidor recusa iniciar sem ele.",
+
+  if (secret.length === 0) {
+    if (!devPermissivo) {
+      throw new Error(
+        "JWT_SECRET ausente ou vazio. Recusando iniciar para não assinar/" +
+          "verificar sessões com segredo vazio (forja de token trivial). " +
+          `Em desenvolvimento local, defina ${DEV_INSECURE_FLAG}=1 para ignorar.`,
       );
     }
-    return;
-  }
-  if (secret.length === 0) {
-    throw new Error(
-      "JWT_SECRET ausente ou vazio em produção. Recusando iniciar para não " +
-        "assinar/verificar sessões com segredo vazio (forja de token trivial).",
+    // Segredo EFÊMERO em vez de vazio: um HMAC de chave vazia assina e verifica
+    // qualquer token. Aleatório (e não uma constante no código) de propósito —
+    // um default fixo aqui seria justamente o "valor padrão que vira segredo
+    // real quando ninguém sobrescreve". As sessões morrem a cada reinício, o
+    // que é o comportamento certo para um servidor de desenvolvimento.
+    env.JWT_SECRET = randomBytes(32).toString("hex");
+    console.warn(
+      `[api] AVISO: JWT_SECRET ausente e ${DEV_INSECURE_FLAG}=1 — gerado um ` +
+        "segredo aleatório só para esta execução; as sessões não sobrevivem a " +
+        "um reinício. NUNCA use isto fora da sua máquina.",
     );
-  }
-  if (secret.length < 32) {
+  } else if (secret.length < 32) {
     console.warn(
       "[api] AVISO: JWT_SECRET com menos de 32 caracteres; use >=32 (256-bit) para HS256.",
+    );
+  }
+
+  // Banco ausente não é falha aberta (a autenticação recusa quando não acha o
+  // usuário), mas é o modo de falha que já desarmou o dead man's switch por 27h
+  // sem ninguém notar. Melhor não subir do que subir cego.
+  if (!(env.DATABASE_URL ?? "") && !devPermissivo) {
+    throw new Error(
+      "DATABASE_URL ausente. Recusando iniciar: sem banco o monitoramento " +
+        `não persiste nada. Em desenvolvimento local, defina ${DEV_INSECURE_FLAG}=1.`,
     );
   }
 }

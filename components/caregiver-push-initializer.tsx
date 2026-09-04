@@ -10,6 +10,7 @@ import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
+import { getDeviceId } from '@/lib/device-id';
 import { getDevicePushToken } from '@/lib/push-registration';
 import { setPushUnavailable } from '@/lib/push-status';
 import { trpc } from '@/lib/trpc';
@@ -41,7 +42,11 @@ export function CaregiverPushInitializer() {
         return;
       }
       try {
-        await register.mutateAsync(result);
+        // deviceId grava a prova de posse do aparelho nesta linha; é o que
+        // permite o logout apagá-la mesmo depois de uma troca de conta, sem
+        // deixar que só conhecer o token autorize a remoção.
+        const deviceId = await getDeviceId();
+        await register.mutateAsync({ ...result, deviceId });
         setPushUnavailable(false);
         console.log('[Push] Caregiver push token registered');
       } catch (err) {

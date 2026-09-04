@@ -1,15 +1,21 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { AnamnesesData } from './app-context';
+import { esc } from './health-report-generator';
 
 /**
  * Generate HTML content for Anamnesis PDF
+ *
+ * SECURITY: todo campo da anamnese é texto livre do usuário e este HTML é
+ * renderizado por expo-print (no Android, um WebView de impressão) e depois
+ * compartilhado como PDF. Concatenar cru permitia injeção de HTML/script —
+ * mesma falha já corrigida em health-report-generator.ts, de onde `esc` vem.
  */
-function generateAnamnesisPDF(anamnesis: AnamnesesData): string {
+export function generateAnamnesisPDF(anamnesis: AnamnesesData): string {
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'Não informado';
     const [year, month, day] = dateStr.split('-');
-    return `${day}/${month}/${year}`;
+    return esc(`${day}/${month}/${year}`);
   };
 
   const htmlContent = `
@@ -86,7 +92,7 @@ function generateAnamnesisPDF(anamnesis: AnamnesesData): string {
           <div class="section-title">Informações Pessoais</div>
           <div class="field">
             <div class="field-label">Nome Completo:</div>
-            <div class="field-value">${anamnesis.fullName || 'Não informado'}</div>
+            <div class="field-value">${esc(anamnesis.fullName) || 'Não informado'}</div>
           </div>
           <div class="field">
             <div class="field-label">Data de Nascimento:</div>
@@ -108,15 +114,15 @@ function generateAnamnesisPDF(anamnesis: AnamnesesData): string {
           <div class="section-title">Histórico Médico</div>
           <div class="field">
             <div class="field-label">Alergias:</div>
-            <div class="field-value">${anamnesis.allergies || 'Nenhuma informada'}</div>
+            <div class="field-value">${esc(anamnesis.allergies) || 'Nenhuma informada'}</div>
           </div>
           <div class="field">
             <div class="field-label">Medicamentos em Uso:</div>
-            <div class="field-value">${anamnesis.medications || 'Nenhum informado'}</div>
+            <div class="field-value">${esc(anamnesis.medications) || 'Nenhum informado'}</div>
           </div>
           <div class="field">
             <div class="field-label">Doenças Crônicas:</div>
-            <div class="field-value">${anamnesis.diseases || 'Nenhuma informada'}</div>
+            <div class="field-value">${esc(anamnesis.diseases) || 'Nenhuma informada'}</div>
           </div>
         </div>
 
@@ -124,15 +130,15 @@ function generateAnamnesisPDF(anamnesis: AnamnesesData): string {
           <div class="section-title">Informações de Saúde</div>
           <div class="field">
             <div class="field-label">Número SUS:</div>
-            <div class="field-value">${anamnesis.susNumber || 'Não informado'}</div>
+            <div class="field-value">${esc(anamnesis.susNumber) || 'Não informado'}</div>
           </div>
           <div class="field">
             <div class="field-label">Plano de Saúde:</div>
-            <div class="field-value">${anamnesis.healthPlanProvider || 'Não informado'}</div>
+            <div class="field-value">${esc(anamnesis.healthPlanProvider) || 'Não informado'}</div>
           </div>
           <div class="field">
             <div class="field-label">Número do Plano:</div>
-            <div class="field-value">${anamnesis.healthPlanNumber || 'Não informado'}</div>
+            <div class="field-value">${esc(anamnesis.healthPlanNumber) || 'Não informado'}</div>
           </div>
         </div>
 

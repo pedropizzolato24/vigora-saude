@@ -80,6 +80,13 @@ export async function unregisterDevicePushToken(): Promise<void> {
     const sessionToken = await Auth.getSessionToken();
     if (!sessionToken) return;
 
+    // deviceId é a PROVA DE POSSE do aparelho: é o que autoriza apagar a linha
+    // quando ela ficou chaveada em outra conta (registrou como cuidador, depois
+    // entrou como monitorado). Sem ele o servidor só apaga linha da própria
+    // conta — de propósito, para que conhecer o token não baste.
+    const { getDeviceId } = await import('@/lib/device-id');
+    const deviceId = await getDeviceId();
+
     const res = await fetch(`${getApiBaseUrl()}/api/trpc/push.unregister`, {
       method: 'POST',
       headers: {
@@ -87,7 +94,7 @@ export async function unregisterDevicePushToken(): Promise<void> {
         Authorization: `Bearer ${sessionToken}`,
       },
       credentials: 'include',
-      body: JSON.stringify({ json: { token } }),
+      body: JSON.stringify({ json: { token, deviceId } }),
     });
 
     if (!res.ok) {
