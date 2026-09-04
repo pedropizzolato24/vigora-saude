@@ -205,7 +205,7 @@ export default function CaregiverHomeScreen() {
 
         {/* Person card — ScaleInView: card "materializa" com escala suave */}
         <ScaleInView delay={60} duration={300}>
-          <View style={[styles.personCard, { backgroundColor: colors.primary }]}>
+          <View style={[styles.personCard, { backgroundColor: colors.primarySurface }]}>
             <View style={styles.avatarRow}>
               <View style={[styles.avatar, { backgroundColor: colors.onPrimary + '33' }]}>
                 <Text style={[styles.avatarText, { color: colors.onPrimary, fontSize: fs.lg }]}>

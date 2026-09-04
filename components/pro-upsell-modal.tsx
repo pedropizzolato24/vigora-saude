@@ -150,8 +150,8 @@ export function useProUpsell() {
                 <MaterialIcons name={config.icon} size={32} color={colors.primary} />
               </View>
               {/* Badge PRO */}
-              <View style={[styles.proBadge, { backgroundColor: colors.primary }]}>
-                <MaterialIcons name="star" size={10} color="#fff" />
+              <View style={[styles.proBadge, { backgroundColor: colors.primarySurface }]}>
+                <MaterialIcons name="star" size={14} color="#fff" />
                 <Text style={styles.proBadgeText}>PRO</Text>
               </View>
             </View>
@@ -181,7 +181,7 @@ export function useProUpsell() {
               </Text>
               {features.map((feature, i) => (
                 <View key={i} style={styles.featureItem}>
-                  <View style={[styles.featureDot, { backgroundColor: colors.primary }]} />
+                  <View style={[styles.featureDot, { backgroundColor: colors.primarySurface }]} />
                   <Text style={[styles.featureText, { color: colors.foreground, fontSize: fs.sm }]}>
                     {feature}
                   </Text>
@@ -194,7 +194,7 @@ export function useProUpsell() {
               onPress={handleSubscribe}
               style={({ pressed }) => [
                 styles.subscribeButton,
-                { backgroundColor: colors.primary, opacity: pressed ? 0.88 : 1 },
+                { backgroundColor: colors.primarySurface, opacity: pressed ? 0.88 : 1 },
               ]}
             >
               <MaterialIcons name="star" size={18} color="#fff" />
@@ -286,7 +286,8 @@ const styles = StyleSheet.create({
   },
   proBadgeText: {
     color: "#fff",
-    fontSize: 9,
+    // 9px era ilegível; o chip e a estrela cresceram junto.
+    fontSize: 15,
     fontWeight: "800",
     letterSpacing: 0.5,
   },

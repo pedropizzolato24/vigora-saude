@@ -27,15 +27,23 @@ interface FAQItem {
 interface FAQSection {
   title: string;
   icon: React.ComponentProps<typeof MaterialIcons>['name'];
-  color: string;
+  /** Cor decorativa da categoria. Ausente quando a seção usa `token`. */
+  color?: string;
+  /** Seções semânticas (emergência, alarme) seguem o tema, não um hex fixo. */
+  token?: 'emergency' | 'primary';
   items: FAQItem[];
+}
+
+/** Cor da seção: token do tema quando é semântica, hex quando é decorativa. */
+function corDaSecao(secao: FAQSection, colors: ReturnType<typeof useColors>): string {
+  return secao.token ? colors[secao.token] : (secao.color ?? colors.muted);
 }
 
 const FAQ_DATA: FAQSection[] = [
   {
     title: 'Botão SOS',
     icon: 'warning',
-    color: '#D6161C',
+    token: 'emergency',
     items: [
       {
         question: 'Como funciona o botão SOS?',
@@ -57,7 +65,7 @@ const FAQ_DATA: FAQSection[] = [
   {
     title: 'Alarmes',
     icon: 'alarm',
-    color: '#1E4D8C',
+    token: 'primary',
     items: [
       {
         question: 'Como criar um novo alarme?',
@@ -128,7 +136,7 @@ const FAQ_DATA: FAQSection[] = [
   {
     title: 'Ambulância',
     icon: 'local-hospital',
-    color: '#D6161C',
+    token: 'emergency',
     items: [
       {
         question: 'Como chamar uma ambulância?',
@@ -267,8 +275,8 @@ export function HelpScreen({ onBack }: { onBack?: () => void } = {}) {
             <View key={section.title} style={{ gap: 12 }}>
               {/* Section title */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: section.color + '20', alignItems: 'center', justifyContent: 'center' }}>
-                  <MaterialIcons name={section.icon} size={30} color={section.color} />
+                <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: corDaSecao(section, colors) + '20', alignItems: 'center', justifyContent: 'center' }}>
+                  <MaterialIcons name={section.icon} size={30} color={corDaSecao(section, colors)} />
                 </View>
                 <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground, flex: 1 }}>{section.title}</Text>
               </View>
@@ -342,8 +350,8 @@ export function HelpScreen({ onBack }: { onBack?: () => void } = {}) {
                 style={styles.sectionHeader}
                 activeOpacity={0.7}
               >
-                <View style={[styles.sectionIconBadge, { backgroundColor: section.color + '15' }]}>
-                  <MaterialIcons name={section.icon} size={24} color={section.color} />
+                <View style={[styles.sectionIconBadge, { backgroundColor: corDaSecao(section, colors) + '15' }]}>
+                  <MaterialIcons name={section.icon} size={24} color={corDaSecao(section, colors)} />
                 </View>
                 <Text style={[styles.sectionTitle, { color: colors.foreground, fontSize: fs.md }]}>
                   {section.title}
@@ -377,8 +385,8 @@ export function HelpScreen({ onBack }: { onBack?: () => void } = {}) {
                           ]}
                           activeOpacity={0.7}
                         >
-                          <View style={[styles.faqIconCircle, { backgroundColor: section.color + '10' }]}>
-                            <MaterialIcons name={item.icon} size={18} color={section.color} />
+                          <View style={[styles.faqIconCircle, { backgroundColor: corDaSecao(section, colors) + '10' }]}>
+                            <MaterialIcons name={item.icon} size={18} color={corDaSecao(section, colors)} />
                           </View>
                           <Text style={[styles.faqQuestion, { color: colors.foreground, fontSize: fs.base }]} numberOfLines={isItemOpen ? undefined : 2}>
                             {item.question}
@@ -457,7 +465,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   welcomeSubtitle: {
-    fontSize: 14,
+    fontSize: 16,
     lineHeight: 20,
   },
   sectionContainer: {
@@ -490,7 +498,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   countText: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '700',
   },
   sectionContent: {
@@ -540,7 +548,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   supportText: {
-    fontSize: 14,
+    fontSize: 16,
     lineHeight: 20,
     textAlign: 'center',
   },

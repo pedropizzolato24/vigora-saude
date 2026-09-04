@@ -9,6 +9,9 @@
  *   iOS — não há serviço equivalente: a notificação toca o som uma única vez
  *   e para. A partir da abertura desta tela, ela É a fonte do som (expo-audio,
  *   em loop, com playsInSilentMode).
+ *   iOS 26+ (AlarmKit) — inverte tudo: o alarme tocou em tela cheia e o idoso
+ *   já apertou "Desligar", e foi ISSO que abriu o app. A tela não toca som nem
+ *   conta nada; só fala o remédio e confirma. Ver `vindoDoAlarmKit` abaixo.
  * - Halo que cresce e some ao redor do ícone (o ícone em si fica parado)
  * - Shows alarm name and description
  * - Reads alarm name and description aloud via expo-speech (pt-BR)
@@ -70,7 +73,11 @@ const ALARM_SOUND = require('@/assets/alarm.mp3');
 const respondedFirings = new Set<string>();
 
 // Builds the speech text for the alarm announcement
-function buildSpeechText(alarmDescription?: string, alarmTime?: string): string {
+function buildSpeechText(
+  alarmDescription?: string,
+  alarmTime?: string,
+  vindoDoAlarmKit = false,
+): string {
   const parts: string[] = [];
   parts.push('Atenção! Alarme de medicamento.');
   if (alarmTime) {
@@ -79,7 +86,15 @@ function buildSpeechText(alarmDescription?: string, alarmTime?: string): string 
   if (alarmDescription) {
     parts.push(alarmDescription);
   }
-  parts.push('Toque em Desligar Alarme para confirmar que tomou o medicamento.');
+  // A voz é a ÚNICA coisa que sobrevive no caminho do AlarmKit, e lá não existe
+  // botão "Desligar Alarme" — mandar procurá-lo é mandar o idoso procurar o que
+  // não está na tela. Lá o alarme já foi desligado; o que falta é tomar o
+  // remédio.
+  parts.push(
+    vindoDoAlarmKit
+      ? 'Você já desligou o alarme. Agora é só tomar o medicamento.'
+      : 'Toque em Desligar Alarme para confirmar que tomou o medicamento.',
+  );
   return parts.join(' ');
 }
 
@@ -91,6 +106,21 @@ export default function AlarmRingScreen() {
   const colors = useColors();
 
   const alarm = state.alarms.find((a) => a.id === alarmId);
+
+  // iOS 26+: o alarme JÁ tocou em tela cheia e o idoso JÁ apertou "Desligar" —
+  // foi isso que abriu o app. Não há o que tocar nem o que contar: rodar o
+  // countdown aqui escalaria para a família um alarme que foi atendido (a
+  // confirmação já saiu em confirmAlarmKitDismissal). A tela vira confirmação.
+  //
+  // ⚠️ É PROCEDÊNCIA do disparo, não capacidade do aparelho. Perguntar
+  // `isAlarmKitAvailable()` respondia "este iPhone tem AlarmKit", e num 26+ há
+  // rotas vivas que NÃO vêm do AlarmKit: o botão "Testar" da lista de alarmes e
+  // a notificação legada de um alarme agendado por build anterior, que dispara
+  // antes de syncAlarmsOnStartup migrar. Nessas, dizer "não precisa fazer mais
+  // nada" e desligar o countdown seria desarmar o dead man's switch num alarme
+  // real não atendido. Só quem navega sabendo da procedência passa o parâmetro.
+  const vindoDoAlarmKit = fromAlarmKit === '1';
+
   // Initialize with the configured duration; will be overridden by persisted timer on mount.
   // Note: configuredDuration from state may be stale if state hasn't loaded yet.
   // The initTimer function reads from AsyncStorage directly as fallback.
@@ -124,12 +154,16 @@ export default function AlarmRingScreen() {
 
   /** Retoma o som depois da fala — no Android via serviço, no iOS pelo player. */
   const resumeAlarmSound = useCallback(() => {
+    // Não há som desta tela para retomar no caminho do AlarmKit — só o do
+    // sistema, que já tocou e já parou. Sem esta guarda o alarm.mp3 dispararia
+    // do nada quando a fala terminasse.
+    if (vindoDoAlarmKit) return;
     if (Platform.OS === 'ios') {
       if (soundOn) iosPlayer.play();
       return;
     }
     resumeNativeAlarmSound();
-  }, [iosPlayer, soundOn]);
+  }, [iosPlayer, soundOn, vindoDoAlarmKit]);
 
   // Rota de saída pós-resposta depende do TIPO da conta logada: um cuidador que
   // tocou numa notificação de alarme atrasada (agendada pela conta monitorada
@@ -160,7 +194,7 @@ export default function AlarmRingScreen() {
   // O som é o do serviço nativo, então pausar/retomar passa pelo módulo nativo.
   const speakAlarm = useCallback(() => {
     if (Platform.OS === 'web') return;
-    const text = buildSpeechText(alarm?.description, alarm?.time);
+    const text = buildSpeechText(alarm?.description, alarm?.time, vindoDoAlarmKit);
     // speechVolume chega ao Android via patch do expo-speech (KEY_PARAM_VOLUME)
     // — o módulo original ignorava options.volume por completo fora do iOS.
     const speechVol = (state.settings.speechVolume ?? 90) / 100;
@@ -203,7 +237,7 @@ export default function AlarmRingScreen() {
         resumeAlarm();
       },
     });
-  }, [alarm, state.settings, pauseAlarmSound, resumeAlarmSound]);
+  }, [alarm, state.settings, pauseAlarmSound, resumeAlarmSound, vindoDoAlarmKit]);
 
   // Mostra a tela por cima da lock screen enquanto o alarme está ativo —
   // escopado a esta tela (não um flag fixo no app inteiro). Ao desmontar
@@ -227,7 +261,12 @@ export default function AlarmRingScreen() {
           // nativo mantendo o alarme. Aqui a tela assume o som, em loop, até o
           // idoso responder. playsInSilentMode faz tocar mesmo com a chavinha
           // lateral no silencioso (a notificação sozinha não fura).
-          if (Platform.OS === 'ios' && soundOn) {
+          // `!vindoDoAlarmKit` em vez de sair do efeito inteiro: a FALA mora
+          // aqui embaixo e continua nos dois caminhos — é ela que diz qual
+          // remédio é, e no caminho do AlarmKit é a primeira vez que o idoso
+          // ouve isso. O outro caminho que sobe o som (resumeAlarmSound, ao
+          // fim da fala) tem a guarda equivalente.
+          if (Platform.OS === 'ios' && soundOn && !vindoDoAlarmKit) {
             await setAudioModeAsync({ playsInSilentMode: true });
             // Mesma curva quadrática do alarme no Android (Sound.java): escalar
             // linear soa igual de 10% a 100%, o ouvido é logarítmico.
@@ -257,7 +296,11 @@ export default function AlarmRingScreen() {
             alarmId,
             loadCurrentAppStateRaw
           );
-          if (vibrationOk) {
+          // `!vindoDoAlarmKit` pelo mesmo motivo do som: vibrate(..., true)
+          // repete até Vibration.cancel(), e no caminho do AlarmKit o idoso já
+          // desligou o alarme — o celular ficaria vibrando sem parar depois de
+          // ele ter respondido.
+          if (vibrationOk && !vindoDoAlarmKit) {
             Vibration.vibrate([0, 500, 500, 500], true);
           }
 
@@ -293,6 +336,12 @@ export default function AlarmRingScreen() {
   // This ensures that if the user taps the notification with 12s left, the app
   // shows exactly 12s - not a fresh 30s countdown.
   useEffect(() => {
+    // O countdown é o que escala para a família. No caminho do AlarmKit o
+    // idoso JÁ respondeu (foi o "Desligar" que abriu o app), então contar aqui
+    // avisaria a família de um alarme atendido. Sem countdown, secondsLeft
+    // nunca chega a 0 e o efeito de escalação abaixo nunca dispara.
+    if (vindoDoAlarmKit) return;
+
     let cancelled = false;
 
     const startCountdown = (expiresAt: number) => {
@@ -534,6 +583,15 @@ export default function AlarmRingScreen() {
 
   // --- Accessibility Mode ---------------------------------------------------
   if (isAccessibilityMode) {
+    // A paleta acessível é FIXA (fundo creme, clara em qualquer tema), enquanto
+    // colors.* muda com claro/escuro e foi calibrado para o azul-escuro do modo
+    // normal. Misturar os dois some com o alarme sobre o creme: colors.warning
+    // dava 1,46:1 (claro) e 1,30:1 (escuro) contra ac.background — o ícone
+    // branco dentro do círculo âmbar ficava em 1,68:1 / 1,49:1, longe dos 3:1
+    // de gráfico da WCAG 1.4.11. Por isso o estado do alarme aqui sai SÓ do
+    // ac.*: ac.warning (#7A5200) dá 6,04:1 contra o creme e 6,92:1 contra o
+    // ícone branco, e ac.error (#B5070D) dá 6,11:1 / 7,00:1.
+    const a11yAlarmColor = isExpired ? ac.error : isUrgent ? ac.warning : ac.primary;
     return (
       <SafeAreaView
         style={[styles.container, { backgroundColor: ac.background }]}
@@ -541,7 +599,7 @@ export default function AlarmRingScreen() {
       >
         {/* Icon */}
         <View style={styles.topSection}>
-          <RippleHalo size={180} color={alarmColor}>
+          <RippleHalo size={180} color={a11yAlarmColor}>
             <View
               style={[
                 styles.iconCircle,
@@ -549,8 +607,8 @@ export default function AlarmRingScreen() {
                   width: 180,
                   height: 180,
                   borderRadius: 90,
-                  backgroundColor: alarmColor,
-                  shadowColor: alarmColor,
+                  backgroundColor: a11yAlarmColor,
+                  shadowColor: a11yAlarmColor,
                 },
               ]}
             >
@@ -601,14 +659,27 @@ export default function AlarmRingScreen() {
           </Text>
         </Pressable>
 
-        {/* Countdown */}
+        {/* Countdown — no caminho do AlarmKit não há o que contar: o alarme já
+            foi atendido na tela do sistema. (escalatedBox/escalatedText são só
+            o layout de caixa de aviso; a cor é que diz o que aconteceu.) */}
         <View style={[styles.countdownSection, { gap: 10 }]}>
-          {!isExpired ? (
+          {vindoDoAlarmKit ? (
+            <View style={[styles.escalatedBox, { backgroundColor: ac.surface, borderColor: ac.success, borderWidth: 3 }]}>
+              <MaterialIcons name="check-circle" size={36} color={ac.success} />
+              <Text style={[styles.escalatedText, { color: ac.success, fontSize: af.md, lineHeight: af.md * 1.4 }]}>
+                Alarme desligado. Não precisa fazer mais nada.
+              </Text>
+            </View>
+          ) : !isExpired ? (
             <>
-              <Text style={[styles.countdownLabel, { color: isUrgent ? colors.warning : ac.muted, fontSize: af.sm, fontWeight: isUrgent ? '700' : '400' }]}>
+              {/* ac.warning, não colors.warning: o âmbar do tema (#F0C24A claro /
+                  #F5D06E escuro) sobre o creme fixo desta paleta dá 1,46:1 e
+                  1,30:1 — o aviso de que a mensagem de emergência está a caminho
+                  sumia justamente nos segundos finais. ac.warning dá 6,04:1. */}
+              <Text style={[styles.countdownLabel, { color: isUrgent ? ac.warning : ac.muted, fontSize: af.sm, fontWeight: isUrgent ? '700' : '400' }]}>
                 {isUrgent ? '⚠️ Mensagem de emergência em' : 'Mensagem de emergência em'}
               </Text>
-              <Text style={[styles.countdownTimer, { color: isUrgent ? colors.warning : ac.foreground, fontSize: 56 }]}>
+              <Text style={[styles.countdownTimer, { color: isUrgent ? ac.warning : ac.foreground, fontSize: 56 }]}>
                 {formatTime(secondsLeft)}
               </Text>
               <Text style={[styles.countdownSub, { color: ac.muted, fontSize: af.xs }]}>
@@ -616,18 +687,29 @@ export default function AlarmRingScreen() {
               </Text>
             </>
           ) : (
-            <View style={[styles.escalatedBox, { backgroundColor: colors.errorLight, borderColor: colors.error, borderWidth: 3 }]}>
-              <MaterialIcons name="warning" size={36} color={colors.error} />
-              <Text style={[styles.escalatedText, { color: colors.error, fontSize: af.md, lineHeight: af.md * 1.4 }]}>
+            /* Tokens ac.*, não colors.*: o tinte colors.errorLight assume o
+               fundo do modo normal; sobre o creme ele deixava o texto em
+               4,11:1 (claro) e 2,84:1 (escuro) — no escuro reprovava até o
+               mínimo de texto grande (3:1) e o ícone de 36px. A paleta
+               acessível não tem token de tinte de erro, então a caixa usa
+               ac.surface (branco, já usado no botão de soneca) com borda e
+               texto em ac.error: 7,00:1 no texto e 6,11:1 da borda contra o
+               fundo, que é o que delimita a caixa. */
+            <View style={[styles.escalatedBox, { backgroundColor: ac.surface, borderColor: ac.error, borderWidth: 3 }]}>
+              <MaterialIcons name="warning" size={36} color={ac.error} />
+              <Text style={[styles.escalatedText, { color: ac.error, fontSize: af.md, lineHeight: af.md * 1.4 }]}>
                 Mensagem de emergência enviada para seus contatos
               </Text>
             </View>
           )}
         </View>
 
-        {/* Snooze + Dismiss buttons */}
+        {/* Snooze + Dismiss buttons — a soneca some no caminho do AlarmKit:
+            snoozeNativeAlarm é no-op fora do Android, mas handleSnooze registra
+            o evento pendente. No iPhone nada voltaria a tocar e a família seria
+            avisada em 5 min sobre quem acabou de responder. */}
         <View style={[styles.bottomSection, { gap: 14 }]}>
-          {!isExpired && (
+          {!isExpired && !vindoDoAlarmKit && (
             <Pressable
               style={({ pressed }) => [
                 styles.snoozeButton,
@@ -643,18 +725,30 @@ export default function AlarmRingScreen() {
               </Text>
             </Pressable>
           )}
+          {/* styles.dismissButton NÃO traz backgroundColor — quem o define é
+              cada modo (no normal, colors.error logo abaixo). Sem ele aqui, o
+              botão ficava transparente sobre o creme com o texto branco fixo do
+              estilo: 1,15:1, ou seja, invisível — o botão mais importante do
+              app, no modo feito para quem enxerga pior. ac.error/ac.onEmergency
+              (o mesmo par do modo normal) põe o contraste em 7,00:1. */}
           <Pressable
             style={({ pressed }) => [
               styles.dismissButton,
-              { minHeight: 88, paddingVertical: 26 },
+              // vindoDoAlarmKit muda a cor de sucesso -> emergência, mas o
+              // fundo sempre existe. A branch do AlarmKit tinha essa condição
+              // sem fallback: no caminho comum o botão ficava sem
+              // backgroundColor — o mesmo defeito de 1,15:1 que o creme fixo
+              // já expôs uma vez neste arquivo (ver comentário acima).
+              { minHeight: 88, paddingVertical: 26, backgroundColor: vindoDoAlarmKit ? ac.success : ac.error },
+              vindoDoAlarmKit && { shadowColor: ac.success },
               pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
             ]}
             onPress={handleDismiss}
-            accessibilityLabel="Desligar alarme"
+            accessibilityLabel={vindoDoAlarmKit ? 'Confirmado, fechar' : 'Desligar alarme'}
           >
-            <MaterialIcons name="alarm-off" size={44} color="#FFFFFF" />
-            <Text style={[styles.dismissText, { fontSize: af.lg, fontWeight: '900' }]}>
-              Desligar Alarme
+            <MaterialIcons name={vindoDoAlarmKit ? 'check' : 'alarm-off'} size={44} color={vindoDoAlarmKit ? ac.onPrimary : ac.onEmergency} />
+            <Text style={[styles.dismissText, { fontSize: af.lg, fontWeight: '900', color: vindoDoAlarmKit ? ac.onPrimary : ac.onEmergency }]}>
+              {vindoDoAlarmKit ? 'Confirmado' : 'Desligar Alarme'}
             </Text>
           </Pressable>
         </View>
@@ -711,9 +805,22 @@ export default function AlarmRingScreen() {
         </Text>
       </Pressable>
 
-      {/* Countdown timer */}
+      {/* Countdown timer — ver a nota do modo acessível: no caminho do
+          AlarmKit o alarme já foi respondido, não há contagem. */}
       <View style={styles.countdownSection}>
-        {!isExpired ? (
+        {vindoDoAlarmKit ? (
+          // Mesma regra da caixa de erro logo abaixo: o container deste
+          // arquivo é um azul-escuro FIXO (não muda com o tema), então a cor
+          // por cima também precisa ser. `colors.success` claro (#0C7A40) foi
+          // escurecido para funcionar sobre um fundo CLARO — sobre este
+          // container dava 3,14:1 como texto e 3,34:1 como ícone/borda.
+          <View style={[styles.escalatedBox, { backgroundColor: '#22C55E20', borderColor: '#22C55E' }]}>
+            <MaterialIcons name="check-circle" size={28} color="#22C55E" />
+            <Text style={[styles.escalatedText, { color: '#86EFAC' }]}>
+              Alarme desligado. Não precisa fazer mais nada.
+            </Text>
+          </View>
+        ) : !isExpired ? (
           <>
             <Text style={[styles.countdownLabel, isUrgent && { color: colors.warning, fontWeight: '600' }]}>
               {isUrgent ? '⚠️ Mensagem de emergência em' : 'Mensagem de emergência em'}
@@ -726,18 +833,22 @@ export default function AlarmRingScreen() {
             </Text>
           </>
         ) : (
-          <View style={[styles.escalatedBox, { backgroundColor: colors.errorLight, borderColor: colors.error }]}>
-            <MaterialIcons name="warning" size={28} color={colors.error} />
-            <Text style={[styles.escalatedText, { color: colors.error }]}>
+          // O container do modo normal é um azul-escuro FIXO, então a caixa
+          // também precisa ser: `colors.error` no tema claro é um vermelho
+          // ESCURO (calibrado para fundo claro) e dava 3,37:1 sobre o azul.
+          <View style={[styles.escalatedBox, { backgroundColor: '#F0404020', borderColor: '#F04040' }]}>
+            <MaterialIcons name="warning" size={28} color="#F04040" />
+            <Text style={[styles.escalatedText, { color: '#FCA5A5' }]}>
               Mensagem de emergência enviada para seus contatos
             </Text>
           </View>
         )}
       </View>
 
-      {/* Snooze + Dismiss buttons */}
+      {/* Snooze + Dismiss buttons — ver a nota do modo acessível: sem soneca
+          no caminho do AlarmKit. */}
       <View style={[styles.bottomSection, { gap: 12 }]}>
-        {!isExpired && (
+        {!isExpired && !vindoDoAlarmKit && (
           <Pressable
             style={({ pressed }) => [styles.snoozeButton, pressed && { opacity: 0.8 }]}
             onPress={handleSnooze}
@@ -750,14 +861,18 @@ export default function AlarmRingScreen() {
         <Pressable
           style={({ pressed }) => [
             styles.dismissButton,
-            { backgroundColor: colors.error, shadowColor: colors.error },
+            vindoDoAlarmKit
+              ? { backgroundColor: colors.success, shadowColor: colors.success }
+              : { backgroundColor: colors.error, shadowColor: colors.error },
             pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
           ]}
           onPress={handleDismiss}
-          accessibilityLabel="Desligar alarme"
+          accessibilityLabel={vindoDoAlarmKit ? 'Confirmado, fechar' : 'Desligar alarme'}
         >
-          <MaterialIcons name="alarm-off" size={32} color={colors.onEmergency} />
-          <Text style={styles.dismissText}>Desligar Alarme</Text>
+          <MaterialIcons name={vindoDoAlarmKit ? 'check' : 'alarm-off'} size={32} color={vindoDoAlarmKit ? colors.onSuccess : colors.onEmergency} />
+          <Text style={[styles.dismissText, vindoDoAlarmKit && { color: colors.onSuccess }]}>
+            {vindoDoAlarmKit ? 'Confirmado' : 'Desligar Alarme'}
+          </Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -790,7 +905,8 @@ const styles = StyleSheet.create({
     elevation: 20,
   },
   alarmLabel: {
-    fontSize: 13,
+    // 15 é o corpo mínimo do CLAUDE.md; era 13.
+    fontSize: 15,
     fontWeight: '700',
     color: '#94A3B8',
     letterSpacing: 4,
@@ -841,7 +957,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   countdownLabel: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#94A3B8',
     textAlign: 'center',
   },
@@ -856,10 +972,16 @@ const styles = StyleSheet.create({
   },
   countdownTimerUrgent: {},
   countdownSub: {
-    fontSize: 12,
-    color: '#64748B',
+    // 15 é o corpo mínimo do CLAUDE.md; era 12, o menor da tela, justo na
+    // linha que ensina a impedir o acionamento da família. O rótulo acima
+    // subiu junto (16) para o primário não ficar menor que o secundário.
+    fontSize: 15,
+    // slate-400, não slate-500: o 500 dava 3,81:1 sobre o container.
+    color: '#94A3B8',
     textAlign: 'center',
-    lineHeight: 18,
+    // Entrelinha do estilo COMPARTILHADO: o modo acessível troca o fontSize
+    // por af.xs (16) e herda esta linha — 18 apertava o texto lá também.
+    lineHeight: 21,
   },
   escalatedBox: {
     flexDirection: 'row',
@@ -871,10 +993,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   escalatedText: {
-    fontSize: 14,
+    // Esta caixa ocupa o lugar do bloco do cronômetro quando o tempo acaba,
+    // então o aviso de que a família já foi acionada não pode chegar menor
+    // que o rótulo que ele substitui (countdownLabel, 16). Era 14.
+    fontSize: 16,
     fontWeight: '600',
     flex: 1,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   bottomSection: {
     width: '100%',

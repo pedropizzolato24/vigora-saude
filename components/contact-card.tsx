@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   phone: {
-    fontSize: 14,
+    fontSize: 16,
   },
   tagsRow: {
     flexDirection: 'row',
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   tagText: {
-    fontSize: 12,
+    fontSize: 15,
     fontWeight: '500',
   },
   actionsRow: {

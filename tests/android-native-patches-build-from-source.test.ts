@@ -26,8 +26,12 @@ describe("patches em pacotes oficiais do Expo entram no build Android", () => {
 
   it("todo pacote com AAR publicado (nome sem link:/^) que tem patch também tem buildFromSource", () => {
     // expo-alarm-module é `link:` — pacote local, sem AAR, sempre compila.
+    // expo-alarm-kit é lib de terceiro (github.com/nickdeupree) com
+    // `platforms: ["apple"]` no expo-module.config.json: não tem código Android
+    // nem AAR no Maven, então buildFromSource não teria o que compilar.
     // Só pacotes oficiais do Expo (publicados no Maven) precisam do flag.
-    const officialExpoPackages = patched.filter((name) => name.startsWith("expo-") && name !== "expo-alarm-module");
+    const semAarNoMaven = ["expo-alarm-module", "expo-alarm-kit"];
+    const officialExpoPackages = patched.filter((name) => name.startsWith("expo-") && !semAarNoMaven.includes(name));
     for (const name of officialExpoPackages) {
       expect(buildFromSource, `${name} está patchado mas falta em expo.autolinking.buildFromSource`).toContain(name);
     }

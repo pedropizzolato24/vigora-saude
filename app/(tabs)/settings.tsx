@@ -36,6 +36,7 @@ import { ProtectAccountBanner } from '@/components/protect-account-banner';
 import { TrialBanner, ExpiredBanner } from '@/components/trial-banner';
 import { scheduleCheckin, cancelCheckin } from '@/lib/checkin-service';
 import { previewNativeAlarmSound } from '@/lib/native-alarm-manager';
+import { isAlarmKitAvailable } from '@/lib/ios-alarm-kit';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
@@ -257,6 +258,12 @@ export default function SettingsScreen() {
     dispatch({ type: 'UPDATE_SETTINGS', payload: { [key]: value } });
   };
 
+  // iOS 26+: quem toca o alarme é o AlarmKit, no volume de ALARME do aparelho —
+  // settings.alarmVolume não chega nele e o slider viraria um controle que não
+  // faz nada, que é pior que controle nenhum. O volume da VOZ continua valendo:
+  // a fala é nossa, sai por expo-speech na tela do alarme.
+  const volumeEhDoCelular = isAlarmKitAvailable();
+
   // Audio player for volume preview
   const previewPlayer = useAudioPlayer(ALARM_SOUND);
   const previewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -443,7 +450,7 @@ export default function SettingsScreen() {
           {/* Accessibility toggle - always visible at top */}
           <Pressable
             onPress={handleToggleAccessibility}
-            style={({ pressed }) => [{ borderRadius: 20, borderWidth: 3, borderColor: colors.primary, backgroundColor: colors.primary, padding: 20, flexDirection: 'row', alignItems: 'center', gap: 14, opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [{ borderRadius: 20, borderWidth: 3, borderColor: colors.primary, backgroundColor: colors.primarySurface, padding: 20, flexDirection: 'row', alignItems: 'center', gap: 14, opacity: pressed ? 0.85 : 1 }]}
           >
             <MaterialIcons name="accessibility-new" size={36} color={colors.onPrimary} />
             <View style={{ flex: 1 }}>
@@ -476,30 +483,40 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          {/* Volume */}
-          <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 16 }}>
-            <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>Volume do Alarme</Text>
-            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.primary, textAlign: 'center' }}>{settings.alarmVolume}%</Text>
-            <View style={{ height: 12, backgroundColor: ac.border, borderRadius: 6, overflow: 'hidden' }}>
-              <View style={{ height: 12, backgroundColor: ac.primary, width: `${settings.alarmVolume}%` as any, borderRadius: 6 }} />
+          {/* Volume — no caminho do AlarmKit o slider não governa nada, então
+              some e é substituído pela explicação. Ver volumeEhDoCelular. */}
+          {volumeEhDoCelular ? (
+            <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 12 }}>
+              <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>Volume do Alarme</Text>
+              <Text style={{ fontSize: af.md, color: ac.muted, lineHeight: af.md * 1.4 }}>
+                O alarme toca no volume do alarme do celular. Use os botões de volume da lateral enquanto ele estiver tocando.
+              </Text>
             </View>
-            <View style={{ flexDirection: 'row', gap: 16 }}>
-              <Pressable
-                onPress={() => handleVolumeChange(-10)}
-                style={({ pressed }) => [{ flex: 1, backgroundColor: ac.surface, borderRadius: 16, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 3, borderColor: ac.border, opacity: pressed ? 0.7 : 1 }]}
-              >
-                <MaterialIcons name="volume-down" size={28} color={ac.foreground} />
-                <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>-10</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => handleVolumeChange(10)}
-                style={({ pressed }) => [{ flex: 1, backgroundColor: ac.primary, borderRadius: 16, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 3, borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
-              >
-                <MaterialIcons name="volume-up" size={28} color={colors.onPrimary} />
-                <Text style={{ fontSize: af.lg, fontWeight: '800', color: colors.onPrimary }}>+10</Text>
-              </Pressable>
+          ) : (
+            <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 16 }}>
+              <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>Volume do Alarme</Text>
+              <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.primary, textAlign: 'center' }}>{settings.alarmVolume}%</Text>
+              <View style={{ height: 12, backgroundColor: ac.border, borderRadius: 6, overflow: 'hidden' }}>
+                <View style={{ height: 12, backgroundColor: ac.primary, width: `${settings.alarmVolume}%` as any, borderRadius: 6 }} />
+              </View>
+              <View style={{ flexDirection: 'row', gap: 16 }}>
+                <Pressable
+                  onPress={() => handleVolumeChange(-10)}
+                  style={({ pressed }) => [{ flex: 1, backgroundColor: ac.surface, borderRadius: 16, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 3, borderColor: ac.border, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <MaterialIcons name="volume-down" size={28} color={ac.foreground} />
+                  <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>-10</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => handleVolumeChange(10)}
+                  style={({ pressed }) => [{ flex: 1, backgroundColor: ac.primary, borderRadius: 16, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 3, borderColor: colors.primary, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <MaterialIcons name="volume-up" size={28} color={colors.onPrimary} />
+                  <Text style={{ fontSize: af.lg, fontWeight: '800', color: colors.onPrimary }}>+10</Text>
+                </Pressable>
+              </View>
             </View>
-          </View>
+          )}
 
           {/* Voice Settings */}
           <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 16 }}>
@@ -605,7 +622,7 @@ export default function SettingsScreen() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 12,
-                backgroundColor: countdownTestActive ? colors.emergency : ac.primary,
+                backgroundColor: countdownTestActive ? colors.emergencySurface : ac.primary,
                 borderRadius: 16,
                 paddingVertical: as_.buttonPadding,
                 borderWidth: 3,
@@ -628,7 +645,7 @@ export default function SettingsScreen() {
               <View style={{ height: 10, backgroundColor: ac.border, borderRadius: 5, overflow: 'hidden' }}>
                 <View style={{
                   height: 10,
-                  backgroundColor: colors.emergency,
+                  backgroundColor: colors.emergencySurface,
                   borderRadius: 5,
                   width: `${(countdownTestSecondsLeft / TEST_DURATION) * 100}%` as any,
                 }} />
@@ -750,14 +767,14 @@ export default function SettingsScreen() {
             borderRadius: 24,
             borderWidth: 3,
             borderColor: colors.primary,
-            backgroundColor: settings.accessibilityMode ? colors.primary : colors.surface,
+            backgroundColor: settings.accessibilityMode ? colors.primarySurface : colors.surface,
             overflow: 'hidden',
             opacity: pressed ? 0.88 : 1,
           }]}
         >
           {/* Top banner strip */}
           <View style={{
-            backgroundColor: colors.primary,
+            backgroundColor: colors.primarySurface,
             paddingHorizontal: 18,
             paddingVertical: 10,
             flexDirection: 'row',
@@ -836,45 +853,57 @@ export default function SettingsScreen() {
           />
           <Divider colors={colors} />
 
-          {/* Volume do Alarme */}
-          <View style={styles.volumeSection}>
-            <View style={styles.volumeHeader}>
-              <Text style={[styles.settingLabel, { color: colors.foreground }]}>Volume do Alarme</Text>
-              <Text style={[styles.volumeValue, { color: colors.primary }]}>
-                {settings.alarmVolume}%
+          {/* Volume do Alarme — no caminho do AlarmKit o slider não governa
+              nada, então some e é substituído pela explicação. */}
+          {volumeEhDoCelular ? (
+            <View style={styles.volumeSection}>
+              <View style={styles.volumeHeader}>
+                <Text style={[styles.settingLabel, { color: colors.foreground }]}>Volume do Alarme</Text>
+              </View>
+              <Text style={[styles.settingSubLabel, { color: colors.muted }]}>
+                O alarme toca no volume do alarme do celular. Use os botões de volume da lateral enquanto ele estiver tocando.
               </Text>
             </View>
-            <View style={[styles.volumeBarBg, { backgroundColor: colors.border }]}>
-              <View
-                style={[
-                  styles.volumeBarFill,
-                  { backgroundColor: colors.primary, width: `${settings.alarmVolume}%` },
-                ]}
-              />
+          ) : (
+            <View style={styles.volumeSection}>
+              <View style={styles.volumeHeader}>
+                <Text style={[styles.settingLabel, { color: colors.foreground }]}>Volume do Alarme</Text>
+                <Text style={[styles.volumeValue, { color: colors.primary }]}>
+                  {settings.alarmVolume}%
+                </Text>
+              </View>
+              <View style={[styles.volumeBarBg, { backgroundColor: colors.border }]}>
+                <View
+                  style={[
+                    styles.volumeBarFill,
+                    { backgroundColor: colors.primarySurface, width: `${settings.alarmVolume}%` },
+                  ]}
+                />
+              </View>
+              <View style={styles.volumeControls}>
+                <Pressable
+                  onPress={() => handleVolumeChange(-10)}
+                  style={({ pressed }) => [
+                    styles.volumeBtn,
+                    { backgroundColor: colors.border, opacity: pressed ? 0.7 : 1 },
+                  ]}
+                >
+                  <MaterialIcons name="volume-down" size={18} color={colors.foreground} />
+                  <Text style={[styles.volumeBtnText, { color: colors.foreground }]}>-10</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => handleVolumeChange(10)}
+                  style={({ pressed }) => [
+                    styles.volumeBtn,
+                    { backgroundColor: colors.primarySurface, opacity: pressed ? 0.7 : 1 },
+                  ]}
+                >
+                  <MaterialIcons name="volume-up" size={18} color={colors.onPrimary} />
+                  <Text style={[styles.volumeBtnText, { color: colors.onPrimary }]}>+10</Text>
+                </Pressable>
+              </View>
             </View>
-            <View style={styles.volumeControls}>
-              <Pressable
-                onPress={() => handleVolumeChange(-10)}
-                style={({ pressed }) => [
-                  styles.volumeBtn,
-                  { backgroundColor: colors.border, opacity: pressed ? 0.7 : 1 },
-                ]}
-              >
-                <MaterialIcons name="volume-down" size={18} color={colors.foreground} />
-                <Text style={[styles.volumeBtnText, { color: colors.foreground }]}>-10</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => handleVolumeChange(10)}
-                style={({ pressed }) => [
-                  styles.volumeBtn,
-                  { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 },
-                ]}
-              >
-                <MaterialIcons name="volume-up" size={18} color={colors.onPrimary} />
-                <Text style={[styles.volumeBtnText, { color: colors.onPrimary }]}>+10</Text>
-              </Pressable>
-            </View>
-          </View>
+          )}
           <Divider colors={colors} />
 
           {/* Volume da Voz */}
@@ -892,7 +921,7 @@ export default function SettingsScreen() {
               <View
                 style={[
                   styles.volumeBarFill,
-                  { backgroundColor: colors.primary, width: `${settings.speechVolume}%` },
+                  { backgroundColor: colors.primarySurface, width: `${settings.speechVolume}%` },
                 ]}
               />
             </View>
@@ -911,7 +940,7 @@ export default function SettingsScreen() {
                 onPress={() => handleSpeechVolumeChange(10)}
                 style={({ pressed }) => [
                   styles.volumeBtn,
-                  { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 },
+                  { backgroundColor: colors.primarySurface, opacity: pressed ? 0.7 : 1 },
                 ]}
               >
                 <MaterialIcons name="volume-up" size={18} color={colors.onPrimary} />
@@ -935,7 +964,7 @@ export default function SettingsScreen() {
                   style={({ pressed }) => [
                     styles.fontSizeBtn,
                     {
-                      backgroundColor: settings.speechRate === opt.value ? colors.primary : colors.background,
+                      backgroundColor: settings.speechRate === opt.value ? colors.primarySurface : colors.background,
                       borderColor: settings.speechRate === opt.value ? colors.primary : colors.border,
                       opacity: pressed ? 0.7 : 1,
                     },
@@ -975,7 +1004,7 @@ export default function SettingsScreen() {
                   style={({ pressed }) => [
                     styles.fontSizeBtn,
                     {
-                      backgroundColor: settings.timerDuration === opt.value ? colors.primary : colors.background,
+                      backgroundColor: settings.timerDuration === opt.value ? colors.primarySurface : colors.background,
                       borderColor: settings.timerDuration === opt.value ? colors.primary : colors.border,
                       opacity: pressed ? 0.7 : 1,
                     },
@@ -1015,7 +1044,7 @@ export default function SettingsScreen() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 10,
-                backgroundColor: countdownTestActive ? colors.error : colors.primary,
+                backgroundColor: countdownTestActive ? colors.error : colors.primarySurface,
                 borderRadius: 14,
                 paddingVertical: 14,
                 paddingHorizontal: 20,
@@ -1275,7 +1304,7 @@ export default function SettingsScreen() {
             <Pressable
               onPress={handleOpenLocationSettings}
               style={({ pressed }) => [{
-                backgroundColor: colors.primary,
+                backgroundColor: colors.primarySurface,
                 paddingHorizontal: 12,
                 paddingVertical: 7,
                 borderRadius: 8,
@@ -1320,7 +1349,7 @@ export default function SettingsScreen() {
                 }}
                 style={({ pressed }) => [
                   styles.thresholdBtn,
-                  { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 },
+                  { backgroundColor: colors.primarySurface, opacity: pressed ? 0.7 : 1 },
                 ]}
               >
                 <MaterialIcons name="add" size={20} color={colors.onPrimary} />
@@ -1427,7 +1456,7 @@ export default function SettingsScreen() {
                   style={({ pressed }) => [
                     styles.fontSizeBtn,
                     {
-                      backgroundColor: settings.fontSize === size ? colors.primary : colors.background,
+                      backgroundColor: settings.fontSize === size ? colors.primarySurface : colors.background,
                       borderColor: settings.fontSize === size ? colors.primary : colors.border,
                       opacity: pressed ? 0.7 : 1,
                     },
@@ -1741,7 +1770,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   fontPreviewLabel: {
-    fontSize: 11,
+    fontSize: 15,
     fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -1808,7 +1837,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   footerVersion: {
-    fontSize: 12,
+    fontSize: 15,
   },
   footerLinks: {
     flexDirection: 'row',
@@ -1817,16 +1846,16 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   footerLink: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '500',
   },
   footerDot: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
   },
   footerCopyright: {
-    fontSize: 11,
+    fontSize: 15,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 21,
   },
 });

@@ -118,7 +118,7 @@ export function UpdateBanner() {
             styles.button,
             {
               minHeight: buttonMinHeight,
-              backgroundColor: colors.primary,
+              backgroundColor: colors.primarySurface,
               opacity: pressed ? 0.8 : 1,
             },
           ]}

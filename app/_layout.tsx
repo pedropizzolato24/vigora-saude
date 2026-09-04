@@ -2,7 +2,7 @@ import "@/global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import { Platform } from "react-native";
@@ -19,17 +19,27 @@ import { AppLockGate } from '@/components/app-lock-gate';
 import { UpdateBanner } from '@/components/update-banner';
 import { syncAlarmsOnStartup } from "@/lib/alarm-sync";
 import { setupNotificationChannels, requestNotificationPermissions } from "@/lib/notifications-utils";
+import { alarmKit } from "@/lib/_core/ios-alarm-kit-bridge";
+import {
+  APP_GROUP,
+  isAlarmKitAvailable,
+  requestAlarmKitAuthorization,
+  confirmAlarmKitDismissal,
+  watchAlarmKitDismissals,
+} from "@/lib/ios-alarm-kit";
+import { flushPendingConfirmations } from "@/lib/monitoring-service";
+import { loadCurrentAppStateRaw } from "@/lib/app-state-storage";
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
-import { useRouter } from 'expo-router';
+import { router, useRouter } from 'expo-router';
 import { AlarmSyncInitializer } from "@/components/alarm-sync-initializer";
 import { AlarmNotificationHandler } from '@/components/alarm-notification-handler';
 import { MonitoringInitializer } from '@/components/monitoring-initializer';
 import { CheckinInitializer } from '@/components/checkin-initializer';
 import { OnboardingGate } from '@/components/onboarding-gate';
 import { refreshSessionOnStartup } from "@/lib/session-refresh";
-import { subscribeSessionExpired } from "@/lib/_core/auth";
+import { subscribeSessionExpired, migrateKeychainAccessibility } from "@/lib/_core/auth";
 import {
   SafeAreaFrameContext,
   SafeAreaInsetsContext,
@@ -50,6 +60,20 @@ export const unstable_settings = {
   anchor: "(tabs)",
 };
 
+/**
+ * Empurra ao servidor o que a fila de confirmações tiver pendente, depois de um
+ * dismiss do AlarmKit ter sido drenado.
+ *
+ * Sem await de propósito: a confirmação já está gravada na fila local e o
+ * MonitoringInitializer reenvia no bootstrap autenticado — segurar o boot (ou o
+ * retorno ao primeiro plano) por até 15s de timeout de rede não compra nada.
+ */
+function reenviarConfirmacao(): void {
+  flushPendingConfirmations().catch((e) =>
+    console.warn('[RootLayout] reenvio da confirmação do dismiss falhou:', e),
+  );
+}
+
 export default function RootLayout() {
   const initialInsets = initialWindowMetrics?.insets ?? DEFAULT_WEB_INSETS;
   const initialFrame = initialWindowMetrics?.frame ?? DEFAULT_WEB_FRAME;
@@ -63,6 +87,47 @@ export default function RootLayout() {
     'SpaceMono-Regular': require('../assets/fonts/SpaceMono-Regular.ttf'),
     'SpaceMono-Bold': require('../assets/fonts/SpaceMono-Bold.ttf'),
   });
+
+  /**
+   * Um dismiss do AlarmKit acabou de ser drenado: reenvia a confirmação e abre
+   * a tela do alarme.
+   *
+   * `fromAlarmKit=1` é o que conta à alarm-ring a PROCEDÊNCIA do disparo — dali
+   * ela deriva que não deve tocar som, vibrar nem rodar o countdown, porque o
+   * alarme já tocou em tela cheia e já foi respondido. Sem o parâmetro a tela
+   * se comporta como no caminho antigo, que é o certo para as outras rotas que
+   * levam a ela (botão "Testar" da lista, notificação legada).
+   *
+   * É esta navegação que cumpre a promessa da spec: o app abre falando qual
+   * remédio é (no caminho do AlarmKit é a primeira vez que o idoso ouve isso) e
+   * mostrando "Confirmado".
+   *
+   * ⚠️ NÃO acrescente uma guarda de rota aqui ("só navega se não estiver na
+   * alarm-ring"). Ela já existiu e foi removida: para saber a rota atual, a
+   * RAIZ precisa assinar o store do router (`usePathname` →
+   * `useSyncExternalStore`), e aí o RootLayout — que hoje renderiza uma vez —
+   * passa a renderizar a cada troca de rota, inclusive troca de aba. Como o
+   * `content` é montado inline sem `useMemo`, isso arrasta a cadeia inteira de
+   * providers, e o AppContext publica `value` como objeto literal novo a cada
+   * render: invalida o contexto para os 28 arquivos que usam `useAppContext()`.
+   * Caro num Samsung A / Moto G, que é o aparelho do nosso público.
+   *
+   * E a guarda é redundante. A proteção contra dreno duplo é anterior e mais
+   * forte: `takeDismissal()` → `getLaunchPayload()` CONSOME o payload na
+   * leitura, então boot e AppState nunca navegam duas vezes pelo mesmo dismiss.
+   * O que sobra descoberto é outra alarm-ring já aberta quando chega um dismiss
+   * NOVO — e aí empilhar não tem risco para o dead man's switch: a confirmação
+   * desse dismiss já foi enfileirada antes desta chamada, e o perigo que
+   * docs/claude/alarmes.md descreve (a instância soterrada que expira e escala
+   * sozinha) depende do countdown, que não roda no ramo `fromAlarmKit=1`.
+   *
+   * Deps [] de propósito: esta função não lê nada do render — `router` é o
+   * singleton imperativo do expo-router.
+   */
+  const aoDrenarDismiss = useCallback((alarmId: string) => {
+    reenviarConfirmacao();
+    router.push(`/alarm-ring?alarmId=${encodeURIComponent(alarmId)}&fromAlarmKit=1`);
+  }, []);
 
   // Diagnóstico do splash longo (item 2 do feedback 27/07): quanto do tempo até
   // a primeira tela é fonte, quanto é provider, quanto é rede.
@@ -84,18 +149,62 @@ export default function RootLayout() {
   // Set up notification channels and request permissions on startup
   useEffect(() => {
     const init = async () => {
+      // AlarmKit (iOS 26+): configure() guarda o App Group que vira o suiteName
+      // do UserDefaults compartilhado — sem ele o módulo não grava nem lê a
+      // lista de alarmes (setAlarm/getAllAlarms), então agendar e conferir o
+      // que está agendado dependem dele. Por isso vem antes de qualquer outra
+      // chamada. O payload do dismiss NÃO depende do App Group: o intent grava
+      // um static dentro do processo do app.
+      if (isAlarmKitAvailable()) {
+        const appGroupOk = alarmKit?.configure(APP_GROUP);
+        if (!appGroupOk) {
+          // A Fase 0 mediu: sem o App Group no entitlement, configure() devolve
+          // false. Aí getAllAlarms() volta vazio para sempre, TODO alarme parece
+          // faltando e é reagendado a cada abertura do app — a mesma classe de
+          // bug das ~15-20 notificações simultâneas do iPhone, agora do lado do
+          // AlarmKit. Sem este log a falha não aparece em lugar nenhum.
+          console.error(
+            `[AlarmKit] configure() recusou o App Group ${APP_GROUP} — o UserDefaults compartilhado não abriu; agendar e listar alarmes vão falhar`,
+          );
+        }
+
+        // O app pode ter sido aberto pelo "Desligar" do alarme, e esse toque É
+        // a resposta do idoso. Confirmar aqui, no boot, é o caminho normal do
+        // dead man's switch: sem isso o monitoring-job escala um alarme que foi
+        // atendido e a família recebe mensagem à toa.
+        //
+        // Vem antes de requestAlarmKitAuthorization de propósito: a autorização
+        // pode ficar parada num diálogo do sistema e a confirmação não depende
+        // dela.
+        const confirmado = await confirmAlarmKitDismissal(loadCurrentAppStateRaw);
+        if (confirmado) aoDrenarDismiss(confirmado);
+
+        await requestAlarmKitAuthorization();
+      }
+
       await setupNotificationChannels();
       await requestNotificationPermissions();
     };
     init();
-  }, []);
+
+    // O caminho de cima só cobre o app que SUBIU pelo dismiss. Com o app
+    // suspenso em memória o intent grava o payload e traz o app para frente sem
+    // remontar nada — este efeito não roda de novo e, sem o ouvinte abaixo, a
+    // confirmação nunca sairia.
+    return watchAlarmKitDismissals(loadCurrentAppStateRaw, aoDrenarDismiss);
+  }, [aoDrenarDismiss]);  // aoDrenarDismiss é estável (useCallback com deps [])
 
   // Sliding session + expired-session guard. Refresh the token on startup so an
   // actively-used device never logs out — a dead session silently disarms the
   // dead man's switch (heartbeat/sync/events all 401). If the server rejects
   // the session (token expired / user deleted), route the user back to login.
   useEffect(() => {
-    refreshSessionOnStartup();
+    // A migração vem ANTES do refresh: ela apaga e regrava a credencial, e um
+    // refresh escrevendo token no meio disso perderia a corrida. É no-op depois
+    // da primeira vez (e no Android sempre).
+    migrateKeychainAccessibility()
+      .catch(() => {})
+      .finally(() => refreshSessionOnStartup());
     const unsubscribe = subscribeSessionExpired(() => {
       const { router } = require('expo-router');
       router.replace('/login');

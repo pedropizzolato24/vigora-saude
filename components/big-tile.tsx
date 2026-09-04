@@ -50,7 +50,7 @@ export function BigTile({
           <MaterialIcons name={icon} size={28} color={iconColor} />
         </View>
         {badge ? (
-          <View style={[styles.badge, { backgroundColor: colors.emergency }]}>
+          <View style={[styles.badge, { backgroundColor: colors.emergencySurface }]}>
             <Text
               style={[
                 styles.badgeText,

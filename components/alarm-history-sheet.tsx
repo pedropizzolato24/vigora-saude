@@ -51,25 +51,25 @@ type Tab = 'events' | 'warnings';
 const STATUS_CONFIG = {
   responded: {
     icon: 'check-circle' as const,
-    color: '#0F8A4A',
+    token: 'success' as const,
     label: 'Respondido',
     description: 'Alarme confirmado pelo usuário',
   },
   missed: {
     icon: 'cancel' as const,
-    color: '#D6161C',
+    token: 'error' as const,
     label: 'Não respondido',
     description: 'Alarme não foi atendido - SOS enviado',
   },
   not_sent: {
     icon: 'phone-disabled' as const,
-    color: '#F0C24A',
+    token: 'warning' as const,
     label: 'Não confirmado',
     description: 'O app não confirmou este alarme (celular desligado, sem internet ou app fechado)',
   },
   pending: {
     icon: 'access-time' as const,
-    color: '#3B82F6',
+    token: 'primary' as const,
     label: 'Pendente',
     description: 'Alarme ativo aguardando resposta',
   },
@@ -78,7 +78,7 @@ const STATUS_CONFIG = {
   // "aguardando resposta"; mostrar como "Pendente" confundia (parecia travado).
   scheduled: {
     icon: 'event-available' as const,
-    color: '#6B7280',
+    token: 'muted' as const,
     label: 'Agendado',
     description: 'Próximo disparo programado — aguardando o horário',
   },
@@ -96,10 +96,14 @@ function getDisplayStatus(event: AlarmEvent): keyof typeof STATUS_CONFIG {
   return event.status;
 }
 
+/**
+ * Níveis 1 e 3 são os tokens de aviso e erro. O 2 é o degrau intermediário
+ * entre eles e não tem token: a paleta não define um laranja.
+ */
 const WARNING_LEVEL_CONFIG = {
-  1: { color: '#F0C24A', label: 'Aviso leve', icon: 'warning' as const },
-  2: { color: '#F97316', label: 'Atenção moderada', icon: 'report-problem' as const },
-  3: { color: '#D6161C', label: 'Alerta sério', icon: 'error' as const },
+  1: { token: 'warning' as const, label: 'Aviso leve', icon: 'warning' as const },
+  2: { cor: '#F97316', label: 'Atenção moderada', icon: 'report-problem' as const },
+  3: { token: 'error' as const, label: 'Alerta sério', icon: 'error' as const },
 };
 
 function formatDate(isoString: string): string {
@@ -237,13 +241,14 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
               ) : (
                 events.map((event) => {
                   const cfg = STATUS_CONFIG[getDisplayStatus(event)] ?? STATUS_CONFIG.pending;
+                  const cor = colors[cfg.token];
                   return (
                     <View key={event.id} style={[styles.eventCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                      <View style={[styles.statusDot, { backgroundColor: cfg.color }]} />
+                      <View style={[styles.statusDot, { backgroundColor: cor }]} />
                       <View style={styles.eventContent}>
                         <View style={styles.eventRow}>
-                          <MaterialIcons name={cfg.icon} size={16} color={cfg.color} />
-                          <Text style={[styles.eventStatus, { color: cfg.color, fontSize: fs.scaled(12) }]}>{cfg.label}</Text>
+                          <MaterialIcons name={cfg.icon} size={16} color={cor} />
+                          <Text style={[styles.eventStatus, { color: cor, fontSize: fs.scaled(12) }]}>{cfg.label}</Text>
                           <Text style={[styles.eventTime, { color: colors.muted, fontSize: fs.xs }]}>
                             {formatDate(event.scheduledAt)}
                           </Text>
@@ -271,13 +276,14 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
                 warnings.map((warning) => {
                   const lvl = warning.level as 1 | 2 | 3;
                   const cfg = WARNING_LEVEL_CONFIG[lvl] ?? WARNING_LEVEL_CONFIG[1];
+                  const cor = 'token' in cfg ? colors[cfg.token] : cfg.cor;
                   return (
                     <View key={warning.id} style={[styles.eventCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                      <View style={[styles.statusDot, { backgroundColor: cfg.color }]} />
+                      <View style={[styles.statusDot, { backgroundColor: cor }]} />
                       <View style={styles.eventContent}>
                         <View style={styles.eventRow}>
-                          <MaterialIcons name={cfg.icon} size={16} color={cfg.color} />
-                          <Text style={[styles.eventStatus, { color: cfg.color, fontSize: fs.scaled(12) }]}>{cfg.label}</Text>
+                          <MaterialIcons name={cfg.icon} size={16} color={cor} />
+                          <Text style={[styles.eventStatus, { color: cor, fontSize: fs.scaled(12) }]}>{cfg.label}</Text>
                           <Text style={[styles.eventTime, { color: colors.muted, fontSize: fs.xs }]}>
                             {formatDate(warning.sentAt)}
                           </Text>

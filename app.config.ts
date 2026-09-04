@@ -71,10 +71,17 @@ const config: ExpoConfig = {
     // 'critical'` em silêncio. A capability precisa seguir habilitada no App
     // ID, senão o build de produção falha na assinatura.
     "entitlements": {
-      "com.apple.developer.usernotifications.critical-alerts": true
+      "com.apple.developer.usernotifications.critical-alerts": true,
+      // AlarmKit (iOS 26+) — o expo-alarm-kit compartilha estado entre o app e
+      // o intent de dismiss, que roda fora do processo do app, por App Group.
+      // Sem ele, `configure()` retorna false e o dismiss não é registrado.
+      "com.apple.security.application-groups": ["group.com.vigora.saude.alarms"]
     },
     "infoPlist": {
-      "ITSAppUsesNonExemptEncryption": false
+      "ITSAppUsesNonExemptEncryption": false,
+      // AlarmKit (iOS 26+) — exigido para pedir a permissão de alarmes.
+      "NSAlarmKitUsageDescription":
+        "O Vigora usa alarmes do celular para o lembrete de remédio tocar na hora certa, mesmo no silencioso."
     }
   },
   android: {
@@ -201,7 +208,9 @@ const config: ExpoConfig = {
         // ele o Android usa o ic_launcher adaptativo, que vira quadrado cinza.
         "icon": "./assets/images/android-icon-monochrome.png",
         "color": "#0033CC",
-        "sounds": ["./assets/alarm_notification.wav"],
+        // alarm.mp3 entra na lista só para o plugin copiá-lo para o bundle iOS:
+        // o AlertSound.named do AlarmKit lê do main bundle, com a extensão.
+        "sounds": ["./assets/alarm_notification.wav", "./assets/alarm.mp3"],
         "defaultChannel": "default"
       }
     ],

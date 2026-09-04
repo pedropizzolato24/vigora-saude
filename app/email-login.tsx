@@ -308,7 +308,7 @@ export default function EmailLoginScreen() {
           style={({ pressed }) => [
             styles.submitButton,
             {
-              backgroundColor: colors.primary,
+              backgroundColor: colors.primarySurface,
               opacity: pressed || loading ? 0.75 : 1,
             },
           ]}
@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
   },
   noteText: {
     fontFamily: "PlusJakartaSans",
-    fontSize: 14,
+    fontSize: 16,
     lineHeight: 20,
   },
   field: {
@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: "PlusJakartaSans",
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
   },
   input: {

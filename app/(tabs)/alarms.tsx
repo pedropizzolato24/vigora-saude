@@ -879,7 +879,7 @@ export default function AlarmsScreen() {
           onPress={openAddModal}
           style={({ pressed }) => [
             styles.addBtn,
-            { backgroundColor: colors.primary, minHeight: fs.touch(56), opacity: pressed ? 0.85 : 1 },
+            { backgroundColor: colors.primarySurface, minHeight: fs.touch(56), opacity: pressed ? 0.85 : 1 },
           ]}
           accessibilityRole="button"
           accessibilityLabel="Adicionar lembrete de medicação"
@@ -958,7 +958,7 @@ export default function AlarmsScreen() {
                             style={[
                               styles.quickPickChip,
                               {
-                                backgroundColor: selected ? colors.primary : colors.surface,
+                                backgroundColor: selected ? colors.primarySurface : colors.surface,
                                 borderColor: selected ? colors.primary : colors.border,
                                 minHeight: fs.touch(44),
                               },
@@ -1023,7 +1023,7 @@ export default function AlarmsScreen() {
                           style={[
                             styles.repeatOption,
                             {
-                              backgroundColor: form.repeat === opt.value ? colors.primary : colors.surface,
+                              backgroundColor: form.repeat === opt.value ? colors.primarySurface : colors.surface,
                               borderColor: form.repeat === opt.value ? colors.primary : colors.border,
                               minHeight: fs.touch(44),
                             },
@@ -1069,7 +1069,7 @@ export default function AlarmsScreen() {
                                 style={[
                                   styles.weekdayBtn,
                                   {
-                                    backgroundColor: selected ? colors.primary : colors.background,
+                                    backgroundColor: selected ? colors.primarySurface : colors.background,
                                     borderColor: selected ? colors.primary : colors.border,
                                     minHeight: fs.touch(52),
                                   },
