@@ -9717,7 +9717,7 @@ snapshots:
       react: 19.1.0
       react-native: 0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0)
 
-  expo-alarm-module@1.2.0(patch_hash=663mafudrkvoeoje2ct7lhtmfu)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
+  expo-alarm-module@1.2.0(patch_hash=x5votz6xyy2xwhanwzcjrnkusy)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
     dependencies:
       '@types/uuid': 8.3.4
       react: 19.1.0

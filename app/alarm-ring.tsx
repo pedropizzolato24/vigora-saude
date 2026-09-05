@@ -100,7 +100,7 @@ function buildSpeechText(
 
 export default function AlarmRingScreen() {
   const router = useRouter();
-  const { alarmId, expiresAt: expiresAtParam, snooze: snoozeParam, dismiss: dismissParam } = useLocalSearchParams<{ alarmId: string; expiresAt?: string; snooze?: string; dismiss?: string }>();
+  const { alarmId, expiresAt: expiresAtParam, snooze: snoozeParam, dismiss: dismissParam, fromAlarmKit } = useLocalSearchParams<{ alarmId: string; expiresAt?: string; snooze?: string; dismiss?: string; fromAlarmKit?: string }>();
   const { state, dispatch } = useAppContext();
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac } = useAccessibility();
   const colors = useColors();
