@@ -46,6 +46,7 @@ import { getPushTokensForOpenIds } from "./db-push";
 import { sendExpoPush } from "./push";
 import type { EmergencyContactRecord } from "../drizzle/schema";
 import { formatEventTime } from "./_core/format-event-time";
+import { parseLatLng } from "./_core/parse-lat-lng";
 
 // Grace period: how long after scheduledAt we wait before resolving a pending event.
 // Precisa cobrir só o caminho feliz do cliente: countdown máximo de 60s
@@ -468,11 +469,13 @@ export async function runMonitoringJob(): Promise<void> {
       // a última localização conhecida ainda ajuda quem vai atrás da pessoa.
       let locationUrl: string | undefined;
       const liveness = await getAccountLiveness(account.openId);
-      if (liveness?.lastLocation) {
-        const [lat, lng] = liveness.lastLocation.split(",");
-        if (lat && lng) {
-          locationUrl = `https://maps.google.com/?q=${lat},${lng}`;
-        }
+      // parseLatLng (e não split(",")) porque esta URL entra no corpo da
+      // mensagem enviada sob o remetente confiável do Vigora: qualquer texto
+      // com vírgula virava link arbitrário. O heartbeat já saneia na entrada;
+      // isto cobre as linhas gravadas ANTES desta correção.
+      const coords = parseLatLng(liveness?.lastLocation);
+      if (coords) {
+        locationUrl = `https://maps.google.com/?q=${encodeURIComponent(coords)}`;
       }
 
       // Claim the warning slot BEFORE sending. A concurrent run that reads

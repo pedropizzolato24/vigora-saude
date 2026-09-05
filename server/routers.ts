@@ -7,6 +7,7 @@ import { sdk, revokeJti } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { isWhatsAppApiConfigured, sendEmergencyAlerts } from "./whatsapp";
+import { normalizeBrPhone } from "./phone-auth";
 import { monitoringRouter } from "./routers-monitoring";
 import { linkRouter } from "./routers-links";
 import { pushRouter } from "./routers-push";
@@ -26,21 +27,38 @@ function normalizeDigits(phone: string): string {
 }
 
 /**
+ * Forma canônica de um telefone para comparação de posse.
+ *
+ * Número brasileiro passa por normalizeBrPhone (a mesma do login por telefone),
+ * que resolve DDI/DDD e devolve dígitos com o 55 na frente — assim
+ * "(11) 99999-9999", "5511999999999" e "+55 11 9 9999-9999" convergem para o
+ * MESMO valor. Número estrangeiro (ou fora do padrão BR) cai nos dígitos
+ * completos, nunca num sufixo.
+ */
+function canonicalPhone(phone: string): string | null {
+  const br = normalizeBrPhone(phone);
+  if (br) return br;
+  const digits = normalizeDigits(phone);
+  return digits.length >= 8 ? digits : null;
+}
+
+/**
  * Returns true if `claimed` matches one of the stored emergency contacts.
- * Match is by digit-only suffix (8 digits — covers BR mobile without country
- * code or DDD differences) so legitimate format drift doesn't block alerts.
+ *
+ * SECURITY: a comparação é pelo número COMPLETO. A versão anterior comparava
+ * só os 8 dígitos finais, o que descartava DDI, DDD e o nono dígito: um contato
+ * salvo em "(11) 9 8888-7777" autorizava envio para "(51) 8888-7777" e todas as
+ * outras variantes de DDD — cerca de uma centena de números reais por contato
+ * cadastrado, em vez de um. A garantia declarada na rota ("no arbitrary
+ * destinations") não se sustentava.
  */
 function isAllowedRecipient(
   claimed: { phone: string; name: string },
   stored: EmergencyContactRecord[]
 ): boolean {
-  const claimedDigits = normalizeDigits(claimed.phone);
-  if (claimedDigits.length < 8) return false;
-  const claimedTail = claimedDigits.slice(-8);
-  return stored.some((c) => {
-    const tail = normalizeDigits(c.phone).slice(-8);
-    return tail.length >= 8 && tail === claimedTail;
-  });
+  const alvo = canonicalPhone(claimed.phone);
+  if (!alvo) return false;
+  return stored.some((c) => canonicalPhone(c.phone) === alvo);
 }
 
 /**
@@ -364,7 +382,9 @@ export const appRouter = router({
      *
      * SECURITY: Requires authentication and verifies that:
      *   1. Every phone number in `contacts` matches a stored emergency
-     *      contact for ctx.user's account (no arbitrary destinations)
+     *      contact for ctx.user's account, comparado pelo número COMPLETO
+     *      normalizado (DDI+DDD+número) — não por sufixo (no arbitrary
+     *      destinations)
      *   2. Per-user rate limit (5 calls / 60s) to prevent spam abuse
      */
     sendEmergencyAlert: protectedProcedure
@@ -474,6 +494,6 @@ export const appRouter = router({
 });
 
 // Exported for tests
-export const __testing = { isAllowedRecipient, normalizeDigits };
+export const __testing = { isAllowedRecipient, normalizeDigits, canonicalPhone };
 
 export type AppRouter = typeof appRouter;

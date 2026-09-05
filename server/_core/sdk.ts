@@ -47,8 +47,23 @@ function getSessionTtlMs(): number {
   return DEFAULT_SESSION_TTL_MS;
 }
 
+/**
+ * Chave HMAC das sessões.
+ *
+ * Lança quando o segredo está vazio em vez de codificar "": um HMAC de chave
+ * vazia assina E verifica qualquer token, ou seja, forja trivial para qualquer
+ * openId. assertRequiredSecrets já barra isso no boot; isto é a segunda linha,
+ * para o caso de o processo subir por um caminho que não passe pelo boot
+ * (script, teste, import direto). Falhar aqui vira 500 na rota — ruidoso e
+ * seguro — em vez de aceitar token forjado em silêncio.
+ */
 function getSessionSecret() {
   const secret = process.env.JWT_SECRET ?? "";
+  if (secret.length === 0) {
+    throw new Error(
+      "JWT_SECRET vazio: recusando assinar/verificar sessão com chave HMAC vazia.",
+    );
+  }
   return new TextEncoder().encode(secret);
 }
 

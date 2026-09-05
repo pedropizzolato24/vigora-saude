@@ -29,6 +29,20 @@ describe('redirectSystemPath (deep links da notificação de alarme)', () => {
     ).toBe('/alarm-ring?alarmId=abc123');
   });
 
+  it('repassa dismiss=1 do botão Dispensar da notificação', () => {
+    // Sem o repasse a tela abre mas não confirma, e o evento vira "missed"
+    // mesmo com o idoso tendo respondido.
+    expect(
+      redirectSystemPath({ path: 'vigora://alarm-ring?uid=vigora_abc123&dismiss=1', initial: true })
+    ).toBe('/alarm-ring?alarmId=abc123&dismiss=1');
+  });
+
+  it('não inventa dismiss quando o parâmetro não veio', () => {
+    expect(
+      redirectSystemPath({ path: 'vigora://alarm-ring?uid=vigora_abc123&dismiss=0', initial: true })
+    ).toBe('/alarm-ring?alarmId=abc123');
+  });
+
   it('preserva a query do oauthredirect', () => {
     expect(
       redirectSystemPath({ path: 'vigora://oauthredirect?code=xyz&state=1', initial: true })
