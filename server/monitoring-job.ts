@@ -41,6 +41,7 @@ import {
 import { getUserByOpenId, getUserData } from "./db";
 import { purgeAbandonedAnonymousAccounts } from "./db-account";
 import { sendWhatsAppMessage, isWhatsAppApiConfigured } from "./whatsapp";
+import { sendSms, isSmsConfigured } from "./sms";
 import { getActiveCaregiversForMonitored } from "./db-links";
 import { getPushTokensForOpenIds } from "./db-push";
 import { sendExpoPush } from "./push";
@@ -235,6 +236,27 @@ function buildWarningMessage(
   return message;
 }
 
+/**
+ * Versão curta do aviso, para SMS.
+ *
+ * A mensagem do WhatsApp tem ~400 caracteres com emoji, o que no SMS viraria
+ * ~6 segmentos UCS-2 (70 chars cada) por contato, por escalação. Aqui vai só o
+ * essencial: quem, o que aconteceu, o que fazer — e a localização, que é a
+ * parte mais acionável. Os acentos são dobrados em toGsm7() no envio.
+ */
+function buildWarningSms(
+  userName: string,
+  unansweredHours: number,
+  locationUrl?: string
+): string {
+  const name = userName || "O usuário do Vigora";
+  let text =
+    `Vigora: ${name} não confirmou um alarme de saúde há ` +
+    `${formatOfflineDuration(unansweredHours)}. Entre em contato para verificar.`;
+  if (locationUrl) text += `\nÚltima localização: ${locationUrl}`;
+  return text;
+}
+
 /** Short push title for an unanswered-alarm warning, by escalation level. */
 function buildWarningPushTitle(level: number): string {
   if (level === 1) return "⚠️ Aviso — Vigora";
@@ -249,30 +271,46 @@ function buildWarningPushBody(userName: string, unansweredHours: number): string
 }
 
 /**
- * Send a warning message to a single contact via WhatsApp.
+ * Send a warning to a single contact via WhatsApp E SMS.
  *
- * Returns whether the message was sent, and the error when it was not.
+ * Os dois canais saem sempre, não em cascata: eles falham por motivos
+ * diferentes (o WhatsApp precisa de internet e do app no aparelho do contato;
+ * o SMS só de sinal de celular), e um aviso de dead man's switch que não chega
+ * a ninguém custa mais caro que a mensagem duplicada. `sent` é o OU dos dois —
+ * o contato foi alcançado por ALGUM canal.
+ *
+ * `smsText` é uma versão curta e sem emoji da mensagem: ver toGsm7() em sms.ts.
  */
 async function sendToContact(
   contact: { name: string; phone: string; whatsapp?: boolean },
-  message: string
+  message: string,
+  smsText: string
 ): Promise<{ sent: boolean; error?: string }> {
-  if (!isWhatsAppApiConfigured()) {
-    return { sent: false, error: "WhatsApp Business API not configured" };
-  }
-  if (!contact.whatsapp || !contact.phone) {
-    return { sent: false, error: "Contact has no WhatsApp number" };
+  if (!contact.phone) {
+    return { sent: false, error: "Contact has no phone number" };
   }
 
-  const result = await sendWhatsAppMessage(contact.phone, message);
-  if (result.success) {
-    // No PII in logs: contact name/phone are personal data (LGPD). The masked
-    // recipient + message id are already logged by sendWhatsAppMessage.
-    console.log(`[Monitor] ✅ WhatsApp delivered to an emergency contact`);
+  const wa = !isWhatsAppApiConfigured()
+    ? { success: false, error: "WhatsApp Business API not configured" }
+    : !contact.whatsapp
+      ? { success: false, error: "Contact has no WhatsApp number" }
+      : await sendWhatsAppMessage(contact.phone, message);
+
+  const sms = isSmsConfigured()
+    ? await sendSms(contact.phone, smsText)
+    : { success: false, error: "Twilio (SMS) not configured" };
+
+  // No PII in logs: contact name/phone are personal data (LGPD). The masked
+  // recipient + message id are already logged inside each channel.
+  if (wa.success || sms.success) {
+    console.log(
+      `[Monitor] ✅ Contato de emergência alcançado (WhatsApp: ${wa.success}, SMS: ${sms.success})`
+    );
     return { sent: true };
   }
-  console.warn(`[Monitor] ⚠️ WhatsApp delivery failed for a contact:`, result.error);
-  return { sent: false, error: result.error };
+  const error = `WhatsApp: ${wa.error}; SMS: ${sms.error}`;
+  console.warn(`[Monitor] ⚠️ Nenhum canal entregou para um contato:`, error);
+  return { sent: false, error };
 }
 
 /** Open IDs of every caregiver actively linked to the monitored person. */
@@ -502,15 +540,19 @@ export async function runMonitoringJob(): Promise<void> {
       console.log(
         `[Monitor] Sending level ${warningLevel} warning for account ${account.openId} (${unansweredHours}h sem resposta)`
       );
-      console.log(`[Monitor] WhatsApp configured: ${isWhatsAppApiConfigured()}`);
+      console.log(
+        `[Monitor] Canais configurados — WhatsApp: ${isWhatsAppApiConfigured()}, SMS: ${isSmsConfigured()}`
+      );
 
+      const smsText = buildWarningSms(userName, unansweredHours, locationUrl);
       let totalSent = 0;
       let totalFailed = 0;
 
       for (const contact of contacts) {
         const result = await sendToContact(
           { name: contact.name, phone: contact.phone, whatsapp: contact.whatsapp },
-          message
+          message,
+          smsText
         );
 
         if (result.sent) {
@@ -548,7 +590,7 @@ export async function runMonitoringJob(): Promise<void> {
       }
 
       console.log(
-        `[Monitor] Warning sent: ${totalSent} contacts reached via WhatsApp, ${totalFailed} failed; ${pushed} caregiver push(es) delivered`
+        `[Monitor] Warning sent: ${totalSent} contacts reached via WhatsApp/SMS, ${totalFailed} failed; ${pushed} caregiver push(es) delivered`
       );
     }
   } catch (error) {
@@ -580,13 +622,18 @@ export async function runMonitoringJob(): Promise<void> {
         `Por favor, entre em contato para verificar se está tudo bem.\n\n` +
         `- Enviado automaticamente pelo Vigora`;
 
+      const smsText =
+        `Vigora: ${name} não respondeu ao check-in de saúde das ${scheduledStr}. ` +
+        `Entre em contato para verificar.`;
+
       console.log(`[Monitor] Step 3: escalating check-in for account ${event.openId}`);
 
       let totalSent = 0;
       for (const contact of contacts) {
         const result = await sendToContact(
           { name: contact.name, phone: contact.phone, whatsapp: contact.whatsapp },
-          message
+          message,
+          smsText
         );
         if (result.sent) totalSent++;
         await new Promise((r) => setTimeout(r, 500));
@@ -641,12 +688,18 @@ export async function runMonitoringJob(): Promise<void> {
           `${name} não confirmou o alarme "${desc}" previsto para ${scheduledStr}.\n\n` +
           `Por favor, entre em contato para verificar se está tudo bem.\n\n` +
           `- Enviado automaticamente pelo Vigora`;
+      const smsText = notSent
+        ? `Vigora: o alarme "${desc}" de ${name}, das ${scheduledStr}, não pôde ser ` +
+          `entregue - o celular pode estar desligado ou sem conexão. Entre em contato.`
+        : `Vigora: ${name} não confirmou o alarme "${desc}" das ${scheduledStr}. ` +
+          `Entre em contato para verificar.`;
 
       let totalSent = 0;
       for (const contact of contacts) {
         const result = await sendToContact(
           { name: contact.name, phone: contact.phone, whatsapp: contact.whatsapp },
-          message
+          message,
+          smsText
         );
         if (result.sent) totalSent++;
         await new Promise((r) => setTimeout(r, 500));

@@ -7,6 +7,7 @@ import { sdk, revokeJti } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { isWhatsAppApiConfigured, sendEmergencyAlerts } from "./whatsapp";
+import { isSmsConfigured, sendSmsAlerts } from "./sms";
 import { normalizeBrPhone } from "./phone-auth";
 import { monitoringRouter } from "./routers-monitoring";
 import { linkRouter } from "./routers-links";
@@ -445,49 +446,75 @@ export const appRouter = router({
           });
         }
 
-        if (!isWhatsAppApiConfigured()) {
+        // Só desiste quando NENHUM dos dois canais está configurado — com o
+        // Twilio no ar o SOS ainda sai por SMS sem o WhatsApp, e vice-versa.
+        if (!isWhatsAppApiConfigured() && !isSmsConfigured()) {
           return {
             success: false,
             sent: 0,
             failed: input.contacts.length,
-            error: "WhatsApp Business API não configurada. Configure WHATSAPP_API_TOKEN e WHATSAPP_PHONE_NUMBER_ID nas configurações do servidor.",
+            error: "Nenhum canal de alerta configurado no servidor. Configure WHATSAPP_API_TOKEN/WHATSAPP_PHONE_NUMBER_ID ou TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN/TWILIO_FROM_NUMBER.",
           };
         }
 
         // Build the emergency message
         const userName = input.userName || "O usuário";
         let message: string;
+        // Versão curta para SMS (ver toGsm7() em sms.ts): sem emoji e sem
+        // acento o alerta cabe em 1-2 segmentos GSM-7 em vez de 6 em UCS-2.
+        let smsText: string;
         if (input.alertType === "sos") {
           message =
             `🆘 SOS — VIGORA SAÚDE 🆘\n\n` +
             `${userName} acionou o botão de EMERGÊNCIA e precisa de ajuda AGORA.\n` +
             `Por favor, entre em contato imediatamente ou vá até a pessoa.`;
+          smsText =
+            `Vigora SOS: ${userName} acionou o botão de emergência e precisa de ajuda AGORA. ` +
+            `Entre em contato imediatamente ou vá até a pessoa.`;
           if (input.locationUrl) {
             message += `\n\n📍 Localização atual:\n${input.locationUrl}`;
+            smsText += `\nLocalização: ${input.locationUrl}`;
           }
         } else {
           message =
             `⚠️ ALERTA VIGORA SAÚDE ⚠️\n\n` +
             `${userName} não respondeu a ${input.missedAlarmCount} alarme(s) consecutivo(s) de medicamento.\n` +
             `Por favor, entre em contato urgentemente para verificar se está tudo bem.`;
+          smsText =
+            `Vigora: ${userName} não respondeu a ${input.missedAlarmCount} alarme(s) de ` +
+            `medicamento. Entre em contato para verificar se está tudo bem.`;
           if (input.locationUrl) {
             message += `\n\n📍 Última localização conhecida:\n${input.locationUrl}`;
+            smsText += `\nÚltima localização: ${input.locationUrl}`;
           }
         }
 
         message += `\n\n- Enviado automaticamente pelo Vigora`;
 
-        const result = await sendEmergencyAlerts(input.contacts, message);
+        // Dois canais, sempre — o contato foi alcançado se QUALQUER um entregou.
+        // Ambos percorrem input.contacts na ordem, então o índice alinha.
+        const wa = await sendEmergencyAlerts(input.contacts, message);
+        const sms = await sendSmsAlerts(input.contacts, smsText);
+
+        const details = input.contacts.map((contact, i) => {
+          const waResult = wa.results[i]?.result;
+          const smsResult = sms.results[i];
+          const success = !!waResult?.success || !!smsResult?.success;
+          return {
+            name: contact.name,
+            success,
+            error: success
+              ? undefined
+              : `WhatsApp: ${waResult?.error}; SMS: ${smsResult?.error}`,
+          };
+        });
+        const sent = details.filter((d) => d.success).length;
 
         return {
-          success: result.sent > 0,
-          sent: result.sent,
-          failed: result.failed,
-          details: result.results.map((r) => ({
-            name: r.name,
-            success: r.result.success,
-            error: r.result.error,
-          })),
+          success: sent > 0,
+          sent,
+          failed: details.length - sent,
+          details,
         };
       }),
   }),

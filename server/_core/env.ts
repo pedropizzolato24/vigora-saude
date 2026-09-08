@@ -14,6 +14,11 @@ export const ENV = {
   // WhatsApp Business API (Meta Cloud API)
   whatsappApiToken: process.env.WHATSAPP_API_TOKEN ?? "",
   whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? "",
+  // Twilio (SMS). Segundo canal da escalação, enviado JUNTO com o WhatsApp.
+  // Ausente = canal SMS inerte; a escalação segue só no WhatsApp.
+  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
+  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
+  twilioFromNumber: process.env.TWILIO_FROM_NUMBER ?? "",
   // CORS origins for browser requests. Comma-separated. Each entry is
   // either an exact match or a prefix ending in `*`.
   corsOriginAllowlist: parseCsv(process.env.CORS_ORIGIN_ALLOWLIST),
