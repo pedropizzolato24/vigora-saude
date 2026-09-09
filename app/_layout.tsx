@@ -38,6 +38,7 @@ import { AlarmNotificationHandler } from '@/components/alarm-notification-handle
 import { MonitoringInitializer } from '@/components/monitoring-initializer';
 import { CheckinInitializer } from '@/components/checkin-initializer';
 import { OnboardingGate } from '@/components/onboarding-gate';
+import { PermissionsGate } from '@/components/permissions-gate';
 import { refreshSessionOnStartup } from "@/lib/session-refresh";
 import { subscribeSessionExpired, migrateKeychainAccessibility } from "@/lib/_core/auth";
 import {
@@ -373,6 +374,7 @@ export default function RootLayout() {
         <AppProvider>
           <AlarmSyncInitializer />
           <OnboardingGate />
+          <PermissionsGate />
           <FontSizeProvider>
           <AccessibilityProvider>
           <AppLockProvider>
@@ -404,6 +406,7 @@ export default function RootLayout() {
                 animation: 'fade',
               }}
             />
+            <Stack.Screen name="permissions" />
             <Stack.Screen name="app-lock-setup" />
             <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
             <Stack.Screen name="login" options={{ gestureEnabled: false }} />

@@ -723,6 +723,28 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
+          {/* Central de permissões - Acessibilidade */}
+          <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 12 }}>
+            <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Permissões do celular</Text>
+            <Text style={{ fontSize: af.sm, color: ac.muted }}>
+              Veja o que o celular já liberou para o Vigora: avisos, alarme e localização.
+            </Text>
+            <Pressable
+              onPress={() => router.push('/permissions')}
+              accessibilityRole="button"
+              accessibilityLabel="Abrir permissões do celular"
+              style={({ pressed }) => [{
+                backgroundColor: ac.primary,
+                paddingVertical: 14,
+                borderRadius: 16,
+                alignItems: 'center',
+                opacity: pressed ? 0.7 : 1,
+              }]}
+            >
+              <Text style={{ fontSize: af.md, fontWeight: '800', color: colors.onPrimary }}>Ver permissões</Text>
+            </Pressable>
+          </View>
+
           {/* Direitos do titular (LGPD Art. 18): portabilidade fora da caixa,
               ações irreversíveis dentro dela. */}
           <DataExportButton />
@@ -1314,6 +1336,15 @@ export default function SettingsScreen() {
               <Text style={{ color: colors.onPrimary, fontSize: fs.xs, fontWeight: '600' }}>Configurar</Text>
             </Pressable>
           </View>
+          <Divider colors={colors} />
+
+          {/* Central de permissões */}
+          <SettingLink
+            label="Permissões do celular"
+            sublabel="Avisos, alarme e localização — veja o que já está liberado"
+            onPress={() => router.push('/permissions')}
+            colors={colors}
+          />
           <Divider colors={colors} />
 
           {/* Missed Alarm Threshold */}

@@ -9,7 +9,7 @@
  * O texto NÃO cita a marca ("no seu Samsung"): o público 60+ não faz essa
  * associação, e o passo já só aparece em quem tem o aparelho. Os nomes de tela
  * ("Cuidado do dispositivo") ficam — é o que ele precisa achar. Continua a
- * numeração dos passos do aviso (1 e 2 estão em alarms.tsx).
+ * numeração dos passos do aviso (1 e 2 estão em lib/permissions-check.ts).
  *
  * Função pura (sem React Native) para ficar testável; o chamador passa
  * `Platform.constants.Manufacturer`.

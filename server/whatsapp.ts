@@ -190,6 +190,21 @@ export async function sendEmergencyAlerts(
   failed: number;
   results: Array<{ name: string; phone: string; result: WhatsAppSendResult }>;
 }> {
+  // Sai antes do laço quando o canal não existe. O chamador (SOS) agora segue
+  // adiante com só o SMS configurado, e sem isto pagaria os 500ms de intervalo
+  // por contato só para colecionar o mesmo erro de configuração.
+  if (!isWhatsAppApiConfigured()) {
+    const result: WhatsAppSendResult = {
+      success: false,
+      error: "WhatsApp Business API not configured.",
+    };
+    return {
+      sent: 0,
+      failed: contacts.length,
+      results: contacts.map((c) => ({ name: c.name, phone: c.phone, result })),
+    };
+  }
+
   const results: Array<{ name: string; phone: string; result: WhatsAppSendResult }> = [];
   let sent = 0;
   let failed = 0;

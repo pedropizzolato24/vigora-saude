@@ -30,27 +30,15 @@ import { useFontSize } from '@/lib/font-size-context';
 import { BrandFonts } from '@/lib/_core/theme';
 import { generateId, useAppContext, type Alarm } from '@/lib/app-context';
 import { scheduleFullAlarm, cancelFullAlarm } from '@/lib/alarm-sync';
-import { openBatteryOptimizationSettings } from '@/lib/battery-optimization';
-import { oemBatteryHint } from '@/lib/_core/oem-battery-hint';
-import { canScheduleExactAlarms, isIgnoringBatteryOptimizations, openExactAlarmSettings, canUseFullScreenIntent, openFullScreenIntentSettings } from 'expo-alarm-countdown';
+import { canUseFullScreenIntent, openFullScreenIntentSettings } from 'expo-alarm-countdown';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MAX_ALARMS } from '@/components/pro-limits';
 
-// Evita repetir o aviso de "Alarmes e lembretes" a cada visita à aba na mesma
-// sessão (a permissão continua sendo checada — só o diálogo não re-aparece).
-let exactAlarmPromptShown = false;
-// Mesma lógica para o aviso de otimização de bateria (a isenção continua sendo
-// re-checada a cada visita — só o diálogo não re-aparece na mesma sessão).
-let batteryPromptShown = false;
-// Mesma lógica para o aviso de "Notificações em tela cheia" (Android 14+): a
-// permissão continua sendo re-checada a cada visita — só o diálogo não re-aparece.
+// Evita repetir o aviso de "Notificações em tela cheia" a cada alarme criado
+// na mesma sessão (a permissão continua sendo re-checada — só o diálogo não
+// re-aparece). Os avisos de bateria e de alarme exato saíram daqui para a
+// central de permissões (app/permissions.tsx), que os re-oferece a cada boot.
 let fullScreenPromptShown = false;
-// Um aviso de configuração por sessão: os efeitos de bateria e de alarmes
-// exatos disparam quase juntos no mount e o AppDialog é único — sem este gate o
-// segundo showDialog sobrescreve o primeiro e engole um dos avisos em silêncio.
-// O que não aparecer nesta sessão volta na próxima (a flag de tópico só é
-// marcada para o que de fato foi exibido).
-let alarmSetupPromptShownThisSession = false;
 
 const REPEAT_OPTIONS: { value: Alarm['repeat']; label: string }[] = [
   { value: 'daily', label: 'Diário' },
@@ -115,83 +103,20 @@ export default function AlarmsScreen() {
   const { dialogProps, showDialog } = useAppDialog();
   const { toastProps, showToast } = useAppToast();
 
-  // Otimização de bateria: OEMs agressivos (Samsung/Xiaomi) matam o app e o
-  // alarme não toca. Igual ao aviso de alarmes exatos abaixo: re-checa o estado
-  // REAL da isenção a cada visita e avisa 1x por sessão enquanto ela não
-  // estiver concedida (antes só marcava "já vi" e nunca mais avisava).
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    let cancelled = false;
-    (async () => {
-      const exempt = await isIgnoringBatteryOptimizations();
-      if (exempt || cancelled || batteryPromptShown || alarmSetupPromptShownThisSession) return;
-      batteryPromptShown = true;
-      alarmSetupPromptShownThisSession = true;
-      // Passo extra por fabricante (Samsung/Xiaomi têm listas próprias além da
-      // isenção padrão do Android); null nos OEMs stock.
-      const manufacturer = (Platform.constants as { Manufacturer?: string }).Manufacturer ?? '';
-      const hint = oemBatteryHint(manufacturer);
-      showDialog({
-        title: 'Para o alarme tocar sempre',
-        message:
-          'Para economizar energia, o celular pode fechar o Vigora sozinho. Se isso acontecer, o alarme não toca.\n\n' +
-          'Vamos resolver:\n' +
-          '1. Toque em "Continuar" aqui embaixo\n' +
-          '2. Na pergunta que aparecer, escolha "Permitir"' +
-          (hint ? `\n\n${hint}` : ''),
-        variant: 'warning',
-        buttons: [
-          { text: 'Agora não', style: 'cancel' },
-          { text: 'Continuar', onPress: () => openBatteryOptimizationSettings() },
-        ],
-      });
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Android 12/12L: a permissão "Alarmes e lembretes" pode estar revogada —
-  // sem ela o alarme dispara inexato (pode atrasar minutos). Diferente do
-  // aviso de bateria (uma vez só), este re-checa a permissão a cada visita e
-  // avisa 1x por sessão enquanto ela estiver desligada.
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    let cancelled = false;
-    (async () => {
-      const allowed = await canScheduleExactAlarms();
-      if (allowed || cancelled || exactAlarmPromptShown || alarmSetupPromptShownThisSession) return;
-      exactAlarmPromptShown = true;
-      alarmSetupPromptShownThisSession = true;
-      showDialog({
-        title: 'Permita alarmes exatos',
-        message:
-          'Para os alarmes tocarem na hora certa, o Vigora precisa da permissão "Alarmes e lembretes". Toque em "Abrir configurações" e ative a chave para o Vigora.',
-        variant: 'warning',
-        buttons: [
-          { text: 'Agora não', style: 'cancel' },
-          { text: 'Abrir configurações', onPress: () => { openExactAlarmSettings(); } },
-        ],
-      });
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Sem a permissão "Notificações em tela cheia" (Android 14+) o alarme vira um
   // aviso pequeno no alto da tela: a alarm-ring só abre se o idoso TOCAR nele,
   // em vez de tomar a tela sozinha como um alarme de verdade. Ela deixou de ser
   // concedida no install para apps fora da categoria alarme/chamada da loja.
   //
-  // Este aviso NÃO roda no mount junto com os outros dois. Rodava, e perdia a
-  // vaga única da sessão para o de bateria — só aparecia numa visita posterior,
-  // que na prática caía DEPOIS do primeiro alarme já ter tocado sem tela cheia.
-  // Tarde demais: o alarme que ele conserta é justamente aquele. Agora sai na
-  // criação do alarme (ver handleSave), que é quando a permissão passa a valer
-  // e quando o idoso está olhando para o assunto.
+  // Este aviso NÃO roda no mount da aba. Rodava, e perdia a vaga única da
+  // sessão para o aviso de bateria que existia aqui — só aparecia numa visita
+  // posterior, que na prática caía DEPOIS do primeiro alarme já ter tocado sem
+  // tela cheia. Tarde demais: o alarme que ele conserta é justamente aquele.
+  // Sai na criação do alarme (ver handleSave), que é quando a permissão passa a
+  // valer e quando o idoso está olhando para o assunto.
+  //
+  // A central de permissões (app/permissions.tsx) já oferece esta permissão a
+  // cada boot; este caminho cobre o caso de ela ser revogada durante a sessão.
   const promptFullScreenIfNeeded = async () => {
     if (Platform.OS !== 'android') return;
     if (fullScreenPromptShown) return;

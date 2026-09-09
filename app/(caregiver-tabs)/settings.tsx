@@ -215,6 +215,18 @@ export default function CaregiverSettingsScreen() {
           <Text style={[styles.note, { color: c.muted, fontSize: sz.note, fontFamily: BrandFonts.body }]}>
             As notificações começarão a chegar quando a sincronização estiver ativa.
           </Text>
+          {/* Os avisos acima só chegam se o celular tiver liberado as notificações
+              ao Vigora — e é justamente por aí que o cuidador fica sabendo de um
+              alarme perdido. A central abre sozinha no boot enquanto faltar
+              (components/permissions-gate.tsx); este é o caminho para conferir. */}
+          <Pressable
+            onPress={() => router.push('/permissions')}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir permissões do celular"
+            style={({ pressed }) => [styles.secondaryBtn, { borderColor: c.border, borderWidth: bw, minHeight: touch, opacity: pressed ? 0.85 : 1 }]}
+          >
+            <Text style={{ color: c.foreground, fontWeight: '600', fontSize: sz.btn, fontFamily: BrandFonts.body }}>Permissões do celular</Text>
+          </Pressable>
         </Section>
 
         {/* Aparência — tela compartilhada no Stack raiz (app/appearance-settings).
