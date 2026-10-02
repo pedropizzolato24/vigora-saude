@@ -26,21 +26,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmergencyContact } from '@/lib/app-context';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
+import * as Linking from 'expo-linking';
+import { AppDialog, useAppDialog } from '@/components/app-dialog';
+import type { EscalationResult } from '@/lib/alarm-escalation';
+import { SOS_CALL_NUMBER, sosContactStatus, sosSummary } from '@/lib/sos-status';
 
 interface SOSActiveScreenProps {
   visible: boolean;
   contacts: EmergencyContact[];
   activatedAt: number | null; // Unix ms when SOS was activated
+  /** Resultado real do envio aos contatos; null enquanto não terminou. */
+  escalation: EscalationResult | null;
   onDeactivate: () => void;
 }
 
 const INSTRUCTIONS = [
-  {
-    icon: 'phone' as const,
-    title: 'Ligue para o SAMU',
-    description: 'Disque 192 para atendimento médico de emergência.',
-    color: '#EF4444',
-  },
   {
     icon: 'self-improvement' as const,
     title: 'Mantenha a calma',
@@ -73,11 +73,48 @@ export function SOSActiveScreen({
   visible,
   contacts,
   activatedAt,
+  escalation,
   onDeactivate,
 }: SOSActiveScreenProps) {
   const colors = useColors();
   const fs = useFontSize();
   const insets = useSafeAreaInsets();
+  const { dialogProps, showDialog } = useAppDialog();
+  const whatsappCount = contacts.filter((c) => c.whatsapp).length;
+  const summary = sosSummary(whatsappCount, escalation);
+
+  /** Quem liga é o usuário: o app só abre o discador depois da confirmação. */
+  const confirmCallSamu = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    }
+    showDialog({
+      title: 'Ligar para o SAMU?',
+      message: `Você será redirecionado para ligar para ${SOS_CALL_NUMBER}.`,
+      variant: 'confirm',
+      buttons: [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: `Ligar ${SOS_CALL_NUMBER}`,
+          onPress: async () => {
+            // Não usar canOpenURL: no Android 11+ retorna false para tel: sem
+            // <queries> no manifest (package visibility), mesmo com discador.
+            try {
+              await Linking.openURL(`tel:${SOS_CALL_NUMBER}`);
+            } catch (error) {
+              console.warn('[SOS] não foi possível abrir o discador:', error);
+              showDialog({
+                title: 'Erro',
+                message: `Não foi possível abrir o discador. Ligue manualmente para ${SOS_CALL_NUMBER}.`,
+                variant: 'error',
+                buttons: [{ text: 'OK' }],
+              });
+            }
+          },
+        },
+      ],
+    });
+  };
 
   // Elapsed time counter
   const [elapsed, setElapsed] = useState(0);
@@ -86,14 +123,10 @@ export function SOSActiveScreen({
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Contact notification status (simulated: sent after 1-3s)
-  const [contactStatus, setContactStatus] = useState<Record<string, 'sending' | 'sent' | 'failed'>>({});
-
   useEffect(() => {
     if (!visible) {
       fadeAnim.setValue(0);
       setElapsed(0);
-      setContactStatus({});
       return;
     }
 
@@ -125,26 +158,11 @@ export function SOSActiveScreen({
       }
     }, 1000);
 
-    // Simulate contact notification status
-    const initialStatus: Record<string, 'sending' | 'sent' | 'failed'> = {};
-    contacts.forEach((c) => { initialStatus[c.id] = 'sending'; });
-    setContactStatus(initialStatus);
-
-    const statusTimers = contacts.map((c, i) =>
-      setTimeout(() => {
-        setContactStatus((prev) => ({ ...prev, [c.id]: 'sent' }));
-        if (Platform.OS !== 'web') {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
-      }, 1200 + i * 600)
-    );
-
     return () => {
       pulse.stop();
       clearInterval(timer);
-      statusTimers.forEach(clearTimeout);
     };
-  }, [visible, activatedAt, contacts]);
+  }, [visible, activatedAt]);
 
   const handleDeactivate = () => {
     if (Platform.OS !== 'web') {
@@ -185,8 +203,13 @@ export function SOSActiveScreen({
               <Text style={[styles.cardTitle, { color: colors.foreground, fontSize: fs.scaled(14) }]}>
                 Contatos notificados
               </Text>
+              {summary && (
+                <Text style={[styles.contactRelation, { color: colors.muted, fontSize: fs.scaled(13) }]}>
+                  {summary}
+                </Text>
+              )}
               {contacts.map((contact) => {
-                const status = contactStatus[contact.id] ?? 'sending';
+                const status = sosContactStatus(contact, whatsappCount, escalation);
                 return (
                   <View key={contact.id} style={styles.contactRow}>
                     <View style={styles.contactInfo}>
@@ -198,6 +221,11 @@ export function SOSActiveScreen({
                         <Text style={[styles.contactRelation, { color: colors.muted, fontSize: fs.scaled(12) }]}>
                           {contact.relation} · {contact.phone}
                         </Text>
+                        {status === 'no_whatsapp' && (
+                          <Text style={[styles.contactRelation, { color: colors.warning, fontSize: fs.scaled(12) }]}>
+                            Sem WhatsApp — não será avisado
+                          </Text>
+                        )}
                       </View>
                     </View>
                     <View style={styles.statusBadge}>
@@ -207,8 +235,14 @@ export function SOSActiveScreen({
                       {status === 'sent' && (
                         <MaterialIcons name="check-circle" size={20} color={colors.success} />
                       )}
+                      {status === 'partial' && (
+                        <MaterialIcons name="help-outline" size={20} color={colors.warning} />
+                      )}
                       {status === 'failed' && (
                         <MaterialIcons name="error" size={20} color={colors.error} />
+                      )}
+                      {status === 'no_whatsapp' && (
+                        <MaterialIcons name="block" size={20} color={colors.muted} />
                       )}
                     </View>
                   </View>
@@ -225,6 +259,22 @@ export function SOSActiveScreen({
               </Text>
             </View>
           )}
+
+          <Pressable
+            onPress={confirmCallSamu}
+            accessibilityRole="button"
+            accessibilityLabel={`Ligar para o SAMU, número ${SOS_CALL_NUMBER}`}
+            style={({ pressed }) => [
+              styles.callSamuButton,
+              { backgroundColor: colors.emergency, minHeight: fs.touch(64) },
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            <MaterialIcons name="phone" size={28} color={colors.onEmergency} />
+            <Text style={[styles.callSamuText, { color: colors.onEmergency, fontSize: fs.scaled(18) }]}>
+              Ligar para o SAMU ({SOS_CALL_NUMBER})
+            </Text>
+          </Pressable>
 
           {/* -- Instructions -- */}
           <Text style={[styles.sectionTitle, { color: '#FCA5A5', fontSize: fs.scaled(13) }]}>
@@ -288,6 +338,7 @@ export function SOSActiveScreen({
             Toque apenas se a emergência foi resolvida
           </Text>
         </View>
+        <AppDialog {...dialogProps} />
       </Animated.View>
     </Modal>
   );
@@ -377,6 +428,17 @@ const styles = StyleSheet.create({
   },
   contactRelation: {
     marginTop: 1,
+  },
+  callSamuButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    borderRadius: 14,
+    paddingHorizontal: 20,
+  },
+  callSamuText: {
+    fontWeight: '800',
   },
   statusBadge: {
     marginLeft: 8,
