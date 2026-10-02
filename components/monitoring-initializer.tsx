@@ -21,8 +21,9 @@ import {
 } from "@/lib/monitoring-service";
 import * as Auth from "@/lib/_core/auth";
 import * as Location from "expo-location";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import { AppDialog, useAppDialog } from "@/components/app-dialog";
+import { shouldResync } from "@/lib/resync-throttle";
 
 /**
  * Returns the user's current location string ("lat,lng") only when:
@@ -81,6 +82,7 @@ export function MonitoringInitializer() {
   const initializedRef = useRef(false);
   const bootstrappedOpenIdRef = useRef<string | null>(null);
   const lastAlarmHashRef = useRef<string>("");
+  const lastResyncRef = useRef<number | null>(null);
   // Ref sempre com o state mais recente: o bootstrap pode rodar num login
   // TARDIO (sessão ausente/expirada no mount), quando o closure do efeito já
   // capturou um state velho.
@@ -117,6 +119,7 @@ export function MonitoringInitializer() {
         await flushPendingConfirmations();
 
         // Sync current alarms
+        lastResyncRef.current = Date.now();
         await syncAlarmsToServer(s.alarms);
 
         // Check for offline alarms (not_sent) from previous sessions
@@ -212,6 +215,25 @@ export function MonitoringInitializer() {
 
     syncAlarmsToServer(state.alarms).catch(console.warn);
   }, [state.alarms]);
+
+  // Voltar ao app re-registra o PRÓXIMO disparo de cada alarme. O bootstrap só
+  // roda em cold start/login e a lista só re-sincroniza quando um alarme é
+  // editado: sem isto, quem não fecha o app de verdade nunca registra o disparo
+  // seguinte e o servidor não cobra o alarme de amanhã (feedback do beta,
+  // out/2026). Responder ao alarme sempre traz o app ao primeiro plano, então
+  // isto cobre o caso comum. Fica de fora (Fase 4): o alarme que toca sem
+  // ninguém interagir — o seguinte só é registrado na próxima abertura, e a
+  // escada de 30 min / 2 h / 6 h cobre o intervalo.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next !== "active" || !initializedRef.current) return;
+      const now = Date.now();
+      if (!shouldResync(lastResyncRef.current, now)) return;
+      lastResyncRef.current = now;
+      syncAlarmsToServer(stateRef.current.alarms).catch(console.warn);
+    });
+    return () => sub.remove();
+  }, []);
 
   // Render the offline alarms dialog (invisible until triggered)
   return <AppDialog {...dialogProps} />;
