@@ -1527,39 +1527,6 @@ export default function SettingsScreen() {
           </View>
         </CollapsibleSection>
 
-        {/* ═══ SECTION 4: Idioma ═══ */}
-        <CollapsibleSection
-          title="Idioma"
-          icon="language"
-          iconBg={colors.successLight}
-          iconColor={colors.success}
-          colors={colors}
-          defaultOpen={false}
-        >
-          {[
-            { code: 'pt' as const, flag: '🇧🇷', label: 'Português (Brasil)' },
-            { code: 'en' as const, flag: '🇺🇸', label: 'English (USA)' },
-          ].map((lang, idx) => (
-            <React.Fragment key={lang.code}>
-              {idx > 0 && <Divider colors={colors} />}
-              <Pressable
-                onPress={() => updateSetting('language', lang.code)}
-                style={({ pressed }) => [
-                  styles.languageOption,
-                  settings.language === lang.code && { backgroundColor: colors.primaryLight },
-                  pressed && { opacity: 0.7 },
-                ]}
-              >
-                <Text style={styles.flagEmoji}>{lang.flag}</Text>
-                <Text style={[styles.languageLabel, { color: colors.foreground }]}>{lang.label}</Text>
-                {settings.language === lang.code && (
-                  <MaterialIcons name="check-circle" size={22} color={colors.primary} />
-                )}
-              </Pressable>
-            </React.Fragment>
-          ))}
-        </CollapsibleSection>
-
         {/* ═══ SECTION 5: Dados e Armazenamento ═══ */}
         <CollapsibleSection
           title="Dados e Armazenamento"
@@ -1815,17 +1782,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   fontSizeBtnText: { fontWeight: '600', textAlign: 'center' },
-
-  // Language
-  languageOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  flagEmoji: { fontSize: 24 },
-  languageLabel: { flex: 1, fontWeight: '500' },
 
   // Storage
   storageInfo: { padding: 16, gap: 10 },

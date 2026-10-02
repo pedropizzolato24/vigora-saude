@@ -62,7 +62,6 @@ export interface HealthMetric {
 export interface AppSettings {
   notificationsEnabled: boolean;
   alarmVolume: number; // 0-100
-  language: 'pt' | 'en';
   missedAlarmThreshold: number; // Number of missed alarms before WhatsApp escalation (1-10)
   vibrationEnabled: boolean;
   sosConfirmation: boolean; // Require confirmation before SOS
@@ -154,7 +153,6 @@ const initialState: AppState = {
   settings: {
     notificationsEnabled: true,
     alarmVolume: 80,
-    language: 'pt',
     missedAlarmThreshold: 3,
     vibrationEnabled: true,
     sosConfirmation: true,
