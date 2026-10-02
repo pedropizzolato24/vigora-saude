@@ -393,6 +393,29 @@ export default function AlarmsScreen() {
             {state.alarms.length} lembrete(s) configurado(s)
           </Text>
         </View>
+        <AlarmHistorySheet visible={historyVisible} onClose={() => setHistoryVisible(false)} />
+        <View style={{ paddingHorizontal: 12, paddingTop: 12 }}>
+          <Pressable
+            onPress={() => setHistoryVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Histórico de alarmes"
+            style={({ pressed }) => [{
+              minHeight: as_.touchTarget,
+              borderRadius: 16,
+              borderWidth: 3,
+              borderColor: ac.primary,
+              backgroundColor: ac.surface,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 12,
+              opacity: pressed ? 0.85 : 1,
+            }]}
+          >
+            <MaterialIcons name="history" size={30} color={ac.primary} />
+            <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.primary }}>Ver histórico</Text>
+          </Pressable>
+        </View>
 
         {sortedAlarms.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 20 }}>
