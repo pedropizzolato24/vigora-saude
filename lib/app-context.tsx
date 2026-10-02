@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useReducer } from 'react';
 import { updateAllWidgets } from './update-widgets';
+import { medicationAlarms } from './alarm-kind';
 import { setNativeAlarmVolume, setNativeAlarmVibration } from './native-alarm-manager';
 import { pullCloudData, pushCloudData, type CloudSnapshot } from './cloud-sync';
 import { switchAccount } from './_core/account-switch';
@@ -501,7 +502,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Atualiza widgets Android quando alarmes ou métricas de saúde mudarem
   useEffect(() => {
     if (state.isLoading) return;
-    updateAllWidgets(state.alarms, state.healthMetrics).catch(() => {});
+    updateAllWidgets(medicationAlarms(state.alarms), state.healthMetrics).catch(() => {});
   }, [state.alarms, state.healthMetrics, state.isLoading]);
 
   // Quem toca o alarme é o serviço nativo, que dispara sem o app aberto — não

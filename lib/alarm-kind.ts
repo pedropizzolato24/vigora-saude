@@ -23,6 +23,9 @@ export const NEW_CHECKIN_ESCALATE_MINUTES: EscalateMinutes = 15;
 /** Check-in migrado do sistema antigo: a janela de 30 min que o usuário já tinha. */
 export const MIGRATED_CHECKIN_ESCALATE_MINUTES: EscalateMinutes = 30;
 
+/** Id fixo do check-in migrado: reexecutar (ou outro aparelho) substitui o mesmo alarme. Diferente de 'checkin-daily' (id legado do servidor). */
+export const MIGRATED_CHECKIN_ALARM_ID = 'checkin-migrated';
+
 type KindLike = { kind?: string | null };
 
 export const isCheckinAlarm = (a: KindLike): boolean => a.kind === 'checkin';

@@ -36,6 +36,7 @@ import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { useAppContext } from '@/lib/app-context';
+import { medicationAlarms } from '@/lib/alarm-kind';
 import { shouldVibrate } from '@/lib/_core/alarm-vibration';
 import { loadCurrentAppStateRaw } from '@/lib/app-state-storage';
 import { useAccessibility } from '@/lib/accessibility-context';
@@ -485,7 +486,7 @@ export default function AlarmRingScreen() {
       confirmAlarmResponded(alarm, canonicalScheduledAt()).catch(() => {});
     }
     // Atualiza widget Android para mostrar o próximo alarme pendente
-    updateAlarmWidgetOnDismiss(state.alarms).catch(() => {});
+    updateAlarmWidgetOnDismiss(medicationAlarms(state.alarms)).catch(() => {});
 
     router.replace(postAlarmRoute as never);
     // `alarm` e `state.alarms` PRECISAM estar aqui: no cold start (alarme toca
