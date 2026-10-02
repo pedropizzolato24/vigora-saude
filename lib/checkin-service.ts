@@ -93,6 +93,24 @@ export function computeNextTimeoutDate(
 }
 
 /**
+ * Prazo que o SERVIDOR deve esperar para o check-in: o de hoje enquanto o de
+ * hoje está em aberto; o de amanhã depois que hoje foi respondido ou perdido.
+ * Registrar sempre o de hoje (o que `computeTimeoutDate` devolve antes do
+ * prazo) deixava o dia seguinte sem evento — e um check-in perdido amanhã não
+ * avisava ninguém.
+ */
+export function pickServerDeadline(
+  checkinTime: string,
+  windowMinutes: number,
+  respondedToday: boolean,
+  now: Date = new Date()
+): Date {
+  return respondedToday
+    ? computeNextTimeoutDate(checkinTime, windowMinutes, now)
+    : computeTimeoutDate(checkinTime, windowMinutes, now);
+}
+
+/**
  * Formata segundos restantes em "MM:SS" para o countdown.
  */
 export function formatCountdown(totalSeconds: number): string {
@@ -268,7 +286,12 @@ export async function createNextCheckinEvent(
 ): Promise<void> {
   if (Platform.OS === 'web') return;
   try {
-    const scheduledAt = computeTimeoutDate(checkinTime, windowMinutes);
+    const respondedDate = await AsyncStorage.getItem(RESPONDED_DATE_KEY);
+    const scheduledAt = pickServerDeadline(
+      checkinTime,
+      windowMinutes,
+      respondedDate === localDateKey()
+    );
     await createPendingAlarmEvent(
       { id: 'checkin-daily', time: checkinTime, description: 'Check-in diário', enabled: true, repeat: 'daily', customDays: [] } as any,
       scheduledAt

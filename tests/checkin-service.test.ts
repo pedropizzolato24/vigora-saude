@@ -31,7 +31,15 @@ vi.mock('../lib/monitoring-service', () => ({
   createPendingAlarmEvent: vi.fn(),
 }));
 
-import { computeTimeoutDate, computeNextTimeoutDate, formatCountdown, scheduleCheckin } from '../lib/checkin-service';
+import {
+  computeTimeoutDate,
+  computeNextTimeoutDate,
+  createNextCheckinEvent,
+  formatCountdown,
+  pickServerDeadline,
+  scheduleCheckin,
+} from '../lib/checkin-service';
+import { createPendingAlarmEvent } from '../lib/monitoring-service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 
@@ -177,5 +185,75 @@ describe('scheduleCheckin — não re-arma o timeout de hoje após resposta', ()
     expect(dateCalls).toHaveLength(1);
     const when: Date = dateCalls[0].trigger.date;
     expect(when.getDate()).toBe(25); // hoje — resposta de ontem não conta
+  });
+});
+
+describe('pickServerDeadline', () => {
+  it('antes de responder, o prazo é o de HOJE', () => {
+    const when = pickServerDeadline('09:00', 30, false, new Date('2026-05-25T09:05:00'));
+    expect(when.getDate()).toBe(25);
+    expect(when.getHours()).toBe(9);
+    expect(when.getMinutes()).toBe(30);
+  });
+
+  it('depois de responder, o prazo é o de AMANHÃ', () => {
+    // Bug: continuava no prazo de hoje (09:30), que já estava registrado.
+    const when = pickServerDeadline('09:00', 30, true, new Date('2026-05-25T09:05:00'));
+    expect(when.getDate()).toBe(26);
+    expect(when.getHours()).toBe(9);
+    expect(when.getMinutes()).toBe(30);
+  });
+});
+
+describe('createNextCheckinEvent — registra o prazo do dia certo no servidor', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** Prazo que foi enviado ao servidor na única chamada esperada. */
+  function registeredDeadline(): Date {
+    const calls = vi.mocked(createPendingAlarmEvent).mock.calls;
+    expect(calls).toHaveLength(1);
+    return calls[0][1];
+  }
+
+  function respondedOn(dateKey: string | null) {
+    (AsyncStorage.getItem as any).mockImplementation(async (key: string) =>
+      key === 'vigora_checkin_responded_date' ? dateKey : null
+    );
+  }
+
+  it('check-in de hoje já respondido: registra o prazo de amanhã', async () => {
+    vi.setSystemTime(new Date('2026-05-25T09:05:00'));
+    respondedOn('2026-05-25');
+
+    await createNextCheckinEvent('09:00', 30);
+
+    const when = registeredDeadline();
+    expect(when.getDate()).toBe(26);
+    expect(when.getHours()).toBe(9);
+    expect(when.getMinutes()).toBe(30);
+  });
+
+  it('check-in de hoje ainda aberto: registra o prazo de hoje', async () => {
+    vi.setSystemTime(new Date('2026-05-25T09:05:00'));
+    respondedOn(null);
+
+    await createNextCheckinEvent('09:00', 30);
+
+    expect(registeredDeadline().getDate()).toBe(25);
+  });
+
+  it('resposta de ontem não conta para hoje', async () => {
+    vi.setSystemTime(new Date('2026-05-25T09:05:00'));
+    respondedOn('2026-05-24');
+
+    await createNextCheckinEvent('09:00', 30);
+
+    expect(registeredDeadline().getDate()).toBe(25);
   });
 });
