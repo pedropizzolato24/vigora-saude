@@ -3,7 +3,7 @@ import * as Linking from 'expo-linking';
 import React, { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useAccessibility } from '@/lib/accessibility-context';
-import { isValidPlanPhone } from '@/lib/health-plan-phone';
+import { isValidPlanPhone, sanitizePlanPhone } from '@/lib/health-plan-phone';
 import {
   Platform,
   Pressable,
@@ -42,7 +42,7 @@ export default function AmbulanceScreen() {
 
   const anamnesis = state.anamnesis;
   const router = useRouter();
-  const planPhone = anamnesis?.healthPlanPhone ?? '';
+  const planPhone = sanitizePlanPhone(anamnesis?.healthPlanPhone ?? '');
   const isHealthPlanConfigured = isValidPlanPhone(planPhone);
   const { dialogProps, showDialog } = useAppDialog();
 

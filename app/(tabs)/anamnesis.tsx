@@ -23,7 +23,7 @@ import { useFontSize } from '@/lib/font-size-context';
 import { BrandFonts } from '@/lib/_core/theme';
 import { useAppContext, type AnamnesesData } from '@/lib/app-context';
 import { exportAnamnesisToPDF } from '@/lib/pdf-utils-v2';
-import { sanitizePlanPhone } from '@/lib/health-plan-phone';
+import { isValidPlanPhone, sanitizePlanPhone } from '@/lib/health-plan-phone';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { FormKeyboardView } from '@/components/form-keyboard-view';
 
@@ -72,6 +72,11 @@ export default function AnamnesisScreen() {
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(stepParam === 'plan' ? 3 : 1);
   const { dialogProps, showDialog } = useAppDialog();
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
+
+  // Anamnese fica montada nas abas: reabrir pelo ?step=plan precisa reagir ao parâmetro.
+  useEffect(() => {
+    if (stepParam === 'plan') setWizardStep(3);
+  }, [stepParam]);
 
   useEffect(() => {
     if (state.anamnesis) {
@@ -216,6 +221,9 @@ export default function AnamnesisScreen() {
                 returnKeyType="done"
                 accessibilityLabel={field.label}
               />
+              {field.key === 'healthPlanPhone' && !!form.healthPlanPhone && !isValidPlanPhone(form.healthPlanPhone) && (
+                <Text style={{ fontSize: af.sm, color: ac.error }}>Número incompleto. Digite com DDD.</Text>
+              )}
             </View>
           ))}
           {/* Exportar PDF — liberado para todos */}
@@ -495,9 +503,11 @@ export default function AnamnesisScreen() {
                   keyboardType="phone-pad"
                   style={[styles.textInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base, minHeight: fs.touch(48) }]}
                   returnKeyType="done"
-                  maxLength={13}
                   accessibilityLabel="Telefone de emergência do plano de saúde"
                 />
+                {!!form.healthPlanPhone && !isValidPlanPhone(form.healthPlanPhone) && (
+                  <Text style={{ color: colors.error, fontSize: fs.sm }}>Número incompleto. Digite com DDD.</Text>
+                )}
                 <Text style={{ color: colors.muted, fontSize: fs.sm }}>
                   É o número que o app disca na tela Ambulância (não é o da carteirinha).
                 </Text>
