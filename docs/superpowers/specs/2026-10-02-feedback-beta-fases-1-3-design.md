@@ -36,9 +36,9 @@ inteira parte delas; trocar qualquer uma muda a seção indicada.
 | D3 | Opção "Idioma" é removida | Traduzir o app | 4.2 |
 | D4 | Check-in vira um tipo de alarme | Manter o sistema paralelo | 5 |
 | D5 | Convite por WhatsApp compartilha o código de 10 min, com o prazo no texto | Link de 24 h no sentido idoso→cuidador (exige rota nova no servidor) | 4.4 |
-| D6 | Os 3 interruptores de notificação do cuidador são removidos (hoje não têm efeito) | Enviar a preferência ao servidor e respeitá-la no envio | 4.9 |
-| D7 | "Baixar" continua sendo a folha de compartilhar do sistema, com nomes claros | Gravar direto em Downloads (Storage Access Framework) | 4.5 |
-| D8 | Push sobre alteração de lembrete não leva o nome do remédio | Levar o nome | 3.4 |
+| D6 | Os 3 interruptores de notificação do cuidador (Medicação perdida, SOS acionado, Dead man's switch) são removidos: hoje só gravam no celular e não mudam nenhum push | Enviar a preferência ao servidor e respeitá-la (permitiria o cuidador silenciar o SOS) | 4.9 |
+| D7 | Cada exportação tem dois botões: "Baixar" (salva numa pasta escolhida) e "Compartilhar" (folha do sistema) | Só compartilhar | 4.5 |
+| D8 | O push de alteração de lembrete leva o nome do lembrete (decisão do Pedro) | Push sem o nome | 3.4, 7 |
 
 ## 3. Fase 1 — o switch não pode falhar sem aviso
 
@@ -150,9 +150,17 @@ Consequências obrigatórias da tabela nova:
 - mesma retenção de 180 dias dos eventos.
 
 **Aviso ao cuidador.** Um push por `userData.put` com mudança, tipo `alarm_changed`,
-para os cuidadores com vínculo ativo. Texto sem o nome do remédio (D8), no padrão dos
-pushes atuais: "*Nome* alterou os lembretes. Toque para ver os detalhes." O tipo entra
-em `CAREGIVER_PUSH_TYPES` e o toque leva à aba de alertas.
+para os cuidadores com vínculo ativo. O texto leva o nome do lembrete (D8), cortado em
+40 caracteres:
+
+| Mudanças no `put` | Título | Corpo |
+|---|---|---|
+| 1, excluído | Lembrete alterado — Vigora | *Nome* excluiu o lembrete "*Losartana*". |
+| 1, desativado | idem | *Nome* desativou o lembrete "*Losartana*". |
+| 1, horário | idem | *Nome* mudou o horário de "*Losartana*" para *09:00*. |
+| 2 ou mais | Lembretes alterados — Vigora | *Nome* alterou *N* lembretes: "*A*", "*B*" e mais *N-2*. |
+
+O tipo entra em `CAREGIVER_PUSH_TYPES` e o toque leva à aba de alertas.
 
 **Tela do cuidador.** `link.getMonitoredAlerts` passa a devolver as últimas 20 mudanças.
 A aba de alertas mostra cada uma com nome, tipo e horário ("Excluiu *Losartana 08:00*
@@ -213,8 +221,17 @@ Botão "Enviar código" em `invite-caregiver.tsx`, usando `Share.share` com o te
 como cuidador e digite o código." Gerar novo código atualiza o texto.
 
 ### 4.5 Exportação e PDF (D7)
-- "Baixar meus dados" passa a "Exportar meus dados (arquivo)" com a linha "Arquivo
-  técnico com todos os seus dados, para guardar ou levar a outro serviço".
+- Os três arquivos (dados em JSON, relatório de saúde em PDF, ficha de anamnese em
+  PDF) passam a ter dois botões, via um único helper `lib/_core/save-or-share-file.ts`:
+  - **Baixar:** abre o seletor de pastas do sistema (`Directory.pickDirectoryAsync`),
+    grava o arquivo e mostra "Salvo em *pasta*: *nome-do-arquivo*". Cancelar o seletor
+    não mostra erro. Falha mostra o motivo real em `AppToast`, mais "Use Compartilhar".
+  - **Compartilhar:** a folha de compartilhar do sistema, como hoje.
+  - Risco: o Android 11+ não deixa escolher a raiz de Downloads pelo seletor. Antes de
+    construir, testar em um Samsung e um Motorola; se bloquear, o texto do botão explica
+    "escolha uma pasta" e o "Compartilhar" fica como caminho principal.
+- "Baixar meus dados" passa a "Meus dados (arquivo técnico)" com a linha "Para guardar
+  ou levar a outro serviço".
 - A seção "Dados e armazenamento" ganha "Relatório de saúde (PDF)", reutilizando
   `HealthReportButton`.
 - `exportAnamnesisPDF` (`lib/pdf-utils-v2.ts`): quando o compartilhamento não está
@@ -246,7 +263,9 @@ formulário próprio e ganha os interruptores Som e Vibração.
 - Check-in perdido aparece como "Check-in não respondido", não como alarme.
 - Evento `not_sent`: "Sem confirmação do aparelho" no lugar de "celular pode estar
   desligado". O servidor não sabe se o alarme tocou; o texto novo não afirma nada.
-- Os três interruptores de notificação do cuidador saem da tela.
+- Os três interruptores de notificação do cuidador saem da tela: "Medicação perdida",
+  "SOS acionado" e "Dead man's switch". Saem junto `notificationPrefs` e
+  `updateNotificationPrefs` em `lib/caregiver-state.ts`.
 
 ## 5. Fase 3 — check-in como tipo de alarme (D4)
 
@@ -332,7 +351,11 @@ por `kind`.
 
 - Nenhum dado novo é coletado. `alarm_changes` guarda um derivado do que já está em
   `user_data.alarms`, com a mesma base legal, e entra em exportação e exclusão.
-- Push não leva nome de remédio (D8). Logs do servidor registram ids, não nomes.
+- O push `alarm_changed` leva o nome do lembrete (D8). Ele é texto livre e pode revelar
+  condição de saúde; passa por Expo, Google e Apple e aparece na tela bloqueada do
+  cuidador. O WhatsApp e o SMS de escalação já levam o nome hoje. A Política de
+  Privacidade precisa listar os provedores de push (tarefa na entrega 5). Logs do
+  servidor registram ids, não nomes.
 - Toda entrada nova de rota tRPC é validada com Zod.
 - Nenhuma permissão Android nova.
 - Nada aqui interpreta ou classifica métrica de saúde.
@@ -351,7 +374,7 @@ Cada linha é um PR pequeno contra `fix/launch-prep`, nesta ordem.
 | 5 | Registro de mudanças de alarme + push + desvínculo | 3.4 | — |
 | 6 | SOS honesto | 3.5 | — |
 | 7 | Soneca, idioma, rótulos e interruptores do cuidador | 4.1, 4.2, 4.9 | — |
-| 8 | Telefone do plano, convite por WhatsApp, exportação | 4.3, 4.4, 4.5 | — |
+| 8 | Telefone do plano, convite por WhatsApp, exportação (com teste do "Baixar" em Samsung e Motorola antes de construir) | 4.3, 4.4, 4.5 | — |
 | 9 | Atualização no cuidador | 4.6 | — |
 | 10 | Histórico e formulário em lista | 4.7, 4.8 | 7 |
 | 11 | Check-in: modelo, servidor e migração | 5.1, 5.3, 5.4 | 5, 10 |
