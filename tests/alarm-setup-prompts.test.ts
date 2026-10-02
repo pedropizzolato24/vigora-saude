@@ -57,7 +57,7 @@ describe("aviso de tela cheia — na criação, não depois do alarme tocar", ()
 
   it("é disparado ao salvar um alarme novo", () => {
     const handleSave = alarmsSrc.match(
-      /const handleSave = async \(\) => \{([\s\S]*?)\n  \};/
+      /const handleSave = async \(form: AlarmFormValues\) => \{([\s\S]*?)\n  \};/
     );
     expect(handleSave, "não achei handleSave").not.toBeNull();
     expect(handleSave![1]).toMatch(/promptFullScreenIfNeeded\(\)/);

@@ -1,34 +1,29 @@
 import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAccessibility } from '@/lib/accessibility-context';
 import {
   FlatList,
-  Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
-  Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { AppToast, useAppToast } from '@/components/app-toast';
-import { FormKeyboardView } from '@/components/form-keyboard-view';
-import { WheelPicker, wheelColumnMetrics } from '@/components/wheel-picker';
-import { WizardStep } from '@/components/wizard-step';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { PressableScale } from '@/components/pressable-scale';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AlarmFormModal } from '@/components/alarm-form-modal';
 import { AlarmCard } from '@/components/alarm-card';
 import { AlarmHistorySheet } from '@/components/alarm-history-sheet';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { BrandFonts } from '@/lib/_core/theme';
 import { generateId, useAppContext, type Alarm } from '@/lib/app-context';
+import { REPEAT_OPTIONS, type AlarmFormValues } from '@/lib/alarm-form';
 import { scheduleFullAlarm, cancelFullAlarm } from '@/lib/alarm-sync';
 import { canUseFullScreenIntent, openFullScreenIntentSettings } from 'expo-alarm-countdown';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -39,35 +34,6 @@ import { MAX_ALARMS } from '@/components/pro-limits';
 // re-aparece). Os avisos de bateria e de alarme exato saíram daqui para a
 // central de permissões (app/permissions.tsx), que os re-oferece a cada boot.
 let fullScreenPromptShown = false;
-
-const REPEAT_OPTIONS: { value: Alarm['repeat']; label: string }[] = [
-  { value: 'daily', label: 'Diário' },
-  { value: 'weekdays', label: 'Dias úteis' },
-  { value: 'weekends', label: 'Fins de semana' },
-  { value: 'custom', label: 'Personalizado' },
-];
-
-const EMPTY_FORM: Omit<Alarm, 'id'> = {
-  time: '08:00',
-  description: '',
-  enabled: true,
-  repeat: 'daily',
-  customDays: [],
-  sound: true,
-  vibration: true,
-};
-
-const WEEKDAYS = [
-  { day: 0, label: 'D', full: 'Dom' },
-  { day: 1, label: 'S', full: 'Seg' },
-  { day: 2, label: 'T', full: 'Ter' },
-  { day: 3, label: 'Q', full: 'Qua' },
-  { day: 4, label: 'Q', full: 'Qui' },
-  { day: 5, label: 'S', full: 'Sex' },
-  { day: 6, label: 'S', full: 'Sáb' },
-];
-
-const TIME_QUICK_PICKS = ['08:00', '12:00', '20:00'];
 
 /** Returns a human-friendly "em X h" / "em X min" string for a given HH:MM time. */
 function hoursUntilLabel(time: string): string | null {
@@ -95,10 +61,7 @@ export default function AlarmsScreen() {
   const { state, dispatch } = useAppContext();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingAlarm, setEditingAlarm] = useState<Alarm | null>(null);
-  const [form, setForm] = useState<Omit<Alarm, 'id'>>(EMPTY_FORM);
-  const [wizardStep, setWizardStep] = useState<1 | 2>(1);
   const [historyVisible, setHistoryVisible] = useState(false);
-  const minuteInputRef = useRef<TextInput>(null);
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
   const { dialogProps, showDialog } = useAppDialog();
   const { toastProps, showToast } = useAppToast();
@@ -137,62 +100,6 @@ export default function AlarmsScreen() {
     });
   };
 
-  // Derived hour/minute from form.time for the split picker
-  const [timeHour, timeMinute] = form.time.split(':');
-
-  // Alinha o ":" à faixa selecionada da roda (em vez de um margin fixo, que
-  // desalinhou quando a roda passou de 5 para 3 itens).
-  const colonMetrics = wheelColumnMetrics(isAccessibilityMode, as_.touchTarget);
-
-  const handleHourChange = (val: string) => {
-    const digits = val.replace(/\D/g, '').slice(0, 2);
-    const hNum = parseInt(digits, 10);
-    // Auto-jump to minute field when 2 digits entered or hour > 2
-    if (digits.length === 2 || (digits.length === 1 && hNum > 2)) {
-      const clampedH = isNaN(hNum) ? '00' : String(Math.min(hNum, 23)).padStart(2, '0');
-      setForm((f) => ({ ...f, time: `${clampedH}:${f.time.split(':')[1] || '00'}` }));
-      if (digits.length === 2) minuteInputRef.current?.focus();
-    } else {
-      setForm((f) => ({ ...f, time: `${digits}:${f.time.split(':')[1] || '00'}` }));
-    }
-  };
-
-  const handleMinuteChange = (val: string) => {
-    const digits = val.replace(/\D/g, '').slice(0, 2);
-    const mNum = parseInt(digits, 10);
-    const clampedM = digits.length === 2 ? String(Math.min(mNum, 59)).padStart(2, '0') : digits;
-    const currentHour = form.time.split(':')[0] || '00';
-    setForm((f) => ({ ...f, time: `${currentHour}:${clampedM}` }));
-  };
-
-  const handleHourBlur = () => {
-    const h = parseInt(timeHour, 10);
-    const clamped = isNaN(h) ? '00' : String(Math.min(h, 23)).padStart(2, '0');
-    setForm((f) => ({ ...f, time: `${clamped}:${f.time.split(':')[1] || '00'}` }));
-  };
-
-  const handleMinuteBlur = () => {
-    const m = parseInt(timeMinute, 10);
-    const clamped = isNaN(m) ? '00' : String(Math.min(m, 59)).padStart(2, '0');
-    setForm((f) => ({ ...f, time: `${f.time.split(':')[0] || '00'}:${clamped}` }));
-  };
-
-  const incrementHour = (delta: number) => {
-    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const h = parseInt(timeHour, 10);
-    const base = isNaN(h) ? 0 : h;
-    const next = ((base + delta + 24) % 24);
-    setForm((f) => ({ ...f, time: `${String(next).padStart(2, '0')}:${f.time.split(':')[1] || '00'}` }));
-  };
-
-  const incrementMinute = (delta: number) => {
-    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const m = parseInt(timeMinute, 10);
-    const base = isNaN(m) ? 0 : m;
-    const next = ((base + delta + 60) % 60);
-    setForm((f) => ({ ...f, time: `${f.time.split(':')[0] || '00'}:${String(next).padStart(2, '0')}` }));
-  };
-
   const sortedAlarms = [...state.alarms].sort((a, b) => {
     const [ah, am] = a.time.split(':').map(Number);
     const [bh, bm] = b.time.split(':').map(Number);
@@ -218,8 +125,6 @@ export default function AlarmsScreen() {
       return;
     }
     setEditingAlarm(null);
-    setForm(EMPTY_FORM);
-    setWizardStep(1);
     setModalVisible(true);
   };
 
@@ -238,20 +143,10 @@ export default function AlarmsScreen() {
 
   const openEditModal = (alarm: Alarm) => {
     setEditingAlarm(alarm);
-    setForm({
-      time: alarm.time,
-      description: alarm.description,
-      enabled: alarm.enabled,
-      repeat: alarm.repeat,
-      customDays: alarm.customDays,
-      sound: alarm.sound,
-      vibration: alarm.vibration,
-    });
-    setWizardStep(1);
     setModalVisible(true);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (form: AlarmFormValues) => {
     // Validate time format
     const timeRegex = /^([01]?\d|2[0-3]):([0-5]\d)$/;
     if (!timeRegex.test(form.time)) {
@@ -511,224 +406,13 @@ export default function AlarmsScreen() {
           </Pressable>
         </View>
 
-        {/* Simplified Modal for Accessibility Mode */}
-        <Modal
+        <AlarmFormModal
           visible={modalVisible}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <View style={{ flex: 1, backgroundColor: ac.background }}>
-            {/* Título apenas — Cancelar/Salvar ficam na barra inferior */}
-            <View style={{
-              paddingHorizontal: 20,
-              paddingTop: insets.top + 16,
-              paddingBottom: 16,
-              borderBottomWidth: 2,
-              borderBottomColor: ac.border,
-              alignItems: 'center',
-              backgroundColor: ac.bar,
-            }}>
-              <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>
-                {editingAlarm ? 'Editar Lembrete' : 'Novo Lembrete'}
-              </Text>
-            </View>
-            <FormKeyboardView
-              style={{ flex: 1 }}
-            >
-            <ScrollView contentContainerStyle={{ padding: 24, gap: 28 }} keyboardShouldPersistTaps="handled">
-              {/* Time */}
-              <View style={{ gap: 12 }}>
-                <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>Horário</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-                  <View style={{ alignItems: 'center', gap: 8 }}>
-                    <Pressable
-                      onPress={() => incrementHour(1)}
-                      style={({ pressed }) => [{ backgroundColor: ac.surface, borderRadius: 16, padding: 12, borderWidth: 2, borderColor: ac.border, opacity: pressed ? 0.6 : 1 }]}
-                      accessibilityRole="button"
-                      accessibilityLabel="Aumentar hora"
-                    >
-                      <MaterialIcons name="keyboard-arrow-up" size={36} color={ac.primary} />
-                    </Pressable>
-                    <TextInput
-                      value={timeHour}
-                      onChangeText={handleHourChange}
-                      onBlur={handleHourBlur}
-                      placeholder="08"
-                      placeholderTextColor={ac.muted}
-                      keyboardType="number-pad"
-                      style={{
-                        width: 90,
-                        height: 90,
-                        textAlign: 'center',
-                        fontSize: af['3xl'],
-                        fontWeight: '900',
-                        color: ac.foreground,
-                        backgroundColor: ac.surface,
-                        borderRadius: 16,
-                        borderWidth: 3,
-                        borderColor: ac.primary,
-                      }}
-                      maxLength={2}
-                      selectTextOnFocus
-                    />
-                    <Pressable
-                      onPress={() => incrementHour(-1)}
-                      style={({ pressed }) => [{ backgroundColor: ac.surface, borderRadius: 16, padding: 12, borderWidth: 2, borderColor: ac.border, opacity: pressed ? 0.6 : 1 }]}
-                      accessibilityRole="button"
-                      accessibilityLabel="Diminuir hora"
-                    >
-                      <MaterialIcons name="keyboard-arrow-down" size={36} color={ac.primary} />
-                    </Pressable>
-                    <Text style={{ fontSize: af.sm, color: ac.muted, fontWeight: '600' }}>hora</Text>
-                  </View>
-                  <Text style={{ fontSize: af['4xl'], fontWeight: '900', color: ac.foreground, marginBottom: 32 }}>:</Text>
-                  <View style={{ alignItems: 'center', gap: 8 }}>
-                    <Pressable
-                      onPress={() => incrementMinute(1)}
-                      style={({ pressed }) => [{ backgroundColor: ac.surface, borderRadius: 16, padding: 12, borderWidth: 2, borderColor: ac.border, opacity: pressed ? 0.6 : 1 }]}
-                      accessibilityRole="button"
-                      accessibilityLabel="Aumentar minuto"
-                    >
-                      <MaterialIcons name="keyboard-arrow-up" size={36} color={ac.primary} />
-                    </Pressable>
-                    <TextInput
-                      ref={minuteInputRef}
-                      value={timeMinute}
-                      onChangeText={handleMinuteChange}
-                      onBlur={handleMinuteBlur}
-                      placeholder="00"
-                      placeholderTextColor={ac.muted}
-                      keyboardType="number-pad"
-                      style={{
-                        width: 90,
-                        height: 90,
-                        textAlign: 'center',
-                        fontSize: af['3xl'],
-                        fontWeight: '900',
-                        color: ac.foreground,
-                        backgroundColor: ac.surface,
-                        borderRadius: 16,
-                        borderWidth: 3,
-                        borderColor: ac.primary,
-                      }}
-                      maxLength={2}
-                      selectTextOnFocus
-                    />
-                    <Pressable
-                      onPress={() => incrementMinute(-1)}
-                      style={({ pressed }) => [{ backgroundColor: ac.surface, borderRadius: 16, padding: 12, borderWidth: 2, borderColor: ac.border, opacity: pressed ? 0.6 : 1 }]}
-                      accessibilityRole="button"
-                      accessibilityLabel="Diminuir minuto"
-                    >
-                      <MaterialIcons name="keyboard-arrow-down" size={36} color={ac.primary} />
-                    </Pressable>
-                    <Text style={{ fontSize: af.sm, color: ac.muted, fontWeight: '600' }}>min</Text>
-                  </View>
-                </View>
-              </View>
-              {/* Description */}
-              <View style={{ gap: 12 }}>
-                <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>Nome do Lembrete</Text>
-                <TextInput
-                  value={form.description}
-                  onChangeText={(v) => setForm((f) => ({ ...f, description: v }))}
-                  placeholder="Ex: Tomar remédio para pressão"
-                  placeholderTextColor={ac.muted}
-                  style={{
-                    backgroundColor: ac.surface,
-                    color: ac.foreground,
-                    borderColor: ac.border,
-                    borderWidth: 2,
-                    borderRadius: 16,
-                    padding: 18,
-                    fontSize: af.md,
-                    fontWeight: '500',
-                  }}
-                  returnKeyType="done"
-                  maxLength={80}
-                />
-              </View>
-              {/* Repeat - simplified to just daily/weekdays */}
-              <View style={{ gap: 12 }}>
-                <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>Repetição</Text>
-                {[{ value: 'daily' as const, label: 'Todos os dias' }, { value: 'weekdays' as const, label: 'Dias úteis (Seg-Sex)' }].map((opt) => (
-                  <Pressable
-                    key={opt.value}
-                    onPress={() => setForm((f) => ({ ...f, repeat: opt.value }))}
-                    style={[{
-                      paddingVertical: as_.buttonPadding,
-                      paddingHorizontal: 20,
-                      borderRadius: 16,
-                      borderWidth: 3,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 14,
-                      backgroundColor: form.repeat === opt.value ? ac.primary : ac.surface,
-                      borderColor: form.repeat === opt.value ? ac.primary : ac.border,
-                    }]}
-                    accessibilityRole="radio"
-                    accessibilityLabel={opt.label}
-                    accessibilityState={{ selected: form.repeat === opt.value }}
-                  >
-                    <MaterialIcons
-                      name={form.repeat === opt.value ? 'radio-button-on' : 'radio-button-off'}
-                      size={28}
-                      color={form.repeat === opt.value ? ac.onPrimary : ac.muted}
-                    />
-                    <Text style={{ fontSize: af.md, fontWeight: '700', color: form.repeat === opt.value ? ac.onPrimary : ac.foreground }}>
-                      {opt.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-              {/* Delete button in edit mode */}
-              {editingAlarm && (
-                <Pressable
-                  onPress={() => handleDelete(editingAlarm.id)}
-                  style={({ pressed }) => [{
-                    paddingVertical: as_.buttonPadding,
-                    paddingHorizontal: 20,
-                    borderRadius: 16,
-                    borderWidth: 3,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 12,
-                    backgroundColor: pressed ? ac.error + '20' : ac.background,
-                    borderColor: ac.emergency,
-                    marginTop: 8,
-                  }]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Excluir este lembrete"
-                >
-                  <MaterialIcons name="delete" size={28} color={ac.emergency} />
-                  <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.emergency }}>Excluir Lembrete</Text>
-                </Pressable>
-              )}
-            </ScrollView>
-            {/* Barra inferior de ações: Cancelar + Salvar */}
-            <View style={{ flexDirection: 'row', gap: 12, padding: 20, paddingBottom: Math.max(insets.bottom, 20), borderTopWidth: 2, borderTopColor: ac.border, backgroundColor: ac.bar }}>
-              <Pressable
-                onPress={() => setModalVisible(false)}
-                accessibilityRole="button"
-                accessibilityLabel="Cancelar"
-                style={({ pressed }) => [{ flex: 1, minHeight: 64, borderRadius: 16, borderWidth: 3, borderColor: ac.muted, backgroundColor: ac.surface, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1 }]}
-              >
-                <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.foreground }}>Cancelar</Text>
-              </Pressable>
-              <Pressable
-                onPress={handleSave}
-                accessibilityRole="button"
-                accessibilityLabel="Salvar lembrete"
-                style={({ pressed }) => [{ flex: 1.5, minHeight: 64, borderRadius: 16, backgroundColor: ac.success, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.85 : 1 }]}
-              >
-                <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.onPrimary }}>Salvar</Text>
-              </Pressable>
-            </View>
-            </FormKeyboardView>
-          </View>
-        </Modal>
+          editingAlarm={editingAlarm}
+          onCancel={() => setModalVisible(false)}
+          onSave={handleSave}
+          onDelete={handleDelete}
+        />
         <AppDialog {...dialogProps} />
         <AppToast {...toastProps} />
       </ScreenContainer>
@@ -839,279 +523,13 @@ export default function AlarmsScreen() {
         </PressableScale>
       </View>
 
-      {/* Wizard Modal */}
-      <Modal
+      <AlarmFormModal
         visible={modalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={[styles.modal, { backgroundColor: colors.background }]}>
-          {/* Modal Header — título apenas; Cancelar fica na barra inferior do wizard */}
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 16 }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground, fontSize: fs.xl, fontFamily: BrandFonts.body }]}>
-              {editingAlarm ? 'Editar Lembrete' : 'Novo Lembrete'}
-            </Text>
-          </View>
-
-          {/* Wizard Steps */}
-          <FormKeyboardView
-            style={styles.wizardContainer}
-          >
-            {wizardStep === 1 ? (
-              <WizardStep
-                total={2}
-                current={0}
-                categoryTag="Horário"
-                tagColor={colors.primary}
-                question="Que horas tomar?"
-                onNext={() => setWizardStep(2)}
-                onCancel={() => setModalVisible(false)}
-                nextLabel="Continuar"
-              >
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.wizardStepContent}>
-                  {/* WheelPicker time selector */}
-                  <View style={styles.timePicker}>
-                    <WheelPicker
-                      count={24}
-                      value={parseInt(timeHour, 10) || 0}
-                      onChange={(h) =>
-                        setForm((f) => ({ ...f, time: `${String(h).padStart(2, '0')}:${f.time.split(':')[1] || '00'}` }))
-                      }
-                      label="hora"
-                    />
-                    <View style={{ marginTop: colonMetrics.wheelTop, height: colonMetrics.wheelHeight, justifyContent: 'center' }}>
-                      <Text style={[styles.timeColon, { color: colors.foreground, fontSize: fs.scaled(40) }]}>:</Text>
-                    </View>
-                    <WheelPicker
-                      count={60}
-                      value={parseInt(timeMinute, 10) || 0}
-                      onChange={(m) =>
-                        setForm((f) => ({ ...f, time: `${f.time.split(':')[0] || '00'}:${String(m).padStart(2, '0')}` }))
-                      }
-                      label="min"
-                    />
-                  </View>
-
-                  {/* Quick-pick chips */}
-                  <View style={styles.quickPicks}>
-                    <Text style={[styles.quickPickLabel, { color: colors.muted, fontSize: fs.sm }]}>Sugestões</Text>
-                    <View style={styles.quickPickRow}>
-                      {TIME_QUICK_PICKS.map((t) => {
-                        const selected = form.time === t;
-                        return (
-                          <Pressable
-                            key={t}
-                            onPress={() => setForm((f) => ({ ...f, time: t }))}
-                            style={[
-                              styles.quickPickChip,
-                              {
-                                backgroundColor: selected ? colors.primarySurface : colors.surface,
-                                borderColor: selected ? colors.primary : colors.border,
-                                minHeight: fs.touch(44),
-                              },
-                            ]}
-                            accessibilityRole="button"
-                            accessibilityLabel={`Horário ${t}`}
-                            accessibilityState={{ selected }}
-                          >
-                            <Text style={[styles.quickPickChipText, { color: selected ? colors.onPrimary : colors.foreground, fontSize: fs.sm, fontFamily: BrandFonts.monoRegular }]}>
-                              {t}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  </View>
-                </ScrollView>
-              </WizardStep>
-            ) : (
-              <WizardStep
-                total={2}
-                current={1}
-                categoryTag="Detalhes"
-                tagColor={colors.primary}
-                question="Como configurar?"
-                onBack={() => setWizardStep(1)}
-                onNext={handleSave}
-                nextLabel={editingAlarm ? 'Salvar' : 'Criar lembrete'}
-                nextDisabled={form.repeat === 'custom' && (form.customDays ?? []).length === 0}
-              >
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.wizardStepContent}>
-                  {/* Description */}
-                  <View style={styles.formGroup}>
-                    <Text style={[styles.formLabel, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>Nome do lembrete</Text>
-                    <TextInput
-                      value={form.description}
-                      onChangeText={(v) => setForm((f) => ({ ...f, description: v }))}
-                      placeholder="Ex: Tomar remédio para pressão"
-                      placeholderTextColor={colors.muted}
-                      style={[
-                        styles.textInput,
-                        {
-                          backgroundColor: colors.surface,
-                          color: colors.foreground,
-                          borderColor: colors.border,
-                          fontSize: fs.base,
-                        },
-                      ]}
-                      returnKeyType="done"
-                      maxLength={80}
-                    />
-                  </View>
-
-                  {/* Repeat */}
-                  <View style={styles.formGroup}>
-                    <Text style={[styles.formLabel, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>Repetição</Text>
-                    <View style={styles.repeatOptions}>
-                      {REPEAT_OPTIONS.map((opt) => (
-                        <Pressable
-                          key={opt.value}
-                          onPress={() => setForm((f) => ({ ...f, repeat: opt.value }))}
-                          style={[
-                            styles.repeatOption,
-                            {
-                              backgroundColor: form.repeat === opt.value ? colors.primarySurface : colors.surface,
-                              borderColor: form.repeat === opt.value ? colors.primary : colors.border,
-                              minHeight: fs.touch(44),
-                            },
-                          ]}
-                          accessibilityRole="radio"
-                          accessibilityLabel={opt.label}
-                          accessibilityState={{ selected: form.repeat === opt.value }}
-                        >
-                          <Text
-                            style={[
-                              styles.repeatOptionText,
-                              { color: form.repeat === opt.value ? colors.onPrimary : colors.foreground, fontSize: fs.sm },
-                            ]}
-                          >
-                            {opt.label}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
-
-                    {/* Custom weekday selector */}
-                    {form.repeat === 'custom' && (
-                      <View style={[styles.weekdaySelector, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-                        <Text style={[styles.weekdayTitle, { color: colors.muted, fontSize: fs.xs }]}>Dias da semana</Text>
-                        <View style={styles.weekdayRow}>
-                          {WEEKDAYS.map(({ day, label, full }) => {
-                            const selected = (form.customDays ?? []).includes(day);
-                            return (
-                              <Pressable
-                                key={day}
-                                onPress={() => {
-                                  if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                  setForm((f) => {
-                                    const days = f.customDays ?? [];
-                                    return {
-                                      ...f,
-                                      customDays: selected
-                                        ? days.filter((d) => d !== day)
-                                        : [...days, day].sort(),
-                                    };
-                                  });
-                                }}
-                                style={[
-                                  styles.weekdayBtn,
-                                  {
-                                    backgroundColor: selected ? colors.primarySurface : colors.background,
-                                    borderColor: selected ? colors.primary : colors.border,
-                                    minHeight: fs.touch(52),
-                                  },
-                                ]}
-                                accessibilityRole="checkbox"
-                                accessibilityLabel={full}
-                                accessibilityState={{ checked: selected }}
-                              >
-                                <Text style={[styles.weekdayBtnText, { color: selected ? colors.onPrimary : colors.foreground, fontSize: fs.sm }]}>
-                                  {label}
-                                </Text>
-                                <Text style={[styles.weekdayBtnFull, { color: selected ? colors.onPrimary + 'CC' : colors.muted, fontSize: fs.xs }]}>
-                                  {full}
-                                </Text>
-                              </Pressable>
-                            );
-                          })}
-                        </View>
-                        {(form.customDays ?? []).length === 0 && (
-                          <Text style={[styles.weekdayHint, { color: colors.error, fontSize: fs.sm }]}>
-                            Selecione pelo menos um dia
-                          </Text>
-                        )}
-                      </View>
-                    )}
-                  </View>
-
-                  {/* Toggles */}
-                  <View style={[styles.togglesSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <View style={styles.toggleRow}>
-                      <View style={styles.toggleLeft}>
-                        <MaterialIcons name="volume-up" size={20} color={colors.muted} />
-                        <Text style={[styles.toggleLabel, { color: colors.foreground, fontSize: fs.base }]}>Som</Text>
-                      </View>
-                      <Switch
-                        value={form.sound}
-                        onValueChange={(v) => setForm((f) => ({ ...f, sound: v }))}
-                        trackColor={{ false: colors.border, true: colors.primary }}
-                        thumbColor="#FFFFFF"
-                        accessibilityLabel="Ativar som"
-                      />
-                    </View>
-                    <View style={[styles.toggleDivider, { backgroundColor: colors.border }]} />
-                    <View style={styles.toggleRow}>
-                      <View style={styles.toggleLeft}>
-                        <MaterialIcons name="vibration" size={20} color={colors.muted} />
-                        <Text style={[styles.toggleLabel, { color: colors.foreground, fontSize: fs.base }]}>Vibração</Text>
-                      </View>
-                      <Switch
-                        value={form.vibration}
-                        onValueChange={(v) => setForm((f) => ({ ...f, vibration: v }))}
-                        trackColor={{ false: colors.border, true: colors.primary }}
-                        thumbColor="#FFFFFF"
-                        accessibilityLabel="Ativar vibração"
-                      />
-                    </View>
-                    <View style={[styles.toggleDivider, { backgroundColor: colors.border }]} />
-                    <View style={styles.toggleRow}>
-                      <View style={styles.toggleLeft}>
-                        <MaterialIcons name="check-circle" size={20} color={colors.muted} />
-                        <Text style={[styles.toggleLabel, { color: colors.foreground, fontSize: fs.base }]}>Habilitado</Text>
-                      </View>
-                      <Switch
-                        value={form.enabled}
-                        onValueChange={(v) => setForm((f) => ({ ...f, enabled: v }))}
-                        trackColor={{ false: colors.border, true: colors.primary }}
-                        thumbColor="#FFFFFF"
-                        accessibilityLabel="Habilitar lembrete"
-                      />
-                    </View>
-                  </View>
-                  {/* Delete button — visible in edit mode only */}
-                  {editingAlarm && (
-                    <Pressable
-                      onPress={() => handleDelete(editingAlarm.id)}
-                      style={({ pressed }) => [
-                        styles.deleteAlarmBtn,
-                        { borderColor: colors.error, backgroundColor: pressed ? colors.errorLight : colors.background, minHeight: fs.touch(52) },
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel="Excluir este lembrete"
-                    >
-                      <MaterialIcons name="delete-outline" size={20} color={colors.error} />
-                      <Text style={[styles.deleteAlarmBtnText, { color: colors.error, fontSize: fs.base }]}>
-                        Excluir lembrete
-                      </Text>
-                    </Pressable>
-                  )}
-                </ScrollView>
-              </WizardStep>
-            )}
-          </FormKeyboardView>
-        </View>
-      </Modal>
+        editingAlarm={editingAlarm}
+        onCancel={() => setModalVisible(false)}
+        onSave={handleSave}
+        onDelete={handleDelete}
+      />
       <AppDialog {...dialogProps} />
       <AppToast {...toastProps} />
     </ScreenContainer>
@@ -1206,156 +624,5 @@ const styles = StyleSheet.create({
   },
   addBtnText: {
     fontWeight: '700',
-  },
-  modal: {
-    flex: 1,
-  },
-  modalHeader: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  modalTitle: {
-    fontWeight: '600',
-  },
-  wizardContainer: {
-    flex: 1,
-    padding: 20,
-  },
-  wizardStepContent: {
-    gap: 20,
-    paddingBottom: 16,
-  },
-  formGroup: {
-    gap: 8,
-  },
-  formLabel: {
-    fontWeight: '600',
-  },
-  textInput: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  repeatOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  repeatOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  repeatOptionText: {
-    fontWeight: '500',
-  },
-  togglesSection: {
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  toggleLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  toggleLabel: {
-    fontWeight: '500',
-  },
-  toggleDivider: {
-    height: StyleSheet.hairlineWidth,
-    marginHorizontal: 16,
-  },
-  timePicker: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  timeColon: {
-    fontWeight: '800',
-    paddingHorizontal: 4,
-  },
-  quickPicks: {
-    gap: 8,
-  },
-  quickPickLabel: {
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  quickPickRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  quickPickChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickPickChipText: {
-    fontWeight: '700',
-  },
-  weekdaySelector: {
-    marginTop: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 12,
-    gap: 8,
-  },
-  weekdayTitle: {
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  weekdayRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 4,
-  },
-  weekdayBtn: {
-    flex: 1,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 1,
-  },
-  weekdayBtnText: {
-    fontWeight: '700',
-  },
-  weekdayBtnFull: {
-    fontWeight: '500',
-  },
-  weekdayHint: {
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  deleteAlarmBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderWidth: 1.5,
-    borderRadius: 14,
-    marginTop: 8,
-  },
-  deleteAlarmBtnText: {
-    fontWeight: '600',
   },
 });
