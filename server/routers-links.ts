@@ -21,6 +21,10 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getUserByOpenId, getUserData } from "./db";
 import { getAccountLiveness } from "./db-monitoring";
+import { getRecentAlarmChanges } from "./db-alarm-changes";
+import { getPushTokensForOpenIds } from "./db-push";
+import { sendExpoPush } from "./push";
+import { pickPersonName } from "./_core/alarm-diff";
 import {
   consumeInviteByCode,
   createInvite,
@@ -99,6 +103,37 @@ async function requireCaregiverLink(openId: string) {
     });
   }
   return link;
+}
+
+/**
+ * Avisa o cuidador de que o monitorado encerrou o vínculo. Best-effort: o
+ * desvínculo (direito do titular, LGPD Art. 18) já foi feito e não pode falhar
+ * por causa do push. Só campos seguros no log: a mensagem de erro pode trazer
+ * parâmetros da query (openId).
+ */
+async function notifyLinkRevoked(caregiverOpenId: string, monitoredOpenId: string): Promise<void> {
+  try {
+    const tokens = await getPushTokensForOpenIds([caregiverOpenId]);
+    if (tokens.length === 0) return;
+    const [data, user] = await Promise.all([
+      getUserData(monitoredOpenId),
+      getUserByOpenId(monitoredOpenId),
+    ]);
+    await sendExpoPush(
+      tokens.map((t) => t.token),
+      {
+        title: "Acompanhamento encerrado — Vigora",
+        body: `${pickPersonName(data?.anamnesis, user?.name)} encerrou o acompanhamento.`,
+        data: { type: "link_revoked", url: "/(caregiver-tabs)/link" },
+      }
+    );
+  } catch (err) {
+    const e = err as { name?: string; code?: string; cause?: { code?: string } } | null;
+    console.warn(
+      "[Links] push de desvínculo falhou:",
+      `${e?.name ?? "Error"} ${e?.cause?.code ?? e?.code ?? ""}`.trim()
+    );
+  }
 }
 
 export const linkRouter = router({
@@ -294,9 +329,10 @@ export const linkRouter = router({
   getMonitoredAlerts: protectedProcedure.query(async ({ ctx }) => {
     const link = await requireCaregiverLink(ctx.user.openId);
 
-    const [events, warnings] = await Promise.all([
+    const [events, warnings, changes] = await Promise.all([
       getRecentMissedEventsForAccount(link.monitoredOpenId, 30),
       getRecentWarningsForAccount(link.monitoredOpenId, 20),
+      getRecentAlarmChanges(link.monitoredOpenId, 20),
     ]);
 
     return {
@@ -312,6 +348,15 @@ export const linkRouter = router({
         offlineHours: w.offlineHours,
         contactsReached: w.contactsReached,
         sentAt: w.sentAt.getTime(),
+      })),
+      changes: changes.map((c) => ({
+        id: c.id,
+        alarmId: c.alarmId,
+        alarmDescription: c.alarmDescription,
+        changeType: c.changeType,
+        oldTime: c.oldTime,
+        newTime: c.newTime,
+        createdAt: c.createdAt.getTime(),
       })),
     };
   }),
@@ -444,7 +489,13 @@ export const linkRouter = router({
     .input(z.object({ otherOpenId: z.string().min(1).max(64) }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.userType === "monitored") {
+        // otherOpenId vem do cliente: só avisa quem de fato estava vinculado.
+        const wasLinked = (await getActiveCaregiversForMonitored(ctx.user.openId)).some(
+          (c) => c.caregiverOpenId === input.otherOpenId
+        );
         await revokeLinkRow(input.otherOpenId, ctx.user.openId);
+        // Fire-and-forget: o fetch do Expo não tem timeout e não segura a resposta.
+        if (wasLinked) void notifyLinkRevoked(input.otherOpenId, ctx.user.openId);
       } else {
         await revokeLinkRow(ctx.user.openId, input.otherOpenId);
       }
