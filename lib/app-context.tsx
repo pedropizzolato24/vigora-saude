@@ -22,6 +22,10 @@ export interface Alarm {
   vibration: boolean;
   notificationId?: string; // Expo notification ID for scheduled alarm
   nativeAlarmUids?: string[]; // Native AlarmManager UIDs (Android only)
+  /** 'checkin' = "Está tudo bem?"; ausente = remédio (alarmes gravados antes da Fase 3). */
+  kind?: 'medication' | 'checkin';
+  /** Check-in: minutos até avisar contatos e cuidadores se ninguém responder. */
+  escalateAfterMinutes?: 5 | 10 | 15 | 30;
 }
 
 export interface EmergencyContact {
@@ -74,11 +78,11 @@ export interface AppSettings {
   speechRate: 0.5 | 0.75 | 1.0 | 1.25; // TTS speech rate
   speechVolume: number; // TTS volume 0-100 (independent of alarm volume)
   timerDuration: 15 | 30 | 45 | 60; // Seconds before emergency escalation
-  /** Check-in diário "Você está bem?" */
+  /** @deprecated Fase 3: o check-in virou um alarme (kind 'checkin'). Fica só para a migração (lib/checkin-migration.ts) ler o que o usuário tinha. */
   checkinEnabled: boolean;
-  /** Horário do check-in no formato HH:mm */
+  /** @deprecated Fase 3: o check-in virou um alarme (kind 'checkin'). Fica só para a migração (lib/checkin-migration.ts) ler o que o usuário tinha. */
   checkinTime: string;
-  /** Minutos que o usuário tem para responder antes de escalonar */
+  /** @deprecated Fase 3: o check-in virou um alarme (kind 'checkin'). Fica só para a migração (lib/checkin-migration.ts) ler o que o usuário tinha. */
   checkinWindowMinutes: number;
   /**
    * Consentimento destacado para tratar dados sensíveis de saúde (LGPD Art. 11).
@@ -538,7 +542,7 @@ export function generateId(): string {
 }
 
 export function getNextAlarm(alarms: Alarm[]): Alarm | null {
-  const enabled = alarms.filter((a) => a.enabled);
+  const enabled = alarms.filter((a) => a.enabled && a.kind !== 'checkin');
   if (enabled.length === 0) return null;
   const now = new Date();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();

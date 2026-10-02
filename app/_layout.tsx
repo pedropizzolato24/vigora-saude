@@ -37,6 +37,7 @@ import { AlarmSyncInitializer } from "@/components/alarm-sync-initializer";
 import { AlarmNotificationHandler } from '@/components/alarm-notification-handler';
 import { MonitoringInitializer } from '@/components/monitoring-initializer';
 import { CheckinInitializer } from '@/components/checkin-initializer';
+import { CheckinMigrationInitializer } from '@/components/checkin-migration-initializer';
 import { OnboardingGate } from '@/components/onboarding-gate';
 import { PermissionsGate } from '@/components/permissions-gate';
 import { refreshSessionOnStartup } from "@/lib/session-refresh";
@@ -389,6 +390,7 @@ export default function RootLayout() {
           <AlarmNotificationHandler />
           <MonitoringInitializer />
           <CheckinInitializer />
+          <CheckinMigrationInitializer />
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           {/* Default to hiding native headers so raw route segments don't appear (e.g. "(tabs)", "products/[id]"). */}

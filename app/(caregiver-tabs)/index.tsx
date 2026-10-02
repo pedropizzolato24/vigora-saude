@@ -14,6 +14,7 @@ import { FadeInView, ScaleInView, StaggeredItem } from '@/components/animated-co
 import { trpc } from '@/lib/trpc';
 import { usePushUnavailable } from '@/lib/push-status';
 import type { Alarm, HealthMetric } from '@/lib/app-context';
+import { medicationAlarms } from '@/lib/alarm-kind';
 import { formatMetricValue, isRecent, latestMetric, metricTypeLabel, nextAlarm, relativeTime } from '@/lib/caregiver-format';
 
 // Janela do contador de alertas na home. Um alarme perdido precisa saltar aos
@@ -54,7 +55,7 @@ export default function CaregiverHomeScreen() {
     (alerts.data?.events ?? []).filter((e) => e.scheduledAt >= cutoff).length +
     (alerts.data?.warnings ?? []).filter((w) => w.sentAt >= cutoff).length;
 
-  const alarms = (data?.alarms ?? []) as Alarm[];
+  const alarms = medicationAlarms((data?.alarms ?? []) as Alarm[]);
   const metrics = (data?.healthMetrics ?? []) as HealthMetric[];
   const upcoming = nextAlarm(alarms);
   const latest = latestMetric(metrics);

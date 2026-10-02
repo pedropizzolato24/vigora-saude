@@ -15,6 +15,7 @@ import { useCaregiverContext } from '@/lib/caregiver-context';
 import type { LinkMethod } from '@/lib/caregiver-state';
 import { trpc } from '@/lib/trpc';
 import type { Alarm, AnamnesesData, EmergencyContact, HealthMetric } from '@/lib/app-context';
+import { medicationAlarms } from '@/lib/alarm-kind';
 import { formatMetricValue, isRecent, metricTypeLabel, relativeTime } from '@/lib/caregiver-format';
 
 const METHOD_LABEL: Record<LinkMethod, string> = {
@@ -90,7 +91,7 @@ export default function CaregiverPersonScreen() {
   };
   const { c, sz, bw, icon } = skin;
 
-  const enabledAlarms = ((data?.alarms ?? []) as Alarm[]).filter((a) => a.enabled);
+  const enabledAlarms = medicationAlarms((data?.alarms ?? []) as Alarm[]).filter((a) => a.enabled);
   const metrics = ([...((data?.healthMetrics ?? []) as HealthMetric[])])
     .sort((a, b) => b.timestamp - a.timestamp)
     .slice(0, 5);

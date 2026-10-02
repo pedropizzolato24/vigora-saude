@@ -25,6 +25,7 @@ import * as Sharing from 'expo-sharing';
 import * as Haptics from 'expo-haptics';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAppContext } from '@/lib/app-context';
+import { medicationAlarms } from '@/lib/alarm-kind';
 import { createHealthReportPdf } from '@/lib/health-report-file';
 import { useColors } from '@/hooks/use-colors';
 import { useAccessibility } from '@/lib/accessibility-context';
@@ -70,7 +71,7 @@ export function HealthReportButton({ compact = false }: HealthReportButtonProps)
       const { uri, html } = await createHealthReportPdf({
         profile: state.profile,
         healthMetrics: state.healthMetrics,
-        alarms: state.alarms,
+        alarms: medicationAlarms(state.alarms),
       });
 
       // 3. Verifica se compartilhamento está disponível

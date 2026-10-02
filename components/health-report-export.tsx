@@ -6,6 +6,7 @@
 import React from 'react';
 import { ExportFileButtons } from '@/components/export-file-buttons';
 import { useAppContext } from '@/lib/app-context';
+import { medicationAlarms } from '@/lib/alarm-kind';
 import { createHealthReportPdf } from '@/lib/health-report-file';
 
 function reportFileName(now: Date = new Date()): string {
@@ -22,7 +23,7 @@ export function HealthReportExport() {
     const { uri } = await createHealthReportPdf({
       profile: state.profile,
       healthMetrics: state.healthMetrics,
-      alarms: state.alarms,
+      alarms: medicationAlarms(state.alarms),
     });
     return {
       uri,

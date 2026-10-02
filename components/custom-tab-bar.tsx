@@ -7,6 +7,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { PressableScale } from '@/components/pressable-scale';
 import { useColors } from '@/hooks/use-colors';
 import { useAppContext } from '@/lib/app-context';
+import { medicationAlarms } from '@/lib/alarm-kind';
 import { useAccessibility } from '@/lib/accessibility-context';
 
 interface TabItem {
@@ -29,7 +30,7 @@ export function CustomTabBar() {
   const insets = useSafeAreaInsets();
   const { state } = useAppContext();
   const { isAccessibilityMode, a11yColors: ac } = useAccessibility();
-  const activeAlarmCount = state.alarms.filter((a) => a.enabled).length;
+  const activeAlarmCount = medicationAlarms(state.alarms).filter((a) => a.enabled).length;
 
   // Mesmo cap do (tabs)/_layout.tsx: sem isso, aparelhos com barra de
   // navegação antiga (3 botões) inflam o padding e a barra fica "super alta".

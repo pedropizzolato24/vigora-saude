@@ -28,6 +28,7 @@ import { scheduleFullAlarm, cancelFullAlarm } from '@/lib/alarm-sync';
 import { canUseFullScreenIntent, openFullScreenIntentSettings } from 'expo-alarm-countdown';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MAX_ALARMS } from '@/components/pro-limits';
+import { medicationAlarms } from '@/lib/alarm-kind';
 
 // Evita repetir o aviso de "Notificações em tela cheia" a cada alarme criado
 // na mesma sessão (a permissão continua sendo re-checada — só o diálogo não
@@ -100,7 +101,7 @@ export default function AlarmsScreen() {
     });
   };
 
-  const sortedAlarms = [...state.alarms].sort((a, b) => {
+  const sortedAlarms = [...medicationAlarms(state.alarms)].sort((a, b) => {
     const [ah, am] = a.time.split(':').map(Number);
     const [bh, bm] = b.time.split(':').map(Number);
     return ah * 60 + am - (bh * 60 + bm);
@@ -285,7 +286,7 @@ export default function AlarmsScreen() {
         }}>
           <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>Remédios</Text>
           <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>
-            {state.alarms.length} lembrete(s) configurado(s)
+            {sortedAlarms.length} lembrete(s) configurado(s)
           </Text>
         </View>
         <AlarmHistorySheet visible={historyVisible} onClose={() => setHistoryVisible(false)} />
