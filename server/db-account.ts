@@ -50,7 +50,6 @@ export async function deleteAccountData(openId: string): Promise<void> {
     await tx.delete(accountLiveness).where(eq(accountLiveness.openId, openId));
     await tx.delete(alarmEvents).where(eq(alarmEvents.openId, openId));
     await tx.delete(alarmChanges).where(eq(alarmChanges.openId, openId));
-
     await tx.delete(warningLog).where(eq(warningLog.openId, openId));
 
     // Account data.

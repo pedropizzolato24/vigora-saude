@@ -70,6 +70,9 @@ function makeCtx(user: User): TrpcContext {
   };
 }
 
+/** O push roda solto (fire-and-forget): espera a fila de microtarefas esvaziar. */
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 function put(openId: string, alarms: unknown[]) {
   const caller = appRouter.createCaller(makeCtx(makeUser(openId)));
   return caller.userData.put({
@@ -90,6 +93,7 @@ describe("userData.put — mudanças de alarme", () => {
     storedAlarms = [losartana, metformina];
 
     await put("maria-1", [metformina]);
+    await flush();
 
     expect(dbChanges.insertAlarmChanges).toHaveBeenCalledWith([
       expect.objectContaining({
@@ -110,6 +114,7 @@ describe("userData.put — mudanças de alarme", () => {
     storedAlarms = [losartana, metformina];
 
     await put("maria-2", [metformina, losartana]);
+    await flush();
 
     expect(dbChanges.insertAlarmChanges).not.toHaveBeenCalled();
     expect(push.sendExpoPush).not.toHaveBeenCalled();
@@ -136,9 +141,12 @@ describe("userData.put — mudanças de alarme", () => {
   it("falha ao gravar a mudança não derruba o backup", async () => {
     storedAlarms = [losartana];
     vi.mocked(dbChanges.insertAlarmChanges).mockRejectedValueOnce(new Error("DB fora do ar"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
     await expect(put("maria-5", [])).resolves.toEqual({ success: true });
     expect(db.upsertUserData).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it("sem cuidador vinculado grava a mudança e não manda push", async () => {
@@ -146,6 +154,7 @@ describe("userData.put — mudanças de alarme", () => {
     vi.mocked(dbLinks.getActiveCaregiversForMonitored).mockResolvedValueOnce([]);
 
     await put("maria-6", []);
+    await flush();
 
     expect(dbChanges.insertAlarmChanges).toHaveBeenCalledTimes(1);
     expect(push.sendExpoPush).not.toHaveBeenCalled();
@@ -156,7 +165,49 @@ describe("userData.put — mudanças de alarme", () => {
       storedAlarms = [{ ...losartana, id: `x${i}` }];
       await put("maria-7", []);
     }
+    await flush();
     expect(dbChanges.insertAlarmChanges).toHaveBeenCalledTimes(6);
     expect(push.sendExpoPush).toHaveBeenCalledTimes(5);
+  });
+
+  it("falha ao gravar não vaza openId nem nome do lembrete no log", async () => {
+    storedAlarms = [losartana];
+    const driverErr = Object.assign(
+      new Error("Failed query: insert ... params: maria-8,a1,Losartana"),
+      { name: "DrizzleQueryError", cause: { code: "ER_DOWN" } }
+    );
+    vi.mocked(dbChanges.insertAlarmChanges).mockRejectedValueOnce(driverErr);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    await put("maria-8", []);
+    await flush();
+
+    const logged = JSON.stringify(warn.mock.calls);
+    expect(warn).toHaveBeenCalled();
+    expect(logged).not.toContain("Losartana");
+    expect(logged).not.toContain("maria-8");
+    expect(logged).toContain("ER_DOWN");
+    warn.mockRestore();
+  });
+
+  it("alarmId com mais de 64 caracteres não é gravado; os demais são", async () => {
+    const longId = "x".repeat(65);
+    storedAlarms = [{ ...losartana, id: longId }, metformina];
+
+    await put("maria-9", []);
+    await flush();
+
+    expect(dbChanges.insertAlarmChanges).toHaveBeenCalledWith([
+      expect.objectContaining({ alarmId: "a2", changeType: "deleted" }),
+    ]);
+  });
+
+  it("put resolve mesmo com o push do Expo ainda pendente", async () => {
+    storedAlarms = [losartana];
+    vi.mocked(push.sendExpoPush).mockReturnValueOnce(new Promise<number>(() => undefined));
+
+    await expect(put("maria-10", [])).resolves.toEqual({ success: true });
+    await flush();
+    expect(push.sendExpoPush).toHaveBeenCalledTimes(1);
   });
 });

@@ -22,6 +22,18 @@ const PUSH_WINDOW_MS = 60_000;
 const PUSH_LIMIT = 5;
 const pushLog = new Map<string, number[]>();
 
+/**
+ * Só campos seguros: a mensagem de um erro do drizzle traz os parâmetros da
+ * query (openId, nome do lembrete) — nunca vai para o log.
+ */
+function safeErr(err: unknown): string {
+  const e = err as { name?: string; code?: string; cause?: { code?: string } } | null;
+  return `${e?.name ?? "Error"} ${e?.cause?.code ?? e?.code ?? ""}`.trim();
+}
+
+/** `alarmId` vem do cliente sem limite; a coluna é varchar(64). */
+const MAX_ALARM_ID_LENGTH = 64;
+
 function isPushRateLimited(openId: string): boolean {
   const now = Date.now();
   const recent = (pushLog.get(openId) ?? []).filter((ts) => now - ts < PUSH_WINDOW_MS);
@@ -69,15 +81,17 @@ export async function recordAndNotifyAlarmChanges(args: {
   const changes = diffAlarms(args.previousAlarms, args.nextAlarms);
   if (changes.length === 0) return;
 
+  // Um id grande demais derrubaria o insert em lote inteiro; não trunca (não
+  // casaria com nada).
+  const storable = changes.filter((c) => c.alarmId.length <= MAX_ALARM_ID_LENGTH);
   try {
-    await insertAlarmChanges(changes.map((c) => ({ openId: args.openId, ...c })));
+    await insertAlarmChanges(storable.map((c) => ({ openId: args.openId, ...c })));
   } catch (err) {
-    console.warn("[AlarmChanges] falha ao registrar mudanças de alarme:", err);
+    console.warn("[AlarmChanges] falha ao registrar mudanças de alarme:", safeErr(err));
   }
 
-  try {
-    await pushToCaregivers(args.openId, args.personName, changes);
-  } catch (err) {
-    console.warn("[AlarmChanges] falha ao avisar o cuidador:", err);
-  }
+  // Fire-and-forget: o fetch do Expo não tem timeout e não pode segurar o backup.
+  void pushToCaregivers(args.openId, args.personName, changes).catch((err) => {
+    console.warn("[AlarmChanges] falha ao avisar o cuidador:", safeErr(err));
+  });
 }

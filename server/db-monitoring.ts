@@ -495,7 +495,6 @@ export async function purgeStaleData(now: number = Date.now()): Promise<{
 
   const ev = await db.delete(alarmEvents).where(lt(alarmEvents.createdAt, eventsCutoff));
   const ac = await db.delete(alarmChanges).where(lt(alarmChanges.createdAt, eventsCutoff));
-
   const wl = await db.delete(warningLog).where(lt(warningLog.sentAt, eventsCutoff));
   // Stale GPS: blank the location fields rather than deleting the liveness row.
   const loc = await db

@@ -296,7 +296,11 @@ export const appRouter = router({
         try {
           previousAlarms = (await getUserData(openId))?.alarms;
         } catch (err) {
-          console.warn("[UserData] não foi possível ler a lista anterior de alarmes:", err);
+          const e = err as { name?: string; cause?: { code?: string }; code?: string };
+          console.warn(
+            "[UserData] não foi possível ler a lista anterior de alarmes:",
+            `${e?.name ?? "Error"} ${e?.cause?.code ?? e?.code ?? ""}`.trim(),
+          );
         }
         const nextAlarms = input.alarms ?? [];
 
