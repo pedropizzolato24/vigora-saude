@@ -21,7 +21,7 @@ export const SOS_CALL_NUMBER = '192';
 export const SOS_SPOKEN_CONFIRMATION =
   'Avisando suas pessoas. Para chamar o SAMU, toque no botão vermelho.';
 
-export type SosContactStatus = 'sending' | 'sent' | 'partial' | 'failed' | 'no_whatsapp';
+export type SosContactStatus = 'sending' | 'sent' | 'partial' | 'failed' | 'opened' | 'no_whatsapp';
 
 export function sosContactStatus(
   contact: EmergencyContact,
@@ -30,9 +30,12 @@ export function sosContactStatus(
 ): SosContactStatus {
   if (!contact.whatsapp) return 'no_whatsapp';
   if (result === null) return 'sending';
-  if (result.totalSent <= 0) return 'failed';
-  if (result.totalSent >= whatsappContactCount) return 'sent';
-  return 'partial';
+  // Só o que o servidor enviou conta como avisado: o deep link apenas abre o
+  // WhatsApp com a mensagem pronta, e o usuário ainda precisa tocar em enviar.
+  if (result.serverApiSent >= whatsappContactCount) return 'sent';
+  if (result.serverApiSent > 0) return 'partial';
+  if (result.deepLinkSent > 0) return 'opened';
+  return 'failed';
 }
 
 export function sosSummary(
@@ -41,7 +44,10 @@ export function sosSummary(
 ): string | null {
   if (whatsappContactCount === 0) return null;
   if (result === null) return 'Enviando os avisos…';
-  const reached = Math.min(result.totalSent, whatsappContactCount);
+  if (result.serverApiSent <= 0 && result.deepLinkSent > 0) {
+    return 'WhatsApp aberto: toque em enviar para avisar';
+  }
+  const reached = Math.min(result.serverApiSent, whatsappContactCount);
   return `${reached} de ${whatsappContactCount} contato(s) avisado(s)`;
 }
 

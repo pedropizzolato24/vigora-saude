@@ -44,7 +44,7 @@ const INSTRUCTIONS = [
   {
     icon: 'self-improvement' as const,
     title: 'Mantenha a calma',
-    description: 'Respire fundo. Ajuda está a caminho.',
+    description: 'Respire fundo.',
     color: '#F59E0B',
   },
   {
@@ -56,7 +56,7 @@ const INSTRUCTIONS = [
   {
     icon: 'people' as const,
     title: 'Aguarde os contatos',
-    description: 'Seus contatos de emergência foram notificados.',
+    description: 'Veja acima quais contatos foram avisados.',
     color: '#10B981',
   },
 ];
@@ -221,6 +221,11 @@ export function SOSActiveScreen({
                         <Text style={[styles.contactRelation, { color: colors.muted, fontSize: fs.scaled(12) }]}>
                           {contact.relation} · {contact.phone}
                         </Text>
+                        {status === 'opened' && (
+                          <Text style={[styles.contactRelation, { color: colors.warning, fontSize: fs.scaled(12) }]}>
+                            WhatsApp aberto — falta enviar
+                          </Text>
+                        )}
                         {status === 'no_whatsapp' && (
                           <Text style={[styles.contactRelation, { color: colors.warning, fontSize: fs.scaled(12) }]}>
                             Sem WhatsApp — não será avisado
@@ -237,6 +242,9 @@ export function SOSActiveScreen({
                       )}
                       {status === 'partial' && (
                         <MaterialIcons name="help-outline" size={20} color={colors.warning} />
+                      )}
+                      {status === 'opened' && (
+                        <MaterialIcons name="open-in-new" size={20} color={colors.warning} />
                       )}
                       {status === 'failed' && (
                         <MaterialIcons name="error" size={20} color={colors.error} />
