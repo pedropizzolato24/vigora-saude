@@ -3,6 +3,7 @@ import * as Linking from 'expo-linking';
 import React, { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useAccessibility } from '@/lib/accessibility-context';
+import { isValidPlanPhone } from '@/lib/health-plan-phone';
 import {
   Platform,
   Pressable,
@@ -41,7 +42,8 @@ export default function AmbulanceScreen() {
 
   const anamnesis = state.anamnesis;
   const router = useRouter();
-  const isHealthPlanConfigured = !!(anamnesis?.healthPlanProvider && anamnesis?.healthPlanNumber);
+  const planPhone = anamnesis?.healthPlanPhone ?? '';
+  const isHealthPlanConfigured = isValidPlanPhone(planPhone);
   const { dialogProps, showDialog } = useAppDialog();
 
   const options: AmbulanceOption[] = [
@@ -56,10 +58,10 @@ export default function AmbulanceScreen() {
     {
       type: 'plan',
       label: 'Plano de Saúde',
-      description: anamnesis?.healthPlanProvider
-        ? `${anamnesis.healthPlanProvider} - ${anamnesis.healthPlanNumber || 'Número não informado'}`
-        : 'Cadastre seu plano na ficha de anamnese',
-      phone: anamnesis?.healthPlanNumber || '',
+      description: isHealthPlanConfigured
+        ? `${anamnesis?.healthPlanProvider ? `${anamnesis.healthPlanProvider} - ` : ''}${planPhone}`
+        : 'Cadastre o telefone de emergência do seu plano',
+      phone: planPhone,
       icon: 'medical-services',
       color: colors.primary,
     },
@@ -81,11 +83,16 @@ export default function AmbulanceScreen() {
     if (!phone || (selectedOption.type === 'plan' && !isHealthPlanConfigured)) {
       showDialog({
         title: 'Plano de Saúde não configurado',
-        message: 'Você ainda não cadastrou seu plano de saúde. Deseja ir para a Ficha de Anamnese agora?',
+        message: 'Você ainda não cadastrou o telefone de emergência do seu plano de saúde. Deseja cadastrar agora?',
         variant: 'warning',
         buttons: [
           { text: 'Cancelar', style: 'cancel' },
-          { text: 'Configurar Agora', onPress: () => router.push('/(tabs)/anamnesis') },
+          {
+            text: 'Configurar Agora',
+            // Sem ficha, começa do passo 1 (nome e nascimento são obrigatórios);
+            // com ficha, abre direto o passo do plano.
+            onPress: () => router.push((anamnesis ? '/(tabs)/anamnesis?step=plan' : '/(tabs)/anamnesis') as never),
+          },
         ],
       });
       return;
@@ -121,6 +128,9 @@ export default function AmbulanceScreen() {
   if (isAccessibilityMode) {
     const a11yOptions = [
       { label: 'SAMU (SUS)', phone: '192', icon: 'local-hospital' as const, color: ac.emergency, borderColor: ac.emergency },
+      ...(isHealthPlanConfigured
+        ? [{ label: 'Plano de Saúde', phone: planPhone, icon: 'medical-services' as const, color: ac.primary, borderColor: ac.primary }]
+        : []),
       { label: 'Bombeiros', phone: '193', icon: 'warning' as const, color: colors.accent, borderColor: colors.accent },
     ];
     return (

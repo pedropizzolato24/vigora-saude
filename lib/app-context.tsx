@@ -49,6 +49,8 @@ export interface AnamnesesData {
   susNumber: string;
   healthPlanNumber: string;
   healthPlanProvider: string;
+  /** Telefone de emergência do plano (só dígitos). Opcional: fichas antigas não têm. */
+  healthPlanPhone?: string;
 }
 
 export interface HealthMetric {

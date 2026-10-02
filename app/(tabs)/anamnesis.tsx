@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeaderBack } from '@/components/screen-header-back';
 import { HealthConsentGate } from '@/components/health-consent-gate';
@@ -23,6 +23,7 @@ import { useFontSize } from '@/lib/font-size-context';
 import { BrandFonts } from '@/lib/_core/theme';
 import { useAppContext, type AnamnesesData } from '@/lib/app-context';
 import { exportAnamnesisToPDF } from '@/lib/pdf-utils-v2';
+import { sanitizePlanPhone } from '@/lib/health-plan-phone';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { FormKeyboardView } from '@/components/form-keyboard-view';
 
@@ -57,6 +58,7 @@ const EMPTY_FORM: AnamnesesData = {
   susNumber: '',
   healthPlanNumber: '',
   healthPlanProvider: '',
+  healthPlanPhone: '',
 };
 
 export default function AnamnesisScreen() {
@@ -66,7 +68,8 @@ export default function AnamnesisScreen() {
   const router = useRouter();
   const { state, dispatch } = useAppContext();
   const [form, setForm] = useState<AnamnesesData>(state.anamnesis ?? EMPTY_FORM);
-  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
+  const { step: stepParam } = useLocalSearchParams<{ step?: string }>();
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(stepParam === 'plan' ? 3 : 1);
   const { dialogProps, showDialog } = useAppDialog();
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
 
@@ -173,6 +176,7 @@ export default function AnamnesisScreen() {
       { label: 'Alergias', key: 'allergies', placeholder: 'Ex: Penicilina, Amendoim...', multiline: true },
       { label: 'Medicamentos em uso', key: 'medications', placeholder: 'Ex: Losartana 50mg...', multiline: true },
       { label: 'Doenças crônicas', key: 'diseases', placeholder: 'Ex: Diabetes, Hipertensão...', multiline: true },
+      { label: 'Telefone de emergência do plano', key: 'healthPlanPhone', placeholder: 'Ex: 0800 123 4567', keyboard: 'phone-pad', format: sanitizePlanPhone },
     ];
     return (
       <>
@@ -477,6 +481,26 @@ export default function AnamnesisScreen() {
                   maxLength={30}
                   accessibilityLabel="Número da carteirinha do plano"
                 />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>
+                  Telefone de emergência do plano
+                </Text>
+                <TextInput
+                  value={form.healthPlanPhone ?? ''}
+                  onChangeText={(v) => updateField('healthPlanPhone', sanitizePlanPhone(v))}
+                  placeholder="Ex: 0800 123 4567"
+                  placeholderTextColor={colors.muted}
+                  keyboardType="phone-pad"
+                  style={[styles.textInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base, minHeight: fs.touch(48) }]}
+                  returnKeyType="done"
+                  maxLength={13}
+                  accessibilityLabel="Telefone de emergência do plano de saúde"
+                />
+                <Text style={{ color: colors.muted, fontSize: fs.sm }}>
+                  É o número que o app disca na tela Ambulância (não é o da carteirinha).
+                </Text>
               </View>
 
               {/* Exportar PDF — liberado para todos */}
