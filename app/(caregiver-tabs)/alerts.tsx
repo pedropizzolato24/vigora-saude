@@ -11,7 +11,7 @@ import { useAccessibility } from '@/lib/accessibility-context';
 import { BrandFonts } from '@/lib/_core/theme';
 import { useCaregiverContext } from '@/lib/caregiver-context';
 import { trpc } from '@/lib/trpc';
-import { relativeTime } from '@/lib/caregiver-format';
+import { alarmChangeTitle, alertEventTitle, relativeTime } from '@/lib/caregiver-format';
 
 type Filter = 'all' | 'critical' | 'warning';
 
@@ -55,13 +55,14 @@ export default function CaregiverAlertsScreen() {
 
   const events = alerts.data?.events ?? [];
   const warnings = alerts.data?.warnings ?? [];
+  const changes = alerts.data?.changes ?? [];
 
   const items: AlertItem[] = [
     ...events.map((e) => ({
       id: `event-${e.alarmId}-${e.scheduledAt}`,
       severity: 'critical' as const,
       icon: (e.status === 'missed' ? 'notification-important' : 'mobile-off') as AlertItem['icon'],
-      title: e.status === 'missed' ? 'Alarme não respondido' : 'Alarme não enviado (offline)',
+      title: alertEventTitle(e),
       subtitle: `${e.alarmDescription || 'Medicação'} · ${relativeTime(e.scheduledAt)}`,
       ts: e.scheduledAt,
     })),
@@ -72,6 +73,14 @@ export default function CaregiverAlertsScreen() {
       title: `Alerta enviado aos contatos (nível ${w.level})`,
       subtitle: `${w.contactsReached} contato(s) avisado(s) · ${relativeTime(w.sentAt)}`,
       ts: w.sentAt,
+    })),
+    ...changes.map((c) => ({
+      id: `change-${c.id}`,
+      severity: 'warning' as const,
+      icon: 'edit' as AlertItem['icon'],
+      title: alarmChangeTitle(c),
+      subtitle: relativeTime(c.createdAt),
+      ts: c.createdAt,
     })),
   ].sort((a, b) => b.ts - a.ts);
 

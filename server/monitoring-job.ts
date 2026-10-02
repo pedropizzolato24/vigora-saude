@@ -707,9 +707,9 @@ export async function runMonitoringJob(): Promise<void> {
 
       const pushed = await sendPushToCaregivers(
         caregiverOpenIds,
-        notSent ? "⚠️ Alarme não entregue — Vigora" : "⚠️ Alarme não respondido — Vigora",
+        notSent ? "⚠️ Alarme sem confirmação — Vigora" : "⚠️ Alarme não respondido — Vigora",
         notSent
-          ? `O celular de ${name} pode estar desligado ou sem conexão — o alarme das ${scheduledStr} não foi entregue. Toque para ver os detalhes.`
+          ? `Não houve confirmação do aparelho de ${name} para o alarme das ${scheduledStr}. Toque para ver os detalhes.`
           : `${name} não respondeu ao alarme das ${scheduledStr}. Toque para ver os detalhes.`,
         { type: "missed_alarm", url: "/(caregiver-tabs)/alerts" }
       );
