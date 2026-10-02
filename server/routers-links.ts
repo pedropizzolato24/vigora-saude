@@ -339,6 +339,7 @@ export const linkRouter = router({
       events: events.map((e) => ({
         alarmId: e.alarmId,
         alarmDescription: e.alarmDescription,
+        kind: e.kind ?? null,
         scheduledAt: e.scheduledAt.getTime(),
         status: e.status,
         resolvedAt: e.resolvedAt ? e.resolvedAt.getTime() : null,

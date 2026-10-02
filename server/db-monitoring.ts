@@ -8,9 +8,10 @@
  *
  * Handles: account liveness (heartbeat), alarm events, warning log, retention.
  */
-import { and, desc, eq, gt, gte, inArray, lt, lte, min, ne } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNull, lt, lte, min, ne, or } from "drizzle-orm";
 import { getDb } from "./db";
 import { pickPendingEvent } from "./_core/pick-pending-event";
+import { LEGACY_CHECKIN_ALARM_ID } from "./_core/event-kind";
 import {
   accountLiveness,
   alarmChanges,
@@ -130,6 +131,8 @@ export async function createAlarmEvent(data: InsertAlarmEvent): Promise<number> 
           scheduledAt: data.scheduledAt as Date,
           alarmDescription: data.alarmDescription,
           timezone: data.timezone ?? null,
+          kind: data.kind ?? null,
+          graceMinutes: data.graceMinutes ?? null,
         })
         .where(eq(alarmEvents.id, keep.id));
       if (extras.length > 0) {
@@ -183,7 +186,7 @@ export async function updateAlarmEventStatusByAlarmId(
   alarmId: string,
   scheduledAt: Date,
   status: "responded" | "missed" | "not_sent"
-): Promise<{ id: number; timezone: string | null } | null> {
+): Promise<{ id: number; timezone: string | null; kind: string | null } | null> {
   const db = await getDb();
   if (!db) return null;
 
@@ -252,7 +255,7 @@ export async function updateAlarmEventStatusByAlarmId(
     (res as { affectedRows?: number }).affectedRows ??
     (res as Array<{ affectedRows?: number }>)[0]?.affectedRows ??
     0;
-  return affected > 0 ? { id: target.id, timezone: target.timezone } : null;
+  return affected > 0 ? { id: target.id, timezone: target.timezone, kind: target.kind ?? null } : null;
 }
 
 /**
@@ -277,11 +280,11 @@ export async function getExpiredPendingEvents(gracePeriodMinutes: number) {
 /**
  * Returns check-in alarm events that were missed (status = 'missed' | 'not_sent')
  * and haven't had a server-side warning sent yet (warningSent = false).
- * Scoped to a single alarmId (e.g. 'checkin-daily') to avoid escalating
- * every missed medication alarm via the server cascade.
+ * "É check-in" = kind 'checkin' (novo) OU o alarmId fixo do sistema antigo.
+ * Evita escalar todo remédio perdido pela cascata do Passo 3.
  * lookbackHours caps how far back we search to avoid re-escalating stale events.
  */
-export async function getMissedCheckinEvents(alarmId: string, lookbackHours: number) {
+export async function getMissedCheckinEvents(lookbackHours: number) {
   const db = await getDb();
   if (!db) return [];
   const cutoff = new Date(Date.now() - lookbackHours * 60 * 60 * 1000);
@@ -290,7 +293,7 @@ export async function getMissedCheckinEvents(alarmId: string, lookbackHours: num
     .from(alarmEvents)
     .where(
       and(
-        eq(alarmEvents.alarmId, alarmId),
+        or(eq(alarmEvents.kind, "checkin"), eq(alarmEvents.alarmId, LEGACY_CHECKIN_ALARM_ID)),
         inArray(alarmEvents.status, ["missed", "not_sent"]),
         eq(alarmEvents.warningSent, false),
         gte(alarmEvents.scheduledAt, cutoff)
@@ -308,7 +311,7 @@ export async function getMissedCheckinEvents(alarmId: string, lookbackHours: num
  * ("não respondeu" vs "não foi entregue"); a escada de inatividade do Passo 2
  * segue existindo como reforço progressivo (30min/2h/6h).
  */
-export async function getMissedMedicationEvents(checkinAlarmId: string, lookbackHours: number) {
+export async function getMissedMedicationEvents(lookbackHours: number) {
   const db = await getDb();
   if (!db) return [];
   const cutoff = new Date(Date.now() - lookbackHours * 60 * 60 * 1000);
@@ -317,7 +320,8 @@ export async function getMissedMedicationEvents(checkinAlarmId: string, lookback
     .from(alarmEvents)
     .where(
       and(
-        ne(alarmEvents.alarmId, checkinAlarmId),
+        ne(alarmEvents.alarmId, LEGACY_CHECKIN_ALARM_ID),
+        or(isNull(alarmEvents.kind), ne(alarmEvents.kind, "checkin")),
         inArray(alarmEvents.status, ["missed", "not_sent"]),
         eq(alarmEvents.warningSent, false),
         gte(alarmEvents.scheduledAt, cutoff)

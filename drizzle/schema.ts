@@ -156,6 +156,17 @@ export const alarmEvents = mysqlTable(
      * Null nas linhas anteriores a esta coluna → fallback America/Sao_Paulo.
      */
     timezone: varchar("timezone", { length: 64 }),
+    /**
+     * Tipo do evento: 'checkin' ("Está tudo bem?") ou nulo = remédio. Nulo nas
+     * linhas anteriores à coluna; o check-in ANTIGO é reconhecido pelo
+     * alarmId 'checkin-daily'.
+     */
+    kind: varchar("kind", { length: 16 }),
+    /**
+     * Minutos até o evento vencer sem resposta (5, 10, 15 ou 30). Nulo = 5 (o
+     * grace padrão do monitoring-job). O check-in define o seu.
+     */
+    graceMinutes: int("graceMinutes"),
     status: mysqlEnum("status", ["pending", "responded", "missed", "not_sent"])
       .notNull()
       .default("pending"),
