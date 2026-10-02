@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CaregiverEmptyState } from '@/components/caregiver-empty-state';
+import { CaregiverRefreshControl, UpdatedAgoBar } from '@/components/caregiver-refresh';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
@@ -37,7 +38,11 @@ export default function CaregiverAlertsScreen() {
   const linked = state.linkedMonitored;
   const [filter, setFilter] = useState<Filter>('all');
 
-  const alerts = trpc.link.getMonitoredAlerts.useQuery(undefined, { enabled: !!linked });
+  const alerts = trpc.link.getMonitoredAlerts.useQuery(undefined, { enabled: !!linked, refetchOnWindowFocus: true });
+  const refreshing = alerts.isRefetching;
+  const onRefresh = () => {
+    alerts.refetch();
+  };
 
   if (!linked) {
     return (
@@ -112,7 +117,12 @@ export default function CaregiverAlertsScreen() {
           })}
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={{ padding: 20, gap: 12 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<CaregiverRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        >
+          <UpdatedAgoBar updatedAt={alerts.dataUpdatedAt} refreshing={refreshing} onRefresh={onRefresh} />
           {alerts.isLoading ? (
             <ActivityIndicator color={ac.primary} style={{ marginTop: 24 }} />
           ) : filtered.length === 0 ? (
@@ -178,7 +188,8 @@ export default function CaregiverAlertsScreen() {
         })}
       </View>
 
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView contentContainerStyle={styles.body} refreshControl={<CaregiverRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+        <UpdatedAgoBar updatedAt={alerts.dataUpdatedAt} refreshing={refreshing} onRefresh={onRefresh} />
         {alerts.isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
         ) : filtered.length === 0 ? (

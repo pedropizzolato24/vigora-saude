@@ -10,6 +10,7 @@ import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
+import { useCaregiverContext } from '@/lib/caregiver-context';
 import { getDeviceId } from '@/lib/device-id';
 import { getDevicePushToken } from '@/lib/push-registration';
 import { setPushUnavailable } from '@/lib/push-status';
@@ -31,6 +32,8 @@ export function CaregiverPushInitializer() {
   const registered = useRef(false);
   const router = useRouter();
   const register = trpc.push.register.useMutation();
+  const utils = trpc.useUtils();
+  const { refreshLink } = useCaregiverContext();
 
   // Register this device's push token once.
   useEffect(() => {
@@ -86,6 +89,21 @@ export function CaregiverPushInitializer() {
     const sub = Notifications.addNotificationResponseReceivedListener(navigateFromResponse);
     return () => sub.remove();
   }, [router]);
+
+  // Push recebido com o app aberto: recarrega os dados (o toque só navega).
+  // Desvínculo também relê o vínculo, para a tela não continuar mostrando quem
+  // já encerrou o acompanhamento.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const sub = Notifications.addNotificationReceivedListener((notification) => {
+      const type = notification.request.content.data?.type;
+      if (!CAREGIVER_PUSH_TYPES.includes(type as string)) return;
+      utils.link.getMonitoredAlerts.invalidate().catch(() => {});
+      utils.link.getMonitoredData.invalidate().catch(() => {});
+      if (type === 'link_revoked') refreshLink().catch(() => {});
+    });
+    return () => sub.remove();
+  }, [utils, refreshLink]);
 
   return null;
 }

@@ -5,6 +5,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { CaregiverEmptyState } from '@/components/caregiver-empty-state';
+import { CaregiverRefreshControl, UpdatedAgoBar } from '@/components/caregiver-refresh';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
@@ -54,7 +55,11 @@ export default function CaregiverPersonScreen() {
   const { dialogProps, showDialog } = useAppDialog();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const monitored = trpc.link.getMonitoredData.useQuery(undefined, { enabled: !!linked });
+  const monitored = trpc.link.getMonitoredData.useQuery(undefined, { enabled: !!linked, refetchOnWindowFocus: true });
+  const refreshing = monitored.isRefetching;
+  const onRefresh = () => {
+    monitored.refetch();
+  };
   const data = monitored.data;
   const loading = monitored.isLoading;
 
@@ -130,7 +135,11 @@ export default function CaregiverPersonScreen() {
       edges={['top', 'left', 'right']}
       containerStyle={isAccessibilityMode ? { backgroundColor: ac.background } : undefined}
     >
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}
+        refreshControl={<CaregiverRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        <UpdatedAgoBar updatedAt={monitored.dataUpdatedAt} refreshing={refreshing} onRefresh={onRefresh} />
         {/* Header */}
         <View style={[styles.header, { backgroundColor: c.surface, borderColor: c.border, borderWidth: bw }]}>
           <View style={[styles.avatar, { width: avatarSide, height: avatarSide, borderRadius: avatarSide / 2, backgroundColor: c.primary }]}>

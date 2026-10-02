@@ -2,6 +2,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CaregiverEmptyState } from '@/components/caregiver-empty-state';
+import { CaregiverRefreshControl, UpdatedAgoBar } from '@/components/caregiver-refresh';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
@@ -38,11 +39,16 @@ export default function CaregiverHomeScreen() {
 
   const pushUnavailable = usePushUnavailable();
 
-  const monitored = trpc.link.getMonitoredData.useQuery(undefined, { enabled: !!linked });
+  const monitored = trpc.link.getMonitoredData.useQuery(undefined, { enabled: !!linked, refetchOnWindowFocus: true });
   const data = monitored.data;
   const loading = monitored.isLoading;
 
-  const alerts = trpc.link.getMonitoredAlerts.useQuery(undefined, { enabled: !!linked });
+  const alerts = trpc.link.getMonitoredAlerts.useQuery(undefined, { enabled: !!linked, refetchOnWindowFocus: true });
+  const refreshing = monitored.isRefetching || alerts.isRefetching;
+  const onRefresh = () => {
+    monitored.refetch();
+    alerts.refetch();
+  };
   const cutoff = Date.now() - ALERT_WINDOW_MS;
   const recentAlertCount =
     (alerts.data?.events ?? []).filter((e) => e.scheduledAt >= cutoff).length +
@@ -110,7 +116,12 @@ export default function CaregiverHomeScreen() {
           </Text>
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 16, gap: 12 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={{ padding: 20, paddingBottom: 16, gap: 12 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<CaregiverRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        >
+          <UpdatedAgoBar updatedAt={monitored.dataUpdatedAt} refreshing={refreshing} onRefresh={onRefresh} />
           {pushUnavailable ? (
             <Pressable
               onPress={() => Linking.openSettings()}
@@ -173,7 +184,9 @@ export default function CaregiverHomeScreen() {
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={<CaregiverRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        <UpdatedAgoBar updatedAt={monitored.dataUpdatedAt} refreshing={refreshing} onRefresh={onRefresh} />
         {/* Cabeçalho — Jakub enter: OCCASIONAL (once per app open) */}
         <FadeInView delay={0} duration={320} style={styles.pageHeader}>
           <Text style={[styles.pageLabel, { color: colors.muted, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>

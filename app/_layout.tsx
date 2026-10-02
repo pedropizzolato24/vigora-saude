@@ -50,6 +50,7 @@ import {
 import type { EdgeInsets, Rect } from "react-native-safe-area-context";
 
 import { trpc, createTRPCClient } from "@/lib/trpc";
+import { installQueryFocusManager } from '@/lib/query-focus';
 import { perfMark } from "@/lib/_core/perf";
 import { initializePurchases } from "@/lib/purchases";
 import { PurchasesProvider } from "@/context/purchases-context";
@@ -352,6 +353,11 @@ export default function RootLayout() {
       }),
   );
   const [trpcClient] = useState(() => createTRPCClient());
+  // "App voltou ao primeiro plano" = foco para o React Query (telas do cuidador
+  // recarregam ao voltar ao app).
+  useEffect(() => {
+    installQueryFocusManager();
+  }, []);
 
   // Ensure minimum 8px padding for top and bottom on mobile
   const providerInitialMetrics = useMemo(() => {
