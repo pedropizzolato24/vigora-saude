@@ -22,7 +22,8 @@ import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { BrandFonts } from '@/lib/_core/theme';
 import { useAppContext, type AnamnesesData } from '@/lib/app-context';
-import { exportAnamnesisToPDF } from '@/lib/pdf-utils-v2';
+import { createAnamnesisPdf } from '@/lib/pdf-utils-v2';
+import { ExportFileButtons } from '@/components/export-file-buttons';
 import { isValidPlanPhone, sanitizePlanPhone } from '@/lib/health-plan-phone';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { FormKeyboardView } from '@/components/form-keyboard-view';
@@ -125,18 +126,14 @@ export default function AnamnesisScreen() {
   };
 
   // Exportação em PDF liberada para todos — a experiência completa não é
-  // restringida por plano.
-  const handleExport = async () => {
-    try {
-      if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
-      await exportAnamnesisToPDF(form);
-    } catch (error) {
-      showDialog({ title: 'Erro ao exportar', message: 'Não foi possível exportar a ficha médica.', variant: 'error', buttons: [{ text: 'OK' }] });
-      console.error('Export error:', error);
-    }
-  };
+  // restringida por plano. Baixar/Compartilhar ficam no ExportFileButtons.
+  const prepareExport = async () => ({
+    uri: await createAnamnesisPdf(form),
+    fileName: 'vigora-historico-medico.pdf',
+    mimeType: 'application/pdf',
+    uti: 'com.adobe.pdf',
+    dialogTitle: 'Histórico médico',
+  });
 
   const handleWizardNext = () => {
     if (wizardStep === 1) {
@@ -227,15 +224,7 @@ export default function AnamnesisScreen() {
             </View>
           ))}
           {/* Exportar PDF — liberado para todos */}
-          <Pressable
-            onPress={handleExport}
-            accessibilityRole="button"
-            accessibilityLabel="Exportar histórico médico em PDF"
-            style={({ pressed }) => [{ backgroundColor: ac.surface, borderRadius: 20, paddingVertical: as_.buttonPadding, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, borderWidth: 3, borderColor: ac.primary, opacity: pressed ? 0.85 : 1 }]}
-          >
-            <MaterialIcons name="picture-as-pdf" size={32} color={ac.primary} />
-            <Text style={{ fontSize: af.xl, fontWeight: '800', color: ac.primary }}>Exportar PDF</Text>
-          </Pressable>
+          <ExportFileButtons label="Histórico médico (PDF)" prepare={prepareExport} />
           {/* Save button */}
           <Pressable
             onPress={handleWizardSave}
@@ -514,20 +503,7 @@ export default function AnamnesisScreen() {
               </View>
 
               {/* Exportar PDF — liberado para todos */}
-              <Pressable
-                onPress={handleExport}
-                style={({ pressed }) => [
-                  styles.exportBtn,
-                  { backgroundColor: colors.surface, borderColor: colors.primary, minHeight: fs.touch(52), opacity: pressed ? 0.8 : 1 },
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="Exportar histórico médico em PDF"
-              >
-                <MaterialIcons name="picture-as-pdf" size={20} color={colors.primary} />
-                <Text style={[styles.exportBtnText, { color: colors.primary, fontSize: fs.base, fontFamily: BrandFonts.body }]}>
-                  Exportar ficha em PDF
-                </Text>
-              </Pressable>
+              <ExportFileButtons label="Ficha em PDF" prepare={prepareExport} />
 
               {/* Privacy Note */}
               <View style={[styles.privacyNote, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -557,16 +533,6 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 24, fontWeight: '800' },
   subtitle: { fontSize: 16, marginTop: 2 },
-  exportBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-  },
-  exportBtnText: { fontWeight: '700' },
   wizardContainer: {
     flex: 1,
     padding: 20,

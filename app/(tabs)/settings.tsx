@@ -15,6 +15,7 @@ import {
 import { AccountDangerZone } from '@/components/account-danger-zone';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { DataExportButton } from '@/components/data-export-button';
+import { HealthReportExport } from '@/components/health-report-export';
 import { Collapsible, COLLAPSE_DURATION, FadeInView } from '@/components/animated-components';
 import { FormKeyboardView } from '@/components/form-keyboard-view';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -747,6 +748,7 @@ export default function SettingsScreen() {
 
           {/* Direitos do titular (LGPD Art. 18): portabilidade fora da caixa,
               ações irreversíveis dentro dela. */}
+          <HealthReportExport />
           <DataExportButton />
           <AccountDangerZone
             clearLocalData={() => dispatch({ type: 'CLEAR_ALL_DATA' })}
@@ -1557,6 +1559,7 @@ export default function SettingsScreen() {
           {/* Direitos do titular (LGPD Art. 18): portabilidade fora da caixa,
               ações irreversíveis dentro dela. */}
           <View style={{ paddingHorizontal: 16, paddingBottom: 16, gap: 4 }}>
+            <HealthReportExport />
             <DataExportButton />
             <AccountDangerZone
               clearLocalData={() => dispatch({ type: 'CLEAR_ALL_DATA' })}

@@ -25,7 +25,7 @@ import * as Sharing from 'expo-sharing';
 import * as Haptics from 'expo-haptics';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAppContext } from '@/lib/app-context';
-import { buildReportHtml } from '@/lib/health-report-generator';
+import { createHealthReportPdf } from '@/lib/health-report-file';
 import { useColors } from '@/hooks/use-colors';
 import { useAccessibility } from '@/lib/accessibility-context';
 import { AppToast, useAppToast } from '@/components/app-toast';
@@ -66,20 +66,11 @@ export function HealthReportButton({ compact = false }: HealthReportButtonProps)
     setIsGenerating(true);
 
     try {
-      // 1. Gera HTML do relatório
-      const html = buildReportHtml({
+      // 1-2. Gera o HTML e converte para PDF
+      const { uri, html } = await createHealthReportPdf({
         profile: state.profile,
         healthMetrics: state.healthMetrics,
         alarms: state.alarms,
-        generatedAt: Date.now(),
-      });
-
-      // 2. Converte HTML para PDF via expo-print
-      const { uri } = await Print.printToFileAsync({
-        html,
-        width: 612,  // US Letter width em pontos (72 PPI)
-        height: 792, // US Letter height em pontos
-        margins: { top: 0, bottom: 0, left: 0, right: 0 },
       });
 
       // 3. Verifica se compartilhamento está disponível
