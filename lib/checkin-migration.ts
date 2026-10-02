@@ -17,8 +17,10 @@
  *  - Falhou agendar (ou sem espaço nos MAX_ALARMS): o sistema antigo CONTINUA
  *    valendo e a próxima avaliação tenta de novo. Ficar sem check-in é pior do
  *    que ter dois por um dia.
- *  - O alarme migrado tem id fixo: refazer em outro aparelho substitui o mesmo
- *    alarme em vez de duplicar.
+ *  - O alarme migrado tem id fixo e o ADD_ALARM do reducer é idempotente por id
+ *    (substitui no lugar): se um estado da nuvem já trouxe o mesmo alarme enquanto
+ *    o agendamento esperava, não há duplicata no estado; o agendador nativo também
+ *    é chaveado pelo id.
  *  - Duas chamadas ao mesmo tempo compartilham a mesma execução: um alarme só.
  */
 import type { Alarm } from '@/lib/app-context';

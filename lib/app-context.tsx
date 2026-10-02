@@ -225,8 +225,14 @@ function baseReducer(state: AppState, action: AppAction): AppState {
       return initialState;
 
     case 'ADD_ALARM': {
-      if (state.alarms.length >= 24) return state;
-      const newAlarms = [...state.alarms, action.payload].sort((a, b) =>
+      // Mesmo id (ex.: check-in migrado, id fixo): substitui no lugar. A contagem não
+      // cresce, então o teto não bloqueia a troca.
+      const exists = state.alarms.some((a) => a.id === action.payload.id);
+      if (!exists && state.alarms.length >= 24) return state;
+      const base = exists
+        ? state.alarms.filter((a) => a.id !== action.payload.id)
+        : state.alarms;
+      const newAlarms = [...base, action.payload].sort((a, b) =>
         a.time.localeCompare(b.time)
       );
       return { ...state, alarms: newAlarms };
