@@ -16,6 +16,9 @@ import { getUserByOpenId, getUserData, upsertUser, upsertUserData } from "./db";
 import { deleteAccountData } from "./db-account";
 import { getAccountLiveness, getAlarmEventHistory, getWarningHistory } from "./db-monitoring";
 import { getActiveCaregiversForMonitored } from "./db-links";
+import { recordAndNotifyAlarmChanges } from "./alarm-changes";
+import { pickPersonName } from "./_core/alarm-diff";
+import { getRecentAlarmChanges } from "./db-alarm-changes";
 import type { EmergencyContactRecord } from "../drizzle/schema";
 
 /**
@@ -286,15 +289,33 @@ export const appRouter = router({
         }),
       )
       .mutation(async ({ ctx, input }) => {
+        const openId = ctx.user.openId;
+        // Lista anterior lida ANTES do upsert: é a única base de comparação das
+        // mudanças de alarme. Falha ao ler não pode impedir o backup.
+        let previousAlarms: unknown = undefined;
+        try {
+          previousAlarms = (await getUserData(openId))?.alarms;
+        } catch (err) {
+          console.warn("[UserData] não foi possível ler a lista anterior de alarmes:", err);
+        }
+        const nextAlarms = input.alarms ?? [];
+
         await upsertUserData({
-          openId: ctx.user.openId,
+          openId,
           anamnesis: (input.anamnesis ?? null) as Record<string, unknown> | null,
           emergencyContacts: input.emergencyContacts ?? [],
-          alarms: input.alarms ?? [],
+          alarms: nextAlarms,
           settings: (input.settings ?? null) as Record<string, unknown> | null,
           healthMetrics: input.healthMetrics ?? [],
           profile: (input.profile ?? null) as Record<string, unknown> | null,
           dataUpdatedAt: input.dataUpdatedAt,
+        });
+
+        await recordAndNotifyAlarmChanges({
+          openId,
+          previousAlarms,
+          nextAlarms,
+          personName: pickPersonName(input.anamnesis, ctx.user.name),
         });
         return { success: true } as const;
       }),
@@ -320,15 +341,23 @@ export const appRouter = router({
       // portabilidade.
       const LIMITE_EXPORTACAO = 10_000;
 
-      const [user, data, historicoDeAlarmes, alertasEnviados, sinalDeVida, cuidadores] =
-        await Promise.all([
-          getUserByOpenId(openId),
-          getUserData(openId),
-          getAlarmEventHistory(openId, LIMITE_EXPORTACAO),
-          getWarningHistory(openId, LIMITE_EXPORTACAO),
-          getAccountLiveness(openId),
-          getActiveCaregiversForMonitored(openId),
-        ]);
+      const [
+        user,
+        data,
+        historicoDeAlarmes,
+        alertasEnviados,
+        sinalDeVida,
+        cuidadores,
+        alteracoesDeAlarmes,
+      ] = await Promise.all([
+        getUserByOpenId(openId),
+        getUserData(openId),
+        getAlarmEventHistory(openId, LIMITE_EXPORTACAO),
+        getWarningHistory(openId, LIMITE_EXPORTACAO),
+        getAccountLiveness(openId),
+        getActiveCaregiversForMonitored(openId),
+        getRecentAlarmChanges(openId, LIMITE_EXPORTACAO),
+      ]);
 
       return {
         conta: user
@@ -346,6 +375,7 @@ export const appRouter = router({
             }
           : null,
         historicoDeAlarmes,
+        historicoDeAlteracoesDeAlarmes: alteracoesDeAlarmes,
         alertasEnviados,
         sinalDeVida: sinalDeVida ?? null,
         cuidadoresVinculados: cuidadores.map((c) => ({

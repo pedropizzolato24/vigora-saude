@@ -19,6 +19,7 @@
 import { and, eq, inArray, isNull, lt, or } from "drizzle-orm";
 import {
   accountLiveness,
+  alarmChanges,
   alarmEvents,
   authCodes,
   authIdentities,
@@ -48,6 +49,8 @@ export async function deleteAccountData(openId: string): Promise<void> {
     // Monitoring data (all openId-keyed).
     await tx.delete(accountLiveness).where(eq(accountLiveness.openId, openId));
     await tx.delete(alarmEvents).where(eq(alarmEvents.openId, openId));
+    await tx.delete(alarmChanges).where(eq(alarmChanges.openId, openId));
+
     await tx.delete(warningLog).where(eq(warningLog.openId, openId));
 
     // Account data.

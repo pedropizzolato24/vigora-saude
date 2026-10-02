@@ -767,7 +767,7 @@ export function startMonitoringScheduler(): void {
     purgeStaleData()
       .then((r) =>
         console.log(
-          `[Monitor] Retention purge: ${r.alarmEvents} alarm events, ${r.warningLog} warnings, ${r.locationsCleared} stale locations cleared`
+          `[Monitor] Retention purge: ${r.alarmEvents} alarm events, ${r.alarmChanges ?? 0} alarm changes, ${r.warningLog} warnings, ${r.locationsCleared} stale locations cleared`
         )
       )
       // Contas anônimas abandonadas param de "existir" para o switch (e para a

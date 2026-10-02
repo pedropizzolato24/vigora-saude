@@ -13,6 +13,7 @@ import { getDb } from "./db";
 import { pickPendingEvent } from "./_core/pick-pending-event";
 import {
   accountLiveness,
+  alarmChanges,
   alarmEvents,
   InsertAlarmEvent,
   warningLog,
@@ -478,6 +479,7 @@ function retentionDays(envKey: string, fallback: number): number {
  */
 export async function purgeStaleData(now: number = Date.now()): Promise<{
   alarmEvents: number;
+  alarmChanges: number;
   warningLog: number;
   locationsCleared: number;
 }> {
@@ -492,6 +494,8 @@ export async function purgeStaleData(now: number = Date.now()): Promise<{
     (r as Array<{ affectedRows?: number }>)?.[0]?.affectedRows ?? 0;
 
   const ev = await db.delete(alarmEvents).where(lt(alarmEvents.createdAt, eventsCutoff));
+  const ac = await db.delete(alarmChanges).where(lt(alarmChanges.createdAt, eventsCutoff));
+
   const wl = await db.delete(warningLog).where(lt(warningLog.sentAt, eventsCutoff));
   // Stale GPS: blank the location fields rather than deleting the liveness row.
   const loc = await db
@@ -501,6 +505,7 @@ export async function purgeStaleData(now: number = Date.now()): Promise<{
 
   return {
     alarmEvents: affected(ev),
+    alarmChanges: affected(ac),
     warningLog: affected(wl),
     locationsCleared: affected(loc),
   };
