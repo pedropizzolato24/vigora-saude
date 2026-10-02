@@ -18,9 +18,10 @@ export function redirectSystemPath({
     // `vigora://alarm-ring?uid=<uid>`. Roteamos direto para a tela do alarme com
     // o alarmId extraído — sem depender do getAlarmState no cold start (Android
     // antigo dava tela preta → home). uid: vigora_<id> | _wd<n> | _snooze.
-    // Os botões "Soneca" e "Dispensar" usam o mesmo deep link com &snooze=1 /
-    // &dismiss=1 — repassados para a tela executar a ação e confirmá-la no
-    // servidor (as actions nativas resolviam só em Java, sem confirmar nada).
+    // O botão "Dispensar" usa o mesmo deep link com &dismiss=1 — repassado para
+    // a tela executar a ação e confirmá-la no servidor (a action nativa
+    // resolvia só em Java, sem confirmar nada). A soneca saiu do app (out/2026):
+    // um &snooze=1 de notificação antiga é ignorado.
     if (path.includes("alarm-ring")) {
       const queryIndex = path.indexOf("?");
       const query = queryIndex >= 0 ? path.slice(queryIndex + 1) : "";
@@ -29,9 +30,8 @@ export function redirectSystemPath({
         const uid = decodeURIComponent(uidMatch[1]);
         const m = uid.match(/^vigora_(.+?)(?:_wd\d+|_snooze)?$/);
         const alarmId = m ? m[1] : uid;
-        const snooze = /(?:^|&)snooze=1(?:&|$)/.test(query) ? '&snooze=1' : '';
         const dismiss = /(?:^|&)dismiss=1(?:&|$)/.test(query) ? '&dismiss=1' : '';
-        return `/alarm-ring?alarmId=${encodeURIComponent(alarmId)}${snooze}${dismiss}`;
+        return `/alarm-ring?alarmId=${encodeURIComponent(alarmId)}${dismiss}`;
       }
     }
   } catch {
