@@ -91,7 +91,12 @@ export async function createAlarmEvent(data: InsertAlarmEvent): Promise<number> 
   // Prevents duplicate pending events when createEvent is called multiple times
   // (e.g., startup effect + respond-and-recreate on the same deadline).
   const existing = await db
-    .select({ id: alarmEvents.id })
+    .select({
+      id: alarmEvents.id,
+      status: alarmEvents.status,
+      kind: alarmEvents.kind,
+      graceMinutes: alarmEvents.graceMinutes,
+    })
     .from(alarmEvents)
     .where(
       and(
@@ -101,7 +106,21 @@ export async function createAlarmEvent(data: InsertAlarmEvent): Promise<number> 
       )
     )
     .limit(1);
-  if (existing.length > 0) return existing[0].id;
+  if (existing.length > 0) {
+    // Mudar só o atraso do check-in mantém o scheduledAt: o re-sync cai aqui.
+    // Enquanto o evento está pendente, o prazo/tipo novos valem; resolvido
+    // (confirmado, perdido…) não se mexe.
+    const row = existing[0];
+    const kind = data.kind ?? null;
+    const graceMinutes = data.graceMinutes ?? null;
+    if (
+      row.status === "pending" &&
+      ((row.kind ?? null) !== kind || (row.graceMinutes ?? null) !== graceMinutes)
+    ) {
+      await db.update(alarmEvents).set({ kind, graceMinutes }).where(eq(alarmEvents.id, row.id));
+    }
+    return row.id;
+  }
 
   // Um único pending FUTURO por (openId, alarmId). O cliente pré-registra o
   // PRÓXIMO disparo a cada sync; editar o horário do alarme mudava o

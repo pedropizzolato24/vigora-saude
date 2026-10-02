@@ -75,10 +75,12 @@ const WARNING_LEVELS = [
 // Minimum interval between warnings of the same level (hours)
 const MIN_WARNING_INTERVAL_HOURS = 2;
 
-// O check-in diário é um alarme sintético do cliente (lib/checkin-service.ts):
-// tem o mesmo id fixo aqui, no routers-monitoring e no cliente, mas NÃO vive na
-// lista de alarmes do usuário. Por isso ele nunca passa pela checagem de agenda
-// abaixo — "ausente da lista" é o estado normal dele, não prova de cancelamento.
+// Id fixo do check-in do sistema ANTIGO (alarme sintético que NÃO vive na lista
+// de alarmes do usuário). Esse evento não passa pela checagem de agenda de
+// "alarme ainda armado" — "ausente da lista" era o estado normal dele; em vez
+// disso, se a conta já migrou (agenda com alarme kind 'checkin') ele é apagado.
+// O check-in NOVO é um alarme comum (id próprio, kind 'checkin') e passa pela
+// checagem de agenda como qualquer outro.
 const CHECKIN_ALARM_ID = "checkin-daily";
 
 /**
@@ -618,7 +620,7 @@ export async function runMonitoringJob(): Promise<void> {
 
   try {
     // -- Step 3: Escalate missed check-in events --------------------------------
-    // Scoped to 'checkin-daily' to avoid cascading on every missed medication alarm.
+    // Scoped to check-in events (kind 'checkin' or the legacy 'checkin-daily' id) to avoid cascading on every missed medication alarm.
     // warningSent=false means the client did not handle escalation (device was offline).
     // Look back EVENT_LOOKBACK_HOURS so events that missed a job run still get caught.
     const missedCheckins = await getMissedCheckinEvents(EVENT_LOOKBACK_HOURS);
