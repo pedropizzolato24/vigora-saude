@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { weeklyJsDays } from './alarm-fire-times';
 import { Platform } from 'react-native';
 import { Alarm } from './app-context';
+import { alarmTexts } from '@/lib/alarm-kind';
 import { setupCountdownChannel } from './alarm-countdown-notifier';
 
 // --- Notification Channel IDs ----------------------------------------------
@@ -14,13 +15,11 @@ Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const isAlarm = !!notification.request.content.data?.alarmId;
     const isCountdownUpdate = !!notification.request.content.data?.isCountdownUpdate;
-    const isCheckinPrompt = notification.request.content.data?.type === 'checkin_prompt';
     return {
-      // checkin_prompt: suppress system banner — in-app Modal handles it instead
-      shouldShowAlert: !isCheckinPrompt,
-      shouldShowBanner: !isCheckinPrompt,
-      shouldPlaySound: isAlarm && !isCountdownUpdate && !isCheckinPrompt,
-      shouldSetBadge: !isCountdownUpdate && !isCheckinPrompt,
+      shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldPlaySound: isAlarm && !isCountdownUpdate,
+      shouldSetBadge: !isCountdownUpdate,
       shouldShowList: true,
     };
   },
@@ -89,15 +88,13 @@ export async function setupNotificationChannels(): Promise<void> {
     enableVibrate: true,
   });
 
-  // Check-in channel — HIGH importance (toca som padrão, não bypassa DND)
-  await Notifications.setNotificationChannelAsync(CHECKIN_CHANNEL_ID, {
-    name: 'Check-in Diário',
-    description: 'Notificação diária de bem-estar. Confirme que está tudo bem.',
-    importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
-    enableVibrate: true,
-    sound: 'default',
-  });
+  // O canal do check-in antigo (notificação comum, tocava uma vez) deixou de
+  // existir: o check-in agora é um alarme. Apaga o canal de quem já o tinha.
+  try {
+    await Notifications.deleteNotificationChannelAsync(CHECKIN_CHANNEL_ID);
+  } catch (error) {
+    console.warn('[Notifications] não foi possível apagar o canal do check-in antigo:', error);
+  }
 }
 
 /**
@@ -145,11 +142,10 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
     const comVibracao = alarm.vibration !== false;
 
     // Notification content - same for all repeat types
+    const texts = alarmTexts(alarm);
     const content: Notifications.NotificationContentInput = {
-      title: `⏰ ${alarm.description || 'Alarme'}`,
-      body: alarm.description
-        ? `Hora do alarme: ${alarm.time} - ${alarm.description}`
-        : `Hora do alarme: ${alarm.time}`,
+      title: texts.notificationTitle,
+      body: texts.notificationBody,
       data: {
         alarmId: alarm.id,
         url: `/alarm-ring?alarmId=${alarm.id}`,

@@ -38,7 +38,7 @@ export default function CaregiverSettingsScreen() {
   const { a11y, c, sz, bw, touch } = useSettingsSkin();
   const router = useRouter();
   const { logout } = useAuth();
-  const { state, clearLinkedMonitored, updateNotificationPrefs } = useCaregiverContext();
+  const { state, clearLinkedMonitored } = useCaregiverContext();
   const { dialogProps, showDialog } = useAppDialog();
   const appLock = useAppLock();
   const updateProfile = trpc.auth.updateProfile.useMutation();
@@ -197,23 +197,8 @@ export default function CaregiverSettingsScreen() {
 
         {/* Notificações */}
         <Section title="Notificações">
-          <ToggleRow
-            label="Medicação perdida"
-            value={state.notificationPrefs.missedMedication}
-            onChange={(v) => updateNotificationPrefs({ missedMedication: v })}
-          />
-          <ToggleRow
-            label="SOS acionado"
-            value={state.notificationPrefs.sosTriggered}
-            onChange={(v) => updateNotificationPrefs({ sosTriggered: v })}
-          />
-          <ToggleRow
-            label="Dead man's switch"
-            value={state.notificationPrefs.deadManSwitch}
-            onChange={(v) => updateNotificationPrefs({ deadManSwitch: v })}
-          />
           <Text style={[styles.note, { color: c.muted, fontSize: sz.note, fontFamily: BrandFonts.body }]}>
-            As notificações começarão a chegar quando a sincronização estiver ativa.
+            Os avisos de alarme perdido, SOS e mudanças de lembrete só chegam se o celular tiver liberado as notificações ao Vigora.
           </Text>
           {/* Os avisos acima só chegam se o celular tiver liberado as notificações
               ao Vigora — e é justamente por aí que o cuidador fica sabendo de um

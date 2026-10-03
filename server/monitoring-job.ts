@@ -48,6 +48,7 @@ import { sendExpoPush } from "./push";
 import type { EmergencyContactRecord } from "../drizzle/schema";
 import { formatEventTime } from "./_core/format-event-time";
 import { parseLatLng } from "./_core/parse-lat-lng";
+import { agendaHasCheckinAlarm, isEventExpired } from "./_core/event-kind";
 
 // Grace period: how long after scheduledAt we wait before resolving a pending event.
 // Precisa cobrir só o caminho feliz do cliente: countdown máximo de 60s
@@ -74,10 +75,12 @@ const WARNING_LEVELS = [
 // Minimum interval between warnings of the same level (hours)
 const MIN_WARNING_INTERVAL_HOURS = 2;
 
-// O check-in diário é um alarme sintético do cliente (lib/checkin-service.ts):
-// tem o mesmo id fixo aqui, no routers-monitoring e no cliente, mas NÃO vive na
-// lista de alarmes do usuário. Por isso ele nunca passa pela checagem de agenda
-// abaixo — "ausente da lista" é o estado normal dele, não prova de cancelamento.
+// Id fixo do check-in do sistema ANTIGO (alarme sintético que NÃO vive na lista
+// de alarmes do usuário). Esse evento não passa pela checagem de agenda de
+// "alarme ainda armado" — "ausente da lista" era o estado normal dele; em vez
+// disso, se a conta já migrou (agenda com alarme kind 'checkin') ele é apagado.
+// O check-in NOVO é um alarme comum (id próprio, kind 'checkin') e passa pela
+// checagem de agenda como qualquer outro.
 const CHECKIN_ALARM_ID = "checkin-daily";
 
 /**
@@ -386,7 +389,11 @@ export async function runMonitoringJob(): Promise<void> {
 
   try {
     // -- Step 1: Resolve expired pending alarm events --------------------------
-    const expiredEvents = await getExpiredPendingEvents(GRACE_PERIOD_MINUTES);
+    // O corte do banco usa o grace padrão (5 min); cada evento pode ter o seu
+    // (check-in: 5, 10, 15 ou 30 min) — o prazo exato é conferido aqui.
+    const expiredEvents = (await getExpiredPendingEvents(GRACE_PERIOD_MINUTES)).filter((e) =>
+      isEventExpired(e, Date.now(), GRACE_PERIOD_MINUTES)
+    );
     console.log(`[Monitor] Found ${expiredEvents.length} expired pending events`);
 
     // Agenda por conta, lida uma vez por execução: várias contas costumam ter
@@ -415,6 +422,20 @@ export async function runMonitoringJob(): Promise<void> {
           await deleteAlarmEvent(event.id);
           console.log(
             `[Monitor] Event ${event.id} (alarm ${event.alarmId}) -> apagado (alarme desativado ou removido pelo usuário)`
+          );
+          continue;
+        }
+
+        // Evento do check-in ANTIGO ('checkin-daily') de uma conta que já migrou
+        // para o check-in como alarme: não é mais esperado. Sem isto ele
+        // escalaria "check-in perdido" de um check-in que já virou alarme.
+        if (
+          event.alarmId === CHECKIN_ALARM_ID &&
+          agendaHasCheckinAlarm(await getAgenda(event.openId))
+        ) {
+          await deleteAlarmEvent(event.id);
+          console.log(
+            `[Monitor] Event ${event.id} (check-in antigo) -> apagado (conta já migrou para o check-in como alarme)`
           );
           continue;
         }
@@ -599,10 +620,10 @@ export async function runMonitoringJob(): Promise<void> {
 
   try {
     // -- Step 3: Escalate missed check-in events --------------------------------
-    // Scoped to 'checkin-daily' to avoid cascading on every missed medication alarm.
+    // Scoped to check-in events (kind 'checkin' or the legacy 'checkin-daily' id) to avoid cascading on every missed medication alarm.
     // warningSent=false means the client did not handle escalation (device was offline).
     // Look back EVENT_LOOKBACK_HOURS so events that missed a job run still get caught.
-    const missedCheckins = await getMissedCheckinEvents("checkin-daily", EVENT_LOOKBACK_HOURS);
+    const missedCheckins = await getMissedCheckinEvents(EVENT_LOOKBACK_HOURS);
     console.log(`[Monitor] Found ${missedCheckins.length} missed check-in events to escalate`);
 
     for (const event of missedCheckins) {
@@ -664,7 +685,7 @@ export async function runMonitoringJob(): Promise<void> {
     // A cópia distingue: 'missed' = "não respondeu"; 'not_sent' = "não foi
     // entregue — celular pode estar desligado" (nunca acusar de não responder
     // um alarme que não tocou). Look-back 48h.
-    const missedAlarms = await getMissedMedicationEvents("checkin-daily", EVENT_LOOKBACK_HOURS);
+    const missedAlarms = await getMissedMedicationEvents(EVENT_LOOKBACK_HOURS);
     console.log(`[Monitor] Found ${missedAlarms.length} unanswered medication alarms to escalate`);
 
     for (const event of missedAlarms) {
@@ -707,9 +728,9 @@ export async function runMonitoringJob(): Promise<void> {
 
       const pushed = await sendPushToCaregivers(
         caregiverOpenIds,
-        notSent ? "⚠️ Alarme não entregue — Vigora" : "⚠️ Alarme não respondido — Vigora",
+        notSent ? "⚠️ Alarme sem confirmação — Vigora" : "⚠️ Alarme não respondido — Vigora",
         notSent
-          ? `O celular de ${name} pode estar desligado ou sem conexão — o alarme das ${scheduledStr} não foi entregue. Toque para ver os detalhes.`
+          ? `Não houve confirmação do aparelho de ${name} para o alarme das ${scheduledStr}. Toque para ver os detalhes.`
           : `${name} não respondeu ao alarme das ${scheduledStr}. Toque para ver os detalhes.`,
         { type: "missed_alarm", url: "/(caregiver-tabs)/alerts" }
       );
@@ -767,7 +788,7 @@ export function startMonitoringScheduler(): void {
     purgeStaleData()
       .then((r) =>
         console.log(
-          `[Monitor] Retention purge: ${r.alarmEvents} alarm events, ${r.warningLog} warnings, ${r.locationsCleared} stale locations cleared`
+          `[Monitor] Retention purge: ${r.alarmEvents} alarm events, ${r.alarmChanges ?? 0} alarm changes, ${r.warningLog} warnings, ${r.locationsCleared} stale locations cleared`
         )
       )
       // Contas anônimas abandonadas param de "existir" para o switch (e para a

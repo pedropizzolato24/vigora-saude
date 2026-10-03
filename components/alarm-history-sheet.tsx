@@ -27,6 +27,8 @@ import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
 import { getAlarmHistory, getWarningLog } from '@/lib/monitoring-service';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppContext } from '@/lib/app-context';
+import { eventDisplayName, visibleHistoryEvents } from '@/lib/alarm-history';
 
 interface AlarmEvent {
   id: number;
@@ -36,6 +38,7 @@ interface AlarmEvent {
   status: 'pending' | 'responded' | 'missed' | 'not_sent';
   resolvedAt?: string;
   createdAt: string;
+  kind?: string | null;
 }
 
 interface Warning {
@@ -130,16 +133,19 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
   const colors = useColors();
   const fs = useFontSize();
   const insets = useSafeAreaInsets();
+  const { state } = useAppContext();
   const [activeTab, setActiveTab] = useState<Tab>('events');
   const [events, setEvents] = useState<AlarmEvent[]>([]);
   const [warnings, setWarnings] = useState<Warning[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const loadData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     try {
+      setLoadError(false);
       const [evts, warns] = await Promise.all([
         getAlarmHistory(100),
         getWarningLog(30),
@@ -148,6 +154,7 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
       setWarnings(warns as Warning[]);
     } catch (e) {
       console.warn('[AlarmHistory] Failed to load:', e);
+      setLoadError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -158,9 +165,10 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
     if (visible) loadData();
   }, [visible, loadData]);
 
-  const respondedCount = events.filter((e) => e.status === 'responded').length;
-  const missedCount = events.filter((e) => e.status === 'missed').length;
-  const notSentCount = events.filter((e) => e.status === 'not_sent').length;
+  const visibleEvents = visibleHistoryEvents(events, state.alarms);
+  const respondedCount = visibleEvents.filter((e) => e.status === 'responded').length;
+  const missedCount = visibleEvents.filter((e) => e.status === 'missed').length;
+  const notSentCount = visibleEvents.filter((e) => e.status === 'not_sent').length;
 
   return (
     <Modal
@@ -200,7 +208,7 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
             onPress={() => setActiveTab('events')}
           >
             <Text style={[styles.tabText, { color: activeTab === 'events' ? colors.primary : colors.muted, fontSize: fs.scaled(14) }]}>
-              Eventos ({events.length})
+              Eventos ({visibleEvents.length})
             </Text>
           </Pressable>
           <Pressable
@@ -219,6 +227,24 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
             <ActivityIndicator color={colors.primary} size="large" />
             <Text style={[styles.loadingText, { color: colors.muted, fontSize: fs.scaled(14) }]}>Carregando histórico...</Text>
           </View>
+        ) : loadError ? (
+          <View style={styles.loadingContainer}>
+            <MaterialIcons name="cloud-off" size={48} color={colors.muted} />
+            <Text style={[styles.emptyText, { color: colors.muted, fontSize: fs.scaled(14), lineHeight: fs.scaled(20) }]}>
+              Não foi possível carregar o histórico.{'\n'}Confira a internet e tente de novo.
+            </Text>
+            <Pressable
+              onPress={() => loadData()}
+              accessibilityRole="button"
+              accessibilityLabel="Tentar carregar o histórico de novo"
+              style={({ pressed }) => [
+                styles.closeFooterBtn,
+                { borderColor: colors.primary, backgroundColor: colors.surface, minHeight: fs.touch(54), paddingHorizontal: 24, opacity: pressed ? 0.8 : 1 },
+              ]}
+            >
+              <Text style={[styles.closeFooterText, { color: colors.primary, fontSize: fs.md }]}>Tentar de novo</Text>
+            </Pressable>
+          </View>
         ) : (
           <ScrollView
             style={styles.scrollView}
@@ -231,7 +257,7 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
             }
           >
             {activeTab === 'events' ? (
-              events.length === 0 ? (
+              visibleEvents.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <MaterialIcons name="history" size={48} color={colors.muted} />
                   <Text style={[styles.emptyText, { color: colors.muted, fontSize: fs.scaled(14), lineHeight: fs.scaled(20) }]}>
@@ -239,7 +265,7 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
                   </Text>
                 </View>
               ) : (
-                events.map((event) => {
+                visibleEvents.map((event) => {
                   const cfg = STATUS_CONFIG[getDisplayStatus(event)] ?? STATUS_CONFIG.pending;
                   const cor = colors[cfg.token];
                   return (
@@ -254,7 +280,7 @@ export function AlarmHistorySheet({ visible, onClose }: Props) {
                           </Text>
                         </View>
                         <Text style={[styles.eventDescription, { color: colors.foreground, fontSize: fs.scaled(14) }]}>
-                          {event.alarmDescription || 'Alarme de Medicamento'}
+                          {eventDisplayName(event, state.alarms)}
                         </Text>
                         <Text style={[styles.eventSubtext, { color: colors.muted, fontSize: fs.scaled(12), lineHeight: fs.scaled(16) }]}>
                           {cfg.description}

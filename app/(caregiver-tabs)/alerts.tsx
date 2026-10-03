@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CaregiverEmptyState } from '@/components/caregiver-empty-state';
+import { CaregiverRefreshControl, UpdatedAgoBar } from '@/components/caregiver-refresh';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
@@ -11,7 +12,7 @@ import { useAccessibility } from '@/lib/accessibility-context';
 import { BrandFonts } from '@/lib/_core/theme';
 import { useCaregiverContext } from '@/lib/caregiver-context';
 import { trpc } from '@/lib/trpc';
-import { relativeTime } from '@/lib/caregiver-format';
+import { alarmChangeTitle, alertEventTitle, relativeTime } from '@/lib/caregiver-format';
 
 type Filter = 'all' | 'critical' | 'warning';
 
@@ -37,7 +38,11 @@ export default function CaregiverAlertsScreen() {
   const linked = state.linkedMonitored;
   const [filter, setFilter] = useState<Filter>('all');
 
-  const alerts = trpc.link.getMonitoredAlerts.useQuery(undefined, { enabled: !!linked });
+  const alerts = trpc.link.getMonitoredAlerts.useQuery(undefined, { enabled: !!linked, refetchOnWindowFocus: true });
+  const refreshing = alerts.isRefetching;
+  const onRefresh = () => {
+    alerts.refetch();
+  };
 
   if (!linked) {
     return (
@@ -55,13 +60,14 @@ export default function CaregiverAlertsScreen() {
 
   const events = alerts.data?.events ?? [];
   const warnings = alerts.data?.warnings ?? [];
+  const changes = alerts.data?.changes ?? [];
 
   const items: AlertItem[] = [
     ...events.map((e) => ({
       id: `event-${e.alarmId}-${e.scheduledAt}`,
       severity: 'critical' as const,
       icon: (e.status === 'missed' ? 'notification-important' : 'mobile-off') as AlertItem['icon'],
-      title: e.status === 'missed' ? 'Alarme não respondido' : 'Alarme não enviado (offline)',
+      title: alertEventTitle(e),
       subtitle: `${e.alarmDescription || 'Medicação'} · ${relativeTime(e.scheduledAt)}`,
       ts: e.scheduledAt,
     })),
@@ -72,6 +78,14 @@ export default function CaregiverAlertsScreen() {
       title: `Alerta enviado aos contatos (nível ${w.level})`,
       subtitle: `${w.contactsReached} contato(s) avisado(s) · ${relativeTime(w.sentAt)}`,
       ts: w.sentAt,
+    })),
+    ...changes.map((c) => ({
+      id: `change-${c.id}`,
+      severity: 'warning' as const,
+      icon: 'edit' as AlertItem['icon'],
+      title: alarmChangeTitle(c),
+      subtitle: relativeTime(c.createdAt),
+      ts: c.createdAt,
     })),
   ].sort((a, b) => b.ts - a.ts);
 
@@ -103,7 +117,12 @@ export default function CaregiverAlertsScreen() {
           })}
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={{ padding: 20, gap: 12 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<CaregiverRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        >
+          <UpdatedAgoBar updatedAt={alerts.dataUpdatedAt} refreshing={refreshing} onRefresh={onRefresh} />
           {alerts.isLoading ? (
             <ActivityIndicator color={ac.primary} style={{ marginTop: 24 }} />
           ) : filtered.length === 0 ? (
@@ -169,7 +188,8 @@ export default function CaregiverAlertsScreen() {
         })}
       </View>
 
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView contentContainerStyle={styles.body} refreshControl={<CaregiverRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+        <UpdatedAgoBar updatedAt={alerts.dataUpdatedAt} refreshing={refreshing} onRefresh={onRefresh} />
         {alerts.isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
         ) : filtered.length === 0 ? (

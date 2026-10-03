@@ -36,7 +36,7 @@ import { router, useRouter } from 'expo-router';
 import { AlarmSyncInitializer } from "@/components/alarm-sync-initializer";
 import { AlarmNotificationHandler } from '@/components/alarm-notification-handler';
 import { MonitoringInitializer } from '@/components/monitoring-initializer';
-import { CheckinInitializer } from '@/components/checkin-initializer';
+import { CheckinMigrationInitializer } from '@/components/checkin-migration-initializer';
 import { OnboardingGate } from '@/components/onboarding-gate';
 import { PermissionsGate } from '@/components/permissions-gate';
 import { refreshSessionOnStartup } from "@/lib/session-refresh";
@@ -50,6 +50,7 @@ import {
 import type { EdgeInsets, Rect } from "react-native-safe-area-context";
 
 import { trpc, createTRPCClient } from "@/lib/trpc";
+import { installQueryFocusManager } from '@/lib/query-focus';
 import { perfMark } from "@/lib/_core/perf";
 import { initializePurchases } from "@/lib/purchases";
 import { PurchasesProvider } from "@/context/purchases-context";
@@ -280,49 +281,6 @@ export default function RootLayout() {
         if (response) {
           const data = response.notification.request.content.data;
           const alarmId = data?.alarmId as string | undefined;
-          const notifType = data?.type as string | undefined;
-
-          // Check-in notification cold-start
-          if (notifType === 'checkin_prompt') {
-            // Confirma o check-in (deduplicado) e navega. O dedup evita navegação
-            // dupla quando o response listener do CheckinInitializer também
-            // processa o mesmo toque de cold start.
-            const { handleCheckinPromptResponse } = require('@/lib/checkin-notification-handler');
-            const ct = (data?.checkinTime as string | undefined) ?? '09:00';
-            const wm = (data?.windowMinutes as number | undefined) ?? 30;
-            const identifier = response.notification.request.identifier;
-            const handled = await handleCheckinPromptResponse(ct, wm, identifier);
-            if (handled) {
-              const { router: navRouter } = require('expo-router');
-              navRouter.push('/checkin-response');
-            }
-            Notifications.clearLastNotificationResponseAsync();
-            return;
-          }
-          if (notifType === 'checkin_timeout') {
-            // Timeout cold-start: escalona (deduplicado) e navega para confirmação.
-            // O dedup por identifier evita escalonamento duplo quando o response
-            // listener do CheckinInitializer também processa o mesmo toque.
-            const { handleCheckinTimeout } = require('@/lib/checkin-notification-handler');
-            const { loadCurrentAppStateRaw } = require('@/lib/app-state-storage');
-            let handled = false;
-            try {
-              const raw = await loadCurrentAppStateRaw();
-              const parsed = raw ? JSON.parse(raw) : null;
-              const contacts = parsed?.emergencyContacts ?? [];
-              const ct = (data?.checkinTime as string | undefined) ?? '09:00';
-              const wm = (data?.windowMinutes as number | undefined) ?? 30;
-              const identifier = response.notification.request.identifier;
-              handled = await handleCheckinTimeout(ct, wm, contacts, identifier);
-            } catch {}
-            if (handled) {
-              const { router: navRouter } = require('expo-router');
-              navRouter.push('/checkin-response');
-            }
-            Notifications.clearLastNotificationResponseAsync();
-            return;
-          }
-
           if (alarmId) {
             const { router } = require('expo-router');
             router.push(`/alarm-ring?alarmId=${alarmId}`);
@@ -352,6 +310,11 @@ export default function RootLayout() {
       }),
   );
   const [trpcClient] = useState(() => createTRPCClient());
+  // "App voltou ao primeiro plano" = foco para o React Query (telas do cuidador
+  // recarregam ao voltar ao app).
+  useEffect(() => {
+    installQueryFocusManager();
+  }, []);
 
   // Ensure minimum 8px padding for top and bottom on mobile
   const providerInitialMetrics = useMemo(() => {
@@ -382,7 +345,7 @@ export default function RootLayout() {
               da escalação) — fora dele o useAccessibility lança erro. */}
           <AlarmNotificationHandler />
           <MonitoringInitializer />
-          <CheckinInitializer />
+          <CheckinMigrationInitializer />
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           {/* Default to hiding native headers so raw route segments don't appear (e.g. "(tabs)", "products/[id]"). */}
@@ -392,14 +355,6 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen
               name="alarm-ring"
-              options={{
-                presentation: 'fullScreenModal',
-                gestureEnabled: false,
-                animation: 'fade',
-              }}
-            />
-            <Stack.Screen
-              name="checkin-response"
               options={{
                 presentation: 'fullScreenModal',
                 gestureEnabled: false,

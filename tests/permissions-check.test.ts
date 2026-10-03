@@ -175,7 +175,6 @@ describe("canInterruptRoute", () => {
   it("NUNCA interrompe um alarme tocando", () => {
     expect(canInterruptRoute("/alarm-ring")).toBe(false);
     expect(canInterruptRoute("/alarm-ring?alarmId=a1&fromAlarmKit=1")).toBe(false);
-    expect(canInterruptRoute("/checkin-response")).toBe(false);
   });
 
   it("não interrompe o funil de entrada", () => {

@@ -245,7 +245,6 @@ export async function checkPermissions(
  */
 const ROTAS_INTOCAVEIS = [
   '/alarm-ring',
-  '/checkin-response',
   '/onboarding',
   '/caregiver-onboarding',
   '/login',

@@ -8,11 +8,13 @@
  *
  * Handles: account liveness (heartbeat), alarm events, warning log, retention.
  */
-import { and, desc, eq, gt, gte, inArray, lt, lte, min, ne } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNull, lt, lte, ne, or } from "drizzle-orm";
 import { getDb } from "./db";
 import { pickPendingEvent } from "./_core/pick-pending-event";
+import { LEGACY_CHECKIN_ALARM_ID, warningAnchor } from "./_core/event-kind";
 import {
   accountLiveness,
+  alarmChanges,
   alarmEvents,
   InsertAlarmEvent,
   warningLog,
@@ -89,7 +91,12 @@ export async function createAlarmEvent(data: InsertAlarmEvent): Promise<number> 
   // Prevents duplicate pending events when createEvent is called multiple times
   // (e.g., startup effect + respond-and-recreate on the same deadline).
   const existing = await db
-    .select({ id: alarmEvents.id })
+    .select({
+      id: alarmEvents.id,
+      status: alarmEvents.status,
+      kind: alarmEvents.kind,
+      graceMinutes: alarmEvents.graceMinutes,
+    })
     .from(alarmEvents)
     .where(
       and(
@@ -99,7 +106,21 @@ export async function createAlarmEvent(data: InsertAlarmEvent): Promise<number> 
       )
     )
     .limit(1);
-  if (existing.length > 0) return existing[0].id;
+  if (existing.length > 0) {
+    // Mudar só o atraso do check-in mantém o scheduledAt: o re-sync cai aqui.
+    // Enquanto o evento está pendente, o prazo/tipo novos valem; resolvido
+    // (confirmado, perdido…) não se mexe.
+    const row = existing[0];
+    const kind = data.kind ?? null;
+    const graceMinutes = data.graceMinutes ?? null;
+    if (
+      row.status === "pending" &&
+      ((row.kind ?? null) !== kind || (row.graceMinutes ?? null) !== graceMinutes)
+    ) {
+      await db.update(alarmEvents).set({ kind, graceMinutes }).where(eq(alarmEvents.id, row.id));
+    }
+    return row.id;
+  }
 
   // Um único pending FUTURO por (openId, alarmId). O cliente pré-registra o
   // PRÓXIMO disparo a cada sync; editar o horário do alarme mudava o
@@ -129,6 +150,8 @@ export async function createAlarmEvent(data: InsertAlarmEvent): Promise<number> 
           scheduledAt: data.scheduledAt as Date,
           alarmDescription: data.alarmDescription,
           timezone: data.timezone ?? null,
+          kind: data.kind ?? null,
+          graceMinutes: data.graceMinutes ?? null,
         })
         .where(eq(alarmEvents.id, keep.id));
       if (extras.length > 0) {
@@ -182,7 +205,7 @@ export async function updateAlarmEventStatusByAlarmId(
   alarmId: string,
   scheduledAt: Date,
   status: "responded" | "missed" | "not_sent"
-): Promise<{ id: number; timezone: string | null } | null> {
+): Promise<{ id: number; timezone: string | null; kind: string | null } | null> {
   const db = await getDb();
   if (!db) return null;
 
@@ -251,7 +274,7 @@ export async function updateAlarmEventStatusByAlarmId(
     (res as { affectedRows?: number }).affectedRows ??
     (res as Array<{ affectedRows?: number }>)[0]?.affectedRows ??
     0;
-  return affected > 0 ? { id: target.id, timezone: target.timezone } : null;
+  return affected > 0 ? { id: target.id, timezone: target.timezone, kind: target.kind ?? null } : null;
 }
 
 /**
@@ -276,11 +299,11 @@ export async function getExpiredPendingEvents(gracePeriodMinutes: number) {
 /**
  * Returns check-in alarm events that were missed (status = 'missed' | 'not_sent')
  * and haven't had a server-side warning sent yet (warningSent = false).
- * Scoped to a single alarmId (e.g. 'checkin-daily') to avoid escalating
- * every missed medication alarm via the server cascade.
+ * "É check-in" = kind 'checkin' (novo) OU o alarmId fixo do sistema antigo.
+ * Evita escalar todo remédio perdido pela cascata do Passo 3.
  * lookbackHours caps how far back we search to avoid re-escalating stale events.
  */
-export async function getMissedCheckinEvents(alarmId: string, lookbackHours: number) {
+export async function getMissedCheckinEvents(lookbackHours: number) {
   const db = await getDb();
   if (!db) return [];
   const cutoff = new Date(Date.now() - lookbackHours * 60 * 60 * 1000);
@@ -289,7 +312,7 @@ export async function getMissedCheckinEvents(alarmId: string, lookbackHours: num
     .from(alarmEvents)
     .where(
       and(
-        eq(alarmEvents.alarmId, alarmId),
+        or(eq(alarmEvents.kind, "checkin"), eq(alarmEvents.alarmId, LEGACY_CHECKIN_ALARM_ID)),
         inArray(alarmEvents.status, ["missed", "not_sent"]),
         eq(alarmEvents.warningSent, false),
         gte(alarmEvents.scheduledAt, cutoff)
@@ -307,7 +330,7 @@ export async function getMissedCheckinEvents(alarmId: string, lookbackHours: num
  * ("não respondeu" vs "não foi entregue"); a escada de inatividade do Passo 2
  * segue existindo como reforço progressivo (30min/2h/6h).
  */
-export async function getMissedMedicationEvents(checkinAlarmId: string, lookbackHours: number) {
+export async function getMissedMedicationEvents(lookbackHours: number) {
   const db = await getDb();
   if (!db) return [];
   const cutoff = new Date(Date.now() - lookbackHours * 60 * 60 * 1000);
@@ -316,7 +339,8 @@ export async function getMissedMedicationEvents(checkinAlarmId: string, lookback
     .from(alarmEvents)
     .where(
       and(
-        ne(alarmEvents.alarmId, checkinAlarmId),
+        ne(alarmEvents.alarmId, LEGACY_CHECKIN_ALARM_ID),
+        or(isNull(alarmEvents.kind), ne(alarmEvents.kind, "checkin")),
         inArray(alarmEvents.status, ["missed", "not_sent"]),
         eq(alarmEvents.warningSent, false),
         gte(alarmEvents.scheduledAt, cutoff)
@@ -336,8 +360,9 @@ export async function getMissedMedicationEvents(checkinAlarmId: string, lookback
  * família nunca era avisada. Já a idade do evento não confirmado é um sinal
  * real: o servidor sabe quando aquela resposta era esperada.
  *
- * Retorna o `oldestUnconfirmedAt` (o disparo mais antigo sem confirmação) —
- * é dele que sai a "idade" que define o nível do aviso.
+ * Retorna o `oldestUnconfirmedAt` (a âncora mais antiga sem confirmação) —
+ * é dele que sai a "idade" que define o nível do aviso. Para check-in a âncora
+ * é o prazo de resposta (ver `warningAnchor`); para o resto, o disparo.
  */
 export async function getAccountsWithUnconfirmedEvents(lookbackHours: number) {
   const db = await getDb();
@@ -348,7 +373,9 @@ export async function getAccountsWithUnconfirmedEvents(lookbackHours: number) {
   const rows = await db
     .select({
       openId: alarmEvents.openId,
-      oldestUnconfirmedAt: min(alarmEvents.scheduledAt),
+      scheduledAt: alarmEvents.scheduledAt,
+      kind: alarmEvents.kind,
+      graceMinutes: alarmEvents.graceMinutes,
     })
     .from(alarmEvents)
     .where(
@@ -356,14 +383,17 @@ export async function getAccountsWithUnconfirmedEvents(lookbackHours: number) {
         inArray(alarmEvents.status, ["missed", "not_sent"]),
         gte(alarmEvents.scheduledAt, cutoff)
       )
-    )
-    .groupBy(alarmEvents.openId);
+    );
 
-  return rows.flatMap((r) =>
-    r.oldestUnconfirmedAt
-      ? [{ openId: r.openId, oldestUnconfirmedAt: new Date(r.oldestUnconfirmedAt) }]
-      : []
-  );
+  // O mais antigo por conta, calculado em JS: a âncora do check-in depende do
+  // prazo (grace + folga) e reaproveita as regras de event-kind.ts.
+  const oldest = new Map<string, Date>();
+  for (const r of rows) {
+    const anchor = warningAnchor({ ...r, scheduledAt: new Date(r.scheduledAt) });
+    const current = oldest.get(r.openId);
+    if (!current || anchor < current) oldest.set(r.openId, anchor);
+  }
+  return [...oldest].map(([openId, oldestUnconfirmedAt]) => ({ openId, oldestUnconfirmedAt }));
 }
 
 export async function markEventWarningSent(id: number): Promise<void> {
@@ -478,6 +508,7 @@ function retentionDays(envKey: string, fallback: number): number {
  */
 export async function purgeStaleData(now: number = Date.now()): Promise<{
   alarmEvents: number;
+  alarmChanges: number;
   warningLog: number;
   locationsCleared: number;
 }> {
@@ -492,6 +523,7 @@ export async function purgeStaleData(now: number = Date.now()): Promise<{
     (r as Array<{ affectedRows?: number }>)?.[0]?.affectedRows ?? 0;
 
   const ev = await db.delete(alarmEvents).where(lt(alarmEvents.createdAt, eventsCutoff));
+  const ac = await db.delete(alarmChanges).where(lt(alarmChanges.createdAt, eventsCutoff));
   const wl = await db.delete(warningLog).where(lt(warningLog.sentAt, eventsCutoff));
   // Stale GPS: blank the location fields rather than deleting the liveness row.
   const loc = await db
@@ -501,6 +533,7 @@ export async function purgeStaleData(now: number = Date.now()): Promise<{
 
   return {
     alarmEvents: affected(ev),
+    alarmChanges: affected(ac),
     warningLog: affected(wl),
     locationsCleared: affected(loc),
   };

@@ -15,6 +15,7 @@ import {
 import { AccountDangerZone } from '@/components/account-danger-zone';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { DataExportButton } from '@/components/data-export-button';
+import { HealthReportExport } from '@/components/health-report-export';
 import { Collapsible, COLLAPSE_DURATION, FadeInView } from '@/components/animated-components';
 import { FormKeyboardView } from '@/components/form-keyboard-view';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -34,10 +35,8 @@ import { useRouter } from 'expo-router';
 import { MonitoringStatusPanel } from '@/components/monitoring-status-panel';
 import { ProtectAccountBanner } from '@/components/protect-account-banner';
 import { TrialBanner, ExpiredBanner } from '@/components/trial-banner';
-import { scheduleCheckin, cancelCheckin } from '@/lib/checkin-service';
 import { previewNativeAlarmSound } from '@/lib/native-alarm-manager';
 import { isAlarmKitAvailable } from '@/lib/ios-alarm-kit';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
 
@@ -194,21 +193,9 @@ export default function SettingsScreen() {
 
   const [countdownTestActive, setCountdownTestActive] = useState(false);
   const [countdownTestSecondsLeft, setCountdownTestSecondsLeft] = useState(10);
-  const [showCheckinTimePicker, setShowCheckinTimePicker] = useState(false);
   const countdownTestIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const TEST_ALARM_ID = 'settings_test';
   const TEST_DURATION = 10;
-
-  function parseCheckinTime(timeStr: string): Date {
-    const [h, m] = timeStr.split(':').map(Number);
-    const d = new Date();
-    d.setHours(h, m, 0, 0);
-    return d;
-  }
-
-  function formatCheckinHHMM(date: Date): string {
-    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-  }
 
   const handleTestCountdown = useCallback(() => {
     if (countdownTestActive) {
@@ -747,6 +734,7 @@ export default function SettingsScreen() {
 
           {/* Direitos do titular (LGPD Art. 18): portabilidade fora da caixa,
               ações irreversíveis dentro dela. */}
+          <HealthReportExport />
           <DataExportButton />
           <AccountDangerZone
             clearLocalData={() => dispatch({ type: 'CLEAR_ALL_DATA' })}
@@ -1097,155 +1085,38 @@ export default function SettingsScreen() {
           </View>
         </CollapsibleSection>
 
-        {/* ═══ SECTION: Check-in Diário ═══ */}
+        {/* ═══ SECTION: Check-in ═══ */}
         <CollapsibleSection
-          title="Check-in Diário"
+          title="Check-in"
           icon="check-circle"
           iconBg={colors.successLight}
           iconColor={colors.success}
           colors={colors}
           defaultOpen={false}
         >
-          {/* Toggle: habilitar/desabilitar */}
-          <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
-            <View style={styles.settingTextBlock}>
-              <Text style={[styles.settingLabel, { color: colors.foreground, fontSize: fs.md }]}>
-                Check-in ativo
-              </Text>
-              <Text style={[styles.settingSubLabel, { color: colors.muted, fontSize: fs.sm }]}>
-                Notificação diária para confirmar que está bem
-              </Text>
-            </View>
-            <Switch
-              value={settings.checkinEnabled}
-              onValueChange={async (value) => {
-                updateSetting('checkinEnabled', value);
-                if (value) {
-                  await scheduleCheckin(settings.checkinTime, settings.checkinWindowMinutes);
-                } else {
-                  await cancelCheckin();
-                }
-              }}
-              trackColor={{ false: colors.border, true: colors.success }}
-              thumbColor="#FFFFFF"
-            />
+          <View style={{ padding: 16, gap: 12 }}>
+            <Text style={{ color: colors.muted, fontSize: fs.sm, lineHeight: fs.scaled(20) }}>
+              O check-in toca como um alarme e pergunta se está tudo bem. Se você não responder, seus contatos e cuidadores são avisados.
+            </Text>
+            <Pressable
+              onPress={() => router.push('/(tabs)/checkin' as never)}
+              accessibilityRole="button"
+              accessibilityLabel="Configurar check-in"
+              style={({ pressed }) => [{
+                backgroundColor: colors.primarySurface,
+                borderRadius: 14,
+                minHeight: fs.touch(52),
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.85 : 1,
+              }]}
+            >
+              <Text style={{ color: colors.onPrimary, fontSize: fs.base, fontWeight: '700' }}>Configurar check-in</Text>
+            </Pressable>
+            <Text style={{ color: colors.muted, fontSize: fs.xs, lineHeight: 18 }}>
+              ⚠️ O check-in não substitui serviços de emergência. Em caso de emergência, ligue 192 (SAMU).
+            </Text>
           </View>
-
-          {/* Horário e janela (só visíveis quando ativo) */}
-          {settings.checkinEnabled && (
-            <>
-              {/* Horário do check-in — preset buttons + Personalizar */}
-              <View style={{ padding: 16, gap: 10 }}>
-                <Text style={[styles.settingLabel, { color: colors.foreground, fontSize: fs.md, marginBottom: 2 }]}>
-                  Horário
-                </Text>
-                <Text style={[styles.settingSubLabel, { color: colors.muted, fontSize: fs.sm }]}>
-                  Quando você receberá a notificação diária
-                </Text>
-
-                {/* Botões de atalho */}
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
-                  {(['09:00', '17:00'] as const).map((preset) => {
-                    const label = preset === '09:00' ? '☀️ Manhã — 09:00' : '🌆 Tarde — 17:00';
-                    const isSelected = settings.checkinTime === preset;
-                    return (
-                      <Pressable
-                        key={preset}
-                        onPress={async () => {
-                          updateSetting('checkinTime', preset);
-                          await scheduleCheckin(preset, settings.checkinWindowMinutes);
-                        }}
-                        style={({ pressed }) => [{
-                          flex: 1,
-                          paddingVertical: 14,
-                          borderRadius: 12,
-                          borderWidth: 1.5,
-                          alignItems: 'center' as const,
-                          justifyContent: 'center' as const,
-                          backgroundColor: isSelected ? colors.success : colors.surface,
-                          borderColor: isSelected ? colors.success : colors.border,
-                          opacity: pressed ? 0.75 : 1,
-                        }]}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: isSelected }}
-                      >
-                        <Text style={{
-                          color: isSelected ? colors.onSuccess : colors.foreground,
-                          fontSize: fs.sm,
-                          fontWeight: '700',
-                          textAlign: 'center',
-                        }}>
-                          {label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-
-                {/* Botão personalizar */}
-                {(() => {
-                  const isCustom = settings.checkinTime !== '09:00' && settings.checkinTime !== '17:00';
-                  return (
-                    <Pressable
-                      onPress={() => setShowCheckinTimePicker(true)}
-                      style={({ pressed }) => [{
-                        flexDirection: 'row' as const,
-                        alignItems: 'center' as const,
-                        justifyContent: 'center' as const,
-                        gap: 8,
-                        paddingVertical: 12,
-                        borderRadius: 12,
-                        borderWidth: 1.5,
-                        borderColor: isCustom ? colors.success : colors.border,
-                        backgroundColor: isCustom ? colors.successLight : colors.surface,
-                        opacity: pressed ? 0.75 : 1,
-                      }]}
-                      accessibilityRole="button"
-                      accessibilityLabel="Personalizar horário do check-in"
-                    >
-                      <MaterialIcons
-                        name="schedule"
-                        size={20}
-                        color={isCustom ? colors.success : colors.muted}
-                      />
-                      <Text style={{
-                        fontSize: fs.sm,
-                        fontWeight: '600',
-                        color: isCustom ? colors.success : colors.muted,
-                      }}>
-                        {isCustom ? `🕐 ${settings.checkinTime} — Personalizado` : 'Personalizar horário'}
-                      </Text>
-                    </Pressable>
-                  );
-                })()}
-
-                {/* DateTimePicker nativo */}
-                {showCheckinTimePicker && (
-                  <DateTimePicker
-                    value={parseCheckinTime(settings.checkinTime)}
-                    mode="time"
-                    is24Hour={true}
-                    display={Platform.OS === 'android' ? 'spinner' : 'spinner'}
-                    onChange={(event, date) => {
-                      setShowCheckinTimePicker(false);
-                      if (event.type === 'set' && date) {
-                        const newTime = formatCheckinHHMM(date);
-                        updateSetting('checkinTime', newTime);
-                        scheduleCheckin(newTime, settings.checkinWindowMinutes).catch(() => {});
-                      }
-                    }}
-                  />
-                )}
-              </View>
-
-              {/* Disclaimer LGPD */}
-              <View style={{ padding: 16, paddingTop: 8 }}>
-                <Text style={{ color: colors.muted, fontSize: fs.xs, lineHeight: 18 }}>
-                  ⚠️ O check-in não substitui serviços de emergência. Em caso de emergência, ligue 192 (SAMU).
-                </Text>
-              </View>
-            </>
-          )}
         </CollapsibleSection>
 
         {/* ═══ SECTION 2: Segurança e Emergência ═══ */}
@@ -1527,39 +1398,6 @@ export default function SettingsScreen() {
           </View>
         </CollapsibleSection>
 
-        {/* ═══ SECTION 4: Idioma ═══ */}
-        <CollapsibleSection
-          title="Idioma"
-          icon="language"
-          iconBg={colors.successLight}
-          iconColor={colors.success}
-          colors={colors}
-          defaultOpen={false}
-        >
-          {[
-            { code: 'pt' as const, flag: '🇧🇷', label: 'Português (Brasil)' },
-            { code: 'en' as const, flag: '🇺🇸', label: 'English (USA)' },
-          ].map((lang, idx) => (
-            <React.Fragment key={lang.code}>
-              {idx > 0 && <Divider colors={colors} />}
-              <Pressable
-                onPress={() => updateSetting('language', lang.code)}
-                style={({ pressed }) => [
-                  styles.languageOption,
-                  settings.language === lang.code && { backgroundColor: colors.primaryLight },
-                  pressed && { opacity: 0.7 },
-                ]}
-              >
-                <Text style={styles.flagEmoji}>{lang.flag}</Text>
-                <Text style={[styles.languageLabel, { color: colors.foreground }]}>{lang.label}</Text>
-                {settings.language === lang.code && (
-                  <MaterialIcons name="check-circle" size={22} color={colors.primary} />
-                )}
-              </Pressable>
-            </React.Fragment>
-          ))}
-        </CollapsibleSection>
-
         {/* ═══ SECTION 5: Dados e Armazenamento ═══ */}
         <CollapsibleSection
           title="Dados e Armazenamento"
@@ -1590,6 +1428,7 @@ export default function SettingsScreen() {
           {/* Direitos do titular (LGPD Art. 18): portabilidade fora da caixa,
               ações irreversíveis dentro dela. */}
           <View style={{ paddingHorizontal: 16, paddingBottom: 16, gap: 4 }}>
+            <HealthReportExport />
             <DataExportButton />
             <AccountDangerZone
               clearLocalData={() => dispatch({ type: 'CLEAR_ALL_DATA' })}
@@ -1626,7 +1465,7 @@ export default function SettingsScreen() {
             <Text style={[styles.footerDot, { color: colors.muted }]}>·</Text>
             <Pressable
               onPress={() =>
-                showDialog({ title: 'Política de Privacidade', message: 'Vigora — Política de Privacidade (resumo)\n\nDados que tratamos:\n• Dados sensíveis de saúde (pressão, glicemia, frequência cardíaca, anamnese, medicamentos, tipo sanguíneo), tratados com seu consentimento destacado.\n• Contatos de emergência, localização (quando ativada) e perfil.\n\nOnde ficam: no seu aparelho e, para backup e para o monitoramento funcionar, em nosso servidor próprio (acesso protegido por autenticação). Nunca vendemos nem usamos seus dados de saúde para publicidade.\n\nCompartilhamos apenas para a função que você pediu: WhatsApp/Meta (alertas aos contatos que você designou), Expo (notificações aos cuidadores) e RevenueCat (assinatura).\n\nSeus direitos (LGPD Art. 18): acessar, corrigir, exportar e excluir. Você pode apagar sua conta e todos os dados do servidor em Configurações › Excluir minha conta.\n\nEncarregado de Dados (DPO): ' + DPO_EMAIL + '. Fale com ele para exercer seus direitos ou tirar dúvidas sobre privacidade.', variant: 'info', buttons: [{ text: 'OK' }] })
+                showDialog({ title: 'Política de Privacidade', message: 'Vigora — Política de Privacidade (resumo)\n\nDados que tratamos:\n• Dados sensíveis de saúde (pressão, glicemia, frequência cardíaca, anamnese, medicamentos, tipo sanguíneo), tratados com seu consentimento destacado.\n• Contatos de emergência, localização (quando ativada) e perfil.\n\nOnde ficam: no seu aparelho e, para backup e para o monitoramento funcionar, em nosso servidor próprio (acesso protegido por autenticação). Nunca vendemos nem usamos seus dados de saúde para publicidade.\n\nCompartilhamos apenas para a função que você pediu: WhatsApp/Meta (alertas aos contatos que você designou), Expo, Google e Apple (notificações push aos cuidadores — o aviso de lembrete alterado pode mostrar o nome do lembrete) e RevenueCat (assinatura).\n\nSeus direitos (LGPD Art. 18): acessar, corrigir, exportar e excluir. Você pode apagar sua conta e todos os dados do servidor em Configurações › Excluir minha conta.\n\nEncarregado de Dados (DPO): ' + DPO_EMAIL + '. Fale com ele para exercer seus direitos ou tirar dúvidas sobre privacidade.', variant: 'info', buttons: [{ text: 'OK' }] })
               }
               style={({ pressed }) => [pressed && { opacity: 0.6 }]}
             >
@@ -1815,17 +1654,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   fontSizeBtnText: { fontWeight: '600', textAlign: 'center' },
-
-  // Language
-  languageOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  flagEmoji: { fontSize: 24 },
-  languageLabel: { flex: 1, fontWeight: '500' },
 
   // Storage
   storageInfo: { padding: 16, gap: 10 },
