@@ -14,7 +14,7 @@ import { FadeInView, ScaleInView, StaggeredItem } from '@/components/animated-co
 import { trpc } from '@/lib/trpc';
 import { usePushUnavailable } from '@/lib/push-status';
 import type { Alarm, HealthMetric } from '@/lib/app-context';
-import { medicationAlarms } from '@/lib/alarm-kind';
+import { checkinAlarms, medicationAlarms } from '@/lib/alarm-kind';
 import { formatMetricValue, isRecent, latestMetric, metricTypeLabel, nextAlarm, relativeTime } from '@/lib/caregiver-format';
 
 // Janela do contador de alertas na home. Um alarme perdido precisa saltar aos
@@ -58,6 +58,7 @@ export default function CaregiverHomeScreen() {
   const alarms = medicationAlarms((data?.alarms ?? []) as Alarm[]);
   const metrics = (data?.healthMetrics ?? []) as HealthMetric[];
   const upcoming = nextAlarm(alarms);
+  const upcomingCheckin = nextAlarm(checkinAlarms((data?.alarms ?? []) as Alarm[]));
   const latest = latestMetric(metrics);
   const hb = data?.lastHeartbeatAt ?? null;
 
@@ -66,6 +67,11 @@ export default function CaregiverHomeScreen() {
     : upcoming
     ? `${upcoming.time} — ${upcoming.description || 'Medicação'}`
     : 'Nenhum alarme ativo.';
+  const nextCheckinBody = loading
+    ? 'Carregando…'
+    : upcomingCheckin
+    ? `${upcomingCheckin.time}${upcomingCheckin.escalateAfterMinutes ? ` — avisa após ${upcomingCheckin.escalateAfterMinutes} min sem resposta` : ''}`
+    : 'Nenhum check-in ativo.';
   const latestMetricBody = loading
     ? 'Carregando…'
     : latest
@@ -150,6 +156,7 @@ export default function CaregiverHomeScreen() {
           </View>
 
           <A11ySummary icon="medication" title="Próxima medicação" body={nextMedBody} />
+          <A11ySummary icon="check-circle" title="Próximo check-in" body={nextCheckinBody} />
           <A11ySummary icon="favorite" title="Última métrica registrada" body={latestMetricBody} />
           <A11ySummary icon="wifi" title="Último heartbeat" body={heartbeatBody} mono />
 
@@ -246,9 +253,12 @@ export default function CaregiverHomeScreen() {
           <SummaryCard icon="medication" title="Próxima medicação" body={nextMedBody} colors={colors} fs={fs} />
         </StaggeredItem>
         <StaggeredItem index={1} staggerDelay={80}>
-          <SummaryCard icon="favorite" title="Última métrica registrada" body={latestMetricBody} colors={colors} fs={fs} />
+          <SummaryCard icon="check-circle" title="Próximo check-in" body={nextCheckinBody} colors={colors} fs={fs} />
         </StaggeredItem>
         <StaggeredItem index={2} staggerDelay={80}>
+          <SummaryCard icon="favorite" title="Última métrica registrada" body={latestMetricBody} colors={colors} fs={fs} />
+        </StaggeredItem>
+        <StaggeredItem index={3} staggerDelay={80}>
           <SummaryCard icon="wifi" title="Último heartbeat" body={heartbeatBody} colors={colors} fs={fs} mono />
         </StaggeredItem>
 

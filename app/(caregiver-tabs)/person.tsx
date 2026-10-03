@@ -15,7 +15,7 @@ import { useCaregiverContext } from '@/lib/caregiver-context';
 import type { LinkMethod } from '@/lib/caregiver-state';
 import { trpc } from '@/lib/trpc';
 import type { Alarm, AnamnesesData, EmergencyContact, HealthMetric } from '@/lib/app-context';
-import { medicationAlarms } from '@/lib/alarm-kind';
+import { checkinAlarms, medicationAlarms } from '@/lib/alarm-kind';
 import { formatMetricValue, isRecent, metricTypeLabel, relativeTime } from '@/lib/caregiver-format';
 
 const METHOD_LABEL: Record<LinkMethod, string> = {
@@ -92,6 +92,7 @@ export default function CaregiverPersonScreen() {
   const { c, sz, bw, icon } = skin;
 
   const enabledAlarms = medicationAlarms((data?.alarms ?? []) as Alarm[]).filter((a) => a.enabled);
+  const enabledCheckins = checkinAlarms((data?.alarms ?? []) as Alarm[]).filter((a) => a.enabled);
   const metrics = ([...((data?.healthMetrics ?? []) as HealthMetric[])])
     .sort((a, b) => b.timestamp - a.timestamp)
     .slice(0, 5);
@@ -192,6 +193,23 @@ export default function CaregiverPersonScreen() {
           ) : (
             enabledAlarms.slice(0, 6).map((a) => (
               <Row key={a.id} skin={skin} left={a.time} right={a.description || 'Medicação'} />
+            ))
+          )}
+        </Section>
+
+        <Section icon="check-circle" title="Check-ins" skin={skin}>
+          {loading ? (
+            <Muted skin={skin} text="Carregando…" />
+          ) : enabledCheckins.length === 0 ? (
+            <Muted skin={skin} text="Nenhum check-in ativo." />
+          ) : (
+            enabledCheckins.map((a) => (
+              <Row
+                key={a.id}
+                skin={skin}
+                left={a.time}
+                right={`avisa após ${a.escalateAfterMinutes ?? 5} min`}
+              />
             ))
           )}
         </Section>
