@@ -288,7 +288,7 @@ export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDele
                       </Pressable>
                     );
                   })}
-                  <Text style={{ fontSize: af.sm, color: ac.muted }}>Se você não tocar em "Estou bem", seus contatos e cuidadores são avisados depois desse tempo.</Text>
+                  <Text style={{ fontSize: af.sm, color: ac.muted }}>Se você não tocar em &quot;Estou bem&quot;, seus contatos e cuidadores são avisados depois desse tempo.</Text>
                 </View>
               )}
 
@@ -532,7 +532,7 @@ export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDele
                   })}
                 </View>
                 <Text style={{ color: colors.muted, fontSize: fs.sm }}>
-                  Se você não tocar em "Estou bem", seus contatos e cuidadores são avisados depois desse tempo.
+                  Se você não tocar em &quot;Estou bem&quot;, seus contatos e cuidadores são avisados depois desse tempo.
                 </Text>
               </View>
             )}
