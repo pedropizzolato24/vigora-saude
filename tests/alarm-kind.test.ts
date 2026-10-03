@@ -5,6 +5,7 @@ import {
   checkinAlarms,
   escalateSeconds,
   isCheckinAlarm,
+  MIGRATED_CHECKIN_ALARM_ID,
   medicationAlarms,
   normalizeEscalateMinutes,
   ringCopy,
@@ -120,5 +121,13 @@ describe('buildCheckinSpeechText', () => {
     const text = buildCheckinSpeechText('09:00', true);
     expect(text).not.toContain('Toque em Estou bem');
     expect(text).toContain('Que bom que você está bem');
+  });
+});
+
+describe('MIGRATED_CHECKIN_ALARM_ID', () => {
+  it('é UUID (exigência do AlarmKit) e difere do id legado', () => {
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    expect(UUID_RE.test(MIGRATED_CHECKIN_ALARM_ID)).toBe(true);
+    expect(MIGRATED_CHECKIN_ALARM_ID).not.toBe('checkin-daily');
   });
 });

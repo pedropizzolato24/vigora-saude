@@ -25,7 +25,7 @@ const disabled = { checkinEnabled: false, checkinTime: '09:30' };
 describe('buildMigratedCheckin', () => {
   it('cria um alarme diário de check-in no horário antigo, com aviso em 30 min e id fixo', () => {
     expect(buildMigratedCheckin(enabled, [medication])).toEqual({
-      id: 'checkin-migrated', time: '09:30', description: 'Check-in', enabled: true,
+      id: '6f1c2b7e-9a4d-4c3e-8b1f-2d5e7a9c0b31', time: '09:30', description: 'Check-in', enabled: true,
       repeat: 'daily', customDays: [], sound: true, vibration: true,
       kind: 'checkin', escalateAfterMinutes: 30,
     });
@@ -53,7 +53,7 @@ describe('migrateLegacyCheckin', () => {
     expect(d.scheduleAlarm).toHaveBeenCalledTimes(1);
     expect(d.addAlarm).toHaveBeenCalledTimes(1);
     expect(d.addAlarm.mock.calls[0][0]).toMatchObject({
-      id: 'checkin-migrated', kind: 'checkin', time: '09:30', nativeAlarmUids: ['u'],
+      id: '6f1c2b7e-9a4d-4c3e-8b1f-2d5e7a9c0b31', kind: 'checkin', time: '09:30', nativeAlarmUids: ['u'],
     });
     expect(d.disableLegacy).toHaveBeenCalledTimes(1);
   });

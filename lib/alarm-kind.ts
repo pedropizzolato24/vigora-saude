@@ -24,7 +24,7 @@ export const NEW_CHECKIN_ESCALATE_MINUTES: EscalateMinutes = 15;
 export const MIGRATED_CHECKIN_ESCALATE_MINUTES: EscalateMinutes = 30;
 
 /** Id fixo do check-in migrado: um ADD_ALARM com este id substitui o alarme existente em vez de duplicar. Diferente de 'checkin-daily' (id legado do servidor). */
-export const MIGRATED_CHECKIN_ALARM_ID = 'checkin-migrated';
+export const MIGRATED_CHECKIN_ALARM_ID = '6f1c2b7e-9a4d-4c3e-8b1f-2d5e7a9c0b31';
 
 type KindLike = { kind?: string | null };
 
