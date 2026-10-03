@@ -45,6 +45,24 @@ export function isEventExpired(
 }
 
 /**
+ * Âncora da idade do evento sem resposta na escada genérica (Passo 2 do job).
+ * Check-in (kind 'checkin') só vira 'missed' no prazo de resposta, então a
+ * idade conta daí (senão o aviso genérico sai junto com a escalação do próprio
+ * check-in). Remédio e o 'checkin-daily' legado (kind nulo, prazo já embutido
+ * em scheduledAt) seguem ancorados em scheduledAt.
+ */
+export function warningAnchor(e: {
+  scheduledAt: Date;
+  graceMinutes?: number | null;
+  kind?: string | null;
+}): Date {
+  if (e.kind !== "checkin") return e.scheduledAt;
+  return new Date(
+    e.scheduledAt.getTime() + (eventGraceMinutes(e) + CHECKIN_SERVER_BUFFER_MINUTES) * 60_000
+  );
+}
+
+/**
  * A agenda da conta já tem um alarme de check-in? Prova positiva de que o
  * check-in migrou para o sistema novo (o evento 'checkin-daily' pendente do
  * sistema antigo não é mais esperado).

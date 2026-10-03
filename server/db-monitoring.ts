@@ -8,10 +8,10 @@
  *
  * Handles: account liveness (heartbeat), alarm events, warning log, retention.
  */
-import { and, desc, eq, gt, gte, inArray, isNull, lt, lte, min, ne, or } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNull, lt, lte, ne, or } from "drizzle-orm";
 import { getDb } from "./db";
 import { pickPendingEvent } from "./_core/pick-pending-event";
-import { LEGACY_CHECKIN_ALARM_ID } from "./_core/event-kind";
+import { LEGACY_CHECKIN_ALARM_ID, warningAnchor } from "./_core/event-kind";
 import {
   accountLiveness,
   alarmChanges,
@@ -360,8 +360,9 @@ export async function getMissedMedicationEvents(lookbackHours: number) {
  * família nunca era avisada. Já a idade do evento não confirmado é um sinal
  * real: o servidor sabe quando aquela resposta era esperada.
  *
- * Retorna o `oldestUnconfirmedAt` (o disparo mais antigo sem confirmação) —
- * é dele que sai a "idade" que define o nível do aviso.
+ * Retorna o `oldestUnconfirmedAt` (a âncora mais antiga sem confirmação) —
+ * é dele que sai a "idade" que define o nível do aviso. Para check-in a âncora
+ * é o prazo de resposta (ver `warningAnchor`); para o resto, o disparo.
  */
 export async function getAccountsWithUnconfirmedEvents(lookbackHours: number) {
   const db = await getDb();
@@ -372,7 +373,9 @@ export async function getAccountsWithUnconfirmedEvents(lookbackHours: number) {
   const rows = await db
     .select({
       openId: alarmEvents.openId,
-      oldestUnconfirmedAt: min(alarmEvents.scheduledAt),
+      scheduledAt: alarmEvents.scheduledAt,
+      kind: alarmEvents.kind,
+      graceMinutes: alarmEvents.graceMinutes,
     })
     .from(alarmEvents)
     .where(
@@ -380,14 +383,17 @@ export async function getAccountsWithUnconfirmedEvents(lookbackHours: number) {
         inArray(alarmEvents.status, ["missed", "not_sent"]),
         gte(alarmEvents.scheduledAt, cutoff)
       )
-    )
-    .groupBy(alarmEvents.openId);
+    );
 
-  return rows.flatMap((r) =>
-    r.oldestUnconfirmedAt
-      ? [{ openId: r.openId, oldestUnconfirmedAt: new Date(r.oldestUnconfirmedAt) }]
-      : []
-  );
+  // O mais antigo por conta, calculado em JS: a âncora do check-in depende do
+  // prazo (grace + folga) e reaproveita as regras de event-kind.ts.
+  const oldest = new Map<string, Date>();
+  for (const r of rows) {
+    const anchor = warningAnchor({ ...r, scheduledAt: new Date(r.scheduledAt) });
+    const current = oldest.get(r.openId);
+    if (!current || anchor < current) oldest.set(r.openId, anchor);
+  }
+  return [...oldest].map(([openId, oldestUnconfirmedAt]) => ({ openId, oldestUnconfirmedAt }));
 }
 
 export async function markEventWarningSent(id: number): Promise<void> {
