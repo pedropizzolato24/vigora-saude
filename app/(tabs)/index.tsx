@@ -264,9 +264,9 @@ export default function DashboardScreen() {
             <Pressable
               onPress={() => navigate('/(tabs)/checkin')}
               accessibilityRole="button"
-              accessibilityLabel="Check-in: avisar que está tudo bem"
+              accessibilityLabel="Check-in: horários e atraso do aviso"
               style={({ pressed }) => [{
-                backgroundColor: colors.emergency,
+                backgroundColor: colors.primarySurface,
                 borderRadius: 20,
                 paddingVertical: as_.buttonPadding,
                 flexDirection: 'row',
@@ -276,8 +276,8 @@ export default function DashboardScreen() {
                 opacity: pressed ? 0.85 : 1,
               }]}
             >
-              <MaterialIcons name="check-circle" size={36} color={colors.onEmergency} />
-              <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: af.xl, fontWeight: '800', color: colors.onEmergency }}>
+              <MaterialIcons name="check-circle" size={36} color={colors.onPrimary} />
+              <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: af.xl, fontWeight: '800', color: colors.onPrimary }}>
                 Check-in
               </Text>
             </Pressable>
@@ -406,6 +406,7 @@ export default function DashboardScreen() {
         <AppDialog {...dialogProps} />
         <AppToast {...toastProps} />
         <SOSCountdownDialog
+          whatsappCount={state.emergencyContacts.filter((c) => c.whatsapp).length}
           visible={sosCountdownVisible}
           onConfirm={() => { setSosCountdownVisible(false); activateSOS(); }}
           onCancel={() => setSosCountdownVisible(false)}
@@ -494,10 +495,10 @@ export default function DashboardScreen() {
           <View style={styles.tileWrapper}>
             <BigTile
               icon="check-circle"
-              iconColor={colors.emergency}
-              iconBg={colors.emergencyLight}
+              iconColor={colors.primary}
+              iconBg={colors.primaryLight}
               title="Check-in"
-              subtitle="Estou bem"
+              subtitle="Horários e aviso"
               onPress={() => navigate('/(tabs)/checkin')}
             />
           </View>
@@ -590,6 +591,7 @@ export default function DashboardScreen() {
       <AppDialog {...dialogProps} />
       <AppToast {...toastProps} />
       <SOSCountdownDialog
+        whatsappCount={state.emergencyContacts.filter((c) => c.whatsapp).length}
         visible={sosCountdownVisible}
         onConfirm={() => { setSosCountdownVisible(false); activateSOS(); }}
         onCancel={() => setSosCountdownVisible(false)}

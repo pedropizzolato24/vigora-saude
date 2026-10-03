@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   SOS_CALL_NUMBER,
   SOS_SPOKEN_CONFIRMATION,
+  sosSpokenText,
   emptyEscalation,
   sosContactStatus,
   sosSummary,
@@ -107,9 +108,16 @@ describe('SOS não promete o que não faz', () => {
     expect(SOS_SPOKEN_CONFIRMATION).toMatch(/toque no botão vermelho/i);
   });
 
+  it('sem contatos com WhatsApp a voz não promete avisar ninguém', () => {
+    expect(sosSpokenText(0)).toBe(
+      'Você não tem contatos cadastrados para avisar. Use o botão para ligar 192 se precisar.'
+    );
+    expect(sosSpokenText(2)).toBe(SOS_SPOKEN_CONFIRMATION);
+  });
+
   it('o diálogo de contagem fala o texto honesto', () => {
     const src = readFileSync(join(__dirname, '..', 'components', 'sos-countdown-dialog.tsx'), 'utf8');
-    expect(src).toMatch(/Speech\.speak\(SOS_SPOKEN_CONFIRMATION/);
+    expect(src).toMatch(/Speech\.speak\(sosSpokenText\(whatsappCountRef\.current\)/);
     expect(src).not.toMatch(/ligando para o SAMU/);
   });
 
@@ -135,5 +143,20 @@ describe('SOS não promete o que não faz', () => {
     const src = readFileSync(join(__dirname, '..', 'components', 'sos-active-screen.tsx'), 'utf8');
     expect(src).not.toMatch(/Ajuda está a caminho/);
     expect(src).not.toMatch(/foram notificados/);
+  });
+});
+
+describe('tile de Check-in da Início', () => {
+  const src = readFileSync(join(__dirname, '..', 'app', '(tabs)', 'index.tsx'), 'utf8');
+  it('não diz que confirma nada e não usa a cor de emergência', () => {
+    expect(src).not.toMatch(/avisar que está tudo bem/);
+    expect(src).not.toMatch(/subtitle="Estou bem"/);
+    expect(src).toMatch(/Check-in: horários e atraso do aviso/);
+    expect(src).toMatch(/subtitle="Horários e aviso"/);
+    const i = src.indexOf("navigate('/(tabs)/checkin')");
+    const j = src.lastIndexOf('<BigTile', src.indexOf("navigate('/(tabs)/checkin')", i + 1));
+    expect(src.slice(j, src.indexOf('/>', j))).not.toMatch(/emergency/i);
+    const k = src.indexOf("navigate('/(tabs)/checkin')");
+    expect(src.slice(k, k + 900)).not.toMatch(/colors\.(onE|e)mergency/);
   });
 });

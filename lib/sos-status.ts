@@ -21,6 +21,14 @@ export const SOS_CALL_NUMBER = '192';
 export const SOS_SPOKEN_CONFIRMATION =
   'Avisando suas pessoas. Para chamar o SAMU, toque no botão vermelho.';
 
+/** Sem nenhum contato com WhatsApp ninguém é avisado: a voz não pode dizer que sim. */
+export const SOS_SPOKEN_NO_CONTACTS =
+  'Você não tem contatos cadastrados para avisar. Use o botão para ligar 192 se precisar.';
+
+export function sosSpokenText(whatsappCount: number): string {
+  return whatsappCount === 0 ? SOS_SPOKEN_NO_CONTACTS : SOS_SPOKEN_CONFIRMATION;
+}
+
 export type SosContactStatus = 'sending' | 'sent' | 'partial' | 'failed' | 'opened' | 'no_whatsapp';
 
 export function sosContactStatus(
