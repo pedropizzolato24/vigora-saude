@@ -178,4 +178,26 @@ describe('migrateLegacyCheckin', () => {
     expect(await migrateLegacyCheckin({ alarms: mixed, settings: enabled }, d)).toBe('failed');
     warn.mockRestore();
   });
+
+  describe('notificações desligadas (o sistema antigo só agendava com as duas flags)', () => {
+    const notifOff = { checkinEnabled: true, checkinTime: '09:30', notificationsEnabled: false };
+
+    it('cria o alarme DESLIGADO e não agenda; desliga a flag antiga e cancela as notificações antigas', async () => {
+      const d = deps();
+      expect(await migrateLegacyCheckin({ alarms: [medication], settings: notifOff }, d)).toBe('migrated');
+      expect(d.scheduleAlarm).not.toHaveBeenCalled();
+      expect(d.addAlarm).toHaveBeenCalledTimes(1);
+      expect(d.addAlarm.mock.calls[0][0]).toMatchObject({ kind: 'checkin', time: '09:30', enabled: false });
+      expect(d.disableLegacy).toHaveBeenCalledTimes(1);
+      expect(d.cancelLegacyNotifications).toHaveBeenCalledTimes(1);
+    });
+
+    it('notificações ligadas: comportamento inalterado (alarme ligado e agendado)', async () => {
+      const d = deps();
+      const settings = { ...notifOff, notificationsEnabled: true };
+      expect(await migrateLegacyCheckin({ alarms: [], settings }, d)).toBe('migrated');
+      expect(d.scheduleAlarm).toHaveBeenCalledTimes(1);
+      expect(d.addAlarm.mock.calls[0][0]).toMatchObject({ enabled: true });
+    });
+  });
 });

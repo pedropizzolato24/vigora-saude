@@ -22,6 +22,9 @@
  *    (substitui no lugar): se um estado da nuvem já trouxe o mesmo alarme enquanto
  *    o agendamento esperava, não há duplicata no estado; o agendador nativo também
  *    é chaveado pelo id.
+ *  - `notificationsEnabled` false: o sistema antigo não agendava o check-in (cancelava).
+ *    A migração roda (preserva horário e prazo, desliga a flag antiga), mas o alarme
+ *    nasce `enabled: false` e NÃO é agendado: nada toca nem escala sem o usuário ligar.
  *  - As notificações antigas (`checkin_prompt`/`checkin_timeout`) são canceladas em
  *    TODA execução, qualquer que seja a flag ou o desfecho: ficaram inertes
  *    (tocam "Como você está?" e o toque não leva a lugar nenhum).
@@ -38,6 +41,8 @@ import {
 export interface LegacyCheckinSettings {
   checkinEnabled?: boolean;
   checkinTime?: string;
+  /** O sistema antigo só agendava o check-in com esta flag E `checkinEnabled` ligadas. */
+  notificationsEnabled?: boolean;
 }
 
 export interface MigrationDeps {
@@ -72,7 +77,7 @@ export function buildMigratedCheckin(
     id: MIGRATED_CHECKIN_ALARM_ID,
     time: time.padStart(5, '0'),
     description: 'Check-in',
-    enabled: true,
+    enabled: settings.notificationsEnabled !== false,
     repeat: 'daily',
     customDays: [],
     sound: true,
@@ -119,7 +124,7 @@ async function run(
       return 'failed';
     }
     try {
-      deps.addAlarm(await deps.scheduleAlarm(alarm));
+      deps.addAlarm(alarm.enabled ? await deps.scheduleAlarm(alarm) : alarm);
     } catch (error) {
       console.error('[CheckinMigration] não foi possível agendar o check-in migrado:', error);
       return 'failed';
