@@ -28,6 +28,11 @@ const CAREGIVER_PUSH_TYPES = [
 ];
 const DEFAULT_ROUTE = '/(caregiver-tabs)/alerts';
 
+// Só o nome do erro vai para o log (sem payload: pode carregar dado de saúde).
+function warnFailed(what: string, error: unknown) {
+  console.warn(`[caregiver-push] ${what}`, error instanceof Error ? error.name : typeof error);
+}
+
 export function CaregiverPushInitializer() {
   const registered = useRef(false);
   const router = useRouter();
@@ -83,7 +88,7 @@ export function CaregiverPushInitializer() {
     // Cold start: the notification tap that launched the app.
     Notifications.getLastNotificationResponseAsync()
       .then(navigateFromResponse)
-      .catch(() => {});
+      .catch((e) => warnFailed('navigation failed', e));
 
     // Warm: taps while the app is already running.
     const sub = Notifications.addNotificationResponseReceivedListener(navigateFromResponse);
@@ -98,9 +103,9 @@ export function CaregiverPushInitializer() {
     const sub = Notifications.addNotificationReceivedListener((notification) => {
       const type = notification.request.content.data?.type;
       if (!CAREGIVER_PUSH_TYPES.includes(type as string)) return;
-      utils.link.getMonitoredAlerts.invalidate().catch(() => {});
-      utils.link.getMonitoredData.invalidate().catch(() => {});
-      if (type === 'link_revoked') refreshLink().catch(() => {});
+      utils.link.getMonitoredAlerts.invalidate().catch((e) => warnFailed('refresh failed', e));
+      utils.link.getMonitoredData.invalidate().catch((e) => warnFailed('refresh failed', e));
+      if (type === 'link_revoked') refreshLink().catch((e) => warnFailed('refresh failed', e));
     });
     return () => sub.remove();
   }, [utils, refreshLink]);

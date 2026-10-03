@@ -83,6 +83,14 @@ describe('telas', () => {
 
   it('o modo acessível ganha Som e Vibração', () => {
     const modal = read('components/alarm-form-modal.tsx');
-    expect(modal).toMatch(/Ativar som no modo acessível|accessibilityLabel=\{`Ativar \$\{/);
+    const accessible = modal.slice(0, modal.indexOf('MODO NORMAL'));
+    expect(accessible).toMatch(/label: 'Som'/);
+    expect(accessible).toMatch(/label: 'Vibração'/);
+    expect(accessible).toMatch(/value=\{form\[row\.key\]\}/);
+    expect(accessible).toMatch(/key: 'sound' as const/);
+    expect(accessible).toMatch(/key: 'vibration' as const/);
+    expect(accessible).toMatch(/accessibilityLabel=\{`Ativar \$\{row\.label\.toLowerCase\(\)\}`\}/);
+    expect(accessible).not.toMatch(/no modo acessível/);
+    expect(accessible).toMatch(/thumbColor=\{ac\.onPrimary\}/);
   });
 });

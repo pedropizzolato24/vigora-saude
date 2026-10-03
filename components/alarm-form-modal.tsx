@@ -310,8 +310,8 @@ export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDele
                       value={form[row.key]}
                       onValueChange={(v) => setForm((f) => ({ ...f, [row.key]: v }))}
                       trackColor={{ false: ac.border, true: ac.primary }}
-                      thumbColor="#FFFFFF"
-                      accessibilityLabel={`Ativar ${row.label.toLowerCase()} no modo acessível`}
+                      thumbColor={ac.onPrimary}
+                      accessibilityLabel={`Ativar ${row.label.toLowerCase()}`}
                     />
                   </View>
                 ))}
