@@ -78,10 +78,20 @@ describe("Passo 1 — prazo por evento", () => {
     expect(db.deleteAlarmEvent).not.toHaveBeenCalled();
   });
 
-  it("graceMinutes 15: com 16 min venceu e vira 'missed' (conta viva)", async () => {
+  it("check-in graceMinutes 15: com 16 min ainda está na folga do servidor", async () => {
     const e = event({ graceMinutes: 15, scheduledAt: minAgo(16) });
     vi.mocked(db.getExpiredPendingEvents).mockResolvedValue([e]);
     vi.mocked(db.getAccountLiveness).mockResolvedValue(vivo(minAgo(16)));
+
+    await runMonitoringJob();
+
+    expect(db.updateAlarmEventStatus).not.toHaveBeenCalled();
+  });
+
+  it("graceMinutes 15: com 18 min venceu e vira 'missed' (conta viva)", async () => {
+    const e = event({ graceMinutes: 15, scheduledAt: minAgo(18) });
+    vi.mocked(db.getExpiredPendingEvents).mockResolvedValue([e]);
+    vi.mocked(db.getAccountLiveness).mockResolvedValue(vivo(minAgo(18)));
 
     await runMonitoringJob();
 

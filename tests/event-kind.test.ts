@@ -32,6 +32,23 @@ describe("eventGraceMinutes / isEventExpired", () => {
     expect(isEventExpired({ scheduledAt: T0, graceMinutes: 15 }, at(10))).toBe(false);
     expect(isEventExpired({ scheduledAt: T0, graceMinutes: 15 }, at(15))).toBe(true);
   });
+
+  it("check-in (kind 'checkin') ganha 2 min de folga no servidor", () => {
+    const e = { scheduledAt: T0, graceMinutes: 15, kind: "checkin" };
+    expect(isEventExpired(e, at(15))).toBe(false);
+    expect(isEventExpired(e, at(16))).toBe(false);
+    expect(isEventExpired(e, at(17))).toBe(true);
+  });
+
+  it("remédio com grace 5 vence aos 5 min exatos", () => {
+    const e = { scheduledAt: T0, graceMinutes: 5, kind: "medication" };
+    expect(isEventExpired(e, at(4))).toBe(false);
+    expect(isEventExpired(e, at(5))).toBe(true);
+  });
+
+  it("check-in legado ('checkin-daily', kind nulo) mantém o prazo antigo", () => {
+    expect(isEventExpired({ scheduledAt: T0, kind: null }, at(5))).toBe(true);
+  });
 });
 
 describe("agendaHasCheckinAlarm", () => {

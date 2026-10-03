@@ -10,6 +10,12 @@
 
 export const LEGACY_CHECKIN_ALARM_ID = "checkin-daily";
 export const DEFAULT_GRACE_MINUTES = 5;
+/**
+ * Folga do servidor sobre a contagem do cliente no check-in: a contagem do app
+ * (escalateSeconds) é igual ao grace, então sem folga o job podia marcar 'missed'
+ * e escalar antes de o "Estou bem" (ou o missed do próprio app) chegar.
+ */
+export const CHECKIN_SERVER_BUFFER_MINUTES = 2;
 
 export function isCheckinEvent(e: { alarmId: string; kind?: string | null }): boolean {
   return e.kind === "checkin" || e.alarmId === LEGACY_CHECKIN_ALARM_ID;
@@ -24,13 +30,18 @@ export function eventGraceMinutes(
     : fallback;
 }
 
-/** O evento já passou do prazo de resposta (scheduledAt + grace do evento)? */
+/**
+ * O evento já passou do prazo de resposta? Remédio: scheduledAt + grace.
+ * Check-in novo (kind 'checkin'): + CHECKIN_SERVER_BUFFER_MINUTES. O legado
+ * 'checkin-daily' (kind nulo) não ganha folga: seu prazo já está em scheduledAt.
+ */
 export function isEventExpired(
-  e: { scheduledAt: Date; graceMinutes?: number | null },
+  e: { scheduledAt: Date; graceMinutes?: number | null; kind?: string | null },
   nowMs: number,
   fallback: number = DEFAULT_GRACE_MINUTES
 ): boolean {
-  return nowMs >= e.scheduledAt.getTime() + eventGraceMinutes(e, fallback) * 60_000;
+  const buffer = e.kind === "checkin" ? CHECKIN_SERVER_BUFFER_MINUTES : 0;
+  return nowMs >= e.scheduledAt.getTime() + (eventGraceMinutes(e, fallback) + buffer) * 60_000;
 }
 
 /**
