@@ -357,7 +357,7 @@ export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDele
                 onPress={() => onSave(isCheckin ? { ...form, description: 'Check-in' } : form)}
                 disabled={saveDisabled}
                 accessibilityRole="button"
-                accessibilityLabel="Salvar lembrete"
+                accessibilityLabel={`Salvar ${nounLower}`}
                 style={({ pressed }) => [{ flex: 1.5, minHeight: 64, borderRadius: 16, backgroundColor: ac.success, alignItems: 'center', justifyContent: 'center', opacity: saveDisabled ? 0.5 : pressed ? 0.85 : 1 }]}
               >
                 <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.onPrimary }}>Salvar</Text>
@@ -574,10 +574,10 @@ export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDele
               onPress={() => onSave(isCheckin ? { ...form, description: 'Check-in' } : form)}
               disabled={saveDisabled}
               accessibilityRole="button"
-              accessibilityLabel={editingAlarm ? 'Salvar lembrete' : 'Criar lembrete'}
+              accessibilityLabel={editingAlarm ? `Salvar ${nounLower}` : `Criar ${nounLower}`}
               style={({ pressed }) => [styles.actionBtn, { flex: 1.5, backgroundColor: colors.primarySurface, minHeight: fs.touch(54), opacity: saveDisabled ? 0.5 : pressed ? 0.85 : 1 }]}
             >
-              <Text style={[styles.actionBtnText, { color: colors.onPrimary, fontSize: fs.md }]}>{editingAlarm ? 'Salvar' : 'Criar lembrete'}</Text>
+              <Text style={[styles.actionBtnText, { color: colors.onPrimary, fontSize: fs.md }]}>{editingAlarm ? 'Salvar' : `Criar ${nounLower}`}</Text>
             </Pressable>
           </View>
         </FormKeyboardView>

@@ -28,7 +28,7 @@ import { scheduleFullAlarm, cancelFullAlarm } from '@/lib/alarm-sync';
 import { canUseFullScreenIntent, openFullScreenIntentSettings } from 'expo-alarm-countdown';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MAX_ALARMS } from '@/components/pro-limits';
-import { checkinAlarms, medicationAlarms, type AlarmKind } from '@/lib/alarm-kind';
+import { checkinAlarms, DEFAULT_ESCALATE_MINUTES, medicationAlarms, type AlarmKind } from '@/lib/alarm-kind';
 
 // Evita repetir o aviso de "Notificações em tela cheia" a cada alarme criado
 // na mesma sessão (a permissão continua sendo re-checada — só o diálogo não
@@ -384,7 +384,7 @@ export function AlarmListScreen({ kind }: { kind: AlarmKind }) {
                     {item.time}
                   </Text>
                   <Text style={{ fontSize: af.md, color: ac.foreground, fontWeight: '600' }}>
-                    {isCheckin ? `Avisa seus contatos após ${item.escalateAfterMinutes ?? 5} min sem resposta` : item.description || 'Sem descrição'}
+                    {isCheckin ? `Avisa seus contatos após ${item.escalateAfterMinutes ?? DEFAULT_ESCALATE_MINUTES} min sem resposta` : item.description || 'Sem descrição'}
                   </Text>
                   <Text style={{ fontSize: af.sm, color: ac.muted }}>
                     {item.repeat === 'daily' ? 'Todos os dias' :
@@ -542,7 +542,7 @@ export function AlarmListScreen({ kind }: { kind: AlarmKind }) {
               onEdit={openEditModal}
               onToggle={handleToggle}
               onTest={(alarm) => router.push(`/alarm-ring?alarmId=${alarm.id}`)}
-              subtitle={isCheckin ? `Avisa seus contatos após ${item.escalateAfterMinutes ?? 5} min sem resposta` : undefined}
+              subtitle={isCheckin ? `Avisa seus contatos após ${item.escalateAfterMinutes ?? DEFAULT_ESCALATE_MINUTES} min sem resposta` : undefined}
             />
           )}
           style={{ flex: 1 }}

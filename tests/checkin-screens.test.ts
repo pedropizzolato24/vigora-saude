@@ -50,3 +50,28 @@ describe('telas', () => {
     expect(settings).not.toMatch(/scheduleCheckin|cancelCheckin|DateTimePicker/);
   });
 });
+
+describe('inicializador da migração do check-in', () => {
+  const src = readFileSync(join(__dirname, '..', 'components/checkin-migration-initializer.tsx'), 'utf8');
+  it('cancela as notificações antigas antes das portas (desligado, cuidador, sem login)', () => {
+    const cancel = src.indexOf('await cancelLegacyCheckinNotifications();');
+    expect(cancel).toBeGreaterThan(src.indexOf('!user?.openId'));
+    expect(src).toMatch(/!state\.settings\.checkinEnabled \|\| !user\?\.openId \|\| user\.userType === 'caregiver'\) \{\s*await cancelLegacyCheckinNotifications\(\);\s*return;/);
+  });
+  it('migração que falha avisa por AppDialog, uma vez por abertura', () => {
+    expect(src).toMatch(/Não foi possível mover o seu check-in/);
+    expect(src).toMatch(/Abrir Check-in/);
+    expect(src).toMatch(/failureDialogShown/);
+    expect(src).not.toMatch(/Alert\.alert/);
+  });
+});
+
+describe('proibidos do aviso 60+', () => {
+  it('o termo iOS de fato acusa a palavra e poupa "Remédios"', () => {
+    const proibidos = readFileSync(join(__dirname, '..', 'tests/alarm-setup-prompts.test.ts'), 'utf8');
+    expect(proibidos).toContain('"' + String.fromCharCode(92, 92) + 'biOS' + String.fromCharCode(92, 92) + 'b"');
+    const re = new RegExp(String.fromCharCode(92) + 'biOS' + String.fromCharCode(92) + 'b', 'i');
+    expect(re.test('abrir no iOS agora')).toBe(true);
+    expect(re.test('Remédios')).toBe(false);
+  });
+});

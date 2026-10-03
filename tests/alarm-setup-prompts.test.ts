@@ -70,7 +70,7 @@ describe("linguagem dos avisos — público 60+", () => {
     "Samsung",
     "Xiaomi",
     "Redmi",
-    "\biOS\b", // com borda: "Remédios" contém "ios"
+    "\\biOS\\b", // com borda: "Remédios" contém "ios"
     "iPhone",
     "Autostart",
     "segundo plano",

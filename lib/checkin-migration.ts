@@ -14,17 +14,17 @@
  *  - `checkinEnabled` true e nenhum alarme de check-in: cria o alarme, agenda,
  *    e só então desliga o sistema antigo.
  *  - `checkinEnabled` true e já existe check-in: não cria outro, só desliga o antigo.
- *  - Falhou agendar (ou sem espaço nos MAX_ALARMS): o sistema antigo CONTINUA
- *    valendo e a próxima avaliação tenta de novo. Ficar sem check-in é pior do
- *    que ter dois por um dia.
+ *  - Falhou agendar (ou sem espaço nos MAX_ALARMS): o sistema antigo JÁ NÃO
+ *    EXISTE (sem inicializador, sem tratador de timeout, sem tela), então não há
+ *    "continua valendo". A flag fica ligada para a próxima carga tentar de novo
+ *    e o resultado 'failed' deixa o chamador AVISAR o usuário de que está sem check-in.
  *  - O alarme migrado tem id fixo e o ADD_ALARM do reducer é idempotente por id
  *    (substitui no lugar): se um estado da nuvem já trouxe o mesmo alarme enquanto
  *    o agendamento esperava, não há duplicata no estado; o agendador nativo também
  *    é chaveado pelo id.
  *  - As notificações antigas (`checkin_prompt`/`checkin_timeout`) são canceladas em
- *    toda execução em que o sistema antigo está desligado ou acaba de ser
- *    desligado (quem migrou num build anterior ainda pode tê-las agendadas).
- *    Não são canceladas enquanto a migração falha: o antigo continua valendo.
+ *    TODA execução, qualquer que seja a flag ou o desfecho: ficaram inertes
+ *    (tocam "Como você está?" e o toque não leva a lugar nenhum).
  *  - Duas chamadas ao mesmo tempo compartilham a mesma execução: um alarme só.
  */
 import type { Alarm } from '@/lib/app-context';
@@ -107,16 +107,14 @@ async function run(
   state: { alarms: Alarm[]; settings: LegacyCheckinSettings },
   deps: MigrationDeps
 ): Promise<MigrationOutcome> {
-  if (!state.settings.checkinEnabled) {
-    await cancelLegacy(deps);
-    return 'nothing';
-  }
+  await cancelLegacy(deps);
+  if (!state.settings.checkinEnabled) return 'nothing';
 
   const alarm = buildMigratedCheckin(state.settings, state.alarms);
   if (alarm) {
     if (state.alarms.length >= MAX_ALARMS) {
       console.warn(
-        `[CheckinMigration] ${MAX_ALARMS} alarmes já cadastrados — o check-in antigo continua valendo.`
+        `[CheckinMigration] ${MAX_ALARMS} alarmes já cadastrados — o check-in não pôde ser migrado.`
       );
       return 'failed';
     }
@@ -128,6 +126,5 @@ async function run(
     }
   }
   deps.disableLegacy();
-  await cancelLegacy(deps);
   return alarm ? 'migrated' : 'nothing';
 }

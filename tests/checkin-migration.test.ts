@@ -82,12 +82,23 @@ describe('migrateLegacyCheckin', () => {
     expect(d.cancelLegacyNotifications).toHaveBeenCalledTimes(1);
   });
 
-  it('migração falhou: as notificações antigas NÃO são canceladas (o antigo continua valendo)', async () => {
+  it('migração falhou: as notificações antigas são canceladas mesmo assim e a flag continua ligada', async () => {
     const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const d = deps({ scheduleAlarm: vi.fn(async () => { throw new Error('x'); }) });
-    await migrateLegacyCheckin({ alarms: [], settings: enabled }, d);
-    expect(d.cancelLegacyNotifications).not.toHaveBeenCalled();
+    expect(await migrateLegacyCheckin({ alarms: [], settings: enabled }, d)).toBe('failed');
+    expect(d.cancelLegacyNotifications).toHaveBeenCalledTimes(1);
+    expect(d.disableLegacy).not.toHaveBeenCalled();
     err.mockRestore();
+  });
+
+  it('sem espaço: as notificações antigas são canceladas e a flag continua ligada', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const d = deps();
+    const full = Array.from({ length: 24 }, (_, i) => ({ ...medication, id: `m${i}` }));
+    expect(await migrateLegacyCheckin({ alarms: full, settings: enabled }, d)).toBe('failed');
+    expect(d.cancelLegacyNotifications).toHaveBeenCalledTimes(1);
+    expect(d.disableLegacy).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it('falha ao cancelar não derruba a migração nem some em silêncio', async () => {
@@ -131,7 +142,7 @@ describe('migrateLegacyCheckin', () => {
     warn.mockRestore();
   });
 
-  it('falha ao agendar: o sistema antigo continua valendo e tenta de novo depois', async () => {
+  it('falha ao agendar: a flag continua ligada para tentar de novo depois', async () => {
     const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const d = deps({ scheduleAlarm: vi.fn(async () => { throw new Error('sistema recusou'); }) });
     expect(await migrateLegacyCheckin({ alarms: [], settings: enabled }, d)).toBe('failed');
@@ -140,7 +151,7 @@ describe('migrateLegacyCheckin', () => {
     err.mockRestore();
   });
 
-  it('sem espaço (24 alarmes): não migra e o sistema antigo continua valendo', async () => {
+  it('sem espaço (24 alarmes): não migra e a flag continua ligada', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const d = deps();
     const full = Array.from({ length: 24 }, (_, i) => ({ ...medication, id: `m${i}` }));
