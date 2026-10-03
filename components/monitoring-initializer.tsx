@@ -209,7 +209,13 @@ export function MonitoringInitializer() {
   useEffect(() => {
     if (!initializedRef.current) return;
 
-    const hash = state.alarms.map((a) => `${a.id}:${a.time}:${a.enabled}`).join("|");
+    // Inclui o que muda o evento no servidor: prazo do check-in e próximo disparo.
+    const hash = state.alarms
+      .map(
+        (a) =>
+          `${a.id}:${a.time}:${a.enabled}:${a.kind ?? ""}:${a.repeat}:${[...(a.customDays ?? [])].sort().join(",")}:${a.escalateAfterMinutes ?? ""}`
+      )
+      .join("|");
     if (hash === lastAlarmHashRef.current) return;
     lastAlarmHashRef.current = hash;
 
