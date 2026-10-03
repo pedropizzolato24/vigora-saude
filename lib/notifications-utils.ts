@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { weeklyJsDays } from './alarm-fire-times';
 import { Platform } from 'react-native';
 import { Alarm } from './app-context';
+import { alarmTexts } from '@/lib/alarm-kind';
 import { setupCountdownChannel } from './alarm-countdown-notifier';
 
 // --- Notification Channel IDs ----------------------------------------------
@@ -145,11 +146,10 @@ export async function scheduleAlarmNotification(alarm: Alarm): Promise<string | 
     const comVibracao = alarm.vibration !== false;
 
     // Notification content - same for all repeat types
+    const texts = alarmTexts(alarm);
     const content: Notifications.NotificationContentInput = {
-      title: `⏰ ${alarm.description || 'Alarme'}`,
-      body: alarm.description
-        ? `Hora do alarme: ${alarm.time} - ${alarm.description}`
-        : `Hora do alarme: ${alarm.time}`,
+      title: texts.notificationTitle,
+      body: texts.notificationBody,
       data: {
         alarmId: alarm.id,
         url: `/alarm-ring?alarmId=${alarm.id}`,

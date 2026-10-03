@@ -36,7 +36,7 @@ import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { useAppContext } from '@/lib/app-context';
-import { medicationAlarms } from '@/lib/alarm-kind';
+import { buildCheckinSpeechText, escalateSeconds, isCheckinAlarm, medicationAlarms, ringCopy } from '@/lib/alarm-kind';
 import { shouldVibrate } from '@/lib/_core/alarm-vibration';
 import { loadCurrentAppStateRaw } from '@/lib/app-state-storage';
 import { useAccessibility } from '@/lib/accessibility-context';
@@ -106,6 +106,11 @@ export default function AlarmRingScreen() {
 
   const alarm = state.alarms.find((a) => a.id === alarmId);
 
+  // Check-in ("Está tudo bem?"): mesma tela, outros textos e outro prazo.
+  const isCheckin = !!alarm && isCheckinAlarm(alarm);
+  const copy = ringCopy(isCheckin);
+  const ringName = isCheckin ? copy.fallbackName : alarm?.description || copy.fallbackName;
+
   // iOS 26+: o alarme JÁ tocou em tela cheia e o idoso JÁ apertou "Desligar" —
   // foi isso que abriu o app. Não há o que tocar nem o que contar: rodar o
   // countdown aqui escalaria para a família um alarme que foi atendido (a
@@ -123,7 +128,9 @@ export default function AlarmRingScreen() {
   // Initialize with the configured duration; will be overridden by persisted timer on mount.
   // Note: configuredDuration from state may be stale if state hasn't loaded yet.
   // The initTimer function reads from AsyncStorage directly as fallback.
-  const configuredDuration: number = state.settings.timerDuration ?? 30;
+  const configuredDuration: number = isCheckin && alarm
+    ? escalateSeconds(alarm)
+    : state.settings.timerDuration ?? 30;
   const [secondsLeft, setSecondsLeft] = useState<number>(configuredDuration);
   const [escalated, setEscalated] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -193,7 +200,9 @@ export default function AlarmRingScreen() {
   // O som é o do serviço nativo, então pausar/retomar passa pelo módulo nativo.
   const speakAlarm = useCallback(() => {
     if (Platform.OS === 'web') return;
-    const text = buildSpeechText(alarm?.description, alarm?.time, vindoDoAlarmKit);
+    const text = isCheckin
+      ? buildCheckinSpeechText(alarm?.time, vindoDoAlarmKit)
+      : buildSpeechText(alarm?.description, alarm?.time, vindoDoAlarmKit);
     // speechVolume chega ao Android via patch do expo-speech (KEY_PARAM_VOLUME)
     // — o módulo original ignorava options.volume por completo fora do iOS.
     const speechVol = (state.settings.speechVolume ?? 90) / 100;
@@ -399,6 +408,9 @@ export default function AlarmRingScreen() {
             }
           }
         } catch {}
+        if (alarmForAnchor && isCheckinAlarm(alarmForAnchor)) {
+          duration = escalateSeconds(alarmForAnchor);
+        }
         const fireMs = alarmForAnchor ? lastAlarmFireMs(alarmForAnchor) : null;
         startCountdown((fireMs ?? Date.now()) + duration * 1000);
       }
@@ -488,7 +500,8 @@ export default function AlarmRingScreen() {
     // Atualiza widget Android para mostrar o próximo alarme pendente
     updateAlarmWidgetOnDismiss(medicationAlarms(state.alarms)).catch(() => {});
 
-    router.replace(postAlarmRoute as never);
+    // Depois do check-in, volta ao Início (e não à lista de remédios).
+    router.replace((isCheckin && postAlarmRoute === '/(tabs)/alarms' ? '/(tabs)' : postAlarmRoute) as never);
     // `alarm` e `state.alarms` PRECISAM estar aqui: no cold start (alarme toca
     // com o app morto) a tela monta antes do AsyncStorage carregar, então
     // `alarm` é undefined no primeiro render. Sem eles nas deps o callback
@@ -497,7 +510,7 @@ export default function AlarmRingScreen() {
     // job marcá-lo como perdido, escalando para a família um alarme que o idoso
     // TINHA respondido. (updateAlarmWidgetOnDismiss recebia [] pelo mesmo
     // motivo.)
-  }, [alarmId, alarm, state.alarms, dispatch, router, postAlarmRoute]);
+  }, [alarmId, alarm, state.alarms, dispatch, router, postAlarmRoute, isCheckin]);
 
   // Botão "Dispensar" da notificação: chega como deep link &dismiss=1. O DISMISS_ACTION nativo
   // parava o alarme só em Java — o servidor nunca recebia "responded", o evento vencia em 5 min e a família
@@ -569,7 +582,7 @@ export default function AlarmRingScreen() {
             </View>
           </RippleHalo>
           <Text style={[styles.alarmLabel, { color: ac.muted, fontSize: af.sm + 2, letterSpacing: 3 }]}>
-            ALARME
+            {copy.topLabel}
           </Text>
         </View>
 
@@ -582,7 +595,7 @@ export default function AlarmRingScreen() {
             style={[styles.alarmName, { color: ac.muted, fontSize: af.lg, lineHeight: af.lg * 1.4 }]}
             numberOfLines={3}
           >
-            {alarm?.description || 'Alarme'}
+            {ringName}
           </Text>
         </View>
 
@@ -630,13 +643,13 @@ export default function AlarmRingScreen() {
                   1,30:1 — o aviso de que a mensagem de emergência está a caminho
                   sumia justamente nos segundos finais. ac.warning dá 6,04:1. */}
               <Text style={[styles.countdownLabel, { color: isUrgent ? ac.warning : ac.muted, fontSize: af.sm, fontWeight: isUrgent ? '700' : '400' }]}>
-                {isUrgent ? '⚠️ Mensagem de emergência em' : 'Mensagem de emergência em'}
+                {isUrgent ? `⚠️ ${copy.countdownLabel}` : copy.countdownLabel}
               </Text>
               <Text style={[styles.countdownTimer, { color: isUrgent ? ac.warning : ac.foreground, fontSize: 56 }]}>
                 {formatTime(secondsLeft)}
               </Text>
               <Text style={[styles.countdownSub, { color: ac.muted, fontSize: af.xs }]}>
-                Toque em "Desligar" para cancelar o envio
+                {copy.countdownHint}
               </Text>
             </>
           ) : (
@@ -651,7 +664,7 @@ export default function AlarmRingScreen() {
             <View style={[styles.escalatedBox, { backgroundColor: ac.surface, borderColor: ac.error, borderWidth: 3 }]}>
               <MaterialIcons name="warning" size={36} color={ac.error} />
               <Text style={[styles.escalatedText, { color: ac.error, fontSize: af.md, lineHeight: af.md * 1.4 }]}>
-                Mensagem de emergência enviada para seus contatos
+                {copy.escalatedText}
               </Text>
             </View>
           )}
@@ -678,11 +691,11 @@ export default function AlarmRingScreen() {
               pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
             ]}
             onPress={handleDismiss}
-            accessibilityLabel={vindoDoAlarmKit ? 'Confirmado, fechar' : 'Desligar alarme'}
+            accessibilityLabel={vindoDoAlarmKit ? 'Confirmado, fechar' : copy.dismissA11y}
           >
             <MaterialIcons name={vindoDoAlarmKit ? 'check' : 'alarm-off'} size={44} color={vindoDoAlarmKit ? ac.onPrimary : ac.onEmergency} />
             <Text style={[styles.dismissText, { fontSize: af.lg, fontWeight: '900', color: vindoDoAlarmKit ? ac.onPrimary : ac.onEmergency }]}>
-              {vindoDoAlarmKit ? 'Confirmado' : 'Desligar Alarme'}
+              {vindoDoAlarmKit ? 'Confirmado' : copy.dismissLabel}
             </Text>
           </Pressable>
         </View>
@@ -708,14 +721,14 @@ export default function AlarmRingScreen() {
           </View>
         </RippleHalo>
 
-        <Text style={styles.alarmLabel}>ALARME</Text>
+        <Text style={styles.alarmLabel}>{copy.topLabel}</Text>
       </View>
 
       {/* Middle section: alarm info */}
       <View style={styles.infoSection}>
         <Text style={styles.alarmTime}>{alarm?.time ?? '--:--'}</Text>
         <Text style={styles.alarmName} numberOfLines={2}>
-          {alarm?.description || 'Alarme'}
+          {ringName}
         </Text>
       </View>
 
@@ -757,13 +770,13 @@ export default function AlarmRingScreen() {
         ) : !isExpired ? (
           <>
             <Text style={[styles.countdownLabel, isUrgent && { color: colors.warning, fontWeight: '600' }]}>
-              {isUrgent ? '⚠️ Mensagem de emergência em' : 'Mensagem de emergência em'}
+              {isUrgent ? `⚠️ ${copy.countdownLabel}` : copy.countdownLabel}
             </Text>
             <Text style={[styles.countdownTimer, isUrgent && { color: colors.warning }]}>
               {formatTime(secondsLeft)}
             </Text>
             <Text style={styles.countdownSub}>
-              Toque em "Desligar" para cancelar o envio
+              {copy.countdownHint}
             </Text>
           </>
         ) : (
@@ -773,7 +786,7 @@ export default function AlarmRingScreen() {
           <View style={[styles.escalatedBox, { backgroundColor: '#F0404020', borderColor: '#F04040' }]}>
             <MaterialIcons name="warning" size={28} color="#F04040" />
             <Text style={[styles.escalatedText, { color: '#FCA5A5' }]}>
-              Mensagem de emergência enviada para seus contatos
+              {copy.escalatedText}
             </Text>
           </View>
         )}
@@ -790,11 +803,11 @@ export default function AlarmRingScreen() {
             pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
           ]}
           onPress={handleDismiss}
-          accessibilityLabel={vindoDoAlarmKit ? 'Confirmado, fechar' : 'Desligar alarme'}
+          accessibilityLabel={vindoDoAlarmKit ? 'Confirmado, fechar' : copy.dismissA11y}
         >
           <MaterialIcons name={vindoDoAlarmKit ? 'check' : 'alarm-off'} size={32} color={vindoDoAlarmKit ? colors.onSuccess : colors.onEmergency} />
           <Text style={[styles.dismissText, vindoDoAlarmKit && { color: colors.onSuccess }]}>
-            {vindoDoAlarmKit ? 'Confirmado' : 'Desligar Alarme'}
+            {vindoDoAlarmKit ? 'Confirmado' : copy.dismissLabel}
           </Text>
         </Pressable>
       </View>

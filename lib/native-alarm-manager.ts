@@ -16,6 +16,7 @@ import { Platform } from 'react-native';
 // volume ao nativo), e um import de valor aqui fecharia um ciclo em runtime.
 import type { Alarm } from './app-context';
 import { weeklyJsDays } from './alarm-fire-times';
+import { alarmTexts } from '@/lib/alarm-kind';
 // O require da lib nativa mora no bridge — ver o porquê lá.
 import {
   scheduleAlarmNative,
@@ -77,13 +78,13 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
   const uids: string[] = [];
 
   try {
-    // Passo 1.2: usar texto estático descritivo na notificação nativa.
-    // NÃO usar countdown dinâmico aqui - é impossível sem Foreground Service.
-    // O countdown é exibido apenas quando o app está em foreground (alarm-ring screen).
-    const title = '⏰ Vigora - Alarme de Medicamento';
-    const body = alarm.description
-      ? `${alarm.description} - Toque para confirmar que tomou o medicamento`
-      : 'Toque aqui para confirmar que tomou o medicamento';
+    // Passo 1.2: texto estático descritivo na notificação nativa (por tipo:
+    // remédio ou check-in). NÃO usar countdown dinâmico aqui - é impossível sem
+    // Foreground Service. O countdown é exibido apenas quando o app está em
+    // foreground (alarm-ring screen).
+    const texts = alarmTexts(alarm);
+    const title = texts.nativeTitle;
+    const body = texts.nativeBody;
     const baseUid = `vigora_${alarm.id}`;
 
     // Dias da semana deste alarme (vazio = diário ou disparo único).
@@ -101,7 +102,7 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         showDismiss: true,
         showSnooze: false,
         snoozeInterval: 0,
-        dismissText: 'Dispensar',
+        dismissText: texts.dismissText,
         snoozeText: 'Soneca',
         sound: alarm.sound !== false,
         vibration: alarm.vibration !== false,
@@ -126,7 +127,7 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
           showDismiss: true,
           showSnooze: false,
           snoozeInterval: 0,
-          dismissText: 'Dispensar',
+          dismissText: texts.dismissText,
           snoozeText: 'Soneca',
           sound: alarm.sound !== false,
           vibration: alarm.vibration !== false,
@@ -147,7 +148,7 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         showDismiss: true,
         showSnooze: false,
         snoozeInterval: 0,
-        dismissText: 'Dispensar',
+        dismissText: texts.dismissText,
         snoozeText: 'Soneca',
         sound: alarm.sound !== false,
         vibration: alarm.vibration !== false,
