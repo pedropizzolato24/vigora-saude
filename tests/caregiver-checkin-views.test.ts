@@ -31,4 +31,11 @@ describe('telas do cuidador', () => {
     expect(src).toMatch(/title="Check-ins"/);
     expect(src).toMatch(/checkinAlarms\(/);
   });
+  it('sem check-in recebido não afirma que não existe', () => {
+    for (const f of ['app/(caregiver-tabs)/index.tsx', 'app/(caregiver-tabs)/person.tsx']) {
+      const src = read(f);
+      expect(src).toMatch(/Nenhum check-in recebido do aparelho/);
+      expect(src).not.toMatch(/Nenhum check-in ativo/);
+    }
+  });
 });

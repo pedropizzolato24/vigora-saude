@@ -71,7 +71,7 @@ export default function CaregiverHomeScreen() {
     ? 'Carregando…'
     : upcomingCheckin
     ? `${upcomingCheckin.time}${upcomingCheckin.escalateAfterMinutes ? ` — avisa após ${upcomingCheckin.escalateAfterMinutes} min sem resposta` : ''}`
-    : 'Nenhum check-in ativo.';
+    : 'Nenhum check-in recebido do aparelho.';
   const latestMetricBody = loading
     ? 'Carregando…'
     : latest

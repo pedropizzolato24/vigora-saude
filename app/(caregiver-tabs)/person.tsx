@@ -201,14 +201,14 @@ export default function CaregiverPersonScreen() {
           {loading ? (
             <Muted skin={skin} text="Carregando…" />
           ) : enabledCheckins.length === 0 ? (
-            <Muted skin={skin} text="Nenhum check-in ativo." />
+            <Muted skin={skin} text="Nenhum check-in recebido do aparelho." />
           ) : (
             enabledCheckins.map((a) => (
               <Row
                 key={a.id}
                 skin={skin}
                 left={a.time}
-                right={`avisa após ${a.escalateAfterMinutes ?? 5} min`}
+                right={a.escalateAfterMinutes ? `avisa após ${a.escalateAfterMinutes} min` : undefined}
               />
             ))
           )}
