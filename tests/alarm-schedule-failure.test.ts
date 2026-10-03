@@ -102,7 +102,7 @@ describe("scheduleFullAlarm — falha não pode passar por sucesso", () => {
 
 describe("a tela avisa o usuário — não só o console", () => {
   const tela = readFileSync(
-    join(__dirname, "..", "app/(tabs)/alarms.tsx"),
+    join(__dirname, "..", "components/alarm-list-screen.tsx"),
     "utf8"
   );
 

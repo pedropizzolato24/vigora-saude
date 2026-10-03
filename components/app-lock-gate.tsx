@@ -1,7 +1,7 @@
 /**
  * AppLockGate — monta o overlay de bloqueio acima do Stack (app/_layout.tsx).
  *
- * Isenções críticas: /alarm-ring e /checkin-response NUNCA são cobertas.
+ * Isenção crítica: /alarm-ring NUNCA é coberta (o check-in toca por ela).
  * O idoso precisa conseguir responder ao alarme/check-in mesmo com o app
  * travado — senão o dead man's switch escalaria por engano para os contatos
  * de emergência. Ao sair dessas telas, o bloqueio reaparece (status continua
@@ -14,7 +14,7 @@ import { AppLockScreen } from '@/components/app-lock-screen';
 import { useColors } from '@/hooks/use-colors';
 import { useAppLock } from '@/lib/app-lock-context';
 
-const EXEMPT_PATHS = ['/alarm-ring', '/checkin-response'];
+const EXEMPT_PATHS = ['/alarm-ring'];
 
 export function AppLockGate() {
   const { status } = useAppLock();

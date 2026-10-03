@@ -30,6 +30,7 @@ import { useColors } from '@/hooks/use-colors';
 import { useAccessibility } from '@/lib/accessibility-context';
 import { useFontSize } from '@/lib/font-size-context';
 import { BrandFonts } from '@/lib/_core/theme';
+import { CHECKIN_ESCALATE_OPTIONS, DEFAULT_ESCALATE_MINUTES, type AlarmKind } from '@/lib/alarm-kind';
 import type { Alarm } from '@/lib/app-context';
 import {
   formFromAlarm,
@@ -57,25 +58,32 @@ interface AlarmFormModalProps {
   onCancel: () => void;
   onSave: (form: AlarmFormValues) => void;
   onDelete: (alarmId: string) => void;
+  /** Tipo do alarme NOVO (ignorado na edição). */
+  newKind?: AlarmKind;
 }
 
-export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDelete }: AlarmFormModalProps) {
+export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDelete, newKind = 'medication' }: AlarmFormModalProps) {
   const colors = useColors();
   const fs = useFontSize();
   const insets = useSafeAreaInsets();
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
   const minuteInputRef = useRef<TextInput>(null);
-  const [form, setForm] = useState<AlarmFormValues>(() => formFromAlarm(editingAlarm));
+  const [form, setForm] = useState<AlarmFormValues>(() => formFromAlarm(editingAlarm, newKind));
 
   // Cada abertura recomeça do alarme em edição (ou do formulário em branco).
   useEffect(() => {
-    if (visible) setForm(formFromAlarm(editingAlarm));
-  }, [visible, editingAlarm]);
+    if (visible) setForm(formFromAlarm(editingAlarm, newKind));
+  }, [visible, editingAlarm, newKind]);
 
   const [timeHour, timeMinute] = form.time.split(':');
   const saveDisabled = isFormSaveDisabled(form);
   const colonMetrics = wheelColumnMetrics(isAccessibilityMode, as_.touchTarget);
-  const title = editingAlarm ? 'Editar Lembrete' : 'Novo Lembrete';
+  const isCheckin = form.kind === 'checkin';
+  const escalateValue = form.escalateAfterMinutes ?? DEFAULT_ESCALATE_MINUTES;
+  const setEscalate = (minutes: (typeof CHECKIN_ESCALATE_OPTIONS)[number]) =>
+    setForm((f) => ({ ...f, escalateAfterMinutes: minutes }));
+  const nounLower = isCheckin ? 'check-in' : 'lembrete';
+  const title = editingAlarm ? (isCheckin ? 'Editar Check-in' : 'Editar Lembrete') : (isCheckin ? 'Novo Check-in' : 'Novo Lembrete');
 
   // --- Horário digitado (modo acessível) -----------------------------------
   const handleHourChange = (val: string) => {
@@ -212,18 +220,20 @@ export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDele
               </View>
 
               {/* Description */}
-              <View style={{ gap: 12 }}>
-                <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>Nome do Lembrete</Text>
-                <TextInput
-                  value={form.description}
-                  onChangeText={(v) => setForm((f) => ({ ...f, description: v }))}
-                  placeholder="Ex: Tomar remédio para pressão"
-                  placeholderTextColor={ac.muted}
-                  style={{ backgroundColor: ac.surface, color: ac.foreground, borderColor: ac.border, borderWidth: 2, borderRadius: 16, padding: 18, fontSize: af.md, fontWeight: '500' }}
-                  returnKeyType="done"
-                  maxLength={80}
-                />
-              </View>
+              {!isCheckin && (
+                <View style={{ gap: 12 }}>
+                  <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>Nome do Lembrete</Text>
+                  <TextInput
+                    value={form.description}
+                    onChangeText={(v) => setForm((f) => ({ ...f, description: v }))}
+                    placeholder="Ex: Tomar remédio para pressão"
+                    placeholderTextColor={ac.muted}
+                    style={{ backgroundColor: ac.surface, color: ac.foreground, borderColor: ac.border, borderWidth: 2, borderRadius: 16, padding: 18, fontSize: af.md, fontWeight: '500' }}
+                    returnKeyType="done"
+                    maxLength={80}
+                  />
+                </View>
+              )}
 
               {/* Repeat - simplified to just daily/weekdays */}
               <View style={{ gap: 12 }}>
@@ -258,6 +268,29 @@ export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDele
                   </Pressable>
                 ))}
               </View>
+
+              {isCheckin && (
+                <View style={{ gap: 12 }}>
+                  <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>Avisar meu cuidador depois de</Text>
+                  {CHECKIN_ESCALATE_OPTIONS.map((minutes) => {
+                    const selected = escalateValue === minutes;
+                    return (
+                      <Pressable
+                        key={minutes}
+                        onPress={() => setEscalate(minutes)}
+                        accessibilityRole="radio"
+                        accessibilityLabel={`${minutes} minutos`}
+                        accessibilityState={{ selected }}
+                        style={{ paddingVertical: as_.buttonPadding, paddingHorizontal: 20, borderRadius: 16, borderWidth: 3, flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: selected ? ac.primary : ac.surface, borderColor: selected ? ac.primary : ac.border }}
+                      >
+                        <MaterialIcons name={selected ? 'radio-button-on' : 'radio-button-off'} size={28} color={selected ? ac.onPrimary : ac.muted} />
+                        <Text style={{ fontSize: af.md, fontWeight: '700', color: selected ? ac.onPrimary : ac.foreground }}>{minutes} minutos</Text>
+                      </Pressable>
+                    );
+                  })}
+                  <Text style={{ fontSize: af.sm, color: ac.muted }}>Se você não tocar em "Estou bem", seus contatos e cuidadores são avisados depois desse tempo.</Text>
+                </View>
+              )}
 
               {/* Som e Vibração — linhas grandes */}
               <View style={{ gap: 12 }}>
@@ -302,10 +335,10 @@ export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDele
                     marginTop: 8,
                   }]}
                   accessibilityRole="button"
-                  accessibilityLabel="Excluir este lembrete"
+                  accessibilityLabel={`Excluir este ${nounLower}`}
                 >
                   <MaterialIcons name="delete" size={28} color={ac.emergency} />
-                  <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.emergency }}>Excluir Lembrete</Text>
+                  <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.emergency }}>{isCheckin ? 'Excluir Check-in' : 'Excluir Lembrete'}</Text>
                 </Pressable>
               )}
             </ScrollView>
@@ -321,7 +354,7 @@ export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDele
                 <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.foreground }}>Cancelar</Text>
               </Pressable>
               <Pressable
-                onPress={() => onSave(form)}
+                onPress={() => onSave(isCheckin ? { ...form, description: 'Check-in' } : form)}
                 disabled={saveDisabled}
                 accessibilityRole="button"
                 accessibilityLabel="Salvar lembrete"
@@ -375,22 +408,24 @@ export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDele
             showsVerticalScrollIndicator={false}
           >
             {/* Nome */}
-            <View style={styles.formGroup}>
-              <Text style={[styles.formLabel, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>Nome do lembrete</Text>
-              <TextInput
-                value={form.description}
-                onChangeText={(v) => setForm((f) => ({ ...f, description: v }))}
-                placeholder="Ex: Tomar remédio para pressão"
-                placeholderTextColor={colors.muted}
-                style={[styles.textInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base }]}
-                returnKeyType="done"
-                maxLength={80}
-              />
-            </View>
+            {!isCheckin && (
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>Nome do lembrete</Text>
+                <TextInput
+                  value={form.description}
+                  onChangeText={(v) => setForm((f) => ({ ...f, description: v }))}
+                  placeholder="Ex: Tomar remédio para pressão"
+                  placeholderTextColor={colors.muted}
+                  style={[styles.textInput, { backgroundColor: colors.surface, color: colors.foreground, borderColor: colors.border, fontSize: fs.base }]}
+                  returnKeyType="done"
+                  maxLength={80}
+                />
+              </View>
+            )}
 
             {/* Que horas tomar? */}
             <View style={styles.formGroup}>
-              <Text style={[styles.formLabel, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>Que horas tomar?</Text>
+              <Text style={[styles.formLabel, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>{isCheckin ? 'Que horas?' : 'Que horas tomar?'}</Text>
               <View style={styles.timePicker}>
                 <WheelPicker
                   count={24}
@@ -476,13 +511,39 @@ export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDele
               )}
             </View>
 
+            {isCheckin && (
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>Avisar meu cuidador depois de</Text>
+                <View style={styles.repeatOptions}>
+                  {CHECKIN_ESCALATE_OPTIONS.map((minutes) => {
+                    const selected = escalateValue === minutes;
+                    return (
+                      <Pressable
+                        key={minutes}
+                        onPress={() => setEscalate(minutes)}
+                        style={[styles.repeatOption, { backgroundColor: selected ? colors.primarySurface : colors.surface, borderColor: selected ? colors.primary : colors.border, minHeight: fs.touch(44) }]}
+                        accessibilityRole="radio"
+                        accessibilityLabel={`${minutes} minutos`}
+                        accessibilityState={{ selected }}
+                      >
+                        <Text style={[styles.repeatOptionText, { color: selected ? colors.onPrimary : colors.foreground, fontSize: fs.sm }]}>{minutes} min</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Text style={{ color: colors.muted, fontSize: fs.sm }}>
+                  Se você não tocar em "Estou bem", seus contatos e cuidadores são avisados depois desse tempo.
+                </Text>
+              </View>
+            )}
+
             {/* Som · Vibração · Habilitado */}
             <View style={[styles.togglesSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               {toggleRow('sound', 'volume-up', 'Som', 'Ativar som')}
               <View style={[styles.toggleDivider, { backgroundColor: colors.border }]} />
               {toggleRow('vibration', 'vibration', 'Vibração', 'Ativar vibração')}
               <View style={[styles.toggleDivider, { backgroundColor: colors.border }]} />
-              {toggleRow('enabled', 'check-circle', 'Habilitado', 'Habilitar lembrete')}
+              {toggleRow('enabled', 'check-circle', 'Habilitado', `Habilitar ${nounLower}`)}
             </View>
 
             {/* Excluir — só na edição */}
@@ -491,10 +552,10 @@ export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDele
                 onPress={() => onDelete(editingAlarm.id)}
                 style={({ pressed }) => [styles.deleteAlarmBtn, { borderColor: colors.error, backgroundColor: pressed ? colors.errorLight : colors.background, minHeight: fs.touch(52) }]}
                 accessibilityRole="button"
-                accessibilityLabel="Excluir este lembrete"
+                accessibilityLabel={`Excluir este ${nounLower}`}
               >
                 <MaterialIcons name="delete-outline" size={20} color={colors.error} />
-                <Text style={[styles.deleteAlarmBtnText, { color: colors.error, fontSize: fs.base }]}>Excluir lembrete</Text>
+                <Text style={[styles.deleteAlarmBtnText, { color: colors.error, fontSize: fs.base }]}>{isCheckin ? 'Excluir check-in' : 'Excluir lembrete'}</Text>
               </Pressable>
             )}
           </ScrollView>
@@ -510,7 +571,7 @@ export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDele
               <Text style={[styles.actionBtnText, { color: colors.foreground, fontSize: fs.md }]}>Cancelar</Text>
             </Pressable>
             <Pressable
-              onPress={() => onSave(form)}
+              onPress={() => onSave(isCheckin ? { ...form, description: 'Check-in' } : form)}
               disabled={saveDisabled}
               accessibilityRole="button"
               accessibilityLabel={editingAlarm ? 'Salvar lembrete' : 'Criar lembrete'}

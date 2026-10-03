@@ -14,6 +14,7 @@ function deps(over: Partial<Record<keyof MigrationDeps, unknown>> = {}): MockDep
     scheduleAlarm: vi.fn(async (a: Alarm) => ({ ...a, nativeAlarmUids: ['u'] })),
     addAlarm: vi.fn(),
     disableLegacy: vi.fn(),
+    cancelLegacyNotifications: vi.fn(async () => undefined),
     ...over,
   } as never;
 }
@@ -66,6 +67,35 @@ describe('migrateLegacyCheckin', () => {
     expect(await migrateLegacyCheckin({ alarms: [], settings: enabled }, d)).toBe('migrated');
     expect(d.addAlarm).toHaveBeenCalledTimes(1);
     expect(d.disableLegacy).toHaveBeenCalledTimes(1);
+  });
+
+  it('desligado (já migrado antes ou nunca ligado): cancela as notificações antigas que sobraram', async () => {
+    const d = deps();
+    expect(await migrateLegacyCheckin({ alarms: [], settings: disabled }, d)).toBe('nothing');
+    expect(d.cancelLegacyNotifications).toHaveBeenCalledTimes(1);
+    expect(d.scheduleAlarm).not.toHaveBeenCalled();
+  });
+
+  it('migrou: cancela as notificações antigas depois de desarmar o sistema antigo', async () => {
+    const d = deps();
+    expect(await migrateLegacyCheckin({ alarms: [], settings: enabled }, d)).toBe('migrated');
+    expect(d.cancelLegacyNotifications).toHaveBeenCalledTimes(1);
+  });
+
+  it('migração falhou: as notificações antigas NÃO são canceladas (o antigo continua valendo)', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const d = deps({ scheduleAlarm: vi.fn(async () => { throw new Error('x'); }) });
+    await migrateLegacyCheckin({ alarms: [], settings: enabled }, d);
+    expect(d.cancelLegacyNotifications).not.toHaveBeenCalled();
+    err.mockRestore();
+  });
+
+  it('falha ao cancelar não derruba a migração nem some em silêncio', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const d = deps({ cancelLegacyNotifications: vi.fn(async () => { throw new Error('nope'); }) });
+    expect(await migrateLegacyCheckin({ alarms: [], settings: enabled }, d)).toBe('migrated');
+    expect(err).toHaveBeenCalledTimes(1);
+    err.mockRestore();
   });
 
   it('ligado e já existe check-in: não cria outro, só desliga o antigo', async () => {

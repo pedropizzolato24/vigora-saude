@@ -75,7 +75,6 @@ describe('todo pré-registro de evento de check-in leva kind e graceMinutes', ()
 
   it('nenhum outro módulo chama monitoring.createEvent direto', () => {
     for (const f of [
-      'lib/checkin-service.ts',
       'components/alarm-notification-handler.tsx',
       'app/alarm-ring.tsx',
       'lib/ios-alarm-kit.ts',

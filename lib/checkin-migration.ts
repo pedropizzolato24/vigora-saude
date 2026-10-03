@@ -21,6 +21,10 @@
  *    (substitui no lugar): se um estado da nuvem já trouxe o mesmo alarme enquanto
  *    o agendamento esperava, não há duplicata no estado; o agendador nativo também
  *    é chaveado pelo id.
+ *  - As notificações antigas (`checkin_prompt`/`checkin_timeout`) são canceladas em
+ *    toda execução em que o sistema antigo está desligado ou acaba de ser
+ *    desligado (quem migrou num build anterior ainda pode tê-las agendadas).
+ *    Não são canceladas enquanto a migração falha: o antigo continua valendo.
  *  - Duas chamadas ao mesmo tempo compartilham a mesma execução: um alarme só.
  */
 import type { Alarm } from '@/lib/app-context';
@@ -39,14 +43,16 @@ export interface LegacyCheckinSettings {
 export interface MigrationDeps {
   scheduleAlarm(alarm: Alarm): Promise<Alarm>;
   addAlarm(alarm: Alarm): void;
-  /** Desliga `settings.checkinEnabled`: o CheckinInitializer antigo se desarma sozinho. */
+  /** Desliga `settings.checkinEnabled`. */
   disableLegacy(): void;
+  /** Cancela as notificações que o sistema antigo deixou agendadas no aparelho. */
+  cancelLegacyNotifications(): Promise<void>;
 }
 
 export type MigrationOutcome = 'nothing' | 'migrated' | 'failed';
 
 const TIME_RE = /^([01]?\d|2[0-3]):[0-5]\d$/;
-/** Padrão do sistema antigo (lib/checkin-defaults.ts, removido numa tarefa posterior). */
+/** Padrão do sistema antigo (lib/checkin-defaults.ts, já removido). */
 const LEGACY_DEFAULT_CHECKIN_TIME = '09:00';
 
 export function buildMigratedCheckin(
@@ -89,11 +95,22 @@ export function migrateLegacyCheckin(
   return inFlight;
 }
 
+async function cancelLegacy(deps: MigrationDeps): Promise<void> {
+  try {
+    await deps.cancelLegacyNotifications();
+  } catch (error) {
+    console.error('[CheckinMigration] não foi possível cancelar as notificações antigas:', error);
+  }
+}
+
 async function run(
   state: { alarms: Alarm[]; settings: LegacyCheckinSettings },
   deps: MigrationDeps
 ): Promise<MigrationOutcome> {
-  if (!state.settings.checkinEnabled) return 'nothing';
+  if (!state.settings.checkinEnabled) {
+    await cancelLegacy(deps);
+    return 'nothing';
+  }
 
   const alarm = buildMigratedCheckin(state.settings, state.alarms);
   if (alarm) {
@@ -111,5 +128,6 @@ async function run(
     }
   }
   deps.disableLegacy();
+  await cancelLegacy(deps);
   return alarm ? 'migrated' : 'nothing';
 }

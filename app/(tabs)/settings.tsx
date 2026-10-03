@@ -35,10 +35,8 @@ import { useRouter } from 'expo-router';
 import { MonitoringStatusPanel } from '@/components/monitoring-status-panel';
 import { ProtectAccountBanner } from '@/components/protect-account-banner';
 import { TrialBanner, ExpiredBanner } from '@/components/trial-banner';
-import { scheduleCheckin, cancelCheckin } from '@/lib/checkin-service';
 import { previewNativeAlarmSound } from '@/lib/native-alarm-manager';
 import { isAlarmKitAvailable } from '@/lib/ios-alarm-kit';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
 const ALARM_SOUND = require('@/assets/alarm.mp3');
 
@@ -195,21 +193,9 @@ export default function SettingsScreen() {
 
   const [countdownTestActive, setCountdownTestActive] = useState(false);
   const [countdownTestSecondsLeft, setCountdownTestSecondsLeft] = useState(10);
-  const [showCheckinTimePicker, setShowCheckinTimePicker] = useState(false);
   const countdownTestIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const TEST_ALARM_ID = 'settings_test';
   const TEST_DURATION = 10;
-
-  function parseCheckinTime(timeStr: string): Date {
-    const [h, m] = timeStr.split(':').map(Number);
-    const d = new Date();
-    d.setHours(h, m, 0, 0);
-    return d;
-  }
-
-  function formatCheckinHHMM(date: Date): string {
-    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-  }
 
   const handleTestCountdown = useCallback(() => {
     if (countdownTestActive) {
@@ -1099,155 +1085,38 @@ export default function SettingsScreen() {
           </View>
         </CollapsibleSection>
 
-        {/* ═══ SECTION: Check-in Diário ═══ */}
+        {/* ═══ SECTION: Check-in ═══ */}
         <CollapsibleSection
-          title="Check-in Diário"
+          title="Check-in"
           icon="check-circle"
           iconBg={colors.successLight}
           iconColor={colors.success}
           colors={colors}
           defaultOpen={false}
         >
-          {/* Toggle: habilitar/desabilitar */}
-          <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
-            <View style={styles.settingTextBlock}>
-              <Text style={[styles.settingLabel, { color: colors.foreground, fontSize: fs.md }]}>
-                Check-in ativo
-              </Text>
-              <Text style={[styles.settingSubLabel, { color: colors.muted, fontSize: fs.sm }]}>
-                Notificação diária para confirmar que está bem
-              </Text>
-            </View>
-            <Switch
-              value={settings.checkinEnabled}
-              onValueChange={async (value) => {
-                updateSetting('checkinEnabled', value);
-                if (value) {
-                  await scheduleCheckin(settings.checkinTime, settings.checkinWindowMinutes);
-                } else {
-                  await cancelCheckin();
-                }
-              }}
-              trackColor={{ false: colors.border, true: colors.success }}
-              thumbColor="#FFFFFF"
-            />
+          <View style={{ padding: 16, gap: 12 }}>
+            <Text style={{ color: colors.muted, fontSize: fs.sm, lineHeight: fs.scaled(20) }}>
+              O check-in toca como um alarme e pergunta se está tudo bem. Se você não responder, seus contatos e cuidadores são avisados.
+            </Text>
+            <Pressable
+              onPress={() => router.push('/(tabs)/checkin' as never)}
+              accessibilityRole="button"
+              accessibilityLabel="Configurar check-in"
+              style={({ pressed }) => [{
+                backgroundColor: colors.primarySurface,
+                borderRadius: 14,
+                minHeight: fs.touch(52),
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.85 : 1,
+              }]}
+            >
+              <Text style={{ color: colors.onPrimary, fontSize: fs.base, fontWeight: '700' }}>Configurar check-in</Text>
+            </Pressable>
+            <Text style={{ color: colors.muted, fontSize: fs.xs, lineHeight: 18 }}>
+              ⚠️ O check-in não substitui serviços de emergência. Em caso de emergência, ligue 192 (SAMU).
+            </Text>
           </View>
-
-          {/* Horário e janela (só visíveis quando ativo) */}
-          {settings.checkinEnabled && (
-            <>
-              {/* Horário do check-in — preset buttons + Personalizar */}
-              <View style={{ padding: 16, gap: 10 }}>
-                <Text style={[styles.settingLabel, { color: colors.foreground, fontSize: fs.md, marginBottom: 2 }]}>
-                  Horário
-                </Text>
-                <Text style={[styles.settingSubLabel, { color: colors.muted, fontSize: fs.sm }]}>
-                  Quando você receberá a notificação diária
-                </Text>
-
-                {/* Botões de atalho */}
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
-                  {(['09:00', '17:00'] as const).map((preset) => {
-                    const label = preset === '09:00' ? '☀️ Manhã — 09:00' : '🌆 Tarde — 17:00';
-                    const isSelected = settings.checkinTime === preset;
-                    return (
-                      <Pressable
-                        key={preset}
-                        onPress={async () => {
-                          updateSetting('checkinTime', preset);
-                          await scheduleCheckin(preset, settings.checkinWindowMinutes);
-                        }}
-                        style={({ pressed }) => [{
-                          flex: 1,
-                          paddingVertical: 14,
-                          borderRadius: 12,
-                          borderWidth: 1.5,
-                          alignItems: 'center' as const,
-                          justifyContent: 'center' as const,
-                          backgroundColor: isSelected ? colors.success : colors.surface,
-                          borderColor: isSelected ? colors.success : colors.border,
-                          opacity: pressed ? 0.75 : 1,
-                        }]}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: isSelected }}
-                      >
-                        <Text style={{
-                          color: isSelected ? colors.onSuccess : colors.foreground,
-                          fontSize: fs.sm,
-                          fontWeight: '700',
-                          textAlign: 'center',
-                        }}>
-                          {label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-
-                {/* Botão personalizar */}
-                {(() => {
-                  const isCustom = settings.checkinTime !== '09:00' && settings.checkinTime !== '17:00';
-                  return (
-                    <Pressable
-                      onPress={() => setShowCheckinTimePicker(true)}
-                      style={({ pressed }) => [{
-                        flexDirection: 'row' as const,
-                        alignItems: 'center' as const,
-                        justifyContent: 'center' as const,
-                        gap: 8,
-                        paddingVertical: 12,
-                        borderRadius: 12,
-                        borderWidth: 1.5,
-                        borderColor: isCustom ? colors.success : colors.border,
-                        backgroundColor: isCustom ? colors.successLight : colors.surface,
-                        opacity: pressed ? 0.75 : 1,
-                      }]}
-                      accessibilityRole="button"
-                      accessibilityLabel="Personalizar horário do check-in"
-                    >
-                      <MaterialIcons
-                        name="schedule"
-                        size={20}
-                        color={isCustom ? colors.success : colors.muted}
-                      />
-                      <Text style={{
-                        fontSize: fs.sm,
-                        fontWeight: '600',
-                        color: isCustom ? colors.success : colors.muted,
-                      }}>
-                        {isCustom ? `🕐 ${settings.checkinTime} — Personalizado` : 'Personalizar horário'}
-                      </Text>
-                    </Pressable>
-                  );
-                })()}
-
-                {/* DateTimePicker nativo */}
-                {showCheckinTimePicker && (
-                  <DateTimePicker
-                    value={parseCheckinTime(settings.checkinTime)}
-                    mode="time"
-                    is24Hour={true}
-                    display={Platform.OS === 'android' ? 'spinner' : 'spinner'}
-                    onChange={(event, date) => {
-                      setShowCheckinTimePicker(false);
-                      if (event.type === 'set' && date) {
-                        const newTime = formatCheckinHHMM(date);
-                        updateSetting('checkinTime', newTime);
-                        scheduleCheckin(newTime, settings.checkinWindowMinutes).catch(() => {});
-                      }
-                    }}
-                  />
-                )}
-              </View>
-
-              {/* Disclaimer LGPD */}
-              <View style={{ padding: 16, paddingTop: 8 }}>
-                <Text style={{ color: colors.muted, fontSize: fs.xs, lineHeight: 18 }}>
-                  ⚠️ O check-in não substitui serviços de emergência. Em caso de emergência, ligue 192 (SAMU).
-                </Text>
-              </View>
-            </>
-          )}
         </CollapsibleSection>
 
         {/* ═══ SECTION 2: Segurança e Emergência ═══ */}

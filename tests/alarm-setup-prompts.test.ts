@@ -22,7 +22,7 @@ import { join } from "node:path";
 import { oemBatteryHint } from "@/lib/_core/oem-battery-hint";
 
 const raiz = join(__dirname, "..");
-const alarmsSrc = readFileSync(join(raiz, "app/(tabs)/alarms.tsx"), "utf8");
+const alarmsSrc = readFileSync(join(raiz, "components/alarm-list-screen.tsx"), "utf8");
 const hintSrc = readFileSync(
   join(raiz, "lib/_core/oem-battery-hint.ts"),
   "utf8"
@@ -70,7 +70,7 @@ describe("linguagem dos avisos — público 60+", () => {
     "Samsung",
     "Xiaomi",
     "Redmi",
-    "iOS",
+    "\biOS\b", // com borda: "Remédios" contém "ios"
     "iPhone",
     "Autostart",
     "segundo plano",

@@ -39,6 +39,7 @@ export default function TabLayout() {
       >
         <Tabs.Screen name="index" options={{ title: "Início" }} />
         <Tabs.Screen name="alarms" options={{ title: "Alarmes" }} />
+        <Tabs.Screen name="checkin" options={{ title: "Check-in" }} />
         <Tabs.Screen name="health" options={{ title: "Saúde" }} />
         <Tabs.Screen name="settings" options={{ title: "Configurações" }} />
         <Tabs.Screen name="contacts" options={{ title: "Contatos" }} />

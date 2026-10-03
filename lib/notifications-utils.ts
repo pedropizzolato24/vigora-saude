@@ -15,13 +15,11 @@ Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const isAlarm = !!notification.request.content.data?.alarmId;
     const isCountdownUpdate = !!notification.request.content.data?.isCountdownUpdate;
-    const isCheckinPrompt = notification.request.content.data?.type === 'checkin_prompt';
     return {
-      // checkin_prompt: suppress system banner — in-app Modal handles it instead
-      shouldShowAlert: !isCheckinPrompt,
-      shouldShowBanner: !isCheckinPrompt,
-      shouldPlaySound: isAlarm && !isCountdownUpdate && !isCheckinPrompt,
-      shouldSetBadge: !isCountdownUpdate && !isCheckinPrompt,
+      shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldPlaySound: isAlarm && !isCountdownUpdate,
+      shouldSetBadge: !isCountdownUpdate,
       shouldShowList: true,
     };
   },
@@ -90,15 +88,13 @@ export async function setupNotificationChannels(): Promise<void> {
     enableVibrate: true,
   });
 
-  // Check-in channel — HIGH importance (toca som padrão, não bypassa DND)
-  await Notifications.setNotificationChannelAsync(CHECKIN_CHANNEL_ID, {
-    name: 'Check-in Diário',
-    description: 'Notificação diária de bem-estar. Confirme que está tudo bem.',
-    importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
-    enableVibrate: true,
-    sound: 'default',
-  });
+  // O canal do check-in antigo (notificação comum, tocava uma vez) deixou de
+  // existir: o check-in agora é um alarme. Apaga o canal de quem já o tinha.
+  try {
+    await Notifications.deleteNotificationChannelAsync(CHECKIN_CHANNEL_ID);
+  } catch (error) {
+    console.warn('[Notifications] não foi possível apagar o canal do check-in antigo:', error);
+  }
 }
 
 /**

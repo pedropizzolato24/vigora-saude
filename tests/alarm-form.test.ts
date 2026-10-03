@@ -65,7 +65,7 @@ describe('telas', () => {
   const read = (p: string) => readFileSync(join(__dirname, '..', p), 'utf8');
 
   it('a lista de lembretes usa o componente e não tem mais o assistente', () => {
-    const alarms = read('app/(tabs)/alarms.tsx');
+    const alarms = read('components/alarm-list-screen.tsx');
     expect(alarms).toMatch(/<AlarmFormModal/);
     expect(alarms).not.toMatch(/WizardStep|wizardStep/);
   });

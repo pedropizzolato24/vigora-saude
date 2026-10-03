@@ -261,6 +261,26 @@ export default function DashboardScreen() {
                 Registrar Saúde
               </Text>
             </Pressable>
+            <Pressable
+              onPress={() => navigate('/(tabs)/checkin')}
+              accessibilityRole="button"
+              accessibilityLabel="Check-in: avisar que está tudo bem"
+              style={({ pressed }) => [{
+                backgroundColor: colors.emergency,
+                borderRadius: 20,
+                paddingVertical: as_.buttonPadding,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 14,
+                opacity: pressed ? 0.85 : 1,
+              }]}
+            >
+              <MaterialIcons name="check-circle" size={36} color={colors.onEmergency} />
+              <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: af.xl, fontWeight: '800', color: colors.onEmergency }}>
+                Check-in
+              </Text>
+            </Pressable>
           </View>
 
           {/* Rede de apoio */}
@@ -473,12 +493,12 @@ export default function DashboardScreen() {
           </View>
           <View style={styles.tileWrapper}>
             <BigTile
-              icon="people"
+              icon="check-circle"
               iconColor={colors.emergency}
               iconBg={colors.emergencyLight}
-              title="Avisar família"
-              subtitle="Contatos de emergência"
-              onPress={() => navigate('/(tabs)/contacts')}
+              title="Check-in"
+              subtitle="Estou bem"
+              onPress={() => navigate('/(tabs)/checkin')}
             />
           </View>
         </View>
