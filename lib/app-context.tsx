@@ -67,6 +67,7 @@ export interface HealthMetric {
 }
 
 export interface AppSettings {
+  /** @deprecated Sem interruptor na UI; a migração única do check-in (lib/checkin-migration.ts) ainda lê este valor de quem atualiza de builds antigos. */
   notificationsEnabled: boolean;
   alarmVolume: number; // 0-100
   missedAlarmThreshold: number; // Number of missed alarms before WhatsApp escalation (1-10)

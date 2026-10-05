@@ -450,17 +450,9 @@ export default function SettingsScreen() {
           {/* Status do Monitoramento - logo abaixo do toggle de acessibilidade */}
           <MonitoringStatusPanel accessible={true} />
 
-          {/* Notifications toggle */}
+          {/* Notificações e vibração */}
           <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 16 }}>
             <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>Notificações</Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Alertas de alarmes</Text>
-                <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>Avisos quando o alarme tocar</Text>
-              </View>
-              <Switch value={settings.notificationsEnabled} onValueChange={(v) => updateSetting('notificationsEnabled', v)} trackColor={{ false: ac.border, true: ac.primary }} thumbColor="#FFFFFF" />
-            </View>
-            <View style={{ height: 2, backgroundColor: ac.border }} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Vibração</Text>
@@ -846,14 +838,6 @@ export default function SettingsScreen() {
           colors={colors}
           defaultOpen={false}
         >
-          <SettingToggle
-            label="Notificações"
-            sublabel="Alertas de alarmes e SOS"
-            value={settings.notificationsEnabled}
-            onValueChange={(v) => updateSetting('notificationsEnabled', v)}
-            colors={colors}
-          />
-          <Divider colors={colors} />
           <SettingToggle
             label="Vibração"
             sublabel="Vibrar ao disparar alarmes"
