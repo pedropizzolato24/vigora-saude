@@ -8,22 +8,29 @@
  *
  * O texto NÃO cita a marca ("no seu Samsung"): o público 60+ não faz essa
  * associação, e o passo já só aparece em quem tem o aparelho. Os nomes de tela
- * ("Cuidado do dispositivo") ficam — é o que ele precisa achar. Continua a
- * numeração dos passos do aviso (1 e 2 estão em lib/permissions-check.ts).
+ * ("Cuidado do dispositivo") ficam — é o que ele precisa achar. Devolve passos
+ * soltos, sem número: quem os junta aos passos básicos (lib/permission-texts.ts)
+ * e a tela é que numeram.
  *
  * Função pura (sem React Native) para ficar testável; o chamador passa
  * `Platform.constants.Manufacturer`.
  *
  * ponytail: cobre os 2 OEMs dominantes no Brasil; ampliar se surgir demanda.
  */
-export function oemBatteryHint(manufacturer: string): string | null {
+export function oemBatteryHint(manufacturer: string): string[] | null {
   const m = manufacturer.trim().toLowerCase();
   if (!m) return null;
   if (m.includes("samsung")) {
-    return 'Neste celular tem mais um passo:\n3. Abra "Cuidado do dispositivo" › "Bateria" e tire o Vigora da lista "Apps em suspensão"';
+    return [
+      'Este celular pede mais um ajuste. Abra as Configurações e toque em "Cuidado do dispositivo" › "Bateria".',
+      'Se o Vigora estiver na lista "Apps em suspensão", tire-o de lá.',
+    ];
   }
   if (["xiaomi", "redmi", "poco"].some((brand) => m.includes(brand))) {
-    return 'Neste celular tem mais um passo:\n3. Nas configurações do Vigora, ligue "Iniciar automaticamente"';
+    return [
+      "Este celular pede mais um ajuste. Abra as Configurações e procure o Vigora na lista de apps.",
+      'Nas configurações do Vigora, ligue "Iniciar automaticamente".',
+    ];
   }
   return null;
 }

@@ -89,7 +89,7 @@ describe("linguagem dos avisos — público 60+", () => {
 
   it("o passo extra por fabricante fala 'celular', não a marca", () => {
     for (const marca of ["samsung", "xiaomi", "redmi", "poco"]) {
-      const hint = oemBatteryHint(marca);
+      const hint = oemBatteryHint(marca)?.join(" ") ?? null;
       expect(hint, `${marca} deveria ter passo extra`).not.toBeNull();
       for (const p of proibidos) {
         expect(
@@ -107,7 +107,7 @@ describe("linguagem dos avisos — público 60+", () => {
   });
 
   it("mantém os rótulos que o idoso precisa achar no aparelho", () => {
-    expect(oemBatteryHint("samsung")).toMatch(/Cuidado do dispositivo/);
+    expect(oemBatteryHint("samsung")?.join(" ")).toMatch(/Cuidado do dispositivo/);
     expect(textosDeUI(alarmsSrc)).toMatch(/Notificações em tela cheia/);
   });
 
