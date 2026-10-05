@@ -3,7 +3,9 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   EMPTY_ALARM_FORM,
+  type AlarmFormValues,
   formFromAlarm,
+  formForSave,
   isFormSaveDisabled,
   REPEAT_OPTIONS,
 } from '../lib/alarm-form';
@@ -92,5 +94,42 @@ describe('telas', () => {
     expect(accessible).toMatch(/accessibilityLabel=\{`Ativar \$\{row\.label\.toLowerCase\(\)\}`\}/);
     expect(accessible).not.toMatch(/no modo acessível/);
     expect(accessible).toMatch(/thumbColor=\{ac\.onPrimary\}/);
+  });
+
+  it('o check-in não tem seção de Repetição em nenhum dos modos', () => {
+    const modal = read('components/alarm-form-modal.tsx');
+    const accessible = modal.slice(0, modal.indexOf('MODO NORMAL'));
+    const normal = modal.slice(modal.indexOf('MODO NORMAL'));
+    // Cada bloco "Repetição" só aparece fora do check-in.
+    expect(accessible).toMatch(/\{!isCheckin && \(\s*<View style=\{\{ gap: 12 \}\}>\s*<Text[^>]*>Repetição<\/Text>/);
+    expect(normal).toMatch(/\{!isCheckin && \(\s*<View style=\{styles\.formGroup\}>\s*<Text[^>]*>Repetição<\/Text>/);
+  });
+
+  it('salvar usa formForSave nos dois modos', () => {
+    const modal = read('components/alarm-form-modal.tsx');
+    expect(modal.match(/onSave\(formForSave\(form\)\)/g)).toHaveLength(2);
+    expect(modal).not.toMatch(/onSave\(isCheckin/);
+  });
+});
+
+describe('check-in repete todo dia', () => {
+  const checkin: AlarmFormValues = { ...EMPTY_ALARM_FORM, kind: 'checkin', escalateAfterMinutes: 15 };
+
+  it('formForSave força diário, sem dias, e o nome fixo', () => {
+    const saved = formForSave({ ...checkin, repeat: 'custom', customDays: [1, 3], description: 'outro' });
+    expect(saved).toMatchObject({ repeat: 'daily', customDays: [], description: 'Check-in', kind: 'checkin', escalateAfterMinutes: 15 });
+  });
+
+  it('um check-in antigo com repetição semanal volta a diário ao salvar', () => {
+    expect(formForSave({ ...checkin, repeat: 'weekdays' }).repeat).toBe('daily');
+  });
+
+  it('remédio passa intacto', () => {
+    const med = { ...EMPTY_ALARM_FORM, repeat: 'weekdays' as const, description: 'Losartana' };
+    expect(formForSave(med)).toBe(med);
+  });
+
+  it('check-in nunca bloqueia o Salvar por "Personalizado sem dias"', () => {
+    expect(isFormSaveDisabled({ ...checkin, repeat: 'custom', customDays: [] })).toBe(false);
   });
 });

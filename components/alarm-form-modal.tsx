@@ -34,6 +34,7 @@ import { CHECKIN_ESCALATE_OPTIONS, DEFAULT_ESCALATE_MINUTES, type AlarmKind } fr
 import type { Alarm } from '@/lib/app-context';
 import {
   formFromAlarm,
+  formForSave,
   isFormSaveDisabled,
   REPEAT_OPTIONS,
   type AlarmFormValues,
@@ -236,38 +237,40 @@ export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDele
               )}
 
               {/* Repeat - simplified to just daily/weekdays */}
-              <View style={{ gap: 12 }}>
-                <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>Repetição</Text>
-                {[{ value: 'daily' as const, label: 'Todos os dias' }, { value: 'weekdays' as const, label: 'Dias úteis (Seg-Sex)' }].map((opt) => (
-                  <Pressable
-                    key={opt.value}
-                    onPress={() => setForm((f) => ({ ...f, repeat: opt.value }))}
-                    style={[{
-                      paddingVertical: as_.buttonPadding,
-                      paddingHorizontal: 20,
-                      borderRadius: 16,
-                      borderWidth: 3,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 14,
-                      backgroundColor: form.repeat === opt.value ? ac.primary : ac.surface,
-                      borderColor: form.repeat === opt.value ? ac.primary : ac.border,
-                    }]}
-                    accessibilityRole="radio"
-                    accessibilityLabel={opt.label}
-                    accessibilityState={{ selected: form.repeat === opt.value }}
-                  >
-                    <MaterialIcons
-                      name={form.repeat === opt.value ? 'radio-button-on' : 'radio-button-off'}
-                      size={28}
-                      color={form.repeat === opt.value ? ac.onPrimary : ac.muted}
-                    />
-                    <Text style={{ fontSize: af.md, fontWeight: '700', color: form.repeat === opt.value ? ac.onPrimary : ac.foreground }}>
-                      {opt.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
+              {!isCheckin && (
+                <View style={{ gap: 12 }}>
+                  <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }}>Repetição</Text>
+                  {[{ value: 'daily' as const, label: 'Todos os dias' }, { value: 'weekdays' as const, label: 'Dias úteis (Seg-Sex)' }].map((opt) => (
+                    <Pressable
+                      key={opt.value}
+                      onPress={() => setForm((f) => ({ ...f, repeat: opt.value }))}
+                      style={[{
+                        paddingVertical: as_.buttonPadding,
+                        paddingHorizontal: 20,
+                        borderRadius: 16,
+                        borderWidth: 3,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 14,
+                        backgroundColor: form.repeat === opt.value ? ac.primary : ac.surface,
+                        borderColor: form.repeat === opt.value ? ac.primary : ac.border,
+                      }]}
+                      accessibilityRole="radio"
+                      accessibilityLabel={opt.label}
+                      accessibilityState={{ selected: form.repeat === opt.value }}
+                    >
+                      <MaterialIcons
+                        name={form.repeat === opt.value ? 'radio-button-on' : 'radio-button-off'}
+                        size={28}
+                        color={form.repeat === opt.value ? ac.onPrimary : ac.muted}
+                      />
+                      <Text style={{ fontSize: af.md, fontWeight: '700', color: form.repeat === opt.value ? ac.onPrimary : ac.foreground }}>
+                        {opt.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
 
               {isCheckin && (
                 <View style={{ gap: 12 }}>
@@ -354,7 +357,7 @@ export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDele
                 <Text style={{ fontSize: af.md, fontWeight: '800', color: ac.foreground }}>Cancelar</Text>
               </Pressable>
               <Pressable
-                onPress={() => onSave(isCheckin ? { ...form, description: 'Check-in' } : form)}
+                onPress={() => onSave(formForSave(form))}
                 disabled={saveDisabled}
                 accessibilityRole="button"
                 accessibilityLabel={`Salvar ${nounLower}`}
@@ -466,50 +469,52 @@ export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDele
             </View>
 
             {/* Repetição */}
-            <View style={styles.formGroup}>
-              <Text style={[styles.formLabel, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>Repetição</Text>
-              <View style={styles.repeatOptions}>
-                {REPEAT_OPTIONS.map((opt) => (
-                  <Pressable
-                    key={opt.value}
-                    onPress={() => setForm((f) => ({ ...f, repeat: opt.value }))}
-                    style={[styles.repeatOption, { backgroundColor: form.repeat === opt.value ? colors.primarySurface : colors.surface, borderColor: form.repeat === opt.value ? colors.primary : colors.border, minHeight: fs.touch(44) }]}
-                    accessibilityRole="radio"
-                    accessibilityLabel={opt.label}
-                    accessibilityState={{ selected: form.repeat === opt.value }}
-                  >
-                    <Text style={[styles.repeatOptionText, { color: form.repeat === opt.value ? colors.onPrimary : colors.foreground, fontSize: fs.sm }]}>{opt.label}</Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              {form.repeat === 'custom' && (
-                <View style={[styles.weekdaySelector, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-                  <Text style={[styles.weekdayTitle, { color: colors.muted, fontSize: fs.xs }]}>Dias da semana</Text>
-                  <View style={styles.weekdayRow}>
-                    {WEEKDAYS.map(({ day, label, full }) => {
-                      const selected = (form.customDays ?? []).includes(day);
-                      return (
-                        <Pressable
-                          key={day}
-                          onPress={() => toggleDay(day, selected)}
-                          style={[styles.weekdayBtn, { backgroundColor: selected ? colors.primarySurface : colors.background, borderColor: selected ? colors.primary : colors.border, minHeight: fs.touch(52) }]}
-                          accessibilityRole="checkbox"
-                          accessibilityLabel={full}
-                          accessibilityState={{ checked: selected }}
-                        >
-                          <Text style={[styles.weekdayBtnText, { color: selected ? colors.onPrimary : colors.foreground, fontSize: fs.sm }]}>{label}</Text>
-                          <Text style={[styles.weekdayBtnFull, { color: selected ? colors.onPrimary + 'CC' : colors.muted, fontSize: fs.xs }]}>{full}</Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                  {(form.customDays ?? []).length === 0 && (
-                    <Text style={[styles.weekdayHint, { color: colors.error, fontSize: fs.sm }]}>Selecione pelo menos um dia</Text>
-                  )}
+            {!isCheckin && (
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>Repetição</Text>
+                <View style={styles.repeatOptions}>
+                  {REPEAT_OPTIONS.map((opt) => (
+                    <Pressable
+                      key={opt.value}
+                      onPress={() => setForm((f) => ({ ...f, repeat: opt.value }))}
+                      style={[styles.repeatOption, { backgroundColor: form.repeat === opt.value ? colors.primarySurface : colors.surface, borderColor: form.repeat === opt.value ? colors.primary : colors.border, minHeight: fs.touch(44) }]}
+                      accessibilityRole="radio"
+                      accessibilityLabel={opt.label}
+                      accessibilityState={{ selected: form.repeat === opt.value }}
+                    >
+                      <Text style={[styles.repeatOptionText, { color: form.repeat === opt.value ? colors.onPrimary : colors.foreground, fontSize: fs.sm }]}>{opt.label}</Text>
+                    </Pressable>
+                  ))}
                 </View>
-              )}
-            </View>
+
+                {form.repeat === 'custom' && (
+                  <View style={[styles.weekdaySelector, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                    <Text style={[styles.weekdayTitle, { color: colors.muted, fontSize: fs.xs }]}>Dias da semana</Text>
+                    <View style={styles.weekdayRow}>
+                      {WEEKDAYS.map(({ day, label, full }) => {
+                        const selected = (form.customDays ?? []).includes(day);
+                        return (
+                          <Pressable
+                            key={day}
+                            onPress={() => toggleDay(day, selected)}
+                            style={[styles.weekdayBtn, { backgroundColor: selected ? colors.primarySurface : colors.background, borderColor: selected ? colors.primary : colors.border, minHeight: fs.touch(52) }]}
+                            accessibilityRole="checkbox"
+                            accessibilityLabel={full}
+                            accessibilityState={{ checked: selected }}
+                          >
+                            <Text style={[styles.weekdayBtnText, { color: selected ? colors.onPrimary : colors.foreground, fontSize: fs.sm }]}>{label}</Text>
+                            <Text style={[styles.weekdayBtnFull, { color: selected ? colors.onPrimary + 'CC' : colors.muted, fontSize: fs.xs }]}>{full}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                    {(form.customDays ?? []).length === 0 && (
+                      <Text style={[styles.weekdayHint, { color: colors.error, fontSize: fs.sm }]}>Selecione pelo menos um dia</Text>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
 
             {isCheckin && (
               <View style={styles.formGroup}>
@@ -571,7 +576,7 @@ export function AlarmFormModal({ visible, editingAlarm, onCancel, onSave, onDele
               <Text style={[styles.actionBtnText, { color: colors.foreground, fontSize: fs.md }]}>Cancelar</Text>
             </Pressable>
             <Pressable
-              onPress={() => onSave(isCheckin ? { ...form, description: 'Check-in' } : form)}
+              onPress={() => onSave(formForSave(form))}
               disabled={saveDisabled}
               accessibilityRole="button"
               accessibilityLabel={editingAlarm ? `Salvar ${nounLower}` : `Criar ${nounLower}`}

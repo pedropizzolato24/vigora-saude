@@ -59,7 +59,21 @@ export function formFromAlarm(alarm: Alarm | null, newKind: AlarmKind = 'medicat
   };
 }
 
-/** "Personalizado" sem nenhum dia não tem quando tocar. */
+/**
+ * "Personalizado" sem nenhum dia não tem quando tocar. O check-in não tem
+ * escolha de repetição (ele pergunta todo dia), então nunca bloqueia.
+ */
 export function isFormSaveDisabled(form: AlarmFormValues): boolean {
+  if (form.kind === 'checkin') return false;
   return form.repeat === 'custom' && (form.customDays ?? []).length === 0;
+}
+
+/**
+ * O que vai para o agendamento. O check-in é sempre diário e tem nome fixo —
+ * inclusive um criado antes de a repetição sair do formulário. Remédio passa
+ * como está.
+ */
+export function formForSave(form: AlarmFormValues): AlarmFormValues {
+  if (form.kind !== 'checkin') return form;
+  return { ...form, repeat: 'daily', customDays: [], description: 'Check-in' };
 }
