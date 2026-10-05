@@ -7,7 +7,7 @@ import type { WithAndroidWidgetsParams } from 'react-native-android-widget';
 const env = {
   appName: "Vigora",
   appSlug: "vigora-saude",
-  logoUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663569609351/2NcFSGrjcrdoYA2iMiwXwr/vigora-icon-new-miARvjxqHnMmn9xV9ybs5e.png",
+  logoUrl: "https://raw.githubusercontent.com/pedropizzolato24/vigora-saude/main/assets/images/icon.png",
   scheme: "vigora",
   iosBundleId: "com.vigora.saude",
   androidPackage: "com.vigora.saude",
