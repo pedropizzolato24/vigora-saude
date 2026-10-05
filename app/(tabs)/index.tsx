@@ -244,24 +244,6 @@ export default function DashboardScreen() {
               </Text>
             </Pressable>
             <Pressable
-              onPress={() => navigate('/(tabs)/health')}
-              style={({ pressed }) => [{
-                backgroundColor: colors.success,
-                borderRadius: 20,
-                paddingVertical: as_.buttonPadding,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 14,
-                opacity: pressed ? 0.85 : 1,
-              }]}
-            >
-              <MaterialIcons name="favorite" size={36} color={colors.onSuccess} />
-              <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: af.xl, fontWeight: '800', color: colors.onSuccess }}>
-                Registrar Saúde
-              </Text>
-            </Pressable>
-            <Pressable
               onPress={() => navigate('/(tabs)/checkin')}
               accessibilityRole="button"
               accessibilityLabel="Check-in: horários e atraso do aviso"
@@ -279,6 +261,24 @@ export default function DashboardScreen() {
               <MaterialIcons name="check-circle" size={36} color={colors.onPrimary} />
               <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: af.xl, fontWeight: '800', color: colors.onPrimary }}>
                 Check-in
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => navigate('/(tabs)/health')}
+              style={({ pressed }) => [{
+                backgroundColor: colors.success,
+                borderRadius: 20,
+                paddingVertical: as_.buttonPadding,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 14,
+                opacity: pressed ? 0.85 : 1,
+              }]}
+            >
+              <MaterialIcons name="favorite" size={36} color={colors.onSuccess} />
+              <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: af.xl, fontWeight: '800', color: colors.onSuccess }}>
+                Registrar Saúde
               </Text>
             </Pressable>
           </View>
@@ -474,12 +474,12 @@ export default function DashboardScreen() {
           </View>
           <View style={styles.tileWrapper}>
             <BigTile
-              icon="favorite"
-              iconColor={colors.success}
-              iconBg={colors.successLight}
-              title="Anotar saúde"
-              subtitle="Registrar agora"
-              onPress={() => navigate('/(tabs)/health')}
+              icon="check-circle"
+              iconColor={colors.primary}
+              iconBg={colors.primaryLight}
+              title="Check-in"
+              subtitle="Horários e aviso"
+              onPress={() => navigate('/(tabs)/checkin')}
             />
           </View>
           <View style={styles.tileWrapper}>
@@ -494,12 +494,12 @@ export default function DashboardScreen() {
           </View>
           <View style={styles.tileWrapper}>
             <BigTile
-              icon="check-circle"
-              iconColor={colors.primary}
-              iconBg={colors.primaryLight}
-              title="Check-in"
-              subtitle="Horários e aviso"
-              onPress={() => navigate('/(tabs)/checkin')}
+              icon="favorite"
+              iconColor={colors.success}
+              iconBg={colors.successLight}
+              title="Anotar saúde"
+              subtitle="Registrar agora"
+              onPress={() => navigate('/(tabs)/health')}
             />
           </View>
         </View>
