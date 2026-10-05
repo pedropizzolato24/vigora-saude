@@ -34,6 +34,41 @@ export const medicationAlarms = <T extends KindLike>(alarms: T[]): T[] =>
 export const checkinAlarms = <T extends KindLike>(alarms: T[]): T[] =>
   alarms.filter(isCheckinAlarm);
 
+type EnabledLike = KindLike & { enabled: boolean };
+
+/** Remédios ligados + check-ins ligados: o número do selo da aba "Alarmes". */
+export function activeAlarmCount(alarms: EnabledLike[]): number {
+  return (
+    medicationAlarms(alarms).filter((a) => a.enabled).length +
+    checkinAlarms(alarms).filter((a) => a.enabled).length
+  );
+}
+
+/** Linhas de status dos dois cartões da tela "Alarmes" (hub de remédios e check-in). */
+export function alarmHubStatus(
+  alarms: (EnabledLike & { time: string })[],
+  now: Date = new Date()
+): { medicationText: string; checkinText: string } {
+  const meds = medicationAlarms(alarms).filter((a) => a.enabled).length;
+  const medicationText =
+    meds === 0 ? 'Nenhum lembrete ativo' : meds === 1 ? '1 lembrete ativo' : `${meds} lembretes ativos`;
+
+  // Próximo check-in: o de menor distância até agora, dando a volta na meia-noite.
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const distance = (time: string) => {
+    const [h, m] = time.split(':').map(Number);
+    const minutes = h * 60 + m;
+    return minutes >= nowMinutes ? minutes - nowMinutes : minutes + 1440 - nowMinutes;
+  };
+  const next = [...checkinAlarms(alarms).filter((a) => a.enabled)].sort(
+    (a, b) => distance(a.time) - distance(b.time)
+  )[0];
+  return {
+    medicationText,
+    checkinText: next ? `Próximo: ${next.time}` : 'Nenhum check-in ativo',
+  };
+}
+
 export function normalizeEscalateMinutes(value: unknown): EscalateMinutes {
   return (CHECKIN_ESCALATE_OPTIONS as readonly unknown[]).includes(value)
     ? (value as EscalateMinutes)
