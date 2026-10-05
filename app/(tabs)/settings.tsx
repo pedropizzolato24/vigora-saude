@@ -450,9 +450,9 @@ export default function SettingsScreen() {
           {/* Status do Monitoramento - logo abaixo do toggle de acessibilidade */}
           <MonitoringStatusPanel accessible={true} />
 
-          {/* Notificações e vibração */}
+          {/* Alarmes: vibração */}
           <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 16 }}>
-            <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>Notificações</Text>
+            <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>Alarmes</Text>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.foreground }}>Vibração</Text>
@@ -829,9 +829,9 @@ export default function SettingsScreen() {
         {/* Liberado para todos — a experiência completa não é restrita por plano. */}
         <MonitoringStatusPanel accessible={false} />
 
-        {/* ═══ SECTION 1: Notificações e Alarmes ═══ */}
+        {/* ═══ SECTION 1: Alarmes ═══ */}
         <CollapsibleSection
-          title="Notificações e Alarmes"
+          title="Alarmes"
           icon="notifications"
           iconBg={colors.primaryLight}
           iconColor={colors.primary}
