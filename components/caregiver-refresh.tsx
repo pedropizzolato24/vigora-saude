@@ -7,16 +7,30 @@ import { BrandFonts } from '@/lib/_core/theme';
 import { relativeTime } from '@/lib/caregiver-format';
 import { useFontSize } from '@/lib/font-size-context';
 
-/** Puxar para atualizar. */
+/**
+ * Puxar para atualizar.
+ *
+ * No Android o ScrollView faz `cloneElement(refreshControl, { style }, <NativeScrollView>…</NativeScrollView>)`:
+ * o elemento precisa repassar `children` e `style` ao RefreshControl, senão o conteúdo da tela some.
+ */
 export function CaregiverRefreshControl({
   refreshing,
   onRefresh,
-}: {
-  refreshing: boolean;
-  onRefresh: () => void;
-}) {
+  ...rest
+}: { refreshing: boolean; onRefresh: () => void } & Omit<
+  React.ComponentProps<typeof RefreshControl>,
+  'refreshing' | 'onRefresh'
+>) {
   const colors = useColors();
-  return <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />;
+  return (
+    <RefreshControl
+      {...rest}
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      tintColor={colors.primary}
+      colors={[colors.primary]}
+    />
+  );
 }
 
 /** "Atualizado há 3 min" + botão de atualizar (mesmo gesto do botão da tela do monitorado). */
