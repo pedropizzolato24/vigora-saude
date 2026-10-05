@@ -65,8 +65,14 @@ describe('tela Alarmes (hub)', () => {
     expect(hubSrc()).toMatch(/Lembretes para tomar seus remédios na hora certa\./);
     expect(hubSrc()).toMatch(/route: '\/\(tabs\)\/alarms'/);
     expect(hubSrc()).toMatch(/title: 'Check-in diário'/);
-    expect(hubSrc()).toMatch(/Todo dia o Vigora pergunta se está tudo bem\. Se você não responder, sua família é avisada\./);
+    expect(hubSrc()).toMatch(/Todo dia o Vigora pergunta se está tudo bem\. Se você não responder, seus contatos de emergência são avisados\./);
     expect(hubSrc()).toMatch(/route: '\/\(tabs\)\/checkin'/);
+  });
+  it('rota sem `as any` (padrão `as never`) e subtítulo no tamanho mínimo de corpo', () => {
+    expect(hubSrc()).not.toMatch(/as any/);
+    expect(hubSrc()).toMatch(/router\.push\(route as never\)/);
+    expect(hubSrc()).toMatch(/fontSize: fs\.base, marginTop: 2[^>]*>\s*Escolha o que você quer ver/);
+    expect(hubSrc()).not.toMatch(/fs\.sm/);
   });
   it('cartão inteiro tocável, com rótulo de título + status', () => {
     expect(hubSrc()).toMatch(/accessibilityRole="button"/);

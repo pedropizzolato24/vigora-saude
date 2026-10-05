@@ -16,9 +16,9 @@ describe('botão "?" (MicFab): atalho do Check-in', () => {
     ]);
   });
 
-  it('fala "Abrindo seu check-in", ícone how-to-reg, cor primary e rota do check-in', () => {
+  it('fala "Abrindo seu check-in", ícone check-circle, cor primary e rota do check-in', () => {
     expect(src).toMatch(
-      /\{ label: 'Check-in diário', spoken: 'Abrindo seu check-in', icon: 'how-to-reg', colorToken: 'primary', route: '\/\(tabs\)\/checkin' \}/
+      /\{ label: 'Check-in diário', spoken: 'Abrindo seu check-in', icon: 'check-circle', colorToken: 'primary', route: '\/\(tabs\)\/checkin' \}/
     );
   });
 

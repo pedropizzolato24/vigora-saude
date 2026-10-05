@@ -22,14 +22,16 @@ export function oemBatteryHint(manufacturer: string): string[] | null {
   if (!m) return null;
   if (m.includes("samsung")) {
     return [
-      'Este celular pede mais um ajuste. Abra as Configurações e toque em "Cuidado do dispositivo" › "Bateria".',
-      'Se o Vigora estiver na lista "Apps em suspensão", tire-o de lá.',
+      'Este celular pede mais um ajuste. Abra as Configurações e toque em "Cuidado do dispositivo" (em algumas versões, direto em "Bateria").',
+      'Toque em "Bateria" e, depois, em "Limites de uso em segundo plano".',
+      'Se o Vigora estiver em "Apps em suspensão" ou "Apps em suspensão profunda", tire-o de lá.',
+      'Se aparecer "Apps que nunca entram em suspensão", toque nela e adicione o Vigora.',
     ];
   }
   if (["xiaomi", "redmi", "poco"].some((brand) => m.includes(brand))) {
     return [
       "Este celular pede mais um ajuste. Abra as Configurações e procure o Vigora na lista de apps.",
-      'Nas configurações do Vigora, ligue "Iniciar automaticamente".',
+      'Nas configurações do Vigora, ligue a opção de início automático (o nome pode ser "Início automático").',
     ];
   }
   return null;

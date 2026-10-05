@@ -89,7 +89,11 @@ describe("linguagem dos avisos — público 60+", () => {
 
   it("o passo extra por fabricante fala 'celular', não a marca", () => {
     for (const marca of ["samsung", "xiaomi", "redmi", "poco"]) {
-      const hint = oemBatteryHint(marca)?.join(" ") ?? null;
+      // "Limites de uso em segundo plano" é rótulo real da tela do Samsung.
+      const hint =
+        oemBatteryHint(marca)
+          ?.join(" ")
+          .replaceAll("Limites de uso em segundo plano", "") ?? null;
       expect(hint, `${marca} deveria ter passo extra`).not.toBeNull();
       for (const p of proibidos) {
         expect(

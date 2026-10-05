@@ -43,6 +43,37 @@ describe("permissionTexts — cobertura", () => {
     expect(permissionTexts(key, os, "motorola").steps[0]).toMatch(/Liberar/);
   });
 
+  it("o cuidador tem a própria descrição de avisos, com os mesmos passos", () => {
+    const idoso = permissionTexts("notifications", "android", "", "monitored");
+    const cuidador = permissionTexts("notifications", "android", "", "caregiver");
+    expect(cuidador.description).toBe(
+      "É por eles que você fica sabendo se a pessoa que você acompanha não respondeu ao alarme ou ao check-in. Sem eles, esse aviso não aparece no seu celular.",
+    );
+    expect(cuidador.description).not.toMatch(/remédio/i);
+    expect(idoso.description).toMatch(/lembrete de remédio/);
+    expect(cuidador.steps).toEqual(idoso.steps);
+    // O tipo de usuário só muda a descrição de avisos.
+    expect(permissionTexts("exactAlarm", "android", "", "caregiver")).toEqual(
+      permissionTexts("exactAlarm", "android", "", "monitored"),
+    );
+  });
+
+  it("nenhum passo usa o separador ›: o caminho vai em palavras", () => {
+    for (const [key, os] of pares) {
+      for (const m of ["motorola", "samsung", "xiaomi"]) {
+        for (const passo of permissionTexts(key, os, m).steps) {
+          expect(passo, `${key}/${os}/${m}`).not.toContain("›");
+        }
+      }
+    }
+  });
+
+  it("alarme na hora certa: descrição sem 'exatamente'", () => {
+    expect(permissionTexts("exactAlarm", "android").description).toMatch(
+      /^Faz o alarme do remédio tocar na hora marcada\./,
+    );
+  });
+
   it("a descrição é a mesma nas duas plataformas (só os passos mudam)", () => {
     for (const key of ["notifications", "locationForeground", "locationBackground"] as const) {
       expect(permissionTexts(key, "android").description).toBe(
@@ -79,6 +110,25 @@ describe("permissionTexts — Android e iOS diferem onde o fluxo difere", () => 
     }
   });
 
+  it("localização em uso (Android): 'Durante o uso do app' e 'Precisa' em passos separados", () => {
+    const steps = permissionTexts("locationForeground", "android").steps;
+    const uso = steps.findIndex((s) => /Durante o uso do app/.test(s));
+    const precisa = steps.findIndex((s) => /"Precisa"/.test(s));
+    expect(uso).toBeGreaterThan(-1);
+    expect(precisa).toBeGreaterThan(-1);
+    expect(precisa).not.toBe(uso);
+    expect(steps[uso]).not.toMatch(/Precisa/);
+  });
+
+  it("localização o tempo todo (Android): cobre a tela com as opções de localização do Vigora", () => {
+    const steps = permissionTexts("locationBackground", "android").steps;
+    expect(
+      steps.some((s) =>
+        /Se abrir uma tela com as opções de localização do Vigora, escolha "Permitir o tempo todo"\./.test(s),
+      ),
+    ).toBe(true);
+  });
+
   it("telas de ajustes do Android que o botão realmente abre", () => {
     expect(permissionTexts("exactAlarm", "android").steps.join(" ")).toMatch(/Alarmes e lembretes/);
     expect(permissionTexts("fullScreen", "android").steps.join(" ")).toMatch(
@@ -95,19 +145,30 @@ describe("permissionTexts — bateria e o passo extra do fabricante", () => {
     const samsung = passos("samsung");
     expect(samsung.length).toBeGreaterThan(base.length);
     expect(samsung.slice(0, base.length)).toEqual(base);
-    expect(samsung.slice(base.length).join(" ")).toMatch(/Cuidado do dispositivo/);
-    expect(samsung.join(" ")).toMatch(/Apps em suspensão/);
+    const extra = samsung.slice(base.length).join(" ");
+    expect(extra).toMatch(/Cuidado do dispositivo/);
+    expect(extra).toMatch(/Bateria/);
+    expect(extra).toMatch(/Limites de uso em segundo plano/);
+    expect(extra).toMatch(/Apps em suspensão/);
+    expect(extra).toMatch(/Apps em suspensão profunda/);
+    expect(extra).toMatch(/Apps que nunca entram em suspensão/);
   });
 
-  it("Xiaomi/Redmi/POCO ganham 'Iniciar automaticamente'", () => {
+  it("Xiaomi/Redmi/POCO: início automático, sem prometer o rótulo exato", () => {
     for (const m of ["Xiaomi", "redmi", "POCO"]) {
-      expect(passos(m).join(" ")).toMatch(/Iniciar automaticamente/);
+      const t = passos(m).join(" ");
+      expect(t).toMatch(/opção de início automático \(o nome pode ser "Início automático"\)/);
+      expect(t).not.toMatch(/Iniciar automaticamente/);
     }
   });
 
   it("aparelho stock fica só com os passos básicos", () => {
-    expect(passos("motorola")).toHaveLength(2);
-    expect(passos("")).toHaveLength(2);
+    expect(passos("motorola")).toHaveLength(3);
+    expect(passos("")).toHaveLength(3);
+  });
+
+  it("a lista de apps pode precisar de 'Todos os apps' para mostrar o Vigora", () => {
+    expect(passos("motorola").join(" ")).toMatch(/Todos os apps/);
   });
 });
 
@@ -135,7 +196,10 @@ describe("permissionTexts — linguagem para 60+", () => {
         textos.push(t.description, ...t.steps);
       }
     }
-    const achados = proibidos.filter((p) => new RegExp(p, "i").test(textos.join(" | ")));
+    // "Limites de uso em segundo plano" é o rótulo real da tela do Samsung: a
+    // pessoa precisa achá-lo, então ele é a única citação permitida do termo.
+    const semRotulos = textos.join(" | ").replaceAll("Limites de uso em segundo plano", "");
+    const achados = proibidos.filter((p) => new RegExp(p, "i").test(semRotulos));
     expect(achados, `termos técnicos: ${achados.join(", ")}`).toEqual([]);
   });
 });

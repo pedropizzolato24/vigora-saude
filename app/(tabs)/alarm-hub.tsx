@@ -33,7 +33,7 @@ const HUB_CARDS: HubCardConfig[] = [
   },
   {
     title: 'Check-in diário',
-    description: 'Todo dia o Vigora pergunta se está tudo bem. Se você não responder, sua família é avisada.',
+    description: 'Todo dia o Vigora pergunta se está tudo bem. Se você não responder, seus contatos de emergência são avisados.',
     icon: 'check-circle',
     colorToken: 'primary',
     route: '/(tabs)/checkin',
@@ -142,7 +142,7 @@ export default function AlarmHubScreen() {
 
   const { medicationText, checkinText } = alarmHubStatus(state.alarms);
   const statusFor = (card: HubCardConfig) => (card.route === '/(tabs)/alarms' ? medicationText : checkinText);
-  const open = (route: string) => router.push(route as any);
+  const open = (route: string) => router.push(route as never);
 
   // --- MODO ACESSÍVEL -------------------------------------------------------
   if (isAccessibilityMode) {
@@ -212,7 +212,7 @@ export default function AlarmHubScreen() {
         <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: fs['2xl'], fontFamily: BrandFonts.body }]}>
           Alarmes
         </Text>
-        <Text style={{ color: colors.muted, fontSize: fs.sm, marginTop: 2, fontFamily: BrandFonts.body }}>
+        <Text style={{ color: colors.muted, fontSize: fs.base, marginTop: 2, fontFamily: BrandFonts.body }}>
           Escolha o que você quer ver
         </Text>
       </View>

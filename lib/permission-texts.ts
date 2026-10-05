@@ -18,6 +18,8 @@
  */
 import { oemBatteryHint } from '@/lib/_core/oem-battery-hint';
 
+export type UserType = 'monitored' | 'caregiver';
+
 export type PermissionKey =
   | 'notifications'
   | 'exactAlarm'
@@ -66,7 +68,7 @@ const ENTRIES: Record<Exclude<PermissionKey, 'battery'>, Entry> = {
   },
   exactAlarm: {
     description:
-      'Faz o alarme do remédio tocar exatamente na hora marcada. ' +
+      'Faz o alarme do remédio tocar na hora marcada. ' +
       'Sem isso, o celular pode atrasar o alarme por vários minutos.',
     steps: {
       android: [
@@ -109,7 +111,8 @@ const ENTRIES: Record<Exclude<PermissionKey, 'battery'>, Entry> = {
     steps: {
       android: [
         LIBERAR,
-        'Se aparecer uma pergunta, toque em "Durante o uso do app" (ou parecido, como "Enquanto o app está em uso"). Se houver a escolha entre "Precisa" e "Aproximada", prefira "Precisa".',
+        'Se aparecer uma pergunta, toque em "Durante o uso do app" (ou parecido, como "Enquanto o app está em uso").',
+        'Se houver a escolha entre "Precisa" e "Aproximada", escolha "Precisa".',
         'Se abrir a tela de ajustes do Vigora, toque em "Permissões", depois em "Localização", e escolha a opção que permite o uso com o app aberto.',
         VOLTAR,
       ],
@@ -129,6 +132,7 @@ const ENTRIES: Record<Exclude<PermissionKey, 'battery'>, Entry> = {
       android: [
         LIBERAR,
         'Se aparecer uma pergunta, toque em "Permitir o tempo todo".',
+        'Se abrir uma tela com as opções de localização do Vigora, escolha "Permitir o tempo todo".',
         'Se abrir a tela de ajustes do Vigora, toque em "Permissões", depois em "Localização", e escolha "Permitir o tempo todo".',
         VOLTAR,
       ],
@@ -142,6 +146,14 @@ const ENTRIES: Record<Exclude<PermissionKey, 'battery'>, Entry> = {
   },
 };
 
+/**
+ * O cuidador só vê o item de avisos, e o motivo dele é outro: não é o lembrete
+ * de remédio, é saber que a pessoa que ele acompanha não respondeu.
+ */
+const NOTIFICATIONS_CAREGIVER_DESCRIPTION =
+  'É por eles que você fica sabendo se a pessoa que você acompanha não respondeu ao alarme ou ao check-in. ' +
+  'Sem eles, esse aviso não aparece no seu celular.';
+
 const BATTERY: Entry = {
   description:
     'Para economizar energia, o celular pode fechar o Vigora sozinho, sem avisar. ' +
@@ -150,7 +162,8 @@ const BATTERY: Entry = {
   steps: {
     android: [
       LIBERAR,
-      'Na pergunta que aparecer, toque em "Permitir". Se abrir uma lista de apps, toque em "Vigora" e escolha a opção que não limita a bateria.',
+      'Na pergunta que aparecer, toque em "Permitir".',
+      'Se abrir uma lista de apps, escolha "Todos os apps" no alto (se houver), toque em "Vigora" e escolha a opção que não limita a bateria.',
     ],
   },
 };
@@ -162,11 +175,20 @@ const BATTERY: Entry = {
  * que fecham o app mesmo com a isenção padrão concedida — sem os passos extras
  * o idoso "libera" a permissão e o alarme continua não tocando.
  */
-export function permissionTexts(key: PermissionKey, os: Os, manufacturer = ''): PermissionTexts {
+export function permissionTexts(
+  key: PermissionKey,
+  os: Os,
+  manufacturer = '',
+  userType: UserType = 'monitored',
+): PermissionTexts {
   const entry = key === 'battery' ? BATTERY : ENTRIES[key];
   const steps = [...(entry.steps[os] ?? [])];
   if (key === 'battery' && os === 'android') {
     steps.push(...(oemBatteryHint(manufacturer) ?? []));
   }
-  return { description: entry.description, steps };
+  const description =
+    key === 'notifications' && userType === 'caregiver'
+      ? NOTIFICATIONS_CAREGIVER_DESCRIPTION
+      : entry.description;
+  return { description, steps };
 }

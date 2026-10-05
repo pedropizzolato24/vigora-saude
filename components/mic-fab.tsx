@@ -25,7 +25,7 @@ interface QuickAction {
 
 const QUICK_ACTIONS: QuickAction[] = [
   { label: 'Meus remédios', spoken: 'Abrindo seus remédios', icon: 'medication', colorToken: 'warning', route: '/(tabs)/alarms' },
-  { label: 'Check-in diário', spoken: 'Abrindo seu check-in', icon: 'how-to-reg', colorToken: 'primary', route: '/(tabs)/checkin' },
+  { label: 'Check-in diário', spoken: 'Abrindo seu check-in', icon: 'check-circle', colorToken: 'primary', route: '/(tabs)/checkin' },
   { label: 'Anotar saúde', spoken: 'Abrindo anotações de saúde', icon: 'favorite', colorToken: 'success', route: '/(tabs)/health' },
   { label: 'Chamar ambulância', spoken: 'Abrindo chamada de ambulância', icon: 'local-hospital', colorToken: 'primary', route: '/(tabs)/ambulance' },
   { label: 'Avisar família', spoken: 'Abrindo contatos de emergência', icon: 'people', colorToken: 'emergency', route: '/(tabs)/contacts' },

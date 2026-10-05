@@ -103,7 +103,7 @@ export async function checkPermissions(
   ): Promise<boolean> => {
     const granted = await checar(item.key, check);
     if (granted === null) return false;
-    itens.push({ ...item, ...permissionTexts(item.key, os, manufacturer), granted });
+    itens.push({ ...item, ...permissionTexts(item.key, os, manufacturer, userType), granted });
     return granted;
   };
 

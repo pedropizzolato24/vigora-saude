@@ -222,7 +222,7 @@ describe("passo extra de bateria por fabricante", () => {
     env.manufacturer = "motorola";
     const steps = await passosDaBateria();
     expect(steps.join(" ")).not.toMatch(/Cuidado do dispositivo/);
-    expect(steps).toHaveLength(2);
+    expect(steps).toHaveLength(3);
   });
 });
 
@@ -247,10 +247,14 @@ describe("descricao e passos de cada item", () => {
     expect(ios?.steps.join(" ")).toMatch(/Sempre/);
   });
 
-  it("o cuidador recebe os passos de notificacao", async () => {
+  it("o cuidador recebe os passos de notificacao e a descricao propria dele", async () => {
     const [item] = await checkPermissions("caregiver");
     expect(item.key).toBe("notifications");
     expect(item.steps.length).toBeGreaterThan(0);
+    expect(item.description).toMatch(/pessoa que você acompanha/);
+    expect(item.description).not.toMatch(/remédio/i);
+    const [idoso] = await checkPermissions("monitored");
+    expect(idoso.description).toMatch(/lembrete de remédio/);
   });
 });
 
@@ -267,7 +271,9 @@ describe("linguagem da central — publico 60+", () => {
 
     const textos = [...ios, ...android]
       .map((p) => `${p.title} ${p.description} ${p.steps.join(" ")}`)
-      .join(" | ");
+      .join(" | ")
+      // Rótulo real da tela do Samsung, que a pessoa precisa achar.
+      .replaceAll("Limites de uso em segundo plano", "");
     const achados = proibidos.filter((t) => new RegExp(t, "i").test(textos));
     expect(achados, `termos tecnicos na central: ${achados.join(", ")}`).toEqual([]);
   });

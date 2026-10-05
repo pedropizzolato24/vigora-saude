@@ -2,6 +2,14 @@ import { describe, expect, it } from "vitest";
 import { oemBatteryHint } from "@/lib/_core/oem-battery-hint";
 
 describe("oemBatteryHint", () => {
+  it('Samsung → caminho por "Limites de uso em segundo plano" e listas de suspensão', () => {
+    const t = oemBatteryHint("samsung")!.join(" ");
+    expect(t).toMatch(/Limites de uso em segundo plano/);
+    expect(t).toMatch(/Apps em suspensão profunda/);
+    expect(t).toMatch(/Apps que nunca entram em suspensão/);
+    expect(t).not.toContain("›");
+  });
+
   it('Samsung → passo extra de "Apps em suspensão"', () => {
     expect(oemBatteryHint("samsung")?.join(" ")).toMatch(/Apps em suspensão/);
     expect(oemBatteryHint("Samsung")?.join(" ")).toMatch(/Apps em suspensão/);
@@ -9,9 +17,9 @@ describe("oemBatteryHint", () => {
 
   // Era /Autostart/. O termo saiu em 14/08/2026: jargão em inglês para um
   // público 60+. O rótulo em português é o que aparece no aparelho.
-  it('Xiaomi/Redmi/POCO → passo extra de "Iniciar automaticamente"', () => {
+  it('Xiaomi/Redmi/POCO → passo extra de início automático', () => {
     for (const m of ["Xiaomi", "redmi", "POCO"]) {
-      expect(oemBatteryHint(m)?.join(" ")).toMatch(/Iniciar automaticamente/);
+      expect(oemBatteryHint(m)?.join(" ")).toMatch(/início automático/);
     }
   });
 
