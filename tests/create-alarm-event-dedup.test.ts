@@ -15,7 +15,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Fila de resultados de SELECT, consumida na ordem em que as queries rodam.
-let selectResults: Array<Array<{ id: number }>> = [];
+let selectResults: Array<Array<{ id: number; status?: string; kind?: string | null; graceMinutes?: number | null }>> = [];
 const updates: Array<Record<string, unknown>> = [];
 const deletes: number[] = [];
 const inserts: Array<Record<string, unknown>> = [];
@@ -128,5 +128,36 @@ describe("createAlarmEvent — dedup de pending futuro", () => {
     // A fila de SELECTs futura não foi consumida — a query de pendings futuros
     // nem chegou a rodar.
     expect(selectResults).toHaveLength(0);
+  });
+});
+
+describe("createAlarmEvent — mudar só o atraso/tipo do evento já registrado", () => {
+  it("pending existente com grace 5 e chamada com 30 → atualiza kind/grace, mesmo id, sem linha nova", async () => {
+    selectResults = [[{ id: 7, status: "pending", kind: "checkin", graceMinutes: 5 }]];
+
+    const id = await createAlarmEvent({ ...baseEvent, kind: "checkin", graceMinutes: 30 });
+
+    expect(id).toBe(7);
+    expect(updates).toEqual([{ kind: "checkin", graceMinutes: 30 }]);
+    expect(inserts).toHaveLength(0);
+  });
+
+  it("evento já resolvido (responded) não é alterado", async () => {
+    selectResults = [[{ id: 7, status: "responded", kind: "checkin", graceMinutes: 5 }]];
+
+    const id = await createAlarmEvent({ ...baseEvent, kind: "checkin", graceMinutes: 30 });
+
+    expect(id).toBe(7);
+    expect(updates).toHaveLength(0);
+    expect(inserts).toHaveLength(0);
+  });
+
+  it("cliente antigo (sem os campos) sobre pending null/null → nada muda", async () => {
+    selectResults = [[{ id: 7, status: "pending", kind: null, graceMinutes: null }]];
+
+    const id = await createAlarmEvent(baseEvent);
+
+    expect(id).toBe(7);
+    expect(updates).toHaveLength(0);
   });
 });

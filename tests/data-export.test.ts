@@ -30,6 +30,7 @@ const SERVER: ExportServerData = {
   alertasEnviados: [{ id: 1, contactsReached: 2 }],
   sinalDeVida: { lastHeartbeat: 456 },
   cuidadoresVinculados: [{ caregiverOpenId: "ana" }],
+  historicoDeAlteracoesDeAlarmes: [],
 };
 
 const NOW = Date.parse("2026-08-02T15:30:00.000Z");

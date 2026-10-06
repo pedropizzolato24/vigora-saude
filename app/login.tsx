@@ -51,10 +51,6 @@ function MoonSymbol({ size = 72 }: { size?: number }) {
       <Circle cx="36" cy="36" r="28" fill={colors.primary} />
       {/* Recorte na cor do fundo cria o crescente (some a "bola" creme solta) */}
       <Circle cx="48" cy="28" r="22" fill={colors.background} />
-      {/* Estrelas pequenas */}
-      <Circle cx="22" cy="20" r="2" fill={colors.primary} />
-      <Circle cx="16" cy="34" r="1.5" fill={colors.primary} />
-      <Circle cx="28" cy="54" r="1.5" fill={colors.primary} />
     </Svg>
   );
 }
@@ -95,7 +91,7 @@ export default function LoginScreen() {
     fetchAuthMethods().then(setMethods);
     Auth.getUserInfo()
       .then((u) => setIsAnonymous(u?.loginMethod === "anonymous"))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const handleAnonymousLogin = async () => {
@@ -215,8 +211,7 @@ export default function LoginScreen() {
       setError(
         `Não foi possível iniciar o login. Verifique sua conexão e tente novamente. (${describe(
           err
-        )} | navegadores: ${browsers}${
-          nativeError ? ` | nativo: ${describe(nativeError)}` : ""
+        )} | navegadores: ${browsers}${nativeError ? ` | nativo: ${describe(nativeError)}` : ""
         })`
       );
       setLoading(false);

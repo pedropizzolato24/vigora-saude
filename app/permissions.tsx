@@ -156,7 +156,40 @@ export default function PermissionsScreen() {
                 </Text>
               </View>
 
-              <Text style={{ fontSize: bodySize, color: c.muted }}>{item.why}</Text>
+              <Text style={{ fontSize: bodySize, color: c.muted }}>{item.description}</Text>
+
+              {!item.granted && (
+                <View style={{ gap: 8 }}>
+                  <Text
+                    accessibilityRole="header"
+                    style={{ fontSize: bodySize, fontWeight: '700', color: c.fg }}
+                  >
+                    Como liberar
+                  </Text>
+                  <View accessibilityRole="list" style={{ gap: 8 }}>
+                    {item.steps.map((passo, i) => (
+                      <View
+                        key={`${item.key}-${i}`}
+                        accessible
+                        accessibilityLabel={`Passo ${i + 1}: ${passo}`}
+                        style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}
+                      >
+                        <Text
+                          style={{
+                            minWidth: bodySize * 1.6,
+                            fontSize: bodySize,
+                            fontWeight: '700',
+                            color: c.fg,
+                          }}
+                        >
+                          {`${i + 1}.`}
+                        </Text>
+                        <Text style={{ flex: 1, fontSize: bodySize, color: c.fg }}>{passo}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
 
               {!item.granted && (
                 <Pressable

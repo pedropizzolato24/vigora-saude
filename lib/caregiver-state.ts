@@ -26,31 +26,18 @@ export interface LinkedMonitored {
   status: LinkStatus;
 }
 
-export interface CaregiverNotificationPrefs {
-  missedMedication: boolean;
-  sosTriggered: boolean;
-  deadManSwitch: boolean;
-}
-
 export interface CaregiverState {
   linkedMonitored: LinkedMonitored | null;
-  notificationPrefs: CaregiverNotificationPrefs;
 }
 
 export const DEFAULT_CAREGIVER_STATE: CaregiverState = {
   linkedMonitored: null,
-  notificationPrefs: {
-    missedMedication: true,
-    sosTriggered: true,
-    deadManSwitch: true,
-  },
 };
 
 export type CaregiverAction =
   | { type: 'LOAD'; payload: CaregiverState }
   | { type: 'SET_LINK'; payload: LinkedMonitored }
-  | { type: 'CLEAR_LINK' }
-  | { type: 'UPDATE_PREFS'; payload: Partial<CaregiverNotificationPrefs> };
+  | { type: 'CLEAR_LINK' };
 
 export function caregiverReducer(state: CaregiverState, action: CaregiverAction): CaregiverState {
   switch (action.type) {
@@ -60,11 +47,6 @@ export function caregiverReducer(state: CaregiverState, action: CaregiverAction)
       return { ...state, linkedMonitored: action.payload };
     case 'CLEAR_LINK':
       return { ...state, linkedMonitored: null };
-    case 'UPDATE_PREFS':
-      return {
-        ...state,
-        notificationPrefs: { ...state.notificationPrefs, ...action.payload },
-      };
     default:
       return state;
   }

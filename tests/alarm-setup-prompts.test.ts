@@ -22,7 +22,7 @@ import { join } from "node:path";
 import { oemBatteryHint } from "@/lib/_core/oem-battery-hint";
 
 const raiz = join(__dirname, "..");
-const alarmsSrc = readFileSync(join(raiz, "app/(tabs)/alarms.tsx"), "utf8");
+const alarmsSrc = readFileSync(join(raiz, "components/alarm-list-screen.tsx"), "utf8");
 const hintSrc = readFileSync(
   join(raiz, "lib/_core/oem-battery-hint.ts"),
   "utf8"
@@ -57,7 +57,7 @@ describe("aviso de tela cheia — na criação, não depois do alarme tocar", ()
 
   it("é disparado ao salvar um alarme novo", () => {
     const handleSave = alarmsSrc.match(
-      /const handleSave = async \(\) => \{([\s\S]*?)\n  \};/
+      /const handleSave = async \(form: AlarmFormValues\) => \{([\s\S]*?)\n  \};/
     );
     expect(handleSave, "não achei handleSave").not.toBeNull();
     expect(handleSave![1]).toMatch(/promptFullScreenIfNeeded\(\)/);
@@ -70,7 +70,7 @@ describe("linguagem dos avisos — público 60+", () => {
     "Samsung",
     "Xiaomi",
     "Redmi",
-    "iOS",
+    "\\biOS\\b", // com borda: "Remédios" contém "ios"
     "iPhone",
     "Autostart",
     "segundo plano",
@@ -89,7 +89,11 @@ describe("linguagem dos avisos — público 60+", () => {
 
   it("o passo extra por fabricante fala 'celular', não a marca", () => {
     for (const marca of ["samsung", "xiaomi", "redmi", "poco"]) {
-      const hint = oemBatteryHint(marca);
+      // "Limites de uso em segundo plano" é rótulo real da tela do Samsung.
+      const hint =
+        oemBatteryHint(marca)
+          ?.join(" ")
+          .replaceAll("Limites de uso em segundo plano", "") ?? null;
       expect(hint, `${marca} deveria ter passo extra`).not.toBeNull();
       for (const p of proibidos) {
         expect(
@@ -107,7 +111,7 @@ describe("linguagem dos avisos — público 60+", () => {
   });
 
   it("mantém os rótulos que o idoso precisa achar no aparelho", () => {
-    expect(oemBatteryHint("samsung")).toMatch(/Cuidado do dispositivo/);
+    expect(oemBatteryHint("samsung")?.join(" ")).toMatch(/Cuidado do dispositivo/);
     expect(textosDeUI(alarmsSrc)).toMatch(/Notificações em tela cheia/);
   });
 

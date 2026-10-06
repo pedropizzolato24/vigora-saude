@@ -5,6 +5,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { CaregiverEmptyState } from '@/components/caregiver-empty-state';
+import { CaregiverRefreshControl, UpdatedAgoBar } from '@/components/caregiver-refresh';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
@@ -14,6 +15,7 @@ import { useCaregiverContext } from '@/lib/caregiver-context';
 import type { LinkMethod } from '@/lib/caregiver-state';
 import { trpc } from '@/lib/trpc';
 import type { Alarm, AnamnesesData, EmergencyContact, HealthMetric } from '@/lib/app-context';
+import { checkinAlarms, medicationAlarms } from '@/lib/alarm-kind';
 import { formatMetricValue, isRecent, metricTypeLabel, relativeTime } from '@/lib/caregiver-format';
 
 const METHOD_LABEL: Record<LinkMethod, string> = {
@@ -54,7 +56,11 @@ export default function CaregiverPersonScreen() {
   const { dialogProps, showDialog } = useAppDialog();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const monitored = trpc.link.getMonitoredData.useQuery(undefined, { enabled: !!linked });
+  const monitored = trpc.link.getMonitoredData.useQuery(undefined, { enabled: !!linked, refetchOnWindowFocus: true });
+  const refreshing = monitored.isRefetching;
+  const onRefresh = () => {
+    monitored.refetch();
+  };
   const data = monitored.data;
   const loading = monitored.isLoading;
 
@@ -85,7 +91,8 @@ export default function CaregiverPersonScreen() {
   };
   const { c, sz, bw, icon } = skin;
 
-  const enabledAlarms = ((data?.alarms ?? []) as Alarm[]).filter((a) => a.enabled);
+  const enabledAlarms = medicationAlarms((data?.alarms ?? []) as Alarm[]).filter((a) => a.enabled);
+  const enabledCheckins = checkinAlarms((data?.alarms ?? []) as Alarm[]).filter((a) => a.enabled);
   const metrics = ([...((data?.healthMetrics ?? []) as HealthMetric[])])
     .sort((a, b) => b.timestamp - a.timestamp)
     .slice(0, 5);
@@ -130,7 +137,11 @@ export default function CaregiverPersonScreen() {
       edges={['top', 'left', 'right']}
       containerStyle={isAccessibilityMode ? { backgroundColor: ac.background } : undefined}
     >
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}
+        refreshControl={<CaregiverRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        <UpdatedAgoBar updatedAt={monitored.dataUpdatedAt} refreshing={refreshing} onRefresh={onRefresh} />
         {/* Header */}
         <View style={[styles.header, { backgroundColor: c.surface, borderColor: c.border, borderWidth: bw }]}>
           <View style={[styles.avatar, { width: avatarSide, height: avatarSide, borderRadius: avatarSide / 2, backgroundColor: c.primary }]}>
@@ -182,6 +193,23 @@ export default function CaregiverPersonScreen() {
           ) : (
             enabledAlarms.slice(0, 6).map((a) => (
               <Row key={a.id} skin={skin} left={a.time} right={a.description || 'Medicação'} />
+            ))
+          )}
+        </Section>
+
+        <Section icon="check-circle" title="Check-ins" skin={skin}>
+          {loading ? (
+            <Muted skin={skin} text="Carregando…" />
+          ) : enabledCheckins.length === 0 ? (
+            <Muted skin={skin} text="Nenhum check-in recebido do aparelho." />
+          ) : (
+            enabledCheckins.map((a) => (
+              <Row
+                key={a.id}
+                skin={skin}
+                left={a.time}
+                right={a.escalateAfterMinutes ? `avisa após ${a.escalateAfterMinutes} min` : undefined}
+              />
             ))
           )}
         </Section>

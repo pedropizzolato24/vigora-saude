@@ -2,7 +2,7 @@ import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { PressableScale } from '@/components/pressable-scale';
@@ -25,6 +25,7 @@ interface QuickAction {
 
 const QUICK_ACTIONS: QuickAction[] = [
   { label: 'Meus remédios', spoken: 'Abrindo seus remédios', icon: 'medication', colorToken: 'warning', route: '/(tabs)/alarms' },
+  { label: 'Check-in diário', spoken: 'Abrindo seu check-in', icon: 'check-circle', colorToken: 'primary', route: '/(tabs)/checkin' },
   { label: 'Anotar saúde', spoken: 'Abrindo anotações de saúde', icon: 'favorite', colorToken: 'success', route: '/(tabs)/health' },
   { label: 'Chamar ambulância', spoken: 'Abrindo chamada de ambulância', icon: 'local-hospital', colorToken: 'primary', route: '/(tabs)/ambulance' },
   { label: 'Avisar família', spoken: 'Abrindo contatos de emergência', icon: 'people', colorToken: 'emergency', route: '/(tabs)/contacts' },
@@ -43,6 +44,7 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
   const colors = useColors();
   const fs = useFontSize();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const router = useRouter();
   const [sheetVisible, setSheetVisible] = useState(false);
 
@@ -106,7 +108,7 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
       >
         <Pressable style={styles.overlay} onPress={closeSheet}>
           <Pressable
-            style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }]}
+            style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border, maxHeight: windowHeight * 0.9 }]}
             onPress={(e) => e.stopPropagation()}
           >
             <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
@@ -123,7 +125,8 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
               </View>
             </View>
 
-            <View style={styles.actionsList}>
+            {/* 5 ações + fonte grande não cabem em tela pequena: a lista rola. */}
+            <ScrollView style={styles.actionsScroll} contentContainerStyle={styles.actionsList} showsVerticalScrollIndicator={false}>
               {QUICK_ACTIONS.map((action) => {
                 const tone = tokenColors[action.colorToken];
                 return (
@@ -148,7 +151,7 @@ export function MicFab({ bottomOffset, onPress }: MicFabProps) {
                   </PressableScale>
                 );
               })}
-            </View>
+            </ScrollView>
 
             <Pressable
               onPress={closeSheet}
@@ -220,6 +223,9 @@ const styles = StyleSheet.create({
   sheetSubtitle: {
     fontFamily: BrandFonts.body,
     marginTop: 2,
+  },
+  actionsScroll: {
+    flexShrink: 1,
   },
   actionsList: {
     gap: 10,

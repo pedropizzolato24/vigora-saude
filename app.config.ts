@@ -7,7 +7,7 @@ import type { WithAndroidWidgetsParams } from 'react-native-android-widget';
 const env = {
   appName: "Vigora",
   appSlug: "vigora-saude",
-  logoUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663569609351/2NcFSGrjcrdoYA2iMiwXwr/vigora-icon-new-miARvjxqHnMmn9xV9ybs5e.png",
+  logoUrl: "https://raw.githubusercontent.com/pedropizzolato24/vigora-saude/main/assets/images/icon.png",
   scheme: "vigora",
   iosBundleId: "com.vigora.saude",
   androidPackage: "com.vigora.saude",
@@ -86,7 +86,7 @@ const config: ExpoConfig = {
   },
   android: {
     adaptiveIcon: {
-      backgroundColor: "#0033CC",
+      backgroundColor: "#F4EFE5",
       foregroundImage: "./assets/images/android-icon-foreground.png",
       backgroundImage: "./assets/images/android-icon-background.png",
       monochromeImage: "./assets/images/android-icon-monochrome.png",
@@ -207,7 +207,7 @@ const config: ExpoConfig = {
         // Ícone dedicado de notificação (glifo branco em transparência) — sem
         // ele o Android usa o ic_launcher adaptativo, que vira quadrado cinza.
         "icon": "./assets/images/android-icon-monochrome.png",
-        "color": "#0033CC",
+        "color": "#1E4D8C",
         // alarm.mp3 entra na lista só para o plugin copiá-lo para o bundle iOS:
         // o AlertSound.named do AlarmKit lê do main bundle, com a extensão.
         "sounds": ["./assets/alarm_notification.wav", "./assets/alarm.mp3"],
@@ -248,9 +248,9 @@ const config: ExpoConfig = {
         image: "./assets/images/splash-icon.png",
         imageWidth: 200,
         resizeMode: "contain",
-        backgroundColor: "#ffffff",
+        backgroundColor: "#F4EFE5",
         dark: {
-          backgroundColor: "#000000",
+          backgroundColor: "#0E1417",
         },
       },
     ],

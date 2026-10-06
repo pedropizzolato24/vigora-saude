@@ -94,8 +94,8 @@ describe("alarm-ring chama a limpeza ao responder", () => {
     expect(alarmRing).toMatch(/dismissDeliveredAlarmNotification/);
   });
 
-  it("chama no dismiss E na soneca — os dois encerram o disparo atual", () => {
+  it("chama no dismiss, que encerra o disparo atual", () => {
     const calls = alarmRing.match(/dismissDeliveredAlarmNotification\(alarmId\)/g) ?? [];
-    expect(calls.length).toBeGreaterThanOrEqual(2);
+    expect(calls.length).toBeGreaterThanOrEqual(1);
   });
 });

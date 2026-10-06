@@ -3,6 +3,7 @@ import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 import { NextAlarmWidget } from './NextAlarmWidget';
 import { SosWidget } from './SosWidget';
 import { HealthWidget } from './HealthWidget';
+import { medicationAlarms } from '@/lib/alarm-kind';
 
 const STORAGE_KEY = 'vigora_app_state';
 
@@ -11,6 +12,8 @@ interface AlarmData {
   time: string;
   description: string;
   enabled: boolean;
+  /** 'checkin' não é remédio; ausente = remédio. */
+  kind?: 'medication' | 'checkin';
 }
 
 interface HealthMetricData {
@@ -28,7 +31,7 @@ async function getNextAlarmFromStorage(): Promise<{ time: string; name: string }
     if (!raw) return null;
     const state = JSON.parse(raw) as { alarms?: AlarmData[] };
     const alarms: AlarmData[] = state.alarms ?? [];
-    const enabled = alarms.filter((a) => a.enabled);
+    const enabled = medicationAlarms(alarms).filter((a) => a.enabled);
     if (enabled.length === 0) return null;
     const now = new Date();
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
