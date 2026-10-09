@@ -17,15 +17,9 @@ describe('redirectSystemPath (deep links da notificação de alarme)', () => {
     ).toBe('/alarm-ring?alarmId=abc123');
   });
 
-  it('repassa snooze=1 do botão Soneca da notificação', () => {
+  it('ignora snooze=1 de uma notificação antiga (a soneca saiu do app)', () => {
     expect(
       redirectSystemPath({ path: 'vigora://alarm-ring?uid=vigora_abc123&snooze=1', initial: true })
-    ).toBe('/alarm-ring?alarmId=abc123&snooze=1');
-  });
-
-  it('não inventa snooze quando o parâmetro não veio', () => {
-    expect(
-      redirectSystemPath({ path: 'vigora://alarm-ring?uid=vigora_abc123&snooze=0', initial: true })
     ).toBe('/alarm-ring?alarmId=abc123');
   });
 

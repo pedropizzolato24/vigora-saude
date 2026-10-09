@@ -63,3 +63,39 @@ export function relativeTime(ts: number, now: number = Date.now()): string {
 export function isRecent(ts: number, minutes = 15, now: number = Date.now()): boolean {
   return now - ts <= minutes * 60_000;
 }
+
+/** Id fixo do check-in antigo (sistema paralelo anterior à Fase 3). */
+export const LEGACY_CHECKIN_ALARM_ID = 'checkin-daily';
+
+/**
+ * Título de um alerta de evento perdido. `not_sent` NÃO afirma que o celular
+ * está desligado: o servidor só sabe que não houve sinal de vida do app depois
+ * do horário — não sabe se o alarme tocou.
+ */
+export function alertEventTitle(e: { alarmId: string; status: string; kind?: string | null }): string {
+  const checkin = e.kind === 'checkin' || e.alarmId === LEGACY_CHECKIN_ALARM_ID;
+  const subject = checkin ? 'Check-in' : 'Alarme';
+  return e.status === 'missed'
+    ? `${subject} não respondido`
+    : `${subject} sem confirmação do aparelho`;
+}
+
+/** Título de uma mudança de lembrete feita pela pessoa acompanhada. */
+export function alarmChangeTitle(c: {
+  alarmDescription: string;
+  changeType: 'deleted' | 'disabled' | 'rescheduled';
+  oldTime: string | null;
+  newTime: string | null;
+}): string {
+  const name = c.alarmDescription.trim() || c.oldTime || c.newTime || 'Lembrete sem nome';
+  switch (c.changeType) {
+    case 'deleted':
+      return `Excluiu "${name}"`;
+    case 'disabled':
+      return `Desativou "${name}"`;
+    default:
+      return c.oldTime && c.newTime && c.oldTime !== c.newTime
+        ? `Mudou o horário de "${name}" para ${c.newTime}`
+        : `Mudou os dias de "${name}"`;
+  }
+}

@@ -37,6 +37,7 @@ import { getActiveCaregiversForMonitored } from "./db-links";
 import { getPushTokensForOpenIds } from "./db-push";
 import { sendExpoPush } from "./push";
 import { formatEventTime } from "./_core/format-event-time";
+import { isCheckinEvent } from "./_core/event-kind";
 import { parseLatLng } from "./_core/parse-lat-lng";
 
 /**
@@ -46,10 +47,6 @@ import { parseLatLng } from "./_core/parse-lat-lng";
 const SOS_WINDOW_MS = 60_000;
 const SOS_LIMIT = 5;
 const sosRateLimit = new Map<string, number[]>();
-
-// Mesmo id usado pelo check-in diário no cliente (lib/checkin-*) e no
-// monitoring-job (Passos 3/4). O push ao cuidador ramifica por ele.
-const CHECKIN_ALARM_ID = "checkin-daily";
 
 function isSosRateLimited(openId: string): boolean {
   const now = Date.now();
@@ -109,7 +106,8 @@ async function pushMissedAlarmToCaregivers(
   monitoredOpenId: string,
   alarmId: string,
   scheduledAt: Date,
-  timezone: string | null
+  timezone: string | null,
+  kind: string | null
 ): Promise<void> {
   try {
     const caregivers = await getActiveCaregiversForMonitored(monitoredOpenId);
@@ -147,7 +145,7 @@ async function pushMissedAlarmToCaregivers(
     // o check-in saía como "missed_alarm" (texto errado) e, pior, o warningSent=true
     // ainda suprimia o missed_checkin do Passo 3.
     const message =
-      alarmId === CHECKIN_ALARM_ID
+      isCheckinEvent({ alarmId, kind })
         ? {
             title: "⚠️ Check-in não respondido — Vigora",
             body: `${name} não respondeu ao check-in das ${scheduledStr}. Toque para ver os detalhes.`,
@@ -241,6 +239,12 @@ export const monitoringRouter = router({
         // Nome IANA do fuso do aparelho. Opcional: clientes antigos não mandam
         // e ROM sem ICU manda null — os dois caem no fallback de Brasília.
         timezone: z.string().max(64).nullish(),
+        // Tipo e prazo do evento (check-in como alarme). Opcionais: clientes
+        // antigos não mandam e valem remédio com 5 min.
+        kind: z.enum(["medication", "checkin"]).nullish(),
+        graceMinutes: z
+          .union([z.literal(5), z.literal(10), z.literal(15), z.literal(30)])
+          .nullish(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -250,6 +254,8 @@ export const monitoringRouter = router({
         alarmDescription: input.alarmDescription,
         scheduledAt: new Date(input.scheduledAt),
         timezone: input.timezone ?? null,
+        kind: input.kind === "checkin" ? "checkin" : null,
+        graceMinutes: input.graceMinutes ?? null,
         status: "pending",
       });
       return { success: true, eventId: id };
@@ -288,7 +294,8 @@ export const monitoringRouter = router({
           ctx.user.openId,
           input.alarmId,
           scheduledAt,
-          transitioned.timezone
+          transitioned.timezone,
+          transitioned.kind ?? null
         );
       }
       return { success: true };

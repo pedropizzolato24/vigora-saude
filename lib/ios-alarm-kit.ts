@@ -12,6 +12,7 @@ import { alarmKit } from './_core/ios-alarm-kit-bridge';
 import { firingJsDays, lastAlarmFireMs } from './alarm-fire-times';
 import { enqueueConfirmation } from './pending-confirmations';
 import type { Alarm } from './app-context';
+import { alarmTexts } from '@/lib/alarm-kind';
 
 export const APP_GROUP = 'group.com.vigora.saude.alarms';
 
@@ -76,15 +77,16 @@ export async function scheduleAlarmKitAlarm(alarm: Alarm): Promise<void> {
     throw new Error(`Alarme ${alarm.id}: nenhum dia da semana para agendar`);
   }
 
+  const texts = alarmTexts(alarm);
   const options = {
     id: alarm.id,
     hour,
     minute,
     weekdays,
-    title: alarm.description || 'Hora do remédio',
+    title: texts.alarmKitTitle,
     launchAppOnDismiss: true,
     dismissPayload: alarm.id,
-    stopButtonLabel: 'Desligar',
+    stopButtonLabel: texts.stopButtonLabel,
     tintColor: '#0033CC',
     // soundName com extensão: 'alarm' sem extensão não tocou na medição da
     // Fase 0. Ausente = som padrão do sistema, que também toca em loop.

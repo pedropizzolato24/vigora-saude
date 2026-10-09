@@ -16,6 +16,7 @@ import { Platform } from 'react-native';
 // volume ao nativo), e um import de valor aqui fecharia um ciclo em runtime.
 import type { Alarm } from './app-context';
 import { weeklyJsDays } from './alarm-fire-times';
+import { alarmTexts } from '@/lib/alarm-kind';
 // O require da lib nativa mora no bridge — ver o porquê lá.
 import {
   scheduleAlarmNative,
@@ -77,13 +78,13 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
   const uids: string[] = [];
 
   try {
-    // Passo 1.2: usar texto estático descritivo na notificação nativa.
-    // NÃO usar countdown dinâmico aqui - é impossível sem Foreground Service.
-    // O countdown é exibido apenas quando o app está em foreground (alarm-ring screen).
-    const title = '⏰ Vigora - Alarme de Medicamento';
-    const body = alarm.description
-      ? `${alarm.description} - Toque para confirmar que tomou o medicamento`
-      : 'Toque aqui para confirmar que tomou o medicamento';
+    // Passo 1.2: texto estático descritivo na notificação nativa (por tipo:
+    // remédio ou check-in). NÃO usar countdown dinâmico aqui - é impossível sem
+    // Foreground Service. O countdown é exibido apenas quando o app está em
+    // foreground (alarm-ring screen).
+    const texts = alarmTexts(alarm);
+    const title = texts.nativeTitle;
+    const body = texts.nativeBody;
     const baseUid = `vigora_${alarm.id}`;
 
     // Dias da semana deste alarme (vazio = diário ou disparo único).
@@ -99,9 +100,9 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         active: true,
         repeating: true,
         showDismiss: true,
-        showSnooze: true,
+        showSnooze: false,
         snoozeInterval: 0,
-        dismissText: 'Dispensar',
+        dismissText: texts.dismissText,
         snoozeText: 'Soneca',
         sound: alarm.sound !== false,
         vibration: alarm.vibration !== false,
@@ -124,9 +125,9 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
           active: true,
           repeating: true,
           showDismiss: true,
-          showSnooze: true,
+          showSnooze: false,
           snoozeInterval: 0,
-          dismissText: 'Dispensar',
+          dismissText: texts.dismissText,
           snoozeText: 'Soneca',
           sound: alarm.sound !== false,
           vibration: alarm.vibration !== false,
@@ -145,9 +146,9 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
         active: true,
         repeating: false,
         showDismiss: true,
-        showSnooze: true,
+        showSnooze: false,
         snoozeInterval: 0,
-        dismissText: 'Dispensar',
+        dismissText: texts.dismissText,
         snoozeText: 'Soneca',
         sound: alarm.sound !== false,
         vibration: alarm.vibration !== false,
@@ -161,39 +162,6 @@ export async function scheduleNativeAlarm(alarm: Alarm): Promise<string[]> {
   }
 
   return uids;
-}
-
-/**
- * Re-agenda um disparo ÚNICO (soneca) em `fireAt`, sem mexer na recorrência do
- * alarme. Usa um uid próprio (`vigora_<id>_snooze`) — extraído de volta para o
- * alarmId pelos handlers de roteamento. O botão "Soneca" da notificação abre o
- * app via deep link (&snooze=1) e a soneca roda em alarm-ring — nunca o
- * SNOOZE_ACTION nativo, que deixaria o evento do DMS sem confirmação.
- */
-export async function snoozeNativeAlarm(alarm: Alarm, fireAt: Date): Promise<void> {
-  if (!scheduleAlarmNative || Platform.OS !== 'android') return;
-  try {
-    await scheduleAlarmNative({
-      uid: `vigora_${alarm.id}_snooze`,
-      day: fireAt,
-      title: '⏰ Vigora - Alarme de Medicamento',
-      description: alarm.description
-        ? `${alarm.description} - Toque para confirmar que tomou o medicamento`
-        : 'Toque aqui para confirmar que tomou o medicamento',
-      active: true,
-      repeating: false,
-      showDismiss: true,
-      showSnooze: true,
-      snoozeInterval: 0,
-      dismissText: 'Dispensar',
-      snoozeText: 'Soneca',
-      sound: alarm.sound !== false,
-      vibration: alarm.vibration !== false,
-    });
-    console.log(`[NativeAlarm] Snoozed alarm ${alarm.id} until ${fireAt.toISOString()}`);
-  } catch (e) {
-    console.error('[NativeAlarm] Error snoozing alarm:', e);
-  }
 }
 
 /**

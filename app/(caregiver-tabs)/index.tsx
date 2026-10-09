@@ -2,6 +2,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CaregiverEmptyState } from '@/components/caregiver-empty-state';
+import { CaregiverRefreshControl, UpdatedAgoBar } from '@/components/caregiver-refresh';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useFontSize } from '@/lib/font-size-context';
@@ -13,6 +14,7 @@ import { FadeInView, ScaleInView, StaggeredItem } from '@/components/animated-co
 import { trpc } from '@/lib/trpc';
 import { usePushUnavailable } from '@/lib/push-status';
 import type { Alarm, HealthMetric } from '@/lib/app-context';
+import { checkinAlarms, medicationAlarms } from '@/lib/alarm-kind';
 import { formatMetricValue, isRecent, latestMetric, metricTypeLabel, nextAlarm, relativeTime } from '@/lib/caregiver-format';
 
 // Janela do contador de alertas na home. Um alarme perdido precisa saltar aos
@@ -38,19 +40,25 @@ export default function CaregiverHomeScreen() {
 
   const pushUnavailable = usePushUnavailable();
 
-  const monitored = trpc.link.getMonitoredData.useQuery(undefined, { enabled: !!linked });
+  const monitored = trpc.link.getMonitoredData.useQuery(undefined, { enabled: !!linked, refetchOnWindowFocus: true });
   const data = monitored.data;
   const loading = monitored.isLoading;
 
-  const alerts = trpc.link.getMonitoredAlerts.useQuery(undefined, { enabled: !!linked });
+  const alerts = trpc.link.getMonitoredAlerts.useQuery(undefined, { enabled: !!linked, refetchOnWindowFocus: true });
+  const refreshing = monitored.isRefetching || alerts.isRefetching;
+  const onRefresh = () => {
+    monitored.refetch();
+    alerts.refetch();
+  };
   const cutoff = Date.now() - ALERT_WINDOW_MS;
   const recentAlertCount =
     (alerts.data?.events ?? []).filter((e) => e.scheduledAt >= cutoff).length +
     (alerts.data?.warnings ?? []).filter((w) => w.sentAt >= cutoff).length;
 
-  const alarms = (data?.alarms ?? []) as Alarm[];
+  const alarms = medicationAlarms((data?.alarms ?? []) as Alarm[]);
   const metrics = (data?.healthMetrics ?? []) as HealthMetric[];
   const upcoming = nextAlarm(alarms);
+  const upcomingCheckin = nextAlarm(checkinAlarms((data?.alarms ?? []) as Alarm[]));
   const latest = latestMetric(metrics);
   const hb = data?.lastHeartbeatAt ?? null;
 
@@ -59,6 +67,11 @@ export default function CaregiverHomeScreen() {
     : upcoming
     ? `${upcoming.time} — ${upcoming.description || 'Medicação'}`
     : 'Nenhum alarme ativo.';
+  const nextCheckinBody = loading
+    ? 'Carregando…'
+    : upcomingCheckin
+    ? `${upcomingCheckin.time}${upcomingCheckin.escalateAfterMinutes ? ` — avisa após ${upcomingCheckin.escalateAfterMinutes} min sem resposta` : ''}`
+    : 'Nenhum check-in recebido do aparelho.';
   const latestMetricBody = loading
     ? 'Carregando…'
     : latest
@@ -110,7 +123,12 @@ export default function CaregiverHomeScreen() {
           </Text>
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 16, gap: 12 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={{ padding: 20, paddingBottom: 16, gap: 12 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<CaregiverRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        >
+          <UpdatedAgoBar updatedAt={monitored.dataUpdatedAt} refreshing={refreshing} onRefresh={onRefresh} />
           {pushUnavailable ? (
             <Pressable
               onPress={() => Linking.openSettings()}
@@ -138,6 +156,7 @@ export default function CaregiverHomeScreen() {
           </View>
 
           <A11ySummary icon="medication" title="Próxima medicação" body={nextMedBody} />
+          <A11ySummary icon="check-circle" title="Próximo check-in" body={nextCheckinBody} />
           <A11ySummary icon="favorite" title="Última métrica registrada" body={latestMetricBody} />
           <A11ySummary icon="wifi" title="Último heartbeat" body={heartbeatBody} mono />
 
@@ -173,7 +192,9 @@ export default function CaregiverHomeScreen() {
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={<CaregiverRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        <UpdatedAgoBar updatedAt={monitored.dataUpdatedAt} refreshing={refreshing} onRefresh={onRefresh} />
         {/* Cabeçalho — Jakub enter: OCCASIONAL (once per app open) */}
         <FadeInView delay={0} duration={320} style={styles.pageHeader}>
           <Text style={[styles.pageLabel, { color: colors.muted, fontSize: fs.sm, fontFamily: BrandFonts.body }]}>
@@ -232,9 +253,12 @@ export default function CaregiverHomeScreen() {
           <SummaryCard icon="medication" title="Próxima medicação" body={nextMedBody} colors={colors} fs={fs} />
         </StaggeredItem>
         <StaggeredItem index={1} staggerDelay={80}>
-          <SummaryCard icon="favorite" title="Última métrica registrada" body={latestMetricBody} colors={colors} fs={fs} />
+          <SummaryCard icon="check-circle" title="Próximo check-in" body={nextCheckinBody} colors={colors} fs={fs} />
         </StaggeredItem>
         <StaggeredItem index={2} staggerDelay={80}>
+          <SummaryCard icon="favorite" title="Última métrica registrada" body={latestMetricBody} colors={colors} fs={fs} />
+        </StaggeredItem>
+        <StaggeredItem index={3} staggerDelay={80}>
           <SummaryCard icon="wifi" title="Último heartbeat" body={heartbeatBody} colors={colors} fs={fs} mono />
         </StaggeredItem>
 

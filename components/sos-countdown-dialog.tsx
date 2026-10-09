@@ -35,6 +35,7 @@ import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
 import { useColors } from '@/hooks/use-colors';
 import { useAccessibility } from '@/lib/accessibility-context';
+import { sosSpokenText } from '@/lib/sos-status';
 
 // --- Constantes ---------------------------------------------------------------
 
@@ -91,6 +92,8 @@ function CountdownArc({
 
 export interface SOSCountdownDialogProps {
   visible: boolean;
+  /** Contatos com WhatsApp: define o que a voz promete. */
+  whatsappCount: number;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -99,6 +102,7 @@ export interface SOSCountdownDialogProps {
 
 export function SOSCountdownDialog({
   visible,
+  whatsappCount,
   onConfirm,
   onCancel,
 }: SOSCountdownDialogProps) {
@@ -115,6 +119,8 @@ export function SOSCountdownDialog({
   const progressAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   const pulseRef = useRef<Animated.CompositeAnimation | null>(null);
   const confirmedRef = useRef(false);
+  const whatsappCountRef = useRef(whatsappCount);
+  whatsappCountRef.current = whatsappCount;
 
   const stopAll = useCallback(() => {
     if (countdownRef.current) clearInterval(countdownRef.current);
@@ -173,7 +179,7 @@ export function SOSCountdownDialog({
           if (Platform.OS !== 'web') {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           }
-          Speech.speak('Avisando suas pessoas e ligando para o SAMU', { language: 'pt-BR' });
+          Speech.speak(sosSpokenText(whatsappCountRef.current), { language: 'pt-BR' });
           onConfirm();
         }
       });

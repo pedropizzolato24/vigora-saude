@@ -12,7 +12,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
@@ -22,12 +22,8 @@ import { useColors } from '@/hooks/use-colors';
 import { useAccessibility } from '@/lib/accessibility-context';
 import * as Auth from '@/lib/_core/auth';
 import { useFontSize } from '@/lib/font-size-context';
+import { buildInviteShareText, formatInviteCode } from '@/lib/invite-share';
 import { trpc } from '@/lib/trpc';
-
-/** Display form with a dash in the middle: "ABCDEF" -> "ABC-DEF". */
-function formatCode(code: string): string {
-  return code.length === 6 ? `${code.slice(0, 3)}-${code.slice(3)}` : code;
-}
 
 function formatCountdown(secondsLeft: number): string {
   const m = Math.floor(secondsLeft / 60);
@@ -90,6 +86,16 @@ export default function InviteCaregiverScreen() {
       showDialog({ title: 'Erro', message, variant: 'warning', buttons: [{ text: 'OK' }] });
     }
   }, [createInvite, showDialog]);
+
+  const shareCode = useCallback(async () => {
+    if (!code) return;
+    try {
+      await Share.share({ message: buildInviteShareText(code, secondsLeft) });
+    } catch (error) {
+      console.warn('[Convite] não foi possível abrir o compartilhamento:', error);
+      showToast({ message: 'Não foi possível abrir o compartilhamento neste aparelho.', variant: 'error' });
+    }
+  }, [code, secondsLeft, showToast]);
 
   const confirmRevoke = useCallback(
     (caregiverOpenId: string, name: string) => {
@@ -206,7 +212,7 @@ export default function InviteCaregiverScreen() {
             <>
               <Text style={[styles.codeLabel, { color: muted, fontSize: sz(13) }]}>Código de convite</Text>
               <Text style={[styles.code, { color: expired ? muted : colors.primary, fontSize: isAccessibilityMode ? af['4xl'] : fs.scaled(44) }]}>
-                {formatCode(code)}
+                {formatInviteCode(code)}
               </Text>
 
               {expired ? (
@@ -223,6 +229,18 @@ export default function InviteCaregiverScreen() {
                   <Text style={[styles.countdown, { color: muted, fontSize: sz(14) }]}>
                     Expira em {formatCountdown(secondsLeft)}
                   </Text>
+                  <Pressable
+                    onPress={shareCode}
+                    accessibilityRole="button"
+                    accessibilityLabel="Enviar o código de convite pelo WhatsApp ou outro aplicativo"
+                    style={({ pressed }) => [
+                      styles.primaryBtn,
+                      { backgroundColor: colors.primarySurface, minHeight: minTouch, opacity: pressed ? 0.85 : 1, flexDirection: 'row', gap: 8 },
+                    ]}
+                  >
+                    <MaterialIcons name="share" size={isAccessibilityMode ? 28 : 20} color={colors.onPrimary} />
+                    <Text style={[styles.primaryBtnText, { color: colors.onPrimary, fontSize: sz(16) }]}>Enviar código</Text>
+                  </Pressable>
                 </>
               )}
 
