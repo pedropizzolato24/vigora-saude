@@ -84,6 +84,11 @@ function wallAsUtc(fmt: Intl.DateTimeFormat, ms: number): number {
   return Date.UTC(get('year'), get('month') - 1, get('day'), get('hour') % 24, get('minute'), get('second'));
 }
 
+/** Intl sem as partes esperadas (ROM enxuta) gera NaN: vira "sem resultado", nunca NaN. */
+function finiteOrNull(ms: number): number | null {
+  return Number.isFinite(ms) ? ms : null;
+}
+
 /** Deslocamento do fuso (ms, positivo a leste de Greenwich) no instante `ms`. */
 function offsetAt(fmt: Intl.DateTimeFormat, ms: number): number {
   const whole = Math.floor(ms / 1000) * 1000;
@@ -94,6 +99,8 @@ function offsetAt(fmt: Intl.DateTimeFormat, ms: number): number {
  * Instante em que a parede do fuso marca `year-month-day hour:minute`.
  * Relógio que pula: usa o deslocamento de ANTES da virada (02:30 vira 03:30).
  * Relógio que repete: fica com a primeira ocorrência.
+ * Premissa: no máximo uma mudança de deslocamento em 48 h; dia de calendário
+ * pulado inteiro (Samoa, 2011) não é tratado.
  */
 function zonedWallToMs(
   fmt: Intl.DateTimeFormat,
@@ -152,14 +159,14 @@ export function nextFireMs(alarm: ScheduleAlarm, timeZone: string | null | undef
 
   const nowMs = now.getTime();
   const todayAt = atDay(today, 0, hm);
-  if (days === 'every') return todayAt > nowMs ? todayAt : atDay(today, 1, hm);
+  if (days === 'every') return finiteOrNull(todayAt > nowMs ? todayAt : atDay(today, 1, hm));
 
   const times = days.map((jsDay) => {
     let daysUntil = (jsDay - today.weekday + 7) % 7;
     if (daysUntil === 0 && todayAt <= nowMs) daysUntil = 7;
     return daysUntil === 0 ? todayAt : atDay(today, daysUntil, hm);
   });
-  return Math.min(...times);
+  return finiteOrNull(Math.min(...times));
 }
 
 /**
@@ -178,12 +185,12 @@ export function lastFireMs(alarm: ScheduleAlarm, timeZone: string | null | undef
 
   const nowMs = now.getTime();
   const todayAt = atDay(today, 0, hm);
-  if (days === 'every') return todayAt <= nowMs ? todayAt : atDay(today, -1, hm);
+  if (days === 'every') return finiteOrNull(todayAt <= nowMs ? todayAt : atDay(today, -1, hm));
 
   const times = days.map((jsDay) => {
     let daysAgo = (today.weekday - jsDay + 7) % 7;
     if (daysAgo === 0 && todayAt > nowMs) daysAgo = 7;
     return daysAgo === 0 ? todayAt : atDay(today, -daysAgo, hm);
   });
-  return Math.max(...times);
+  return finiteOrNull(Math.max(...times));
 }

@@ -9,7 +9,7 @@
  *  - paridade exata com o comportamento antigo do aparelho (Date local), nos
  *    fusos do mundo, incluindo as viradas do horário de verão.
  */
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_TIME_ZONE,
   firingDays,
@@ -224,6 +224,22 @@ describe('dias personalizados atravessando a virada de dia', () => {
     const quinta = z('2026-06-25T13:00:00Z');
     expect(iso(nextFireMs(quartaSabado, 'America/Sao_Paulo', quinta))).toBe('2026-06-27T12:00:00.000Z');
     expect(iso(lastFireMs(quartaSabado, 'America/Sao_Paulo', quinta))).toBe('2026-06-24T12:00:00.000Z');
+  });
+});
+
+describe('Intl sem as partes esperadas (ROM enxuta)', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('formatToParts sem hora/minuto: null, nunca NaN', () => {
+    vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
+      () => ({ formatToParts: () => [] }) as unknown as Intl.DateTimeFormat
+    );
+    const now = z('2026-06-24T13:00:00Z');
+    // Fuso com nome próprio: o cache de formatadores do módulo não esconde o mock.
+    expect(nextFireMs(mk(), 'Test/SemPartes', now)).toBeNull();
+    expect(lastFireMs(mk(), 'Test/SemPartes', now)).toBeNull();
+    expect(nextFireMs(mk({ repeat: 'weekdays' }), 'Test/SemPartes', now)).toBeNull();
+    expect(lastFireMs(mk({ repeat: 'custom', customDays: [3] }), 'Test/SemPartes', now)).toBeNull();
   });
 });
 
