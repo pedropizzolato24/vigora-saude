@@ -35,6 +35,22 @@ vi.mock("../server/db-alarm-changes", () => ({
   insertAlarmChanges: vi.fn(),
 }));
 
+vi.mock("../server/db-alarm-management", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../server/db-alarm-management")>()),
+  getManagementHistory: vi.fn(async (openId: string) =>
+    openId === "maria"
+      ? [{ id: 1, monitoredOpenId: "maria", caregiverOpenId: "ana", status: "ended", endedReason: "declined" }]
+      : [],
+  ),
+}));
+
+vi.mock("../server/db-managed-alarm-list", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../server/db-managed-alarm-list")>()),
+  getManagedList: vi.fn(async (openId: string) =>
+    openId === "maria" ? { monitoredOpenId: "maria", version: 3, alarms: [{ id: "a1" }] } : null,
+  ),
+}));
+
 vi.mock("../server/db", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../server/db")>();
   return {
@@ -119,6 +135,23 @@ describe("userData.export", () => {
     expect(result.cuidadoresVinculados).toEqual([]);
     expect(result.dadosDaConta).toBeTruthy();
     expect(result.historicoDeAlteracoesDeAlarmes).toHaveLength(1);
+  });
+
+  it("inclui o histórico do acordo de gerenciamento e a lista gerenciada (LGPD Art. 18, V)", async () => {
+    const { getManagementHistory } = await import("../server/db-alarm-management");
+    const { getManagedList } = await import("../server/db-managed-alarm-list");
+
+    const maria = await appRouter.createCaller(makeCtx(makeUser("maria"))).userData.export();
+    expect(maria.acordosDeGerenciamento).toEqual([
+      expect.objectContaining({ caregiverOpenId: "ana", status: "ended", endedReason: "declined" }),
+    ]);
+    expect(maria.listaGerenciada).toMatchObject({ version: 3, alarms: [{ id: "a1" }] });
+    expect(getManagementHistory).toHaveBeenCalledWith("maria");
+    expect(getManagedList).toHaveBeenCalledWith("maria");
+
+    const bob = await appRouter.createCaller(makeCtx(makeUser("bob"))).userData.export();
+    expect(bob.acordosDeGerenciamento).toEqual([]);
+    expect(bob.listaGerenciada).toBeNull();
   });
 
   it("usa ctx.user.openId como escopo — cada chamador recebe o seu", async () => {

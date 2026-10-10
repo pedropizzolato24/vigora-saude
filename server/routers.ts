@@ -16,6 +16,8 @@ import { getUserByOpenId, getUserData, upsertUser, upsertUserData } from "./db";
 import { deleteAccountData } from "./db-account";
 import { getAccountLiveness, getAlarmEventHistory, getWarningHistory } from "./db-monitoring";
 import { getActiveCaregiversForMonitored } from "./db-links";
+import { getManagementHistory } from "./db-alarm-management";
+import { getManagedList } from "./db-managed-alarm-list";
 import { recordAndNotifyAlarmChanges } from "./alarm-changes";
 import { pickPersonName } from "./_core/alarm-diff";
 import { getRecentAlarmChanges } from "./db-alarm-changes";
@@ -353,6 +355,8 @@ export const appRouter = router({
         sinalDeVida,
         cuidadores,
         alteracoesDeAlarmes,
+        acordosDeGerenciamento,
+        listaGerenciada,
       ] = await Promise.all([
         getUserByOpenId(openId),
         getUserData(openId),
@@ -361,6 +365,8 @@ export const appRouter = router({
         getAccountLiveness(openId),
         getActiveCaregiversForMonitored(openId),
         getRecentAlarmChanges(openId, LIMITE_EXPORTACAO),
+        getManagementHistory(openId),
+        getManagedList(openId),
       ]);
 
       return {
@@ -380,6 +386,8 @@ export const appRouter = router({
           : null,
         historicoDeAlarmes,
         historicoDeAlteracoesDeAlarmes: alteracoesDeAlarmes,
+        acordosDeGerenciamento,
+        listaGerenciada: listaGerenciada ?? null,
         alertasEnviados,
         sinalDeVida: sinalDeVida ?? null,
         cuidadoresVinculados: cuidadores.map((c) => ({

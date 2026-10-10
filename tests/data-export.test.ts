@@ -31,6 +31,8 @@ const SERVER: ExportServerData = {
   sinalDeVida: { lastHeartbeat: 456 },
   cuidadoresVinculados: [{ caregiverOpenId: "ana" }],
   historicoDeAlteracoesDeAlarmes: [],
+  acordosDeGerenciamento: [],
+  listaGerenciada: null,
 };
 
 const NOW = Date.parse("2026-08-02T15:30:00.000Z");
