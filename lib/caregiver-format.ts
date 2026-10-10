@@ -83,12 +83,14 @@ export function alertEventTitle(e: { alarmId: string; status: string; kind?: str
 /** Título de uma mudança de lembrete feita pela pessoa acompanhada. */
 export function alarmChangeTitle(c: {
   alarmDescription: string;
-  changeType: 'deleted' | 'disabled' | 'rescheduled';
+  changeType: 'created' | 'deleted' | 'disabled' | 'rescheduled';
   oldTime: string | null;
   newTime: string | null;
 }): string {
   const name = c.alarmDescription.trim() || c.oldTime || c.newTime || 'Lembrete sem nome';
   switch (c.changeType) {
+    case 'created':
+      return `Criou "${name}"${c.newTime ? ` (${c.newTime})` : ''}`;
     case 'deleted':
       return `Excluiu "${name}"`;
     case 'disabled':

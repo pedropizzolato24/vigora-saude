@@ -32,6 +32,12 @@ describe('alarmChangeTitle', () => {
     expect(alarmChangeTitle({ ...base, changeType: 'deleted' })).toBe('Excluiu "Losartana"');
   });
 
+  it('criado (tipo novo da Fase 4: um cuidador com o acordo de gerenciamento cria o lembrete)', () => {
+    expect(alarmChangeTitle({ ...base, changeType: 'created', oldTime: null, newTime: '08:00' })).toBe(
+      'Criou "Losartana" (08:00)'
+    );
+  });
+
   it('desativado', () => {
     expect(alarmChangeTitle({ ...base, changeType: 'disabled' })).toBe('Desativou "Losartana"');
   });
