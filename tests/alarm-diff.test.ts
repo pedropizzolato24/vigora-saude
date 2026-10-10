@@ -160,6 +160,83 @@ describe("buildAlarmChangePush", () => {
   });
 });
 
+describe("buildAlarmChangePush — com o autor da mudança (cuidador)", () => {
+  const change = (over: Partial<AlarmChange>): AlarmChange => ({
+    alarmId: "a1",
+    alarmDescription: "Losartana",
+    changeType: "deleted",
+    oldTime: "08:00",
+    newTime: null,
+    ...over,
+  });
+
+  it("criação", () => {
+    const push = buildAlarmChangePush(
+      "Maria",
+      [change({ changeType: "created", oldTime: null, newTime: "08:00" })],
+      "Ana"
+    );
+    expect(push).toEqual({
+      title: "Lembrete alterado — Vigora",
+      body: 'Ana criou o lembrete "Losartana" (08:00) para Maria.',
+    });
+  });
+
+  it("exclusão", () => {
+    expect(buildAlarmChangePush("Maria", [change({})], "Ana")?.body).toBe(
+      'Ana apagou o lembrete "Losartana" de Maria.'
+    );
+  });
+
+  it("desativação", () => {
+    const push = buildAlarmChangePush("Maria", [change({ changeType: "disabled", newTime: "08:00" })], "Ana");
+    expect(push?.body).toBe('Ana desativou o lembrete "Losartana" de Maria.');
+  });
+
+  it("mudança de horário", () => {
+    const push = buildAlarmChangePush(
+      "Maria",
+      [change({ changeType: "rescheduled", oldTime: "08:00", newTime: "09:30" })],
+      "Ana"
+    );
+    expect(push?.body).toBe('Ana mudou o horário de "Losartana" de Maria para 09:30.');
+  });
+
+  it("mudança só de dias", () => {
+    const push = buildAlarmChangePush(
+      "Maria",
+      [change({ changeType: "rescheduled", oldTime: "08:00", newTime: "08:00" })],
+      "Ana"
+    );
+    expect(push?.body).toBe('Ana mudou os dias do lembrete "Losartana" de Maria.');
+  });
+
+  it("várias mudanças", () => {
+    const push = buildAlarmChangePush(
+      "Maria",
+      [
+        change({ alarmId: "a1", alarmDescription: "Losartana" }),
+        change({ alarmId: "a2", alarmDescription: "Metformina" }),
+        change({ alarmId: "a3", alarmDescription: "Vitamina D" }),
+      ],
+      "Ana"
+    );
+    expect(push).toEqual({
+      title: "Lembretes alterados — Vigora",
+      body: 'Ana alterou 3 lembretes de Maria: "Losartana", "Metformina" e mais 1.',
+    });
+  });
+
+  it("sem autor o texto antigo não muda", () => {
+    expect(buildAlarmChangePush("Maria", [change({})])?.body).toBe('Maria excluiu o lembrete "Losartana".');
+  });
+
+  it("criação sem autor (não acontece pelo backup, mas não quebra)", () => {
+    const push = buildAlarmChangePush("Maria", [change({ changeType: "created", oldTime: null, newTime: "08:00" })]);
+    expect(push?.body).toBe('Maria criou o lembrete "Losartana".');
+  });
+});
+
 describe("pickPersonName", () => {
   it("prefere o nome da anamnese", () => {
     expect(pickPersonName({ fullName: " Maria Souza " }, "Conta")).toBe("Maria Souza");

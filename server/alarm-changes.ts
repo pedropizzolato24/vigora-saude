@@ -49,13 +49,17 @@ function isPushRateLimited(openId: string): boolean {
 async function pushToCaregivers(
   openId: string,
   personName: string,
-  changes: AlarmChange[]
+  changes: AlarmChange[],
+  author?: { openId: string; name: string }
 ): Promise<void> {
-  const message = buildAlarmChangePush(personName, changes);
+  const message = buildAlarmChangePush(personName, changes, author?.name);
   if (!message) return;
   if (isPushRateLimited(openId)) return;
 
-  const caregivers = await getActiveCaregiversForMonitored(openId);
+  // O autor da mudança (um cuidador) sabe o que fez: só os outros são avisados.
+  const caregivers = (await getActiveCaregiversForMonitored(openId)).filter(
+    (c) => c.caregiverOpenId !== author?.openId
+  );
   if (caregivers.length === 0) return;
   const tokens = await getPushTokensForOpenIds(caregivers.map((c) => c.caregiverOpenId));
   if (tokens.length === 0) {
@@ -93,5 +97,45 @@ export async function recordAndNotifyAlarmChanges(args: {
   // Fire-and-forget: o fetch do Expo não tem timeout e não pode segurar o backup.
   void pushToCaregivers(args.openId, args.personName, changes).catch((err) => {
     console.warn("[AlarmChanges] falha ao avisar o cuidador:", safeErr(err));
+  });
+}
+
+/**
+ * O cuidador do acordo mudou a lista gerenciada do idoso. Grava cada mudança
+ * com o cuidador como autor e avisa os OUTROS cuidadores vinculados. O backup
+ * do celular (`userData.put`) não repete isto: com o acordo ativo ele pula o
+ * diff, senão o celular da Maria, ao aplicar o que a Ana apagou, geraria
+ * "Maria apagou…".
+ *
+ * Best-effort como o resto do módulo: a lista já foi gravada e NÃO pode falhar
+ * por causa de um registro ou de um push.
+ */
+export async function recordCaregiverAlarmChanges(args: {
+  monitoredOpenId: string;
+  authorOpenId: string;
+  authorName: string;
+  personName: string;
+  changes: AlarmChange[];
+}): Promise<void> {
+  if (args.changes.length === 0) return;
+
+  const storable = args.changes.filter((c) => c.alarmId.length <= MAX_ALARM_ID_LENGTH);
+  try {
+    await insertAlarmChanges(
+      storable.map((c) => ({
+        openId: args.monitoredOpenId,
+        ...c,
+        changedByOpenId: args.authorOpenId,
+      }))
+    );
+  } catch (err) {
+    console.warn("[AlarmChanges] falha ao registrar mudanças do cuidador:", safeErr(err));
+  }
+
+  void pushToCaregivers(args.monitoredOpenId, args.personName, args.changes, {
+    openId: args.authorOpenId,
+    name: args.authorName,
+  }).catch((err) => {
+    console.warn("[AlarmChanges] falha ao avisar os outros cuidadores:", safeErr(err));
   });
 }

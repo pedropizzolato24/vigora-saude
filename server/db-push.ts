@@ -4,7 +4,7 @@
  * Persistence for Expo push tokens. Tokens are keyed by account `openId` so the
  * monitoring job can resolve every device a linked caregiver is signed in on.
  */
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, count, eq, inArray, or } from "drizzle-orm";
 import { getDb } from "./db";
 import { pushTokens } from "../drizzle/schema";
 
@@ -86,6 +86,33 @@ export async function getPushTokensForOpenIds(openIds: string[]) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(pushTokens).where(inArray(pushTokens.openId, openIds));
+}
+
+/**
+ * Token + dono de cada token (getPushTokensForOpenIds devolve a linha inteira;
+ * aqui só o que o ping diário precisa para saber de QUEM foi o token que morreu).
+ */
+export async function getPushTokensWithOwner(
+  openIds: string[]
+): Promise<{ token: string; openId: string }[]> {
+  if (openIds.length === 0) return [];
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({ token: pushTokens.token, openId: pushTokens.openId })
+    .from(pushTokens)
+    .where(inArray(pushTokens.openId, openIds));
+}
+
+/** Quantos tokens a conta tem. Zero depois de um DeviceNotRegistered = app removido. */
+export async function countPushTokens(openId: string): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const rows = await db
+    .select({ n: count() })
+    .from(pushTokens)
+    .where(eq(pushTokens.openId, openId));
+  return Number(rows[0]?.n ?? 0);
 }
 
 /**

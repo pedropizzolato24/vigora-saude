@@ -13,7 +13,7 @@
  * aqui pode assumir formato: item ilegível é ignorado, nunca lança.
  */
 
-export type AlarmChangeType = "deleted" | "disabled" | "rescheduled";
+export type AlarmChangeType = "created" | "deleted" | "disabled" | "rescheduled";
 
 export interface AlarmChange {
   alarmId: string;
@@ -21,6 +21,12 @@ export interface AlarmChange {
   changeType: AlarmChangeType;
   oldTime: string | null;
   newTime: string | null;
+  /**
+   * Quem fez a mudança. O diff do backup (`diffAlarms`) nunca preenche: ali
+   * quem mudou foi o próprio idoso (nulo). Só `recordCaregiverAlarmChanges`
+   * grava o cuidador. `created` também só nasce lá: o backup não anuncia criação.
+   */
+  changedByOpenId?: string | null;
 }
 
 interface AlarmLike {
@@ -133,19 +139,36 @@ function shortName(c: AlarmChange): string {
  */
 export function buildAlarmChangePush(
   personName: string,
-  changes: AlarmChange[]
+  changes: AlarmChange[],
+  actorName?: string
 ): { title: string; body: string } | null {
   if (changes.length === 0) return null;
 
   if (changes.length === 1) {
     const c = changes[0];
     const name = shortName(c);
+    const timeChanged = !!c.oldTime && !!c.newTime && c.oldTime !== c.newTime;
     let body: string;
-    if (c.changeType === "deleted") {
+    if (actorName) {
+      // Mudança feita por um cuidador: o texto diz quem fez e de quem é o lembrete.
+      if (c.changeType === "created") {
+        body = `${actorName} criou o lembrete "${name}"${c.newTime ? ` (${c.newTime})` : ""} para ${personName}.`;
+      } else if (c.changeType === "deleted") {
+        body = `${actorName} apagou o lembrete "${name}" de ${personName}.`;
+      } else if (c.changeType === "disabled") {
+        body = `${actorName} desativou o lembrete "${name}" de ${personName}.`;
+      } else if (timeChanged) {
+        body = `${actorName} mudou o horário de "${name}" de ${personName} para ${c.newTime}.`;
+      } else {
+        body = `${actorName} mudou os dias do lembrete "${name}" de ${personName}.`;
+      }
+    } else if (c.changeType === "created") {
+      body = `${personName} criou o lembrete "${name}".`;
+    } else if (c.changeType === "deleted") {
       body = `${personName} excluiu o lembrete "${name}".`;
     } else if (c.changeType === "disabled") {
       body = `${personName} desativou o lembrete "${name}".`;
-    } else if (c.oldTime && c.newTime && c.oldTime !== c.newTime) {
+    } else if (timeChanged) {
       body = `${personName} mudou o horário de "${name}" para ${c.newTime}.`;
     } else {
       body = `${personName} mudou os dias do lembrete "${name}".`;
@@ -158,9 +181,12 @@ export function buildAlarmChangePush(
     .map((c) => `"${shortName(c)}"`)
     .join(", ");
   const rest = changes.length - 2;
+  const tail = `${shown}${rest > 0 ? ` e mais ${rest}` : ""}`;
   return {
     title: "Lembretes alterados — Vigora",
-    body: `${personName} alterou ${changes.length} lembretes: ${shown}${rest > 0 ? ` e mais ${rest}` : ""}.`,
+    body: actorName
+      ? `${actorName} alterou ${changes.length} lembretes de ${personName}: ${tail}.`
+      : `${personName} alterou ${changes.length} lembretes: ${tail}.`,
   };
 }
 

@@ -335,6 +335,26 @@ export const linkRouter = router({
       getRecentAlarmChanges(link.monitoredOpenId, 20),
     ]);
 
+    // Quem fez cada mudança: null = a própria pessoa (veio do backup), "Você" =
+    // este cuidador, senão o nome do outro cuidador (uma consulta por autor
+    // distinto). Falha ao consultar um nome nunca derruba a lista.
+    const authorIds = [
+      ...new Set(
+        changes
+          .map((c) => c.changedByOpenId)
+          .filter((id): id is string => !!id && id !== ctx.user.openId)
+      ),
+    ];
+    const authorNames = new Map<string, string>();
+    await Promise.all(
+      authorIds.map(async (id) => {
+        const author = await getUserByOpenId(id).catch(() => undefined);
+        authorNames.set(id, author?.name?.trim() || "Outro cuidador");
+      })
+    );
+    const changedByName = (id: string | null | undefined): string | null =>
+      !id ? null : id === ctx.user.openId ? "Você" : (authorNames.get(id) ?? "Outro cuidador");
+
     return {
       events: events.map((e) => ({
         alarmId: e.alarmId,
@@ -357,6 +377,8 @@ export const linkRouter = router({
         changeType: c.changeType,
         oldTime: c.oldTime,
         newTime: c.newTime,
+        changedByOpenId: c.changedByOpenId ?? null,
+        changedByName: changedByName(c.changedByOpenId),
         createdAt: c.createdAt.getTime(),
       })),
     };
