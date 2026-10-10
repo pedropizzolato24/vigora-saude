@@ -20,11 +20,20 @@
  * Logs de erro só com nome+código: a mensagem de um erro do drizzle traz os
  * parâmetros da query (openId, nome do lembrete).
  */
+import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { MANAGEMENT_REQUEST_TTL_DAYS, type ManagedAlarm } from "../shared/managed-alarm.js";
-import { pickPersonName } from "./_core/alarm-diff";
-import { sanitizeAcceptedList } from "./_core/managed-alarm-schema";
+import {
+  MANAGED_ALARMS_MAX,
+  MANAGEMENT_REQUEST_TTL_DAYS,
+  type ManagedAlarm,
+} from "../shared/managed-alarm.js";
+import { diffAlarms, pickPersonName, type AlarmChange } from "./_core/alarm-diff";
+import {
+  managedAlarmInputSchema,
+  normalizeManagedAlarm,
+  sanitizeAcceptedList,
+} from "./_core/managed-alarm-schema";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getUserByOpenId, getUserData } from "./db";
 import {
@@ -35,9 +44,15 @@ import {
   getOpenManagementForMonitored,
 } from "./db-alarm-management";
 import { getActiveCaregiversForMonitored, getActiveLinkForCaregiver } from "./db-links";
-import { getManagedList } from "./db-managed-alarm-list";
+import { recordCaregiverAlarmChanges } from "./alarm-changes";
+import {
+  ManagedListConflictError,
+  getManagedList,
+  recordManagedAck,
+  writeManagedList,
+} from "./db-managed-alarm-list";
 import { getPushTokensForOpenIds } from "./db-push";
-import { sendExpoPush } from "./push";
+import { sendExpoDataPush, sendExpoPush } from "./push";
 import type { User } from "../drizzle/schema";
 
 // --- Utilitários locais --------------------------------------------------------------
@@ -65,6 +80,9 @@ function makeRateLimiter(windowMs: number, limit: number) {
 }
 
 const isRequestRateLimited = makeRateLimiter(60_000, 5);
+
+/** 30 gravações por minuto por cuidador (spec 4.2). */
+const isWriteRateLimited = makeRateLimiter(60_000, 30);
 
 /** Nome do cuidador nos textos de push. */
 function caregiverNameOf(user: { name?: string | null } | null | undefined): string {
@@ -137,6 +155,110 @@ async function getMyOpenAgreement(user: User, monitoredOpenId: string) {
     });
   }
   return open;
+}
+
+/**
+ * Para gravar a lista: existe acordo ATIVO do idoso do vínculo E o gerente é
+ * este cuidador. Qualquer outra situação (sem acordo, pendente, encerrado, de
+ * outro cuidador) é FORBIDDEN, como pede a spec 4.2.
+ */
+async function requireMyActiveAgreement(user: User, monitoredOpenId: string) {
+  const open = await getOpenManagementForMonitored(monitoredOpenId);
+  if (!open || open.status !== "active" || open.caregiverOpenId !== user.openId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Você não cuida dos alarmes desta pessoa.",
+    });
+  }
+  return open;
+}
+
+const STALE_LIST_MESSAGE = "A lista mudou. Confira de novo.";
+
+/**
+ * Lê a lista do idoso e confere a versão que o cuidador estava vendo. O
+ * `UPDATE … WHERE version = baseVersion` do banco (commitList) cobre a corrida
+ * entre a leitura e a gravação.
+ */
+async function loadListForWrite(monitoredOpenId: string, baseVersion: number): Promise<ManagedAlarm[]> {
+  const row = await getManagedList(monitoredOpenId);
+  if (!row) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Não encontramos os alarmes desta pessoa." });
+  }
+  if (row.version !== baseVersion) {
+    throw new TRPCError({ code: "CONFLICT", message: STALE_LIST_MESSAGE });
+  }
+  return row.alarms as ManagedAlarm[];
+}
+
+/**
+ * Grava a lista nova e dispara o que vem depois SEM segurar a resposta: o push
+ * silencioso ao idoso (só tipo e versão — nenhum alarme viaja no push) e o
+ * registro da mudança com o cuidador como autor (que avisa os OUTROS cuidadores).
+ */
+async function commitList(args: {
+  caregiver: User;
+  monitoredOpenId: string;
+  baseVersion: number;
+  next: ManagedAlarm[];
+  changes: AlarmChange[];
+}): Promise<{ version: number }> {
+  let version: number;
+  try {
+    version = await writeManagedList(args.monitoredOpenId, args.baseVersion, args.next, args.caregiver.openId);
+  } catch (err) {
+    if (err instanceof ManagedListConflictError) {
+      throw new TRPCError({ code: "CONFLICT", message: STALE_LIST_MESSAGE });
+    }
+    throw err;
+  }
+
+  void (async () => {
+    const tokens = await getPushTokensForOpenIds([args.monitoredOpenId]);
+    if (tokens.length === 0) return;
+    // Não apaga token com DeviceNotRegistered aqui: quem decide "app removido"
+    // é a verificação diária (Tarefa 10), que também olha os recibos.
+    await sendExpoDataPush(
+      tokens.map((t) => t.token),
+      { type: "managed_alarms_updated", version }
+    );
+  })().catch((err) => {
+    console.warn("[ManagedAlarms] push silencioso falhou:", safeErr(err));
+  });
+
+  if (args.changes.length > 0) {
+    void (async () => {
+      const [data, monitored] = await Promise.all([
+        getUserData(args.monitoredOpenId),
+        getUserByOpenId(args.monitoredOpenId),
+      ]);
+      await recordCaregiverAlarmChanges({
+        monitoredOpenId: args.monitoredOpenId,
+        authorOpenId: args.caregiver.openId,
+        authorName: caregiverNameOf(args.caregiver),
+        personName: pickPersonName(data?.anamnesis, monitored?.name),
+        changes: args.changes,
+      });
+    })().catch((err) => {
+      console.warn("[ManagedAlarms] registro da mudança falhou:", safeErr(err));
+    });
+  }
+
+  return { version };
+}
+
+/** Entrada comum das três gravações: autoriza, limita e confere a versão. */
+async function openWrite(user: User, baseVersion: number) {
+  const link = await requireCaregiverLink(user);
+  await requireMyActiveAgreement(user, link.monitoredOpenId);
+  if (isWriteRateLimited(user.openId)) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: "Muitas mudanças em pouco tempo. Aguarde um instante.",
+    });
+  }
+  const current = await loadListForWrite(link.monitoredOpenId, baseVersion);
+  return { monitoredOpenId: link.monitoredOpenId, current };
 }
 
 export interface MineResponse {
@@ -387,4 +509,104 @@ export const managedAlarmsRouter = router({
     });
     return { success: true } as const;
   }),
+
+  // =================== LISTA GERENCIADA ===================
+
+  /** Cuidador do acordo: cria um alarme. O id é um UUID gerado aqui (o AlarmKit do iOS exige UUID). */
+  createAlarm: protectedProcedure
+    .input(z.object({ baseVersion: z.number().int().nonnegative(), alarm: managedAlarmInputSchema }))
+    .mutation(async ({ ctx, input }) => {
+      const { monitoredOpenId, current } = await openWrite(ctx.user, input.baseVersion);
+      if (current.length >= MANAGED_ALARMS_MAX) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Limite de ${MANAGED_ALARMS_MAX} alarmes atingido.`,
+        });
+      }
+      const alarm = normalizeManagedAlarm(input.alarm, randomUUID());
+      return commitList({
+        caregiver: ctx.user,
+        monitoredOpenId,
+        baseVersion: input.baseVersion,
+        next: [...current, alarm],
+        changes: [
+          {
+            alarmId: alarm.id,
+            alarmDescription: alarm.description,
+            changeType: "created",
+            oldTime: null,
+            newTime: alarm.time,
+          },
+        ],
+      });
+    }),
+
+  /** Cuidador do acordo: edita um alarme (inclui ligar/desligar). O id procurado é só da lista do idoso do vínculo. */
+  updateAlarm: protectedProcedure
+    .input(
+      z.object({
+        baseVersion: z.number().int().nonnegative(),
+        alarmId: z.string().min(1).max(64),
+        alarm: managedAlarmInputSchema,
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { monitoredOpenId, current } = await openWrite(ctx.user, input.baseVersion);
+      if (!current.some((a) => a.id === input.alarmId)) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Alarme não encontrado." });
+      }
+      const updated = normalizeManagedAlarm(input.alarm, input.alarmId);
+      const next = current.map((a) => (a.id === input.alarmId ? updated : a));
+      return commitList({
+        caregiver: ctx.user,
+        monitoredOpenId,
+        baseVersion: input.baseVersion,
+        next,
+        changes: diffAlarms(current, next),
+      });
+    }),
+
+  /** Cuidador do acordo: apaga um alarme. */
+  deleteAlarm: protectedProcedure
+    .input(
+      z.object({
+        baseVersion: z.number().int().nonnegative(),
+        alarmId: z.string().min(1).max(64),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { monitoredOpenId, current } = await openWrite(ctx.user, input.baseVersion);
+      if (!current.some((a) => a.id === input.alarmId)) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Alarme não encontrado." });
+      }
+      const next = current.filter((a) => a.id !== input.alarmId);
+      return commitList({
+        caregiver: ctx.user,
+        monitoredOpenId,
+        baseVersion: input.baseVersion,
+        next,
+        changes: diffAlarms(current, next),
+      });
+    }),
+
+  /**
+   * Idoso: o celular aplicou a versão `version` da lista e confirma (com os ids
+   * que o sistema recusou agendar). O servidor só passa a cobrar no dead man's
+   * switch o que foi confirmado. Versão velha, repetida ou inexistente é
+   * ignorada (`recorded: false`) — nunca volta a confirmação para trás.
+   */
+  ack: protectedProcedure
+    .input(
+      z.object({
+        version: z.number().int().positive(),
+        failedAlarmIds: z.array(z.string().min(1).max(64)).max(MANAGED_ALARMS_MAX),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireMonitored(ctx.user);
+      const recorded = await recordManagedAck(ctx.user.openId, input.version, [
+        ...new Set(input.failedAlarmIds),
+      ]);
+      return { recorded };
+    }),
 });
