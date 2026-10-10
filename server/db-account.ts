@@ -56,13 +56,17 @@ export async function deleteAccountData(openId: string): Promise<void> {
 
     // Gerenciamento de alarmes (Fase 4). Se a conta apagada é a CUIDADORA de um
     // acordo ativo, a lista gerenciada do idoso sai junto: sem isso ela ficaria
-    // órfã e o servidor seguiria cobrando os alarmes dela.
+    // órfã e o servidor seguiria cobrando os alarmes dela. A leitura TRAVA as linhas
+    // (FOR UPDATE, como todo caminho de db-alarm-management.ts): se o idoso está
+    // aceitando o pedido desta conta agora, a exclusão espera a ativação commitar e
+    // a enxerga; sem a trava ela leria "nenhum acordo ativo" e deixaria a lista órfã.
     const managedByThisAccount = await tx
       .select({ monitoredOpenId: alarmManagement.monitoredOpenId })
       .from(alarmManagement)
       .where(
         and(eq(alarmManagement.caregiverOpenId, openId), eq(alarmManagement.status, "active")),
-      );
+      )
+      .for("update");
     await tx
       .delete(managedAlarmLists)
       .where(

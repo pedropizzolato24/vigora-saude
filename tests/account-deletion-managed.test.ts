@@ -17,12 +17,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const dialect = new MySqlDialect();
 let activeManaged: Array<{ monitoredOpenId: string }> = [];
 const deletes: Array<{ table: string; sql: string; params: unknown[] }> = [];
+let lockModes: unknown[] = [];
 
 const tx = {
   select: () => {
     const chain: any = {
       from: () => chain,
-      where: () => Promise.resolve(activeManaged),
+      where: () => ({
+        for: (mode: unknown) => {
+          lockModes.push(mode);
+          return Promise.resolve(activeManaged);
+        },
+        // leitura sem trava: o teste de "for update" abaixo falha se voltar a ser assim
+        then: (res: (v: unknown) => unknown) => Promise.resolve(activeManaged).then(res),
+      }),
     };
     return chain;
   },
@@ -47,6 +55,7 @@ const deleteOf = (table: string) => deletes.find((d) => d.table === table);
 beforeEach(() => {
   activeManaged = [];
   deletes.length = 0;
+  lockModes = [];
 });
 
 describe("deleteAccountData — acordo e lista gerenciada", () => {
@@ -76,6 +85,12 @@ describe("deleteAccountData — acordo e lista gerenciada", () => {
 
     expect(deleteOf("managed_alarm_lists")!.params).toEqual(["ana", "maria"]);
     expect(deleteOf("alarm_management")!.params).toEqual(["ana", "ana"]);
+  });
+
+  it("a consulta do acordo ativo é uma leitura travada (FOR UPDATE), para esperar uma ativação em curso", async () => {
+    await deleteAccountData("ana");
+
+    expect(lockModes).toEqual(["update"]);
   });
 
   it("a lista é apagada ANTES do acordo (a consulta do acordo ativo precisa ainda existir)", async () => {
