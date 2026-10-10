@@ -12,6 +12,7 @@ import { normalizeBrPhone } from "./phone-auth";
 import { monitoringRouter } from "./routers-monitoring";
 import { linkRouter } from "./routers-links";
 import { pushRouter } from "./routers-push";
+import { managedAlarmsRouter } from "./routers-managed-alarms";
 import { getUserByOpenId, getUserData, upsertUser, upsertUserData } from "./db";
 import { deleteAccountData } from "./db-account";
 import { getAccountLiveness, getAlarmEventHistory, getWarningHistory } from "./db-monitoring";
@@ -407,6 +408,9 @@ export const appRouter = router({
 
   // Expo push-token registration (real-time caregiver alerts)
   push: pushRouter,
+
+  // Modo gerenciado: o cuidador cuida dos alarmes do idoso (Fase 4)
+  managedAlarms: managedAlarmsRouter,
 
   // WhatsApp emergency escalation routes
   whatsapp: router({

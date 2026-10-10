@@ -24,6 +24,7 @@ import { getAccountLiveness } from "./db-monitoring";
 import { getRecentAlarmChanges } from "./db-alarm-changes";
 import { getPushTokensForOpenIds } from "./db-push";
 import { sendExpoPush } from "./push";
+import { endManagement, getOpenManagementForMonitored } from "./db-alarm-management";
 import { pickPersonName } from "./_core/alarm-diff";
 import {
   consumeInviteByCode,
@@ -131,6 +132,57 @@ async function notifyLinkRevoked(caregiverOpenId: string, monitoredOpenId: strin
     const e = err as { name?: string; code?: string; cause?: { code?: string } } | null;
     console.warn(
       "[Links] push de desvínculo falhou:",
+      `${e?.name ?? "Error"} ${e?.cause?.code ?? e?.code ?? ""}`.trim()
+    );
+  }
+}
+
+/**
+ * Desfazer o vínculo encerra o acordo de gerenciamento aberto entre o par
+ * (`unlinked`). Só encerra se o acordo for DO cuidador que saiu: um colega
+ * vinculado que sai, ou o idoso removendo quem não é o gerente, não mexe no
+ * acordo dos outros. Se quem saiu foi o gerente com acordo ATIVO, o celular do
+ * idoso recebe a notificação visível para a trava das listas sair logo.
+ *
+ * Best-effort: o desvínculo (direito do titular, LGPD Art. 18) já foi feito e
+ * não pode falhar por causa disto. Se falhar, `managedAlarms.mine` se cura na
+ * próxima abertura do app do idoso. Log só com nome e código do erro.
+ */
+async function endManagementOnUnlink(
+  caregiverOpenId: string,
+  monitoredOpenId: string,
+  revokedBy: "caregiver" | "monitored",
+  caregiverName?: string | null
+): Promise<void> {
+  try {
+    const open = await getOpenManagementForMonitored(monitoredOpenId);
+    if (!open || open.caregiverOpenId !== caregiverOpenId) return;
+    await endManagement(open.id, "unlinked");
+
+    if (revokedBy === "caregiver" && open.status === "active") {
+      void (async () => {
+        const tokens = await getPushTokensForOpenIds([monitoredOpenId]);
+        if (tokens.length === 0) return;
+        await sendExpoPush(
+          tokens.map((t) => t.token),
+          {
+            title: "Alarmes",
+            body: `${caregiverName?.trim() || "Seu cuidador"} parou de cuidar dos seus alarmes.`,
+            data: { type: "management_ended" },
+          }
+        );
+      })().catch((err) => {
+        const e = err as { name?: string; code?: string; cause?: { code?: string } } | null;
+        console.warn(
+          "[Links] aviso de fim do acordo falhou:",
+          `${e?.name ?? "Error"} ${e?.cause?.code ?? e?.code ?? ""}`.trim()
+        );
+      });
+    }
+  } catch (err) {
+    const e = err as { name?: string; code?: string; cause?: { code?: string } } | null;
+    console.warn(
+      "[Links] não foi possível encerrar o acordo de alarmes:",
       `${e?.name ?? "Error"} ${e?.cause?.code ?? e?.code ?? ""}`.trim()
     );
   }
@@ -517,10 +569,12 @@ export const linkRouter = router({
           (c) => c.caregiverOpenId === input.otherOpenId
         );
         await revokeLinkRow(input.otherOpenId, ctx.user.openId);
+        await endManagementOnUnlink(input.otherOpenId, ctx.user.openId, "monitored");
         // Fire-and-forget: o fetch do Expo não tem timeout e não segura a resposta.
         if (wasLinked) void notifyLinkRevoked(input.otherOpenId, ctx.user.openId);
       } else {
         await revokeLinkRow(ctx.user.openId, input.otherOpenId);
+        await endManagementOnUnlink(ctx.user.openId, input.otherOpenId, "caregiver", ctx.user.name);
       }
       return { success: true } as const;
     }),

@@ -33,6 +33,16 @@ vi.mock("../server/db-alarm-changes", () => ({
     },
   ]),
 }));
+vi.mock("../server/db-alarm-management", () => ({
+  getOpenManagementForMonitored: vi.fn(async () => null),
+  getActiveManagementForMonitored: vi.fn(async () => null),
+  getOpenManagementForCaregiver: vi.fn(async () => null),
+  createManagementRequest: vi.fn(),
+  activateManagement: vi.fn(),
+  endManagement: vi.fn(async () => undefined),
+  getExpiredManagementRequests: vi.fn(async () => []),
+  getManagementHistory: vi.fn(async () => []),
+}));
 vi.mock("../server/db-push", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../server/db-push")>()),
   getPushTokensForOpenIds: vi.fn(async () => [{ token: "ExpoTok[cg-1]" }]),
