@@ -20,11 +20,16 @@ vi.mock("../server/alarm-changes", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../server/alarm-changes")>()),
   recordCaregiverAlarmChanges: vi.fn(async () => undefined),
 }));
+vi.mock("../server/db-monitoring", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../server/db-monitoring")>()),
+  touchLiveness: vi.fn(async () => undefined),
+}));
 
 import { appRouter } from "../server/routers";
 import * as push from "../server/push";
 import * as alarmChanges from "../server/alarm-changes";
 import * as listDb from "../server/db-managed-alarm-list";
+import * as dbMonitoring from "../server/db-monitoring";
 import {
   FakeManagedListConflictError,
   flush,
@@ -641,5 +646,24 @@ describe("managedAlarms.ack", () => {
         failedAlarmIds: Array.from({ length: 25 }, (_, i) => `a${i}`),
       })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("o ack dá sinal de vida do aparelho do idoso, mesmo quando é ignorado", async () => {
+    seedActiveAgreement({ caregiverOpenId: "ana" });
+
+    await as("maria").managedAlarms.ack({ version: 1, failedAlarmIds: [] }); // versão já aplicada: ignorado
+    await as("maria").managedAlarms.ack({ version: 99, failedAlarmIds: [] }); // versão inexistente: ignorado
+
+    expect(dbMonitoring.touchLiveness).toHaveBeenCalledTimes(2);
+    expect(dbMonitoring.touchLiveness).toHaveBeenCalledWith("maria");
+  });
+
+  it("o cuidador chamando o ack não dá sinal em nome de ninguém", async () => {
+    seedActiveAgreement({ caregiverOpenId: "ana" });
+
+    await expect(as("ana").managedAlarms.ack({ version: 1, failedAlarmIds: [] })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    expect(dbMonitoring.touchLiveness).not.toHaveBeenCalled();
   });
 });

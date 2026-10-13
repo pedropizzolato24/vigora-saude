@@ -8,6 +8,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { deleteOwnedPushToken, upsertPushToken } from "./db-push";
+import { touchLiveness } from "./db-monitoring";
 
 export const pushRouter = router({
   /**
@@ -32,6 +33,9 @@ export const pushRouter = router({
         platform: input.platform,
         deviceId: input.deviceId,
       });
+      // O token chegar é sinal de vida do aparelho do idoso (e prova que o app
+      // está instalado). Cuidador não tem dead man's switch.
+      if (ctx.user.userType !== "caregiver") await touchLiveness(ctx.user.openId);
       return { success: true } as const;
     }),
 

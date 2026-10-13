@@ -22,6 +22,7 @@ let nextEventId = 1;
 
 vi.mock("../server/db-monitoring", () => ({
   recordHeartbeat: vi.fn(async () => undefined),
+  touchLiveness: vi.fn(async () => undefined),
   getAccountLiveness: vi.fn(async () => null),
   createAlarmEvent: vi.fn(
     async (data: { openId: string; alarmId: string; scheduledAt: Date }) => {

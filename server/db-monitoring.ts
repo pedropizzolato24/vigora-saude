@@ -65,8 +65,48 @@ export async function recordHeartbeat(
         lastDeviceId: meta?.lastDeviceId ?? null,
         ...locationFields,
         ...batteryFields,
+        // Qualquer sinal retoma uma conta pausada pelo dead man's switch.
+        dmsPausedReason: null,
+        dmsPausedAt: null,
+        pauseNoticeSentAt: null,
       },
     });
+}
+
+/**
+ * "O aparelho deu sinal agora", vindo de uma chamada que já aconteceria de
+ * qualquer jeito (backup, evento de alarme, token de push, ack). Renova o
+ * `lastSeenAt` e RETOMA a conta se estava pausada (logout, app removido ou
+ * 48 h sem sinal). Só o essencial: não toca localização, aparelho nem versão —
+ * quem grava esses metadados é o heartbeat.
+ *
+ * NUNCA lança: o sinal é carona de outra chamada e não pode derrubá-la. Erro
+ * vira log só com nome e código (a mensagem de um erro do drizzle traz os
+ * parâmetros da query, inclusive o openId).
+ */
+export async function touchLiveness(openId: string): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const now = new Date();
+    await db
+      .insert(accountLiveness)
+      .values({ openId, lastSeenAt: now })
+      .onDuplicateKeyUpdate({
+        set: {
+          lastSeenAt: now,
+          dmsPausedReason: null,
+          dmsPausedAt: null,
+          pauseNoticeSentAt: null,
+        },
+      });
+  } catch (err) {
+    const e = err as { name?: string; code?: string; cause?: { code?: string } } | null;
+    console.warn(
+      "[Liveness] não foi possível registrar o sinal do aparelho:",
+      `${e?.name ?? "Error"} ${e?.cause?.code ?? e?.code ?? ""}`.trim()
+    );
+  }
 }
 
 /** Linha de liveness da conta (lastSeenAt, localização), ou null. */
@@ -537,4 +577,53 @@ export async function purgeStaleData(now: number = Date.now()): Promise<{
     warningLog: affected(wl),
     locationsCleared: affected(loc),
   };
+}
+
+// --- Pausas do dead man's switch (Fase 4) -------------------------------------
+
+export type DmsPauseReason = "logged_out" | "app_removed" | "no_signal";
+
+function affectedRows(result: unknown): number {
+  const r = result as { affectedRows?: number } | Array<{ affectedRows?: number }> | null;
+  return (Array.isArray(r) ? r[0]?.affectedRows : r?.affectedRows) ?? 0;
+}
+
+/**
+ * Pausa os disparos da conta. Só pausa conta que NÃO está pausada (não troca o
+ * motivo de quem já está) e devolve `true` apenas quando pausou agora.
+ *
+ * Apaga os eventos PENDENTES FUTUROS (o servidor não cobra o que não vai
+ * acontecer). Os que já venceram ficam: seguem a escada normal, porque o alarme
+ * podia ter tocado antes da pausa.
+ *
+ * `pauseNoticeSentAt` zera: cada pausa tem o seu aviso aos cuidadores.
+ */
+export async function pauseDms(openId: string, reason: DmsPauseReason): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const now = new Date();
+
+  // Logout de quem nunca deu sinal não tem linha de liveness; o `set` é um no-op
+  // para não mexer em lastSeenAt de quem já tem.
+  await db
+    .insert(accountLiveness)
+    .values({ openId, lastSeenAt: now })
+    .onDuplicateKeyUpdate({ set: { openId } });
+
+  const claimed = await db
+    .update(accountLiveness)
+    .set({ dmsPausedReason: reason, dmsPausedAt: now, pauseNoticeSentAt: null })
+    .where(and(eq(accountLiveness.openId, openId), isNull(accountLiveness.dmsPausedReason)));
+  if (affectedRows(claimed) === 0) return false;
+
+  await db
+    .delete(alarmEvents)
+    .where(
+      and(
+        eq(alarmEvents.openId, openId),
+        eq(alarmEvents.status, "pending"),
+        gt(alarmEvents.scheduledAt, now)
+      )
+    );
+  return true;
 }

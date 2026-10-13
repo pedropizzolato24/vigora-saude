@@ -51,6 +51,7 @@ import {
   recordManagedAck,
   writeManagedList,
 } from "./db-managed-alarm-list";
+import { touchLiveness } from "./db-monitoring";
 import { getPushTokensForOpenIds } from "./db-push";
 import { sendExpoDataPush, sendExpoPush } from "./push";
 import type { User } from "../drizzle/schema";
@@ -604,6 +605,8 @@ export const managedAlarmsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       requireMonitored(ctx.user);
+      // O celular confirmar é sinal de vida, mesmo quando o ack é ignorado.
+      await touchLiveness(ctx.user.openId);
       const recorded = await recordManagedAck(ctx.user.openId, input.version, [
         ...new Set(input.failedAlarmIds),
       ]);
