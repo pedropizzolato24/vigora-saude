@@ -73,7 +73,7 @@ async function buildAuthHeaders(): Promise<Record<string, string> | null> {
   return headers;
 }
 
-async function trpcMutation(
+export async function trpcMutation(
   procedure: string,
   input: unknown
 ): Promise<any> {
@@ -134,7 +134,7 @@ async function trpcMutation(
   return null;
 }
 
-async function trpcQuery(
+export async function trpcQuery(
   procedure: string,
   input: unknown
 ): Promise<any> {

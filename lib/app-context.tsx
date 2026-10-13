@@ -112,6 +112,15 @@ export interface Ad {
   active: boolean;
 }
 
+/**
+ * Acordo de gerenciamento ativo: um cuidador cuida dos alarmes desta pessoa.
+ * Só existe no aparelho (persistido com o resto do estado) e NÃO vai ao backup:
+ * a fonte da verdade é o servidor (`managedAlarms.mine`).
+ * `since` identifica o acordo (um acordo novo recomeça na versão 1);
+ * `appliedVersion` é a última versão da lista que o servidor confirmou receber.
+ */
+export type ManagementInfo = { caregiverName: string; since: number; appliedVersion: number };
+
 export interface AppState {
   alarms: Alarm[];
   emergencyContacts: EmergencyContact[];
@@ -125,6 +134,8 @@ export interface AppState {
   isLoading: boolean;
   /** Epoch ms of the last local data change. Drives cloud last-write-wins. */
   dataUpdatedAt: number;
+  /** Não nulo = um cuidador gerencia os alarmes: listas só de leitura. */
+  management: ManagementInfo | null;
 }
 
 // --- Actions -----------------------------------------------------------------
@@ -146,6 +157,9 @@ type AppAction =
   | { type: 'RESET_MISSED_ALARM' }
   | { type: 'UPDATE_PROFILE'; payload: Partial<UserProfile> }
   | { type: 'CLEAR_ALL_DATA' }
+  /** Modo gerenciado: a lista do servidor passa a ser a lista local (já agendada). */
+  | { type: 'REPLACE_ALARMS'; payload: Alarm[] }
+  | { type: 'SET_MANAGEMENT'; payload: ManagementInfo | null }
   /** Troca de conta/logout: volta ao estado inicial (isLoading: true) antes de
    *  carregar o blob da nova conta — LOAD_STATE faz merge, não substitui. */
   | { type: 'RESET_FOR_ACCOUNT_SWITCH' };
@@ -187,6 +201,7 @@ const initialState: AppState = {
   },
   isLoading: true,
   dataUpdatedAt: 0,
+  management: null,
 };
 
 // --- Reducer -----------------------------------------------------------------
@@ -196,6 +211,7 @@ const DATA_ACTIONS = new Set<AppAction['type']>([
   'ADD_ALARM',
   'UPDATE_ALARM',
   'DELETE_ALARM',
+  'REPLACE_ALARMS',
   'ADD_CONTACT',
   'UPDATE_CONTACT',
   'DELETE_CONTACT',
@@ -251,6 +267,17 @@ function baseReducer(state: AppState, action: AppAction): AppState {
         ...state,
         alarms: state.alarms.filter((a) => a.id !== action.payload),
       };
+
+    case 'REPLACE_ALARMS':
+      // Sem o teto do ADD_ALARM: o servidor já limita a lista, e cortar aqui
+      // descartaria um alarme em silêncio.
+      return {
+        ...state,
+        alarms: [...action.payload].sort((a, b) => a.time.localeCompare(b.time)),
+      };
+
+    case 'SET_MANAGEMENT':
+      return { ...state, management: action.payload };
 
     case 'ADD_CONTACT':
       return {
