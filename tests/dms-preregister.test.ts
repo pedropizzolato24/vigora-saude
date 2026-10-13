@@ -34,7 +34,8 @@ const alarm = (over: Record<string, unknown> = {}) => ({
 const candidate = (over: Partial<PreRegisterCandidate> = {}): PreRegisterCandidate => ({
   openId: "maria",
   alarms: [],
-  timezone: null,
+  timezone: "America/Sao_Paulo",
+  eventTimezone: null,
   managed: null,
   ...over,
 });
@@ -83,13 +84,57 @@ describe("conta comum: alarmes do backup", () => {
     expect((registered()[0].scheduledAt as Date).toISOString()).toBe("2026-10-10T13:00:00.000Z");
   });
 
-  it("sem fuso conhecido usa America/Sao_Paulo", async () => {
-    withCandidates(candidate({ alarms: [alarm()] }));
+  it("fuso da conta nulo: usa o fuso do evento mais recente do aparelho (Manaus, UTC-4)", async () => {
+    withCandidates(candidate({ timezone: null, eventTimezone: "America/Manaus", alarms: [alarm()] }));
 
     await runPreRegistration(NOW);
 
-    expect((registered()[0].scheduledAt as Date).toISOString()).toBe("2026-10-10T11:00:00.000Z");
-    expect(registered()[0].timezone).toBe("America/Sao_Paulo");
+    // 08:00 em Manaus = 12:00 UTC (não 11:00Z, que acusaria a pessoa antes do alarme tocar).
+    expect((registered()[0].scheduledAt as Date).toISOString()).toBe("2026-10-10T12:00:00.000Z");
+    expect(registered()[0].timezone).toBe("America/Manaus");
+  });
+
+  it("o fuso da conta vale mais que o do evento", async () => {
+    withCandidates(
+      candidate({ timezone: "America/Rio_Branco", eventTimezone: "America/Manaus", alarms: [alarm()] })
+    );
+
+    await runPreRegistration(NOW);
+
+    expect((registered()[0].scheduledAt as Date).toISOString()).toBe("2026-10-10T13:00:00.000Z");
+  });
+
+  it("sem fuso na conta nem em evento: PULA a conta, sem evento e sem erro", async () => {
+    withCandidates(
+      candidate({ timezone: null, alarms: [alarm()] }),
+      candidate({ openId: "joao", timezone: null, eventTimezone: "America/Manaus", alarms: [alarm()] })
+    );
+
+    await expect(runPreRegistration(NOW)).resolves.toEqual({ registered: 1 });
+
+    expect(registered().map((e) => e.openId)).toEqual(["joao"]);
+  });
+
+  it("fuso do evento inválido também pula a conta", async () => {
+    withCandidates(candidate({ timezone: null, eventTimezone: "Marte/Fobos", alarms: [alarm()] }));
+
+    await expect(runPreRegistration(NOW)).resolves.toEqual({ registered: 0 });
+
+    expect(db.ensureServerAlarmEvent).not.toHaveBeenCalled();
+  });
+
+  it("conta gerenciada sem fuso nenhum é pulada, mas o evento do alarme que falhou ainda é apagado", async () => {
+    withCandidates(
+      candidate({
+        timezone: null,
+        managed: { appliedAlarms: [alarm({ id: "ok" }), alarm({ id: "falhou" })], failedAlarmIds: ["falhou"] },
+      })
+    );
+
+    await expect(runPreRegistration(NOW)).resolves.toEqual({ registered: 0 });
+
+    expect(db.ensureServerAlarmEvent).not.toHaveBeenCalled();
+    expect(db.deleteFuturePendingEvents).toHaveBeenCalledWith("maria", ["falhou"], NOW);
   });
 
   it("fuso inválido guardado na conta não derruba: usa São Paulo", async () => {
@@ -347,10 +392,12 @@ describe("isolamento de falhas", () => {
 });
 
 describe("alarmsToCharge e resolveTimeZone (funções puras)", () => {
-  it("resolveTimeZone: válido passa, nulo e inválido caem em São Paulo", () => {
-    expect(resolveTimeZone("Europe/Lisbon")).toBe("Europe/Lisbon");
-    expect(resolveTimeZone(null)).toBe("America/Sao_Paulo");
-    expect(resolveTimeZone("Marte/Fobos")).toBe("America/Sao_Paulo");
+  it("resolveTimeZone: conta > evento; inválido da conta cai em São Paulo; sem nenhum, null", () => {
+    expect(resolveTimeZone("Europe/Lisbon", "America/Manaus")).toBe("Europe/Lisbon");
+    expect(resolveTimeZone(null, "America/Manaus")).toBe("America/Manaus");
+    expect(resolveTimeZone("Marte/Fobos", "America/Manaus")).toBe("America/Sao_Paulo");
+    expect(resolveTimeZone(null, null)).toBeNull();
+    expect(resolveTimeZone(null, "Marte/Fobos")).toBeNull();
   });
 
   it("descarta id vazio, id com mais de 64 caracteres e item que não é objeto", () => {

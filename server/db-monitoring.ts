@@ -8,7 +8,7 @@
  *
  * Handles: account liveness (heartbeat), alarm events, warning log, retention.
  */
-import { and, desc, eq, gt, gte, inArray, isNull, lt, lte, ne, or } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import { pickPendingEvent } from "./_core/pick-pending-event";
 import { LEGACY_CHECKIN_ALARM_ID, warningAnchor } from "./_core/event-kind";
@@ -643,7 +643,13 @@ export async function pauseDms(openId: string, reason: DmsPauseReason): Promise<
 export type PreRegisterCandidate = {
   openId: string;
   alarms: unknown;
+  /** `user_data.timezone`: fica nulo até o app novo mandar o fuso. */
   timezone: string | null;
+  /**
+   * Fuso do evento mais recente da conta que tem fuso (o aparelho o grava desde
+   * a migração 0013). Segunda fonte quando `timezone` é nulo.
+   */
+  eventTimezone: string | null;
   managed: { appliedAlarms: unknown; failedAlarmIds: unknown } | null;
 };
 
@@ -659,6 +665,7 @@ export async function getPreRegisterCandidates(now: Date): Promise<PreRegisterCa
       openId: accountLiveness.openId,
       alarms: userData.alarms,
       timezone: userData.timezone,
+      eventTimezone: sql<string | null>`(select ${alarmEvents.timezone} from ${alarmEvents} where ${alarmEvents.openId} = ${accountLiveness.openId} and ${alarmEvents.timezone} is not null order by ${alarmEvents.id} desc limit 1)`,
       managedOpenId: managedAlarmLists.monitoredOpenId,
       appliedAlarms: managedAlarmLists.appliedAlarms,
       failedAlarmIds: managedAlarmLists.failedAlarmIds,
@@ -679,6 +686,7 @@ export async function getPreRegisterCandidates(now: Date): Promise<PreRegisterCa
     openId: r.openId,
     alarms: r.alarms ?? null,
     timezone: r.timezone ?? null,
+    eventTimezone: r.eventTimezone ?? null,
     managed: r.managedOpenId
       ? { appliedAlarms: r.appliedAlarms, failedAlarmIds: r.failedAlarmIds }
       : null,
@@ -717,10 +725,12 @@ export async function findEventNear(
 }
 
 /**
- * Registro de disparo feito PELO SERVIDOR. Antes de criar, confere a janela de
- * `findEventNear`; criar mesmo é o `createAlarmEvent` de sempre (idempotente, um
- * pendente futuro por alarme). Fica numa função à parte para não mudar a ordem
- * das consultas do `createAlarmEvent`, de que os testes dependem.
+ * Registro de disparo feito PELO SERVIDOR. O servidor nunca move um evento que
+ * já existe (o do celular, com o horário e o fuso reais, vale mais que o palpite
+ * do servidor): não cria se há evento do alarme na janela de `findEventNear` nem
+ * se há QUALQUER pendente futuro do alarme. Só então vem o `createAlarmEvent` de
+ * sempre. Fica numa função à parte para não mudar a ordem das consultas do
+ * `createAlarmEvent`, de que os testes dependem.
  */
 export async function ensureServerAlarmEvent(
   data: InsertAlarmEvent,
@@ -729,6 +739,21 @@ export async function ensureServerAlarmEvent(
   if (await findEventNear(data.openId, data.alarmId, data.scheduledAt as Date, windowMinutes)) {
     return "exists";
   }
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const futurePending = await db
+    .select({ id: alarmEvents.id })
+    .from(alarmEvents)
+    .where(
+      and(
+        eq(alarmEvents.openId, data.openId),
+        eq(alarmEvents.alarmId, data.alarmId),
+        eq(alarmEvents.status, "pending"),
+        gt(alarmEvents.scheduledAt, new Date())
+      )
+    )
+    .limit(1);
+  if (futurePending.length > 0) return "exists";
   await createAlarmEvent(data);
   return "created";
 }

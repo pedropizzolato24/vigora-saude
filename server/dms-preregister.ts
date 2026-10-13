@@ -90,20 +90,38 @@ export function alarmsToCharge(candidate: PreRegisterCandidate): ChargeableAlarm
   return readEnabledAlarms(candidate.alarms);
 }
 
-/**
- * O fuso vem do aparelho (entrada não confiável): nome inválido faz o Intl
- * lançar RangeError, e isso derrubaria o pré-registro de uma conta inteira.
- */
-export function resolveTimeZone(timeZone: string | null): string {
-  if (!timeZone) return DEFAULT_TIME_ZONE;
+function isValidTimeZone(timeZone: string): boolean {
   try {
     new Intl.DateTimeFormat("pt-BR", { timeZone });
-    return timeZone;
+    return true;
   } catch {
+    return false;
+  }
+}
+
+/**
+ * Fuso em que o servidor calcula o disparo, ou `null` para PULAR a conta.
+ *
+ * O fuso vem do aparelho (entrada não confiável): nome inválido faz o Intl
+ * lançar RangeError, e isso derrubaria o pré-registro de uma conta inteira.
+ *
+ *  1. `user_data.timezone`; se estiver preenchido mas inválido, São Paulo;
+ *  2. senão o fuso do evento mais recente da conta (o aparelho o grava);
+ *  3. senão null. Chutar São Paulo para quem está em Manaus registraria o
+ *     disparo uma hora antes de o alarme tocar e acusaria a pessoa à toa.
+ */
+export function resolveTimeZone(
+  accountTimeZone: string | null,
+  eventTimeZone: string | null = null
+): string | null {
+  if (accountTimeZone) {
+    if (isValidTimeZone(accountTimeZone)) return accountTimeZone;
     // Sem o valor no log: é texto vindo do cliente.
     console.warn("[PreRegistro] fuso inválido guardado na conta — usando o padrão");
     return DEFAULT_TIME_ZONE;
   }
+  if (eventTimeZone && isValidTimeZone(eventTimeZone)) return eventTimeZone;
+  return null;
 }
 
 export async function runPreRegistration(now: Date): Promise<{ registered: number }> {
@@ -111,14 +129,16 @@ export async function runPreRegistration(now: Date): Promise<{ registered: numbe
   let registered = 0;
 
   const failedAccounts = await runEach(candidates, "Pré-registro de conta", async (account) => {
-    const timeZone = resolveTimeZone(account.timezone);
-
     // Alarme que o celular não conseguiu agendar não é cobrado, e o evento que
     // ele registrou antes da mudança também sai.
     if (account.managed) {
       const failedIds = readIds(account.managed.failedAlarmIds);
       if (failedIds.length > 0) await deleteFuturePendingEvents(account.openId, failedIds, now);
     }
+
+    // Sem fuso conhecido o servidor não adivinha: o próprio celular registra.
+    const timeZone = resolveTimeZone(account.timezone, account.eventTimezone);
+    if (!timeZone) return;
 
     const failedAlarms = await runEach(alarmsToCharge(account), "Pré-registro de alarme", async (alarm) => {
       const fireMs = nextFireMs(

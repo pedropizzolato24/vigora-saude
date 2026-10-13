@@ -118,7 +118,7 @@ describe("ensureServerAlarmEvent", () => {
   });
 
   it("nenhum evento por perto: cria, com kind e graceMinutes do check-in", async () => {
-    selectResults = [[], [], []]; // janela, depois os dois SELECTs do createAlarmEvent
+    selectResults = [[], [], [], []]; // janela, pendente futuro, depois os dois SELECTs do createAlarmEvent
 
     await expect(
       ensureServerAlarmEvent({ ...base, kind: "checkin", graceMinutes: 15 }, 120)
@@ -132,6 +132,20 @@ describe("ensureServerAlarmEvent", () => {
       graceMinutes: 15,
       status: "pending",
     });
+  });
+
+  it("já existe pendente FUTURO do alarme em outro horário (>janela): não cria nem move", async () => {
+    // janela vazia (o evento do celular está a 3 h), mas há pendente futuro do alarme
+    selectResults = [[], [{ id: 9 }]];
+
+    await expect(ensureServerAlarmEvent(base, 120)).resolves.toBe("exists");
+
+    expect(inserts).toHaveLength(0);
+    const { sql, params } = render(selectWheres[1]);
+    expect(sql).toContain("`alarm_events`.`alarmId` = ?");
+    expect(sql).toContain("`alarm_events`.`status` = ?");
+    expect(sql).toContain("`alarm_events`.`scheduledAt` > ?");
+    expect(params.slice(0, 3)).toEqual(["maria", "a1", "pending"]);
   });
 
   it("usa a janela recebida (a regra de 120 min vem de quem chama)", async () => {
@@ -166,6 +180,7 @@ describe("getPreRegisterCandidates", () => {
           openId: "maria",
           alarms: [{ id: "a1" }],
           timezone: "America/Rio_Branco",
+          eventTimezone: "America/Manaus",
           managedOpenId: "maria",
           appliedAlarms: [{ id: "a1" }],
           failedAlarmIds: ["a2"],
@@ -174,6 +189,7 @@ describe("getPreRegisterCandidates", () => {
           openId: "joao",
           alarms: null,
           timezone: null,
+          eventTimezone: null,
           managedOpenId: null,
           appliedAlarms: null,
           failedAlarmIds: null,
@@ -188,9 +204,10 @@ describe("getPreRegisterCandidates", () => {
         openId: "maria",
         alarms: [{ id: "a1" }],
         timezone: "America/Rio_Branco",
+        eventTimezone: "America/Manaus",
         managed: { appliedAlarms: [{ id: "a1" }], failedAlarmIds: ["a2"] },
       },
-      { openId: "joao", alarms: null, timezone: null, managed: null },
+      { openId: "joao", alarms: null, timezone: null, eventTimezone: null, managed: null },
     ]);
   });
 });
