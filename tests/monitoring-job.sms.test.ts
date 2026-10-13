@@ -53,6 +53,19 @@ vi.mock("../server/push", () => ({
   sendExpoPush: vi.fn(async () => 0),
 }));
 
+// Fase 4: as três rotinas novas do job têm testes próprios (dms-preregister,
+// dms-pauses, managed-alarms-housekeeping). Aqui ficam fora para este arquivo
+// não depender dos mocks de banco/push delas.
+vi.mock("../server/dms-preregister", () => ({
+  runPreRegistration: vi.fn(async () => ({ registered: 0 })),
+}));
+vi.mock("../server/dms-pauses", () => ({
+  runDmsPauses: vi.fn(async () => ({ paused: 0, noticesSent: 0, pinged: 0 })),
+}));
+vi.mock("../server/managed-alarms-housekeeping", () => ({
+  runManagementHousekeeping: vi.fn(async () => ({ expired: 0, visibleNotices: 0 })),
+}));
+
 import { runMonitoringJob } from "../server/monitoring-job";
 import * as db from "../server/db-monitoring";
 import * as accountDb from "../server/db";

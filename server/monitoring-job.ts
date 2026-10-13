@@ -49,6 +49,10 @@ import type { EmergencyContactRecord } from "../drizzle/schema";
 import { formatEventTime } from "./_core/format-event-time";
 import { parseLatLng } from "./_core/parse-lat-lng";
 import { agendaHasCheckinAlarm, isEventExpired } from "./_core/event-kind";
+import { runSteps } from "./_core/job-isolation";
+import { runPreRegistration } from "./dms-preregister";
+import { runDmsPauses } from "./dms-pauses";
+import { runManagementHousekeeping } from "./managed-alarms-housekeeping";
 
 // Grace period: how long after scheduledAt we wait before resolving a pending event.
 // Precisa cobrir só o caminho feliz do cliente: countdown máximo de 60s
@@ -386,6 +390,45 @@ export async function runMonitoringJob(): Promise<void> {
     failures.push(`${passo}: ${error instanceof Error ? error.message : String(error)}`);
     console.error(`[Monitor] ${passo} falhou:`, error);
   };
+
+  // -- Fase 4: rotinas que antecedem o Passo 1 ---------------------------------
+  // Cada rotina roda isolada (runSteps): a falha de uma não impede as outras nem
+  // os Passos 1 a 4, e entra em `failures` (o ciclo continua reprovando
+  // /api/health). Só os NOMES das rotinas que falharam chegam ao `lastError`: a
+  // mensagem de um erro do drizzle traz os parâmetros da query. O servidor só
+  // registra o que era esperado e pausa quando o aparelho some; quem faz o
+  // alarme tocar é sempre o celular.
+  try {
+    await runSteps("Rotinas da Fase 4", [
+      [
+        "Pré-registro de disparos",
+        async () => {
+          const { registered } = await runPreRegistration(now);
+          console.log(`[Monitor] Pré-registro: ${registered} disparo(s) registrado(s) pelo servidor`);
+        },
+      ],
+      [
+        "Pausas do dead man's switch",
+        async () => {
+          const { paused, noticesSent, pinged } = await runDmsPauses(now);
+          console.log(
+            `[Monitor] Pausas: ${paused} conta(s) pausada(s), ${noticesSent} aviso(s) a cuidadores, ${pinged} verificação(ões) de aparelho`
+          );
+        },
+      ],
+      [
+        "Manutenção do acordo de alarmes",
+        async () => {
+          const { expired, visibleNotices } = await runManagementHousekeeping(now);
+          console.log(
+            `[Monitor] Acordo de alarmes: ${expired} pedido(s) vencido(s), ${visibleNotices} aviso(s) visível(is)`
+          );
+        },
+      ],
+    ]);
+  } catch (error) {
+    recordFailure("Rotinas da Fase 4", error);
+  }
 
   try {
     // -- Step 1: Resolve expired pending alarm events --------------------------
