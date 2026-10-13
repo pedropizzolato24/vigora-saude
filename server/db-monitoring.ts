@@ -17,8 +17,12 @@ import {
   alarmChanges,
   alarmEvents,
   InsertAlarmEvent,
+  managedAlarmLists,
+  userData,
+  users,
   warningLog,
 } from "../drizzle/schema";
+import { NO_SIGNAL_PAUSE_HOURS } from "../shared/managed-alarm";
 
 // --- Account Liveness -----------------------------------------------------------
 
@@ -626,4 +630,130 @@ export async function pauseDms(openId: string, reason: DmsPauseReason): Promise<
       )
     );
   return true;
+}
+
+// --- Pré-registro feito pelo servidor (Fase 4) --------------------------------
+
+/**
+ * Conta de idoso que o servidor pré-registra: não pausada e com sinal do
+ * aparelho nas últimas 48 h (`NO_SIGNAL_PAUSE_HOURS`). Conta de cuidador não tem
+ * alarmes. `managed` vem preenchido quando há acordo ativo: nesse caso só vale a
+ * lista que o celular CONFIRMOU (`appliedAlarms`), nunca `user_data.alarms`.
+ */
+export type PreRegisterCandidate = {
+  openId: string;
+  alarms: unknown;
+  timezone: string | null;
+  managed: { appliedAlarms: unknown; failedAlarmIds: unknown } | null;
+};
+
+export async function getPreRegisterCandidates(now: Date): Promise<PreRegisterCandidate[]> {
+  const db = await getDb();
+  // Fail-closed, como getAccountsWithUnconfirmedEvents: sem banco o job tem que
+  // contar a falha, não responder "nenhuma conta".
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const cutoff = new Date(now.getTime() - NO_SIGNAL_PAUSE_HOURS * 60 * 60 * 1000);
+
+  const rows = await db
+    .select({
+      openId: accountLiveness.openId,
+      alarms: userData.alarms,
+      timezone: userData.timezone,
+      managedOpenId: managedAlarmLists.monitoredOpenId,
+      appliedAlarms: managedAlarmLists.appliedAlarms,
+      failedAlarmIds: managedAlarmLists.failedAlarmIds,
+    })
+    .from(accountLiveness)
+    .innerJoin(users, eq(users.openId, accountLiveness.openId))
+    .leftJoin(userData, eq(userData.openId, accountLiveness.openId))
+    .leftJoin(managedAlarmLists, eq(managedAlarmLists.monitoredOpenId, accountLiveness.openId))
+    .where(
+      and(
+        isNull(accountLiveness.dmsPausedReason),
+        gte(accountLiveness.lastSeenAt, cutoff),
+        or(isNull(users.userType), ne(users.userType, "caregiver"))
+      )
+    );
+
+  return rows.map((r) => ({
+    openId: r.openId,
+    alarms: r.alarms ?? null,
+    timezone: r.timezone ?? null,
+    managed: r.managedOpenId
+      ? { appliedAlarms: r.appliedAlarms, failedAlarmIds: r.failedAlarmIds }
+      : null,
+  }));
+}
+
+/**
+ * Existe evento (de QUALQUER status) do mesmo alarme a até `windowMinutes` do
+ * horário `at`, para os dois lados? É a regra "mesmo disparo, um evento só": o
+ * fuso do aparelho pode diferir do guardado na conta (viagem, fuso ainda nulo) e
+ * o servidor não pode criar um segundo evento que expiraria e acusaria a pessoa
+ * à toa. Evento já resolvido conta: quem já respondeu não gera outro.
+ */
+export async function findEventNear(
+  openId: string,
+  alarmId: string,
+  at: Date,
+  windowMinutes: number
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const windowMs = windowMinutes * 60 * 1000;
+  const rows = await db
+    .select({ id: alarmEvents.id })
+    .from(alarmEvents)
+    .where(
+      and(
+        eq(alarmEvents.openId, openId),
+        eq(alarmEvents.alarmId, alarmId),
+        gte(alarmEvents.scheduledAt, new Date(at.getTime() - windowMs)),
+        lte(alarmEvents.scheduledAt, new Date(at.getTime() + windowMs))
+      )
+    )
+    .limit(1);
+  return rows.length > 0;
+}
+
+/**
+ * Registro de disparo feito PELO SERVIDOR. Antes de criar, confere a janela de
+ * `findEventNear`; criar mesmo é o `createAlarmEvent` de sempre (idempotente, um
+ * pendente futuro por alarme). Fica numa função à parte para não mudar a ordem
+ * das consultas do `createAlarmEvent`, de que os testes dependem.
+ */
+export async function ensureServerAlarmEvent(
+  data: InsertAlarmEvent,
+  windowMinutes: number
+): Promise<"created" | "exists"> {
+  if (await findEventNear(data.openId, data.alarmId, data.scheduledAt as Date, windowMinutes)) {
+    return "exists";
+  }
+  await createAlarmEvent(data);
+  return "created";
+}
+
+/**
+ * Apaga os eventos PENDENTES e FUTUROS dos alarmes dados. Usado para o alarme que
+ * o celular não conseguiu agendar: o evento registrado antes da mudança venceria
+ * sem tocar e acusaria a pessoa de não responder. Os que já venceram ficam.
+ */
+export async function deleteFuturePendingEvents(
+  openId: string,
+  alarmIds: string[],
+  now: Date
+): Promise<void> {
+  if (alarmIds.length === 0) return;
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  await db
+    .delete(alarmEvents)
+    .where(
+      and(
+        eq(alarmEvents.openId, openId),
+        inArray(alarmEvents.alarmId, alarmIds),
+        eq(alarmEvents.status, "pending"),
+        gt(alarmEvents.scheduledAt, now)
+      )
+    );
 }
