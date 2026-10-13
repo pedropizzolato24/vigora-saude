@@ -8,7 +8,7 @@
  *
  * Handles: account liveness (heartbeat), alarm events, warning log, retention.
  */
-import { and, desc, eq, gt, gte, inArray, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import { pickPendingEvent } from "./_core/pick-pending-event";
 import { LEGACY_CHECKIN_ALARM_ID, warningAnchor } from "./_core/event-kind";
@@ -335,7 +335,13 @@ export async function getExpiredPendingEvents(gracePeriodMinutes: number) {
     .where(
       and(
         eq(alarmEvents.status, "pending"),
-        lte(alarmEvents.scheduledAt, cutoff)
+        lte(alarmEvents.scheduledAt, cutoff),
+        // Sobra de pausa: pauseDms apaga os pendentes futuros DEPOIS de marcar a
+        // pausa e não é atômico. Se o DELETE falhou, o evento (marcado para depois
+        // do início da pausa) não pode virar not_sent/missed e acusar o idoso de
+        // um alarme que o servidor já desistiu de cobrar. Os que já tinham vencido
+        // quando a pausa começou seguem a escada normal.
+        sql`not exists (select 1 from ${accountLiveness} where ${accountLiveness.openId} = ${alarmEvents.openId} and ${accountLiveness.dmsPausedReason} is not null and ${accountLiveness.dmsPausedAt} < ${alarmEvents.scheduledAt})`
       )
     );
 }
@@ -779,6 +785,59 @@ export async function deleteFuturePendingEvents(
         inArray(alarmEvents.alarmId, alarmIds),
         eq(alarmEvents.status, "pending"),
         gt(alarmEvents.scheduledAt, now)
+      )
+    );
+}
+
+/**
+ * Contas de idoso (não cuidador), não pausadas, com último sinal há mais de 48 h
+ * e com backup no servidor. São as que o job pausa como `no_signal`.
+ */
+export async function getStaleUnpausedMonitoredAccounts(now: Date): Promise<string[]> {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const cutoff = new Date(now.getTime() - NO_SIGNAL_PAUSE_HOURS * 60 * 60 * 1000);
+  const rows = await db
+    .select({ openId: accountLiveness.openId })
+    .from(accountLiveness)
+    .innerJoin(users, eq(users.openId, accountLiveness.openId))
+    .innerJoin(userData, eq(userData.openId, accountLiveness.openId))
+    .where(
+      and(
+        isNull(accountLiveness.dmsPausedReason),
+        lt(accountLiveness.lastSeenAt, cutoff),
+        or(isNull(users.userType), ne(users.userType, "caregiver"))
+      )
+    );
+  return rows.map((r) => r.openId);
+}
+
+/** Pausas em curso cujos cuidadores ainda não foram avisados. */
+export async function getPausesNeedingNotice(): Promise<{ openId: string; reason: DmsPauseReason }[]> {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const rows = await db
+    .select({ openId: accountLiveness.openId, reason: accountLiveness.dmsPausedReason })
+    .from(accountLiveness)
+    .where(and(isNotNull(accountLiveness.dmsPausedReason), isNull(accountLiveness.pauseNoticeSentAt)));
+  return rows.flatMap((r) => (r.reason ? [{ openId: r.openId, reason: r.reason }] : []));
+}
+
+/**
+ * Marca o aviso da pausa como enviado. A condição protege dois casos: pausa que
+ * já foi retomada no meio do caminho (nada a marcar) e aviso já marcado.
+ */
+export async function markPauseNoticeSent(openId: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  await db
+    .update(accountLiveness)
+    .set({ pauseNoticeSentAt: new Date() })
+    .where(
+      and(
+        eq(accountLiveness.openId, openId),
+        isNotNull(accountLiveness.dmsPausedReason),
+        isNull(accountLiveness.pauseNoticeSentAt)
       )
     );
 }
