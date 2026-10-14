@@ -156,21 +156,23 @@ async function sendPauseNotices(result: DmsPausesResult): Promise<void> {
   const pending = await getPausesNeedingNotice();
   const failed = await runEach(pending, "Aviso de pausa", async ({ openId, reason }) => {
     const caregivers = await getActiveCaregiversForMonitored(openId);
-    if (caregivers.length > 0) {
-      const tokens = await getPushTokensForOpenIds(caregivers.map((c) => c.caregiverOpenId));
+    const tokens =
+      caregivers.length > 0
+        ? await getPushTokensForOpenIds(caregivers.map((c) => c.caregiverOpenId))
+        : [];
+    // Sem cuidador ou cuidador sem nenhum aparelho: não há a quem avisar —
+    // marca como avisado para não tentar a cada rodada para sempre.
+    if (tokens.length > 0) {
       const [data, user] = await Promise.all([getUserData(openId), getUserByOpenId(openId)]);
-      const accepted =
-        tokens.length === 0
-          ? 0
-          : await sendExpoPush(
-              tokens.map((t) => t.token),
-              {
-                title: PAUSE_NOTICE_TITLE,
-                body: buildPauseNoticeBody(reason, pickPersonName(data?.anamnesis, user?.name)),
-                data: { type: "dms_paused", url: PAUSE_NOTICE_ROUTE },
-              }
-            );
-      // Ninguém alcançado: NÃO marca. Cuidador que acha que o switch está armado
+      const accepted = await sendExpoPush(
+        tokens.map((t) => t.token),
+        {
+          title: PAUSE_NOTICE_TITLE,
+          body: buildPauseNoticeBody(reason, pickPersonName(data?.anamnesis, user?.name)),
+          data: { type: "dms_paused", url: PAUSE_NOTICE_ROUTE },
+        }
+      );
+      // Expo recusou todos: NÃO marca. Cuidador que acha que o switch está armado
       // é pior que um aviso repetido na rodada seguinte.
       if (accepted === 0) {
         console.warn("[Pausas] aviso de pausa não chegou a nenhum cuidador — tenta de novo na próxima rodada");

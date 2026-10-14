@@ -41,6 +41,7 @@ vi.mock("../server/push", () => ({
 
 import { __testing, buildPauseNoticeBody, PAUSE_NOTICE_TITLE, runDmsPauses } from "../server/dms-pauses";
 import * as db from "../server/db-monitoring";
+import * as dbCore from "../server/db";
 import * as dbLinks from "../server/db-links";
 import * as dbPush from "../server/db-push";
 import * as push from "../server/push";
@@ -218,14 +219,16 @@ describe("aviso da pausa ao cuidador", () => {
     expect(result.noticesSent).toBe(0);
   });
 
-  it("cuidador sem nenhum token de push: NÃO marca (ainda não foi avisado)", async () => {
+  it("cuidador sem nenhum token de push: marca como avisado (ninguém a alcançar), sem ler o perfil nem repetir", async () => {
     vi.mocked(db.getPausesNeedingNotice).mockResolvedValue([{ openId: "maria", reason: "no_signal" }]);
     vi.mocked(dbPush.getPushTokensForOpenIds).mockResolvedValue([]);
 
-    await runDmsPauses(NOW);
+    const result = await runDmsPauses(NOW);
 
     expect(push.sendExpoPush).not.toHaveBeenCalled();
-    expect(db.markPauseNoticeSent).not.toHaveBeenCalled();
+    expect(dbCore.getUserData).not.toHaveBeenCalled();
+    expect(db.markPauseNoticeSent).toHaveBeenCalledWith("maria");
+    expect(result.noticesSent).toBe(0);
   });
 
   it("sem cuidador vinculado: marca como avisado, sem push", async () => {
