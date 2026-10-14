@@ -76,6 +76,13 @@ describe('integração da área com o resto do app do cuidador', () => {
     expect(person).toMatch(/Alarmes de \{linked\.displayName\}/);
   });
 
+  it('a linha de apoio da entrada tem pelo menos 15px no modo normal', () => {
+    const person = read('app/(caregiver-tabs)/person.tsx');
+    const fim = person.indexOf('Ver e, se {linked.displayName} aceitar');
+    const linha = person.slice(person.lastIndexOf('<Text', fim), fim);
+    expect(linha).toMatch(/fontSize: isAccessibilityMode \? sz\.body : fs\.base/);
+  });
+
   it('o push do cuidador conhece os tipos da Fase 4 e recarrega a área', () => {
     const push = read('components/caregiver-push-initializer.tsx');
     for (const type of ['management_accepted', 'management_declined', 'management_ended', 'management_expired', 'management_changed', 'dms_paused']) {

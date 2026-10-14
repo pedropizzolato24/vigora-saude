@@ -89,7 +89,7 @@ export function deliveryText(
   if (status === 'confirmed') return `Tudo certo no celular de ${ctx.name}.`;
   if (status === 'pending') return pendingSentence(ctx.name, ctx.pendingSince, ctx.now);
   const label = ctx.alarm.description.trim() || 'Lembrete';
-  return `O celular de ${ctx.name} não conseguiu agendar: ${label} ${ctx.alarm.time}.`;
+  return `O celular de ${ctx.name} não conseguiu agendar: ${label} ${ctx.alarm.time}. Abra o alarme e salve de novo para tentar outra vez.`;
 }
 
 /** Resumo no topo da lista (spec 4.5: "por alarme e no topo"). */

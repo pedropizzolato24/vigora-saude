@@ -29,6 +29,18 @@ describe("ManagedAlarmsCard", () => {
     expect(limpa).toBeGreaterThan(falha);
   });
 
+  it("falha ao parar também pede a lista ao servidor (o acordo pode já ter terminado)", () => {
+    const parar = card.slice(card.indexOf("managedAlarms.stopBeingManaged"));
+    const falha = parar.slice(parar.indexOf("result === null"), parar.indexOf("return;"));
+    expect(falha).toMatch(/requestManagedSync\(\);/);
+    expect(card).toMatch(/import \{ requestManagedSync \} from '@\/lib\/managed-alarms-sync';/);
+  });
+
+  it("o texto do botão Parar tem pelo menos 16px no modo normal (fs.md)", () => {
+    const botao = card.slice(card.lastIndexOf("<Text", card.lastIndexOf("{copy.stopLabel}")), card.lastIndexOf("{copy.stopLabel}"));
+    expect(botao).toMatch(/fontSize: fs\.md/);
+  });
+
   it("não usa Alert.alert nem cor fixa", () => {
     expect(card).not.toMatch(/Alert\.alert/);
     expect(card).not.toMatch(/#[0-9A-Fa-f]{6}\b/);

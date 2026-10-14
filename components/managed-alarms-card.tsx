@@ -16,6 +16,7 @@ import { BrandFonts } from '@/lib/_core/theme';
 import { useAppContext } from '@/lib/app-context';
 import { useFontSize } from '@/lib/font-size-context';
 import { managementCardCopy, STOPPED_TOAST_TEXT, stopDialogCopy } from '@/lib/managed-alarms-copy';
+import { requestManagedSync } from '@/lib/managed-alarms-sync';
 import { trpcMutation } from '@/lib/monitoring-service';
 
 export function ManagedAlarmsCard() {
@@ -37,6 +38,9 @@ export function ManagedAlarmsCard() {
       // trpcMutation devolve null em toda falha e nunca lança.
       const result = await trpcMutation('managedAlarms.stopBeingManaged', {});
       if (result === null) {
+        // O acordo pode já ter terminado (o cuidador parou antes): a busca da
+        // lista tira o cartão se for o caso.
+        requestManagedSync();
         showDialog({
           title: 'Não foi possível parar',
           message: 'Confira a internet e tente de novo. Por enquanto, quem cuida dos seus alarmes continua o mesmo.',
@@ -155,7 +159,7 @@ export function ManagedAlarmsCard() {
                 },
               ]}
             >
-              <Text style={{ fontSize: fs.base, fontWeight: '700', color: colors.primary, fontFamily: BrandFonts.body }}>
+              <Text style={{ fontSize: fs.md, fontWeight: '700', color: colors.primary, fontFamily: BrandFonts.body }}>
                 {copy.stopLabel}
               </Text>
             </Pressable>

@@ -115,15 +115,15 @@ describe('deliveryText — as frases da spec 4.5', () => {
     expect(deliveryText('pending', { ...base, now: at(9, 14, 5) + 12 * HOUR - 1 })).not.toContain('Peça para');
   });
 
-  it('falha traz o lembrete e o horário', () => {
+  it('falha traz o lembrete, o horário e o que fazer', () => {
     expect(deliveryText('failed', { ...base, now: at(9, 20, 0) })).toBe(
-      'O celular de Maria não conseguiu agendar: Losartana 08:00.'
+      'O celular de Maria não conseguiu agendar: Losartana 08:00. Abra o alarme e salve de novo para tentar outra vez.'
     );
   });
 
   it('alarme sem nome usa "Lembrete"', () => {
     expect(deliveryText('failed', { ...base, alarm: { ...losartana, description: ' ' }, now: at(9, 20, 0) })).toBe(
-      'O celular de Maria não conseguiu agendar: Lembrete 08:00.'
+      'O celular de Maria não conseguiu agendar: Lembrete 08:00. Abra o alarme e salve de novo para tentar outra vez.'
     );
   });
 });

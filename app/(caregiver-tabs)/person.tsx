@@ -199,7 +199,7 @@ export default function CaregiverPersonScreen() {
             <Text style={[styles.manageEntryTitle, { color: c.foreground, fontSize: sz.menuItem, fontFamily: BrandFonts.body }]}>
               Alarmes de {linked.displayName}
             </Text>
-            <Text style={{ color: c.muted, fontSize: sz.body, fontFamily: BrandFonts.body }}>
+            <Text style={{ color: c.muted, fontSize: isAccessibilityMode ? sz.body : fs.base, fontFamily: BrandFonts.body }}>
               Ver e, se {linked.displayName} aceitar, cuidar dos alarmes
             </Text>
           </View>
