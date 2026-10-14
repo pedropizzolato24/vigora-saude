@@ -192,6 +192,15 @@ describe("sanitizeAcceptedList", () => {
     });
   });
 
+  it.each([7, "10", 0, null])(
+    "remédio com atraso de check-in perdido (%s) não recusa o aceite: o atraso é descartado",
+    (atraso) => {
+      const [alarm] = sanitizeAcceptedList([phoneAlarm({ id: "r1", escalateAfterMinutes: atraso })]);
+      expect(alarm.id).toBe("r1");
+      expect(alarm.escalateAfterMinutes ?? null).toBeNull();
+    }
+  );
+
   it("aceita exatamente 24 alarmes", () => {
     const list = Array.from({ length: 24 }, (_, i) => phoneAlarm({ id: `a${i}` }));
     expect(sanitizeAcceptedList(list)).toHaveLength(24);

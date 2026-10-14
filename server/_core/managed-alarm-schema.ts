@@ -140,7 +140,10 @@ export function sanitizeAcceptedList(raw: unknown): ManagedAlarm[] {
     const clipped =
       typeof candidate.description === "string"
         ? { ...candidate, description: candidate.description.slice(0, MANAGED_DESCRIPTION_MAX) }
-        : candidate;
+        : { ...candidate };
+    // Remédio não tem atraso de check-in (normalizeManagedAlarm o descarta): um
+    // valor perdido de quando o alarme já foi check-in não pode recusar o aceite.
+    if (clipped.kind !== "checkin") delete clipped.escalateAfterMinutes;
 
     const parsed = managedAlarmSchema.safeParse(clipped);
     if (!parsed.success || seen.has(parsed.data.id)) throw unreadable();
