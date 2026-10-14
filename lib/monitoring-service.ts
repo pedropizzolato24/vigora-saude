@@ -17,6 +17,7 @@ import { getApiBaseUrl } from "@/constants/oauth";
 import { Alarm } from "./app-context";
 import { nextAlarmFireMs } from "./alarm-fire-times";
 import { serverEventExtras } from "@/lib/alarm-kind";
+import { isCloudPushBlocked } from "@/lib/cloud-sync";
 import * as Auth from "./_core/auth";
 import {
   enqueueConfirmation,
@@ -73,6 +74,22 @@ async function buildAuthHeaders(): Promise<Record<string, string> | null> {
   return headers;
 }
 
+/**
+ * Chamadas que contam como sinal de vida do aparelho no servidor. Com o logout
+ * em andamento (isCloudPushBlocked) nenhuma tentativa delas sai — nem um retry
+ * já em curso: chegando depois do deviceSignedOut, desfaria a pausa "saiu da
+ * conta". O que o próprio logout usa (push.unregister, deviceSignedOut) não
+ * passa por aqui e nunca é travado.
+ */
+const LIVENESS_SIGNAL_PROCEDURES = new Set([
+  "monitoring.heartbeat",
+  "monitoring.createEvent",
+  "monitoring.confirmEvent",
+  "managedAlarms.ack",
+  "userData.put",
+  "push.register",
+]);
+
 export async function trpcMutation(
   procedure: string,
   input: unknown
@@ -95,6 +112,10 @@ export async function trpcMutation(
         await delay(RETRY_DELAY_MS * attempt);
       } else {
         console.log(`[Monitoring] POST ${procedure} -> ${url}`);
+      }
+      if (LIVENESS_SIGNAL_PROCEDURES.has(procedure) && isCloudPushBlocked()) {
+        console.warn(`[Monitoring] POST ${procedure} não enviado: logout em andamento`);
+        return null;
       }
       const res = await fetchWithTimeout(url, {
         method: "POST",
