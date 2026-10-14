@@ -137,7 +137,7 @@ export function sanitizeAcceptedList(raw: unknown): ManagedAlarm[] {
   return raw.map((item) => {
     if (typeof item !== "object" || item === null || Array.isArray(item)) throw unreadable();
     const candidate = item as Record<string, unknown>;
-    const clipped =
+    const clipped: Record<string, unknown> =
       typeof candidate.description === "string"
         ? { ...candidate, description: candidate.description.slice(0, MANAGED_DESCRIPTION_MAX) }
         : { ...candidate };

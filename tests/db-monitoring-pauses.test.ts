@@ -52,7 +52,7 @@ const fakeDb = {
       return Promise.resolve([{ affectedRows: 1 }]);
     },
   }),
-  transaction: async <T>(fn: (tx: typeof fakeDb) => Promise<T>): Promise<T> => {
+  transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => {
     inTransaction = true;
     txLog.push("begin");
     try {
