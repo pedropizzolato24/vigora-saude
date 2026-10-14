@@ -59,6 +59,33 @@ describe('alarmChangeTitle', () => {
   });
 });
 
+describe('alarmChangeTitle — feita por um cuidador (Fase 4)', () => {
+  const base = { alarmDescription: 'Losartana', oldTime: '08:00', newTime: null, changedByName: 'Ana' };
+
+  it('criado', () => {
+    expect(alarmChangeTitle({ ...base, changeType: 'created', oldTime: null, newTime: '08:00' })).toBe('Ana criou "Losartana" (08:00)');
+  });
+
+  it('apagado, desativado e reagendado dizem quem fez', () => {
+    expect(alarmChangeTitle({ ...base, changeType: 'deleted' })).toBe('Ana apagou "Losartana"');
+    expect(alarmChangeTitle({ ...base, changeType: 'disabled' })).toBe('Ana desativou "Losartana"');
+    expect(alarmChangeTitle({ ...base, changeType: 'rescheduled', newTime: '09:30' })).toBe(
+      'Ana mudou o horário de "Losartana" para 09:30'
+    );
+    expect(alarmChangeTitle({ ...base, changeType: 'rescheduled', newTime: '08:00' })).toBe('Ana mudou os dias de "Losartana"');
+  });
+
+  it('autor null = a própria pessoa: texto antigo, sem sujeito', () => {
+    expect(alarmChangeTitle({ ...base, changedByName: null, changeType: 'deleted' })).toBe('Excluiu "Losartana"');
+  });
+
+  it('criado sem autor ainda lê bem', () => {
+    expect(alarmChangeTitle({ alarmDescription: 'Losartana', changeType: 'created', oldTime: null, newTime: '08:00' })).toBe(
+      'Criou "Losartana" (08:00)'
+    );
+  });
+});
+
 describe('push do cuidador', () => {
   it('toque nos pushes novos navega (alarm_changed e link_revoked)', () => {
     const src = readFileSync(

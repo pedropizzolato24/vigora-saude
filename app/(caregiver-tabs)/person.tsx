@@ -185,6 +185,27 @@ export default function CaregiverPersonScreen() {
           Vinculado via {METHOD_LABEL[linked.method]} em {formatDate(linked.linkedAt)}
         </Text>
 
+        <Pressable
+          onPress={() => router.push('/(caregiver-tabs)/managed-alarms' as never)}
+          accessibilityRole="button"
+          accessibilityLabel={`Alarmes de ${linked.displayName}`}
+          style={({ pressed }) => [
+            styles.manageEntry,
+            { backgroundColor: c.surface, borderColor: c.primary, borderWidth: bw, minHeight: isAccessibilityMode ? 60 : 48, opacity: pressed ? 0.85 : 1 },
+          ]}
+        >
+          <MaterialIcons name="alarm" size={icon.section} color={c.primary} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.manageEntryTitle, { color: c.foreground, fontSize: sz.menuItem, fontFamily: BrandFonts.body }]}>
+              Alarmes de {linked.displayName}
+            </Text>
+            <Text style={{ color: c.muted, fontSize: sz.body, fontFamily: BrandFonts.body }}>
+              Ver e, se {linked.displayName} aceitar, cuidar dos alarmes
+            </Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={icon.section} color={c.muted} />
+        </Pressable>
+
         <Section icon="medication" title="Medicações" skin={skin}>
           {loading ? (
             <Muted skin={skin} text="Carregando…" />
@@ -348,6 +369,8 @@ const styles = StyleSheet.create({
   menuItem: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10 },
   menuItemText: { fontWeight: '600' },
   linkInfo: { paddingHorizontal: 4 },
+  manageEntry: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14 },
+  manageEntryTitle: { fontWeight: '700' },
   section: { padding: 14, borderRadius: 14, gap: 8 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionTitle: { fontWeight: '700' },
