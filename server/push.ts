@@ -21,6 +21,12 @@ const EXPO_RECEIPTS_URL = "https://exp.host/--/api/v2/push/getReceipts";
 // A Expo aceita até 1000 ids por consulta de recibos; 300 mantém a requisição pequena.
 const RECEIPT_BATCH = 300;
 
+/**
+ * Prazo de cada chamada à Expo. O job de monitoramento chama a Expo antes do
+ * Passo 1: sem prazo, uma Expo lenta prenderia o ciclo inteiro.
+ */
+const EXPO_TIMEOUT_MS = 15_000;
+
 // Android delivery channel. Must match a channel created on the device — see
 // DEFAULT_CHANNEL_ID in lib/notification-constants.ts (set up at app startup).
 const ANDROID_CHANNEL_ID = "default";
@@ -78,6 +84,7 @@ export async function sendExpoPush(
           "Content-Type": "application/json",
         },
         body: JSON.stringify(messages),
+        signal: AbortSignal.timeout(EXPO_TIMEOUT_MS),
       });
 
       if (!res.ok) {
@@ -152,6 +159,7 @@ export async function sendExpoDataPush(
           "Content-Type": "application/json",
         },
         body: JSON.stringify(messages),
+        signal: AbortSignal.timeout(EXPO_TIMEOUT_MS),
       });
 
       if (!res.ok) {
@@ -209,6 +217,7 @@ export async function fetchExpoReceipts(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ ids: batch }),
+        signal: AbortSignal.timeout(EXPO_TIMEOUT_MS),
       });
       if (!res.ok) {
         console.warn(`[Push] Expo receipts request failed: HTTP ${res.status}`);

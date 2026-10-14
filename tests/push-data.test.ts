@@ -174,3 +174,21 @@ describe("fetchExpoReceipts", () => {
     expect(Object.keys(result)).toHaveLength(650);
   });
 });
+
+// O job chama estas duas antes do Passo 1, a cada ciclo: um fetch sem prazo
+// prenderia o ciclo e o agendador começaria outro por cima.
+describe("prazo das chamadas à Expo", () => {
+  it("push silencioso e recibos levam AbortSignal.timeout(15 s)", async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    const fetchSpy = mockFetchJson({ data: [{ status: "ok", id: "t-1" }] });
+
+    await sendExpoDataPush(["ExpoTok[a]"], { type: "ping" });
+    await fetchExpoReceipts(["t-1"]);
+
+    expect(timeoutSpy).toHaveBeenCalledWith(15_000);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    for (const [, init] of fetchSpy.mock.calls) {
+      expect((init as RequestInit).signal).toBeInstanceOf(AbortSignal);
+    }
+  });
+});

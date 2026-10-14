@@ -817,13 +817,28 @@ export function startMonitoringScheduler(): void {
 
   console.log("[Monitor] Starting monitoring scheduler (every 5 minutes)");
 
+  // Um ciclo por vez: se o anterior ainda não terminou (Expo ou banco lentos),
+  // a rodada é pulada. Dois ciclos em paralelo leriam os mesmos eventos
+  // vencidos e mandariam a mesma escalação duas vezes.
+  let running = false;
+  const tick = () => {
+    if (running) {
+      console.warn("[Monitor] ciclo anterior ainda está rodando — rodada pulada");
+      return;
+    }
+    running = true;
+    runMonitoringJob()
+      .catch(console.error)
+      .finally(() => {
+        running = false;
+      });
+  };
+
   // Run immediately on startup
-  runMonitoringJob().catch(console.error);
+  tick();
 
   // Then run every 5 minutes
-  setInterval(() => {
-    runMonitoringJob().catch(console.error);
-  }, INTERVAL_MS);
+  setInterval(tick, INTERVAL_MS);
 
   // Data retention purge (LGPD minimization): daily, plus once on startup.
   const DAY_MS = 24 * 60 * 60 * 1000;
