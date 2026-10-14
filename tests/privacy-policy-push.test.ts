@@ -26,6 +26,12 @@ describe('Política de Privacidade (Configurações)', () => {
   it('descreve a verificação diária silenciosa', () => {
     expect(settings).toMatch(/uma vez por dia o servidor manda ao seu celular um aviso silencioso, sem texto e sem som/);
     expect(settings).toMatch(/os avisos automáticos aos seus contatos ficam pausados/);
+    expect(settings).toMatch(/se você tiver cuidador vinculado/);
+  });
+
+  it('cita o sinal do aparelho e o push ao próprio celular', () => {
+    expect(settings).toMatch(/último sinal do aparelho/);
+    expect(settings).toMatch(/notificações push aos cuidadores e ao seu próprio celular/);
   });
 
   it('diz que o fuso horário do aparelho é guardado e para quê', () => {
