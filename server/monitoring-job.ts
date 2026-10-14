@@ -50,7 +50,8 @@ import { formatEventTime } from "./_core/format-event-time";
 import { parseLatLng } from "./_core/parse-lat-lng";
 import { agendaHasCheckinAlarm, isEventExpired } from "./_core/event-kind";
 import { runSteps } from "./_core/job-isolation";
-import { runPreRegistration } from "./dms-preregister";
+import { chargedManagedAlarms, runPreRegistration } from "./dms-preregister";
+import { getManagedList } from "./db-managed-alarm-list";
 import { runDmsPauses } from "./dms-pauses";
 import { runManagementHousekeeping } from "./managed-alarms-housekeeping";
 
@@ -448,6 +449,20 @@ export async function runMonitoringJob(): Promise<void> {
       }
       return agendaPorConta.get(openId);
     };
+    // Conta gerenciada: vale a lista que o celular CONFIRMOU (a mesma do
+    // pré-registro), não o backup, que chega atrasado. null = conta comum.
+    const cobradosPorConta = new Map<string, Set<string> | null>();
+    const getCobradosGerenciados = async (openId: string) => {
+      if (!cobradosPorConta.has(openId)) {
+        const list = await getManagedList(openId);
+        cobradosPorConta.set(openId, list ? new Set(chargedManagedAlarms(list).map((a) => a.id)) : null);
+      }
+      return cobradosPorConta.get(openId) ?? null;
+    };
+    const alarmeAindaCobrado = async (openId: string, alarmId: string) => {
+      const cobrados = await getCobradosGerenciados(openId);
+      return cobrados ? cobrados.has(alarmId) : isAlarmStillArmed(await getAgenda(openId), alarmId);
+    };
 
     for (const event of expiredEvents) {
       // Isolado por evento: uma linha problemática não pode travar a resolução
@@ -460,7 +475,7 @@ export async function runMonitoringJob(): Promise<void> {
         // evento órfão virava 'missed' e escalava para contatos e cuidadores.
         if (
           event.alarmId !== CHECKIN_ALARM_ID &&
-          !isAlarmStillArmed(await getAgenda(event.openId), event.alarmId)
+          !(await alarmeAindaCobrado(event.openId, event.alarmId))
         ) {
           await deleteAlarmEvent(event.id);
           console.log(

@@ -81,12 +81,22 @@ function readIds(raw: unknown): string[] {
   return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : [];
 }
 
+/**
+ * Conta gerenciada: os alarmes LIGADOS que o celular confirmou (`appliedAlarms`)
+ * menos os que ele não conseguiu agendar (`failedAlarmIds`). É a mesma régua do
+ * pré-registro, do ack e do Passo 1 do job (nunca `user_data.alarms`).
+ */
+export function chargedManagedAlarms(managed: {
+  appliedAlarms: unknown;
+  failedAlarmIds: unknown;
+}): ChargeableAlarm[] {
+  const failed = new Set(readIds(managed.failedAlarmIds));
+  return readEnabledAlarms(managed.appliedAlarms).filter((a) => !failed.has(a.id));
+}
+
 /** O que o servidor cobra desta conta. Ver o cabeçalho do arquivo. */
 export function alarmsToCharge(candidate: PreRegisterCandidate): ChargeableAlarm[] {
-  if (candidate.managed) {
-    const failed = new Set(readIds(candidate.managed.failedAlarmIds));
-    return readEnabledAlarms(candidate.managed.appliedAlarms).filter((a) => !failed.has(a.id));
-  }
+  if (candidate.managed) return chargedManagedAlarms(candidate.managed);
   return readEnabledAlarms(candidate.alarms);
 }
 

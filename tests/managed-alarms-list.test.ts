@@ -23,6 +23,7 @@ vi.mock("../server/alarm-changes", async (importOriginal) => ({
 vi.mock("../server/db-monitoring", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../server/db-monitoring")>()),
   touchLiveness: vi.fn(async () => undefined),
+  deleteFuturePendingEventsExcept: vi.fn(async () => undefined),
 }));
 
 import { appRouter } from "../server/routers";

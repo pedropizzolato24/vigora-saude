@@ -47,7 +47,11 @@ vi.mock("../server/push", () => ({
   sendExpoPush: vi.fn(async () => 0),
 }));
 
-vi.mock("../server/dms-preregister", () => ({
+vi.mock("../server/db-managed-alarm-list", () => ({
+  getManagedList: vi.fn(async () => null),
+}));
+vi.mock("../server/dms-preregister", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../server/dms-preregister")>()),
   runPreRegistration: vi.fn(async () => ({ registered: 0 })),
 }));
 vi.mock("../server/dms-pauses", () => ({

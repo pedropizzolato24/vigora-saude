@@ -51,6 +51,7 @@ vi.mock("../server/db", () => ({
 
 import {
   deleteFuturePendingEvents,
+  deleteFuturePendingEventsExcept,
   ensureServerAlarmEvent,
   findEventNear,
   getPreRegisterCandidates,
@@ -227,5 +228,27 @@ describe("deleteFuturePendingEvents", () => {
   it("lista vazia não consulta o banco", async () => {
     await deleteFuturePendingEvents("maria", [], NOW);
     expect(deleteWheres).toHaveLength(0);
+  });
+});
+
+describe("deleteFuturePendingEventsExcept (ack da lista gerenciada)", () => {
+  it("apaga só pendentes FUTUROS da conta cujo alarme NÃO está na lista mantida, poupando o check-in antigo", async () => {
+    await deleteFuturePendingEventsExcept("maria", ["a2", "a3"], NOW);
+
+    const { sql, params } = render(deleteWheres[0]);
+    expect(sql).toContain("`alarm_events`.`openId` = ?");
+    expect(sql).toContain("`alarm_events`.`status` = ?");
+    expect(sql).toContain("`alarm_events`.`scheduledAt` > ?");
+    expect(sql).toContain("`alarm_events`.`alarmId` <> ?");
+    expect(sql).toContain("`alarm_events`.`alarmId` not in (?, ?)");
+    expect(params).toEqual(["maria", "pending", sqlDate(NOW), "checkin-daily", "a2", "a3"]);
+  });
+
+  it("lista mantida vazia: apaga todos os pendentes futuros da conta (menos o check-in antigo)", async () => {
+    await deleteFuturePendingEventsExcept("maria", [], NOW);
+
+    const { sql, params } = render(deleteWheres[0]);
+    expect(sql).not.toContain("not in");
+    expect(params).toEqual(["maria", "pending", sqlDate(NOW), "checkin-daily"]);
   });
 });

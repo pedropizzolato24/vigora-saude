@@ -8,7 +8,7 @@
  *
  * Handles: account liveness (heartbeat), alarm events, warning log, retention.
  */
-import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, ne, notInArray, or, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import { pickPendingEvent } from "./_core/pick-pending-event";
 import { LEGACY_CHECKIN_ALARM_ID, warningAnchor } from "./_core/event-kind";
@@ -790,6 +790,33 @@ export async function deleteFuturePendingEvents(
         inArray(alarmEvents.alarmId, alarmIds),
         eq(alarmEvents.status, "pending"),
         gt(alarmEvents.scheduledAt, now)
+      )
+    );
+}
+
+/**
+ * Apaga os eventos PENDENTES e FUTUROS da conta cujo alarme NÃO está em
+ * `keepAlarmIds`. Usado quando o celular confirma uma lista gerenciada: o que foi
+ * apagado, desligado ou não agendado deixa de ser cobrado na hora, sem esperar o
+ * backup (`user_data.alarms`), que chega atrasado. O check-in antigo
+ * ('checkin-daily') não é alarme da lista e fica com a regra dele.
+ */
+export async function deleteFuturePendingEventsExcept(
+  openId: string,
+  keepAlarmIds: string[],
+  now: Date
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  await db
+    .delete(alarmEvents)
+    .where(
+      and(
+        eq(alarmEvents.openId, openId),
+        eq(alarmEvents.status, "pending"),
+        gt(alarmEvents.scheduledAt, now),
+        ne(alarmEvents.alarmId, LEGACY_CHECKIN_ALARM_ID),
+        keepAlarmIds.length > 0 ? notInArray(alarmEvents.alarmId, keepAlarmIds) : undefined
       )
     );
 }

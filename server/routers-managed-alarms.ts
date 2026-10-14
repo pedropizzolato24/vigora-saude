@@ -51,7 +51,8 @@ import {
   recordManagedAck,
   writeManagedList,
 } from "./db-managed-alarm-list";
-import { touchLiveness } from "./db-monitoring";
+import { deleteFuturePendingEventsExcept, touchLiveness } from "./db-monitoring";
+import { chargedManagedAlarms } from "./dms-preregister";
 import { getPushTokensForOpenIds } from "./db-push";
 import { sendExpoDataPush, sendExpoPush } from "./push";
 import type { User } from "../drizzle/schema";
@@ -613,6 +614,21 @@ export const managedAlarmsRouter = router({
       const recorded = await recordManagedAck(ctx.user.openId, input.version, [
         ...new Set(input.failedAlarmIds),
       ]);
+      if (recorded) {
+        // O que o celular acabou de confirmar decide já quais disparos futuros
+        // seguem cobrados: o backup (user_data.alarms) chega atrasado. Melhor
+        // esforço — a falha só é registrada e nunca derruba o ack (o Passo 1
+        // do job confere de novo pela lista confirmada).
+        try {
+          const list = await getManagedList(ctx.user.openId);
+          if (list) {
+            const keep = chargedManagedAlarms(list).map((a) => a.id);
+            await deleteFuturePendingEventsExcept(ctx.user.openId, keep, new Date());
+          }
+        } catch (err) {
+          console.warn("[ManagedAlarms] limpeza dos disparos após o ack falhou:", safeErr(err));
+        }
+      }
       return { recorded };
     }),
 });
