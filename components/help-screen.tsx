@@ -128,7 +128,7 @@ const FAQ_DATA: FAQSection[] = [
       },
       {
         question: 'Meus dados médicos são seguros?',
-        answer: 'Sim! Todos os dados são armazenados localmente no seu celular. Nenhuma informação é enviada para servidores externos. Apenas quando você escolhe compartilhar a ficha é que os dados saem do seu dispositivo.',
+        answer: 'Seus dados ficam no seu celular e numa cópia de segurança no servidor do Vigora, protegida por autenticação. Nunca vendemos nem usamos seus dados para propaganda. Eles só chegam a outras pessoas quando você compartilha a ficha ou vincula um cuidador.',
         icon: 'security',
       },
     ],

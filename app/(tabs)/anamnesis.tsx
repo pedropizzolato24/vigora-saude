@@ -509,7 +509,7 @@ export default function AnamnesisScreen() {
               <View style={[styles.privacyNote, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <MaterialIcons name="lock" size={16} color={colors.muted} />
                 <Text style={[styles.privacyText, { color: colors.muted, fontSize: fs.sm, lineHeight: fs.scaled(19) }]}>
-                  Seus dados são armazenados apenas localmente neste dispositivo e nunca são enviados para servidores externos.
+                  Seus dados ficam neste aparelho e numa cópia de segurança no servidor do Vigora, protegida por autenticação. Só saem daí para outras pessoas quando você compartilha a ficha ou vincula um cuidador.
                 </Text>
               </View>
             </ScrollView>
