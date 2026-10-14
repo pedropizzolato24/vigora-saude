@@ -12,6 +12,9 @@ import { MySqlDialect } from "drizzle-orm/mysql-core";
 
 let selectResults: unknown[][] = [];
 let updateAffected = 1;
+let inTransaction = false;
+let deleteFails = false;
+const txLog: string[] = [];
 const selectWheres: unknown[] = [];
 const deleteWheres: unknown[] = [];
 const updates: Array<{ values: Record<string, unknown>; where: unknown }> = [];
@@ -36,6 +39,7 @@ const fakeDb = {
     set: (values: Record<string, unknown>) => ({
       where: (where: unknown) => {
         updates.push({ values, where });
+        txLog.push(`update${inTransaction ? " (tx)" : ""}`);
         return Promise.resolve([{ affectedRows: updateAffected }]);
       },
     }),
@@ -43,9 +47,25 @@ const fakeDb = {
   delete: () => ({
     where: (condition: unknown) => {
       deleteWheres.push(condition);
+      txLog.push(`delete${inTransaction ? " (tx)" : ""}`);
+      if (deleteFails) return Promise.reject(new Error("conexão caiu"));
       return Promise.resolve([{ affectedRows: 1 }]);
     },
   }),
+  transaction: async <T>(fn: (tx: typeof fakeDb) => Promise<T>): Promise<T> => {
+    inTransaction = true;
+    txLog.push("begin");
+    try {
+      const result = await fn(fakeDb);
+      txLog.push("commit");
+      return result;
+    } catch (err) {
+      txLog.push("rollback");
+      throw err;
+    } finally {
+      inTransaction = false;
+    }
+  },
   insert: () => ({
     values: (values: Record<string, unknown>) => ({
       onDuplicateKeyUpdate: ({ set }: { set: Record<string, unknown> }) => {
@@ -79,6 +99,9 @@ const NOW = new Date("2026-10-10T12:00:00.000Z");
 beforeEach(() => {
   selectResults = [];
   updateAffected = 1;
+  inTransaction = false;
+  deleteFails = false;
+  txLog.length = 0;
   selectWheres.length = 0;
   deleteWheres.length = 0;
   updates.length = 0;
@@ -131,6 +154,20 @@ describe("pauseDms", () => {
     // Evento que já venceu (scheduledAt <= agora) segue a escada normal.
     expect(sql).not.toContain("`scheduledAt` <");
     expect(params).toEqual(["maria", "pending", sqlDate(NOW)]);
+  });
+
+  it("a pausa e a limpeza dos eventos futuros vão na MESMA transação", async () => {
+    await pauseDms("maria", "logged_out");
+
+    expect(txLog).toEqual(["begin", "update (tx)", "delete (tx)", "commit"]);
+  });
+
+  it("DELETE falhou: a transação desfaz a pausa (rollback) e o erro sobe", async () => {
+    deleteFails = true;
+
+    await expect(pauseDms("maria", "logged_out")).rejects.toThrow("conexão caiu");
+
+    expect(txLog).toEqual(["begin", "update (tx)", "delete (tx)", "rollback"]);
   });
 
   it("garante a linha de liveness (logout de quem nunca deu sinal) sem mexer em lastSeenAt", async () => {

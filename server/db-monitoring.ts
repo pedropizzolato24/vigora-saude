@@ -620,22 +620,27 @@ export async function pauseDms(openId: string, reason: DmsPauseReason): Promise<
     .values({ openId, lastSeenAt: now })
     .onDuplicateKeyUpdate({ set: { openId } });
 
-  const claimed = await db
-    .update(accountLiveness)
-    .set({ dmsPausedReason: reason, dmsPausedAt: now, pauseNoticeSentAt: null })
-    .where(and(eq(accountLiveness.openId, openId), isNull(accountLiveness.dmsPausedReason)));
-  if (affectedRows(claimed) === 0) return false;
+  // Pausa e limpeza dos pendentes futuros na mesma transação: se o DELETE
+  // falhar, a pausa é desfeita. O filtro not-exists de getExpiredPendingEvents
+  // continua como segunda proteção.
+  return db.transaction(async (tx) => {
+    const claimed = await tx
+      .update(accountLiveness)
+      .set({ dmsPausedReason: reason, dmsPausedAt: now, pauseNoticeSentAt: null })
+      .where(and(eq(accountLiveness.openId, openId), isNull(accountLiveness.dmsPausedReason)));
+    if (affectedRows(claimed) === 0) return false;
 
-  await db
-    .delete(alarmEvents)
-    .where(
-      and(
-        eq(alarmEvents.openId, openId),
-        eq(alarmEvents.status, "pending"),
-        gt(alarmEvents.scheduledAt, now)
-      )
-    );
-  return true;
+    await tx
+      .delete(alarmEvents)
+      .where(
+        and(
+          eq(alarmEvents.openId, openId),
+          eq(alarmEvents.status, "pending"),
+          gt(alarmEvents.scheduledAt, now)
+        )
+      );
+    return true;
+  });
 }
 
 // --- Pré-registro feito pelo servidor (Fase 4) --------------------------------
