@@ -29,6 +29,7 @@ import { canUseFullScreenIntent, openFullScreenIntentSettings } from 'expo-alarm
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MAX_ALARMS } from '@/components/pro-limits';
 import { checkinAlarms, DEFAULT_ESCALATE_MINUTES, medicationAlarms, type AlarmKind } from '@/lib/alarm-kind';
+import { alarmDetailsCopy, READ_ONLY_EMPTY_TEXT, readOnlyBannerText } from '@/lib/alarm-details';
 
 // Evita repetir o aviso de "Notificações em tela cheia" a cada alarme criado
 // na mesma sessão (a permissão continua sendo re-checada — só o diálogo não
@@ -106,6 +107,13 @@ export function AlarmListScreen({ kind }: { kind: AlarmKind }) {
   const { dialogProps, showDialog } = useAppDialog();
   const { toastProps, showToast } = useAppToast();
 
+  // Com um acordo ativo (Fase 4) quem cuida dos alarmes é outra pessoa: estas
+  // listas só mostram. A lista local é trocada pela do servidor a cada sincronia,
+  // então qualquer edição feita aqui se perderia.
+  const management = state.management;
+  const readOnly = !!management;
+  const bannerText = readOnlyBannerText(management?.caregiverName);
+
   // Sem a permissão "Notificações em tela cheia" (Android 14+) o alarme vira um
   // aviso pequeno no alto da tela: a alarm-ring só abre se o idoso TOCAR nele,
   // em vez de tomar a tela sozinha como um alarme de verdade. Ela deixou de ser
@@ -159,6 +167,7 @@ export function AlarmListScreen({ kind }: { kind: AlarmKind }) {
   })();
 
   const openAddModal = () => {
+    if (readOnly) return;
     // Teto técnico do agendador — não é limite de plano.
     if (state.alarms.length >= MAX_ALARMS) {
       showDialog({ title: 'Limite atingido', message: `Você pode ter no máximo ${MAX_ALARMS} alarmes.`, variant: 'warning', buttons: [{ text: 'OK' }] });
@@ -181,7 +190,29 @@ export function AlarmListScreen({ kind }: { kind: AlarmKind }) {
     openEditModal(target);
   }, [focusAlarmId, state.alarms]);  // eslint-disable-line react-hooks/exhaustive-deps
 
+  // O acordo pode começar com o formulário aberto (a lista do servidor chega por
+  // baixo). Fecha o formulário: salvar agora gravaria numa lista local que o
+  // servidor acabou de substituir.
+  useEffect(() => {
+    if (readOnly) setModalVisible(false);
+  }, [readOnly]);
+
+  // Lista só leitura: tocar num alarme mostra os detalhes, sem edição.
+  const showDetails = (alarm: Alarm) => {
+    const details = alarmDetailsCopy(alarm);
+    showDialog({
+      title: details.title,
+      message: details.message,
+      variant: 'info',
+      buttons: [{ text: details.closeLabel }],
+    });
+  };
+
   const openEditModal = (alarm: Alarm) => {
+    if (readOnly) {
+      showDetails(alarm);
+      return;
+    }
     setEditingAlarm(alarm);
     setModalVisible(true);
   };
@@ -328,6 +359,23 @@ export function AlarmListScreen({ kind }: { kind: AlarmKind }) {
             {copy.count(sortedAlarms.length)}
           </Text>
         </View>
+        {readOnly && (
+          <View style={{
+            marginHorizontal: 12,
+            marginTop: 12,
+            padding: 16,
+            borderRadius: 16,
+            borderWidth: 3,
+            borderColor: ac.primary,
+            backgroundColor: ac.surface,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+          }}>
+            <MaterialIcons name="supervisor-account" size={32} color={ac.primary} />
+            <Text style={{ flex: 1, fontSize: af.md, fontWeight: '800', color: ac.foreground }}>{bannerText}</Text>
+          </View>
+        )}
         {!isCheckin && <AlarmHistorySheet visible={historyVisible} onClose={() => setHistoryVisible(false)} />}
         {!isCheckin && (
         <View style={{ paddingHorizontal: 12, paddingTop: 12 }}>
@@ -361,7 +409,7 @@ export function AlarmListScreen({ kind }: { kind: AlarmKind }) {
               {copy.emptyA11yTitle}
             </Text>
             <Text style={{ fontSize: af.md, color: ac.muted, textAlign: 'center', lineHeight: af.md * 1.5 }}>
-              {copy.emptyA11yText}
+              {readOnly ? READ_ONLY_EMPTY_TEXT : copy.emptyA11yText}
             </Text>
           </View>
         ) : (
@@ -405,10 +453,12 @@ export function AlarmListScreen({ kind }: { kind: AlarmKind }) {
                       backgroundColor: pressed ? ac.primary + '20' : ac.background,
                     }]}
                     accessibilityRole="button"
-                    accessibilityLabel={copy.editLabel}
+                    accessibilityLabel={readOnly ? 'Ver detalhes do lembrete' : copy.editLabel}
                   >
-                    <MaterialIcons name="edit" size={28} color={ac.primary} />
-                    <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.primary }}>Editar</Text>
+                    <MaterialIcons name={readOnly ? 'visibility' : 'edit'} size={28} color={ac.primary} />
+                    <Text style={{ fontSize: af.md, fontWeight: '700', color: ac.primary }}>
+                      {readOnly ? 'Ver detalhes' : 'Editar'}
+                    </Text>
                   </Pressable>
                 </View>
               </View>
@@ -418,7 +468,8 @@ export function AlarmListScreen({ kind }: { kind: AlarmKind }) {
           />
         )}
 
-        {/* Adicionar — barra inferior, mesma posição do modo normal */}
+        {/* Adicionar — barra inferior, mesma posição do modo normal. Some na lista só leitura. */}
+        {!readOnly && (
         <View style={{
           paddingHorizontal: 16,
           paddingVertical: 12,
@@ -447,6 +498,7 @@ export function AlarmListScreen({ kind }: { kind: AlarmKind }) {
             <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.onPrimary }}>{copy.addA11yText}</Text>
           </Pressable>
         </View>
+        )}
 
         <AlarmFormModal
           visible={modalVisible}
@@ -475,6 +527,15 @@ export function AlarmListScreen({ kind }: { kind: AlarmKind }) {
         </View>
       </View>
       {!isCheckin && <AlarmHistorySheet visible={historyVisible} onClose={() => setHistoryVisible(false)} />}
+
+      {readOnly && (
+        <View style={[styles.managedBanner, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
+          <MaterialIcons name="supervisor-account" size={22} color={colors.primary} />
+          <Text style={[styles.managedBannerText, { color: colors.foreground, fontSize: fs.base, fontFamily: BrandFonts.body }]}>
+            {bannerText}
+          </Text>
+        </View>
+      )}
 
       {/* Atalho para o histórico — fora da área do título */}
       {!isCheckin && (
@@ -529,7 +590,7 @@ export function AlarmListScreen({ kind }: { kind: AlarmKind }) {
             {copy.emptyTitle}
           </Text>
           <Text style={[styles.emptySubtext, { color: colors.muted, fontSize: fs.sm, lineHeight: fs.scaled(22) }]}>
-            {copy.emptyText}
+            {readOnly ? READ_ONLY_EMPTY_TEXT : copy.emptyText}
           </Text>
         </View>
       ) : (
@@ -540,7 +601,7 @@ export function AlarmListScreen({ kind }: { kind: AlarmKind }) {
             <AlarmCard
               alarm={item}
               onEdit={openEditModal}
-              onToggle={handleToggle}
+              onToggle={readOnly ? undefined : handleToggle}
               onTest={(alarm) => router.push(`/alarm-ring?alarmId=${alarm.id}`)}
               subtitle={isCheckin ? `Avisa seus contatos após ${item.escalateAfterMinutes ?? DEFAULT_ESCALATE_MINUTES} min sem resposta` : undefined}
             />
@@ -551,7 +612,8 @@ export function AlarmListScreen({ kind }: { kind: AlarmKind }) {
         />
       )}
 
-      {/* Add button — full width, min 56dp */}
+      {/* Add button — full width, min 56dp. Some na lista só leitura. */}
+      {!readOnly && (
       <View style={[styles.addBtnContainer, { borderTopColor: colors.border, backgroundColor: colors.bar }]}>
         <PressableScale
           onPress={openAddModal}
@@ -568,6 +630,7 @@ export function AlarmListScreen({ kind }: { kind: AlarmKind }) {
           </Text>
         </PressableScale>
       </View>
+      )}
 
       <AlarmFormModal
         visible={modalVisible}
@@ -612,6 +675,20 @@ const styles = StyleSheet.create({
   },
   historyLinkText: {
     fontWeight: '600',
+  },
+  managedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+  },
+  managedBannerText: {
+    flex: 1,
+    fontWeight: '700',
   },
   nextCard: {
     borderWidth: 0,
