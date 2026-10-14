@@ -4,6 +4,7 @@ import { Platform } from "react-native";
 import { useColors } from "@/hooks/use-colors";
 import { CustomTabBar } from "@/components/custom-tab-bar";
 import { MicFab } from "@/components/mic-fab";
+import { MonitoredPushInitializer } from "@/components/monitored-push-initializer";
 import { View } from "react-native";
 
 export default function TabLayout() {
@@ -52,6 +53,7 @@ export default function TabLayout() {
         <Tabs.Screen name="invite-caregiver" options={{ title: "Convidar Cuidador" }} />
         <Tabs.Screen name="tudo" />
       </Tabs>
+      <MonitoredPushInitializer />
       <MicFab bottomOffset={86} />
     </View>
   );

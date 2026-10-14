@@ -189,6 +189,46 @@ export async function trpcQuery(
   return null;
 }
 
+// --- Logout ---------------------------------------------------------------------
+
+const SIGNED_OUT_TIMEOUT_MS = 4000;
+
+/**
+ * Avisa o servidor de que a pessoa saiu da conta neste aparelho: os avisos
+ * automáticos da conta ficam pausados na hora, em vez de esperar dois dias sem
+ * sinal. Precisa rodar ANTES de a sessão ser descartada (a rota exige auth).
+ *
+ * Nunca lança e tem prazo curto (4 s, sem nova tentativa): o logout não pode
+ * ficar preso numa rede ruim. Conta de cuidador nem chama (a rota é do idoso).
+ * Fora do trpcMutation de propósito: ele tenta 3 vezes com 15 s cada e trata 401
+ * como sessão expirada, e nada disso cabe num logout.
+ */
+export async function notifyDeviceSignedOut(): Promise<void> {
+  // Primeiro para o heartbeat: um heartbeat que chegasse depois do aviso
+  // retomaria a pausa no servidor (recordHeartbeat limpa a pausa).
+  stopHeartbeat();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SIGNED_OUT_TIMEOUT_MS);
+  try {
+    const user = await Auth.getUserInfo();
+    if (!user || user.userType === "caregiver") return;
+    const headers = await buildAuthHeaders();
+    if (!headers) return;
+    const res = await fetch(`${getApiBaseUrl()}/api/trpc/monitoring.deviceSignedOut`, {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: JSON.stringify({ json: {} }),
+      signal: controller.signal,
+    });
+    if (!res.ok) console.warn(`[Monitoring] deviceSignedOut respondeu ${res.status}`);
+  } catch (err) {
+    console.warn("[Monitoring] deviceSignedOut falhou:", err instanceof Error ? err.name : typeof err);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // --- Heartbeat ----------------------------------------------------------------
 
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
@@ -201,6 +241,8 @@ async function sendHeartbeat(location?: string): Promise<void> {
   // Android → JSON.stringify descarta a chave e o servidor preserva o valor.
   const batteryExempt =
     Platform.OS === "android" ? await isIgnoringBatteryOptimizations() : undefined;
+  // Parado enquanto esperava o deviceId/bateria (ex.: logout): não envia.
+  if (!heartbeatTimer) return;
   await trpcMutation("monitoring.heartbeat", {
     lastDeviceId: deviceId,
     appVersion: "1.0.0",

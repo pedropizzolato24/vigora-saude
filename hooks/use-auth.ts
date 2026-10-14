@@ -2,6 +2,7 @@ import * as Api from "@/lib/_core/api";
 import * as Auth from "@/lib/_core/auth";
 import { clearAppLockStorage } from "@/lib/app-lock-storage";
 import { unregisterDevicePushToken } from "@/lib/push-registration";
+import { notifyDeviceSignedOut } from "@/lib/monitoring-service";
 import { logoutUser } from "@/lib/purchases";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform } from "react-native";
@@ -93,6 +94,12 @@ export function useAuth(options?: UseAuthOptions) {
     // logout e o aparelho seguia recebendo os alertas da conta que o registrou,
     // mesmo sem ninguém logado. Best-effort — não pode travar o logout.
     await unregisterDevicePushToken();
+    // O servidor pausa os avisos automáticos desta conta na hora: o idoso saiu
+    // de propósito, e esperar dois dias sem sinal avisaria a família à toa.
+    // É a ÚLTIMA chamada de aparelho ao servidor (qualquer sinal depois dela
+    // retomaria a pausa), mas vem antes do Api.logout porque a rota exige a
+    // sessão que o logout está prestes a descartar. Nunca lança; prazo curto.
+    await notifyDeviceSignedOut();
     try {
       await Api.logout();
     } catch (err) {
