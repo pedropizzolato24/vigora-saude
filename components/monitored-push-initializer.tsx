@@ -3,9 +3,15 @@
  *
  * Do lado do idoso: registra o token de push deste aparelho (até a Fase 4 só o
  * app do cuidador fazia isso) e reage aos pushes de gerenciamento de alarmes.
- * Qualquer push desses (recebido com o app aberto ou tocado) pede a busca da
+ * Push VISÍVEL desses (recebido com o app aberto ou tocado) pede a busca da
  * lista no servidor; o pedido de gerenciamento também manda o diálogo
  * reaparecer. Mesmo estilo do caregiver-push-initializer.
+ *
+ * Os pushes só de dados (`managed_alarms_updated` silencioso e `ping`) NÃO
+ * chegam aqui: o expo-notifications 0.32 não os repassa ao JS, nem com o app
+ * aberto. Com o app aberto, quem traz a mudança do cuidador é a busca a cada
+ * 5 minutos do MonitoringInitializer; o silencioso fica para a futura tarefa em
+ * segundo plano (Tarefa 17). Os tipos seguem na lista abaixo para quando ela vier.
  *
  * Montado em app/(tabs)/_layout.tsx, que só o idoso usa. Conta de cuidador que
  * chegasse aqui por engano é ignorada.
@@ -123,7 +129,7 @@ export function MonitoredPushInitializer() {
     return () => sub.remove();
   }, []);
 
-  // Push recebido com o app aberto.
+  // Push VISÍVEL recebido com o app aberto (o só de dados não chega: ver o cabeçalho).
   useEffect(() => {
     if (Platform.OS === 'web') return;
     const sub = Notifications.addNotificationReceivedListener((notification) => {

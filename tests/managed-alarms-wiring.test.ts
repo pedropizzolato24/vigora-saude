@@ -44,6 +44,18 @@ describe("Tarefa 12: estado e fiação do modo gerenciado", () => {
     expect(ouvinte).toMatch(/shouldResync[\s\S]*runManagedSync/);
   });
 
+  it("com o app aberto, pede a lista gerenciada a cada 5 minutos (push silencioso não chega ao JS)", () => {
+    const init = read("components/monitoring-initializer.tsx");
+    const i = init.indexOf("MANAGED_POLL_INTERVAL_MS);");
+    expect(i).toBeGreaterThan(-1);
+    expect(init).toMatch(/const MANAGED_POLL_INTERVAL_MS = 5 \* 60 \* 1000;/);
+    const efeito = init.slice(init.lastIndexOf("useEffect(", i), init.indexOf("}, []);", i));
+    expect(efeito).toMatch(/setInterval\(/);
+    expect(efeito).toMatch(/!initializedRef\.current \|\| AppState\.currentState !== "active"\) return;/);
+    expect(efeito).toMatch(/requestManagedSync\(\);/);
+    expect(efeito).toMatch(/clearInterval\(/);
+  });
+
   it("não sincroniza enquanto o estado salvo carrega, e sincroniza quando isLoading vira false", () => {
     const init = read("components/monitoring-initializer.tsx");
     const corpo = init.slice(init.indexOf("const runManagedSync"), init.indexOf("}, [dispatch]);"));

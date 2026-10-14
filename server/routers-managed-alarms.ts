@@ -218,8 +218,12 @@ async function commitList(args: {
   void (async () => {
     const tokens = await getPushTokensForOpenIds([args.monitoredOpenId]);
     if (tokens.length === 0) return;
-    // Não apaga token com DeviceNotRegistered aqui: quem decide "app removido"
-    // é a verificação diária (Tarefa 10), que também olha os recibos.
+    // Push só de dados: hoje o app NÃO o recebe no JS (o expo-notifications não
+    // repassa push sem conteúdo, nem com o app aberto). Fica para a futura
+    // tarefa em segundo plano (Tarefa 17); com o app aberto, a lista chega pela
+    // busca a cada 5 minutos, e fechado, pela próxima abertura ou pelo aviso
+    // visível de 10 minutos. Não apaga token com DeviceNotRegistered aqui: quem
+    // decide "app removido" é a verificação diária (Tarefa 10), que olha os recibos.
     await sendExpoDataPush(
       tokens.map((t) => t.token),
       { type: "managed_alarms_updated", version }

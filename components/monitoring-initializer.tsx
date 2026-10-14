@@ -22,6 +22,7 @@ import {
 import {
   createManagedAlarmsDeps,
   onManagedSyncRequested,
+  requestManagedSync,
   syncManagedAlarms,
 } from "@/lib/managed-alarms-sync";
 import * as Auth from "@/lib/_core/auth";
@@ -29,6 +30,14 @@ import * as Location from "expo-location";
 import { AppState, Platform } from "react-native";
 import { AppDialog, useAppDialog } from "@/components/app-dialog";
 import { shouldResync } from "@/lib/resync-throttle";
+
+/**
+ * Com o app aberto, a lista gerenciada é buscada no mesmo compasso do heartbeat
+ * (5 min). O push silencioso `managed_alarms_updated` não chega ao JS: o
+ * expo-notifications não repassa push só de dados aos ouvintes, nem com o app
+ * aberto. Ele fica para a futura tarefa em segundo plano.
+ */
+const MANAGED_POLL_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
  * Returns the user's current location string ("lat,lng") only when:
@@ -287,8 +296,19 @@ export function MonitoringInitializer() {
     void runManagedSync();
   }, [state.isLoading, runManagedSync]);
 
-  // Push (silencioso, visível ou toque na notificação) e o aceite do pedido
-  // pedem a busca da lista na hora, sem esperar o próximo ciclo.
+  // Com o app em primeiro plano, pede a lista a cada 5 minutos: é o que traz a
+  // mudança do cuidador sem esperar a próxima abertura (o push silencioso não
+  // chega aqui). Conta de cuidador é ignorada dentro de runManagedSync.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!initializedRef.current || AppState.currentState !== "active") return;
+      requestManagedSync();
+    }, MANAGED_POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Push visível, toque na notificação, a busca periódica acima e o aceite do
+  // pedido pedem a busca da lista na hora, sem esperar o próximo ciclo.
   useEffect(() => {
     return onManagedSyncRequested(() => {
       if (!initializedRef.current) return;
