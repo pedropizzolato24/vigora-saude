@@ -41,7 +41,8 @@ async function expireRequests(now: Date, result: HousekeepingResult): Promise<vo
     const open = await getOpenManagementForMonitored(request.monitoredOpenId);
     if (!open || open.id !== request.id || open.status !== "pending") return;
 
-    await endManagement(request.id, "expired");
+    // Exige 'pending': o idoso pode ter aceitado entre a conferência e aqui.
+    if (!(await endManagement(request.id, "expired", "pending"))) return;
     result.expired++;
 
     const tokens = await getPushTokensForOpenIds([request.caregiverOpenId]);

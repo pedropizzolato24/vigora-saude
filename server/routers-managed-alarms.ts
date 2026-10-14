@@ -363,7 +363,10 @@ export const managedAlarmsRouter = router({
     if (open.status !== "pending") {
       throw new TRPCError({ code: "CONFLICT", message: "O pedido já foi respondido." });
     }
-    await endManagement(open.id, "cancelled");
+    // Exige 'pending': o idoso pode ter aceitado entre a leitura e aqui.
+    if (!(await endManagement(open.id, "cancelled", "pending"))) {
+      throw new TRPCError({ code: "CONFLICT", message: "O pedido já foi respondido." });
+    }
     return { success: true } as const;
   }),
 

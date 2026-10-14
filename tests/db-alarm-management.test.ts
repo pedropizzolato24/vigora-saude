@@ -352,7 +352,32 @@ describe("endManagement", () => {
   });
 
   it("id que não existe: não faz nada e não lança", async () => {
-    await expect(endManagement(99, "cancelled")).resolves.toBeUndefined();
+    await expect(endManagement(99, "cancelled")).resolves.toBe(false);
+  });
+
+  it("devolve true quando encerrou e false quando o acordo já tinha terminado", async () => {
+    fake.seed("alarm_management", [agreement({ status: "active" })]);
+
+    await expect(endManagement(1, "stopped_by_caregiver")).resolves.toBe(true);
+    await expect(endManagement(1, "unlinked")).resolves.toBe(false);
+  });
+
+  it("status esperado 'pending': pedido que acabou de virar acordo ativo NÃO é encerrado e a lista fica", async () => {
+    fake.seed("alarm_management", [agreement({ status: "active", respondedAt: NOW })]);
+    await seedList("maria");
+
+    await expect(endManagement(1, "cancelled", "pending")).resolves.toBe(false);
+
+    expect(agreementsOf("maria")[0]).toMatchObject({ status: "active", endedReason: null });
+    expect(fake.rows("managed_alarm_lists")).toHaveLength(1);
+  });
+
+  it("status esperado 'pending' com o pedido ainda pendente: encerra normalmente", async () => {
+    fake.seed("alarm_management", [agreement()]);
+
+    await expect(endManagement(1, "expired", "pending")).resolves.toBe(true);
+
+    expect(agreementsOf("maria")[0]).toMatchObject({ status: "ended", endedReason: "expired" });
   });
 
   it("sem banco, lança DATABASE_UNAVAILABLE", async () => {

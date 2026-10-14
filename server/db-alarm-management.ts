@@ -226,9 +226,15 @@ export async function activateManagement(
  * lista no celular continua e volta a ser dele) e, se for recusa, registra
  * também `respondedAt`. Idempotente: acordo que já terminou não é tocado (o
  * motivo original fica, e uma lista de um acordo NOVO do mesmo idoso não é
- * apagada por engano).
+ * apagada por engano). Com `expectedStatus`, só encerra se o acordo ainda
+ * estiver nesse status (cancelar/vencer um pedido nunca encerra um acordo que
+ * acabou de ser aceito). Devolve se encerrou.
  */
-export async function endManagement(id: number, reason: EndedReason): Promise<void> {
+export async function endManagement(
+  id: number,
+  reason: EndedReason,
+  expectedStatus?: "pending" | "active",
+): Promise<boolean> {
   const db = await getDb();
   if (!db) throw new Error("DATABASE_UNAVAILABLE");
   const [current] = await db
@@ -236,9 +242,9 @@ export async function endManagement(id: number, reason: EndedReason): Promise<vo
     .from(alarmManagement)
     .where(eq(alarmManagement.id, id))
     .limit(1);
-  if (!current) return;
+  if (!current) return false;
 
-  await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     await lockMonitored(tx, current.monitoredOpenId);
     const now = new Date();
     const res = await tx
@@ -249,8 +255,14 @@ export async function endManagement(id: number, reason: EndedReason): Promise<vo
         endedAt: now,
         ...(reason === "declined" ? { respondedAt: now } : {}),
       })
-      .where(and(eq(alarmManagement.id, id), ne(alarmManagement.status, "ended")));
-    if (affectedRows(res) === 0) return;
+      .where(
+        and(
+          eq(alarmManagement.id, id),
+          expectedStatus ? eq(alarmManagement.status, expectedStatus) : ne(alarmManagement.status, "ended"),
+        ),
+      );
+    if (affectedRows(res) === 0) return false;
     await tx.delete(managedAlarmLists).where(eq(managedAlarmLists.monitoredOpenId, current.monitoredOpenId));
+    return true;
   });
 }

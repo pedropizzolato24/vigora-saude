@@ -140,6 +140,14 @@ describe("managedAlarms.cancelRequest", () => {
     await expect(as("ana").managedAlarms.cancelRequest()).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
+  it("encerra exigindo 'pending': se o idoso aceitou no meio, CONFLICT e o acordo continua", async () => {
+    seedPendingRequest("ana", "maria");
+    vi.mocked(management.endManagement).mockResolvedValueOnce(false);
+
+    await expect(as("ana").managedAlarms.cancelRequest()).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(management.endManagement).toHaveBeenCalledWith(expect.any(Number), "cancelled", "pending");
+  });
+
   it("acordo já ativo não é 'pedido': CONFLICT e o acordo continua", async () => {
     seedActiveAgreement({ caregiverOpenId: "ana" });
 

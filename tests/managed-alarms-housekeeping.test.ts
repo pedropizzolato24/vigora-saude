@@ -58,7 +58,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(dbManagement.getExpiredManagementRequests).mockResolvedValue([]);
   vi.mocked(dbManagement.getOpenManagementForMonitored).mockResolvedValue({ id: 7, status: "pending" } as never);
-  vi.mocked(dbManagement.endManagement).mockResolvedValue(undefined);
+  vi.mocked(dbManagement.endManagement).mockResolvedValue(true);
   vi.mocked(dbList.getListsNeedingVisibleNotice).mockResolvedValue([]);
   vi.mocked(dbList.markVisibleNoticeSent).mockResolvedValue(undefined);
   vi.mocked(dbPush.getPushTokensForOpenIds).mockImplementation(
@@ -80,7 +80,7 @@ describe("pedido que venceu (7 dias)", () => {
     const result = await runManagementHousekeeping(NOW);
 
     expect(dbManagement.getExpiredManagementRequests).toHaveBeenCalledWith(NOW);
-    expect(dbManagement.endManagement).toHaveBeenCalledWith(7, "expired");
+    expect(dbManagement.endManagement).toHaveBeenCalledWith(7, "expired", "pending");
     expect(push.sendExpoPush).toHaveBeenCalledWith(["ExpoTok[ana]"], {
       title: "Alarmes",
       body: "O pedido para cuidar dos alarmes de Dona Maria venceu.",
@@ -110,6 +110,17 @@ describe("pedido que venceu (7 dias)", () => {
     expect(result.expired).toBe(0);
   });
 
+  it("pedido aceito DEPOIS da conferência: o encerramento exige 'pending', não conta nem avisa", async () => {
+    vi.mocked(dbManagement.getExpiredManagementRequests).mockResolvedValue([request()]);
+    vi.mocked(dbManagement.endManagement).mockResolvedValue(false);
+
+    const result = await runManagementHousekeeping(NOW);
+
+    expect(dbManagement.endManagement).toHaveBeenCalledWith(7, "expired", "pending");
+    expect(push.sendExpoPush).not.toHaveBeenCalled();
+    expect(result.expired).toBe(0);
+  });
+
   it("pedido que já não está aberto (cancelado, recusado) é ignorado", async () => {
     vi.mocked(dbManagement.getExpiredManagementRequests).mockResolvedValue([request()]);
     vi.mocked(dbManagement.getOpenManagementForMonitored).mockResolvedValue(null);
@@ -134,7 +145,7 @@ describe("pedido que venceu (7 dias)", () => {
 
     const result = await runManagementHousekeeping(NOW);
 
-    expect(dbManagement.endManagement).toHaveBeenCalledWith(7, "expired");
+    expect(dbManagement.endManagement).toHaveBeenCalledWith(7, "expired", "pending");
     expect(push.sendExpoPush).not.toHaveBeenCalled();
     expect(result.expired).toBe(1);
   });

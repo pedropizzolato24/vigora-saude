@@ -220,14 +220,16 @@ export const fakeManagementModule = {
       visibleNoticeSentForVersion: 0,
     });
   }),
-  endManagement: vi.fn(async (id: number, reason: string) => {
+  endManagement: vi.fn(async (id: number, reason: string, expectedStatus?: string) => {
     const row = store.agreements.find((a) => a.id === id);
-    if (!row) return;
+    if (!row || row.status === "ended") return false;
+    if (expectedStatus && row.status !== expectedStatus) return false;
     row.status = "ended";
     row.endedReason = reason;
     row.endedAt = new Date();
     if (reason === "declined") row.respondedAt = new Date();
     store.lists.delete(row.monitoredOpenId);
+    return true;
   }),
   getExpiredManagementRequests: vi.fn(async () => []),
   getManagementHistory: vi.fn(async () => []),
