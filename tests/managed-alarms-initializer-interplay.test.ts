@@ -4,7 +4,7 @@
  * teste trava o que isso faz sobre alarmes que o aplicador JÁ agendou: nada de
  * agendamento em dobro. Ver "Regras de desenho", item 5, da Tarefa 12.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 
 let alarmKitDisponivel = false;
 let nativoDisponivel = false;
@@ -67,7 +67,15 @@ const alarme = (id: string): Alarm => ({
   vibration: true,
 });
 
+let logSpy: MockInstance;
+
+afterEach(() => {
+  logSpy.mockRestore();
+});
+
 beforeEach(async () => {
+  // O alarm-sync loga cada passo; o teste mede só as chamadas de agendamento.
+  logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   alarmKitDisponivel = false;
   nativoDisponivel = false;
   idsNoAlarmKit = [];

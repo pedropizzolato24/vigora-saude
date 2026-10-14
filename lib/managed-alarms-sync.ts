@@ -38,10 +38,22 @@ export interface ManagedSyncDeps {
   fetchMine(): Promise<MineResponse | null>;
   /** LANÇA se a confirmação não chegou ao servidor. */
   ack(version: number, failedAlarmIds: string[]): Promise<void>;
+  /**
+   * Opcional: false se a conta que iniciou a rodada já não é a ativa (logout ou
+   * troca de conta no meio). A rodada para sem despachar nada.
+   */
+  isCurrentAccount?(): Promise<boolean>;
 }
 
 // Só o nome do erro vai para o log: a mensagem pode carregar dado do alarme.
 const errName = (e: unknown): string => (e instanceof Error ? e.name : typeof e);
+
+async function accountChanged(deps: ManagedSyncDeps): Promise<boolean> {
+  if (!deps.isCurrentAccount) return false;
+  if (await deps.isCurrentAccount()) return false;
+  console.warn('[ManagedAlarms] a conta mudou durante a sincronização: rodada interrompida');
+  return true;
+}
 
 async function runOnce(deps: ManagedSyncDeps): Promise<ManagedSyncResult> {
   let mine: MineResponse | null;
@@ -52,6 +64,7 @@ async function runOnce(deps: ManagedSyncDeps): Promise<ManagedSyncResult> {
     return 'offline';
   }
   if (!mine) return 'offline';
+  if (await accountChanged(deps)) return 'offline';
 
   const current = deps.getManagement();
   const agreement = mine.management;
@@ -72,7 +85,8 @@ async function runOnce(deps: ManagedSyncDeps): Promise<ManagedSyncResult> {
   const plan = planManagedApply(deps.getLocal(), list.alarms);
 
   // 1. Cancela os removidos e os alterados. Uma falha aqui é registrada e não
-  // impede o resto: o agendamento seguinte substitui o mesmo uid.
+  // impede o resto. Num alterado, o agendamento seguinte substitui o mesmo uid;
+  // num removido, o alarme pode continuar no sistema (só o log registra).
   for (const alarm of plan.toCancel) {
     try {
       await deps.cancel(alarm);
@@ -107,7 +121,10 @@ async function runOnce(deps: ManagedSyncDeps): Promise<ManagedSyncResult> {
     return a;
   });
 
-  // 4. Só agora (TODO o agendamento terminou) a lista local é trocada.
+  // 4. Só agora (TODO o agendamento terminou) a lista local é trocada. Se a
+  // conta mudou no meio, nada é despachado nem confirmado (o ack iria com o
+  // token da conta nova).
+  if (await accountChanged(deps)) return 'offline';
   deps.dispatch({ type: 'REPLACE_ALARMS', payload: next });
 
   // 5. Confirma. Se não chegar, a versão NÃO avança: a próxima rodada reconfirma.
@@ -118,6 +135,7 @@ async function runOnce(deps: ManagedSyncDeps): Promise<ManagedSyncResult> {
     return 'offline';
   }
 
+  if (await accountChanged(deps)) return 'offline';
   deps.dispatch({
     type: 'SET_MANAGEMENT',
     payload: { caregiverName: agreement.caregiverName, since: agreement.since, appliedVersion: list.version },
@@ -141,7 +159,9 @@ export function syncManagedAlarms(deps: ManagedSyncDeps): Promise<ManagedSyncRes
   }
   inFlight = (async () => {
     let result = await runOnce(deps);
-    if (rerunRequested) {
+    // Quem chega durante uma rodada (inclusive a repetida) pede outra: sem o
+    // laço, o pedido que chega na segunda rodada se perdia.
+    while (rerunRequested) {
       rerunRequested = false;
       result = await runOnce(deps);
     }

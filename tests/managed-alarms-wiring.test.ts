@@ -44,6 +44,19 @@ describe("Tarefa 12: estado e fiação do modo gerenciado", () => {
     expect(ouvinte).toMatch(/shouldResync[\s\S]*runManagedSync/);
   });
 
+  it("não sincroniza enquanto o estado salvo carrega, e sincroniza quando isLoading vira false", () => {
+    const init = read("components/monitoring-initializer.tsx");
+    const corpo = init.slice(init.indexOf("const runManagedSync"), init.indexOf("}, [dispatch]);"));
+    expect(corpo).toMatch(/stateRef\.current\.isLoading\) return;/);
+    expect(init).toMatch(/state\.isLoading \|\| !initializedRef\.current[\s\S]*void runManagedSync\(\);[\s\S]*\[state\.isLoading, runManagedSync\]/);
+  });
+
+  it("a rodada confere a conta ativa (openId capturado no início)", () => {
+    const init = read("components/monitoring-initializer.tsx");
+    expect(init).toMatch(/const openId = user\.openId;/);
+    expect(init).toMatch(/isCurrentAccount: async \(\) => \(await Auth\.getUserInfo\(\)\)\?\.openId === openId/);
+  });
+
   it("conta de cuidador nunca chama managedAlarms.mine (a rota responde FORBIDDEN)", () => {
     const init = read("components/monitoring-initializer.tsx");
     expect(init).toMatch(/userType === ["']caregiver["']/);

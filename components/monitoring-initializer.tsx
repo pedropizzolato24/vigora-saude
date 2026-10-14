@@ -100,15 +100,21 @@ export function MonitoringInitializer() {
   // para o log); conta de cuidador nem pergunta (a rota responde FORBIDDEN).
   const runManagedSync = useCallback(async () => {
     try {
+      // Antes de o estado salvo carregar, o plano seria calculado contra [] e
+      // cancelaria/reagendaria tudo; o efeito de isLoading chama de novo depois.
+      if (stateRef.current.isLoading) return;
       const user = await Auth.getUserInfo();
       if (!user || user.userType === "caregiver") return;
-      await syncManagedAlarms(
-        createManagedAlarmsDeps({
+      const openId = user.openId;
+      await syncManagedAlarms({
+        ...createManagedAlarmsDeps({
           getLocal: () => stateRef.current.alarms,
           getManagement: () => stateRef.current.management,
           dispatch,
-        })
-      );
+        }),
+        // Logout/troca de conta no meio da rodada: nada é despachado nem confirmado.
+        isCurrentAccount: async () => (await Auth.getUserInfo())?.openId === openId,
+      });
     } catch (error) {
       console.warn(
         "[Monitoring] sincronização dos alarmes gerenciados falhou:",
@@ -273,6 +279,13 @@ export function MonitoringInitializer() {
     });
     return () => sub.remove();
   }, [runManagedSync]);
+
+  // O estado salvo terminou de carregar (também depois de uma troca de conta):
+  // a rodada pulada por isLoading acontece agora.
+  useEffect(() => {
+    if (state.isLoading || !initializedRef.current) return;
+    void runManagedSync();
+  }, [state.isLoading, runManagedSync]);
 
   // Push (silencioso, visível ou toque na notificação) e o aceite do pedido
   // pedem a busca da lista na hora, sem esperar o próximo ciclo.

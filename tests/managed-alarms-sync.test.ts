@@ -279,6 +279,90 @@ describe("syncManagedAlarms: sem acordo, versão já aplicada e acordo novo", ()
   });
 });
 
+describe("syncManagedAlarms: pedidos que chegam durante a rodada", () => {
+  it("um terceiro pedido que chega durante a rodada repetida ganha a sua própria rodada", async () => {
+    let fetches = 0;
+    const gates: Array<() => void> = [];
+    const deps = makeDeps({
+      fetchMine: async () => {
+        fetches += 1;
+        await new Promise<void>((resolve) => gates.push(resolve));
+        return mineWith(fetches, [med("a", "08:00")]);
+      },
+    });
+
+    const p1 = syncManagedAlarms(deps);
+    await new Promise((r) => setTimeout(r, 5));
+    expect(fetches).toBe(1);
+
+    const p2 = syncManagedAlarms(deps); // chega durante a 1ª rodada: pede a repetição
+    gates[0]();
+    await new Promise((r) => setTimeout(r, 5));
+    expect(fetches).toBe(2);
+
+    const p3 = syncManagedAlarms(deps); // chega durante a rodada repetida: não pode se perder
+    gates[1]();
+    await new Promise((r) => setTimeout(r, 5));
+    expect(fetches).toBe(3);
+
+    gates[2]();
+    await Promise.all([p1, p2, p3]);
+    expect(fetches).toBe(3);
+    expect(management?.appliedVersion).toBe(3);
+  });
+});
+
+describe("syncManagedAlarms: a conta mudou no meio da rodada", () => {
+  // `limite` = quantas checagens devolvem true antes de a conta "mudar".
+  const contaMuda = (limite: number) => {
+    let n = 0;
+    return async () => {
+      n += 1;
+      return n <= limite;
+    };
+  };
+
+  it("mudou logo depois da busca: não cancela, não agenda, não despacha", async () => {
+    localAlarms = [{ ...med("velho", "07:00"), nativeAlarmUids: ["u"] }];
+    mine = mineWith(2, [med("novo", "10:00")]);
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    expect(await syncManagedAlarms(makeDeps({ isCurrentAccount: contaMuda(0) }))).toBe("offline");
+    expect(calls).toEqual([]);
+  });
+
+  it("mudou durante o agendamento: não troca a lista nem confirma", async () => {
+    mine = mineWith(2, [med("a", "08:00")]);
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    expect(await syncManagedAlarms(makeDeps({ isCurrentAccount: contaMuda(1) }))).toBe("offline");
+    expect(calls).toEqual(["schedule:a"]);
+    expect(management).toBeNull();
+  });
+
+  it("mudou durante o ack: a versão não é marcada como aplicada", async () => {
+    mine = mineWith(2, [med("a", "08:00")]);
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    expect(await syncManagedAlarms(makeDeps({ isCurrentAccount: contaMuda(2) }))).toBe("offline");
+    expect(calls).toEqual(["schedule:a", "dispatch:REPLACE_ALARMS", "ack:2:"]);
+    expect(management).toBeNull();
+  });
+
+  it("o log da troca de conta não traz dado do alarme", async () => {
+    mine = mineWith(2, [med("a", "08:00")]);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await syncManagedAlarms(makeDeps({ isCurrentAccount: contaMuda(0) }));
+    expect(warn).toHaveBeenCalled();
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("Remédio");
+  });
+
+  it("conta que continua a mesma aplica normalmente", async () => {
+    mine = mineWith(2, [med("a", "08:00")]);
+    expect(await syncManagedAlarms(makeDeps({ isCurrentAccount: async () => true }))).toBe("applied");
+  });
+});
+
 describe("barramento requestManagedSync", () => {
   it("entrega o pedido aos ouvintes e respeita openRequest", () => {
     const ouvinte = vi.fn();
