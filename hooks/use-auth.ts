@@ -1,6 +1,7 @@
 import * as Api from "@/lib/_core/api";
 import * as Auth from "@/lib/_core/auth";
 import { clearAppLockStorage } from "@/lib/app-lock-storage";
+import { setCloudPushBlocked } from "@/lib/cloud-sync";
 import { unregisterDevicePushToken } from "@/lib/push-registration";
 import { notifyDeviceSignedOut } from "@/lib/monitoring-service";
 import { logoutUser } from "@/lib/purchases";
@@ -89,6 +90,10 @@ export function useAuth(options?: UseAuthOptions) {
   }, []);
 
   const logout = useCallback(async () => {
+    // Trava o backup para a nuvem até a conta ser descartada: o userData.put e o
+    // re-registro do token contam como sinal de vida e desfariam a pausa abaixo.
+    // Ligada antes do desregistro porque ele também dispara o listener de token.
+    setCloudPushBlocked(true);
     // ANTES de descartar a sessão (a rota exige auth): tira este aparelho da
     // lista de destinos de push. Sem isto a linha em push_tokens sobrevivia ao
     // logout e o aparelho seguia recebendo os alertas da conta que o registrou,
@@ -106,8 +111,16 @@ export function useAuth(options?: UseAuthOptions) {
       console.error("[Auth] Logout API call failed:", err);
       // Continue with logout even if API call fails
     } finally {
-      await Auth.removeSessionToken();
-      await Auth.clearUserInfo();
+      try {
+        await Auth.removeSessionToken();
+        await Auth.clearUserInfo();
+      } finally {
+        // Conta já descartada: um envio pendente da conta antiga morre no guard
+        // de época do app-context, e a próxima conta pode voltar a sincronizar.
+        // No finally para que uma falha ao limpar a sessão não deixe o backup
+        // travado até reiniciar o app.
+        setCloudPushBlocked(false);
+      }
       // O bloqueio de app (PIN) pertence à conta logada — não pode sobreviver
       // para a próxima pessoa que entrar neste aparelho.
       await clearAppLockStorage();

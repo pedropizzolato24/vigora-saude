@@ -25,6 +25,21 @@ describe("logout do idoso", () => {
     expect(depoisDoAviso).not.toMatch(/pushCloudData|push\.register|userData\.put|heartbeat/i);
   });
 
+  it("trava o backup antes de desregistrar o token e só solta depois de descartar a conta", () => {
+    // O userData.put debounced (3 s) conta como sinal de vida e desfaria a pausa.
+    const trava = logout.indexOf("setCloudPushBlocked(true);");
+    const desregistra = logout.indexOf("await unregisterDevicePushToken();");
+    const avisa = logout.indexOf("await notifyDeviceSignedOut();");
+    const limpaConta = logout.indexOf("await Auth.clearUserInfo();");
+    const solta = logout.indexOf("setCloudPushBlocked(false);");
+    expect(trava).toBeGreaterThan(-1);
+    expect(trava).toBeLessThan(desregistra);
+    expect(trava).toBeLessThan(avisa);
+    expect(solta).toBeGreaterThan(limpaConta);
+    // Solto num finally: falha ao limpar a sessão não pode deixar o backup travado.
+    expect(logout.slice(limpaConta, solta)).toMatch(/finally \{/);
+  });
+
   it("importa o helper do serviço de monitoramento", () => {
     expect(src).toMatch(/import \{ notifyDeviceSignedOut \} from "@\/lib\/monitoring-service";/);
   });

@@ -14,6 +14,7 @@ import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Auth from '@/lib/_core/auth';
+import { isCloudPushBlocked } from '@/lib/cloud-sync';
 import { getDeviceId } from '@/lib/device-id';
 import { requestManagedSync } from '@/lib/managed-alarms-sync';
 import { trpcMutation } from '@/lib/monitoring-service';
@@ -40,6 +41,15 @@ function warnFailed(what: string, error: unknown) {
  */
 let coldStartHandled = false;
 
+/**
+ * Último token NATIVO (FCM/APNs) visto pelo listener. No expo-notifications,
+ * TODA chamada de getDevicePushTokenAsync (inclusive a de dentro de
+ * getExpoPushTokenAsync) dispara o addPushTokenListener — com o mesmo token. Sem
+ * comparar, registrar dispararia o listener, que registraria de novo, para sempre.
+ * Só um token diferente do anterior conta como troca. O primeiro evento só semeia.
+ */
+let lastNativeToken: string | null = null;
+
 // Registra (ou re-registra) o token de push deste aparelho. O servidor faz upsert.
 async function registerPushToken() {
   const user = await Auth.getUserInfo();
@@ -52,6 +62,12 @@ async function registerPushToken() {
   }
   // deviceId: prova de posse da linha (o logout apaga por ele).
   const deviceId = await getDeviceId();
+  // O logout trava o backup (setCloudPushBlocked) antes de desregistrar o token,
+  // e desregistrar dispara o listener: registrar agora recriaria o token no
+  // servidor e retomaria a pausa "saiu da conta". Confere de novo, depois dos
+  // awaits, que a mesma conta segue ativa e que não há logout em andamento.
+  const current = await Auth.getUserInfo();
+  if (isCloudPushBlocked() || !current || current.openId !== user.openId) return;
   // trpcMutation devolve null em toda falha e nunca lança.
   const sent = await trpcMutation('push.register', { ...result, deviceId });
   if (sent === null) console.warn('[monitored-push] o servidor não registrou o token');
@@ -79,7 +95,11 @@ export function MonitoredPushInitializer() {
   // token velho e pausaria a conta como "app removido", com aviso falso ao cuidador.
   useEffect(() => {
     if (Platform.OS === 'web') return;
-    const sub = Notifications.addPushTokenListener(() => {
+    const sub = Notifications.addPushTokenListener((token) => {
+      const native = String(token.data);
+      const rotated = lastNativeToken !== null && native !== lastNativeToken;
+      lastNativeToken = native;
+      if (!rotated) return;
       registerPushToken().catch((e) => warnFailed('re-registro do token falhou', e));
     });
     return () => sub.remove();

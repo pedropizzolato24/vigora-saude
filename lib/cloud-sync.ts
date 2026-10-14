@@ -122,7 +122,27 @@ export async function pullCloudData(): Promise<CloudSnapshot | null> {
  * failures are logged and swallowed (the local AsyncStorage copy is the source
  * of truth until the next successful sync).
  */
+/**
+ * Trava os envios durante o logout. O userData.put conta como sinal de vida do
+ * aparelho no servidor: um backup debounced (3 s) que saísse depois do
+ * deviceSignedOut desfaria a pausa "saiu da conta". Ligada pelo logout
+ * (hooks/use-auth.ts) e desligada quando a conta já foi descartada.
+ */
+let pushBlocked = false;
+
+export function setCloudPushBlocked(blocked: boolean): void {
+  pushBlocked = blocked;
+}
+
+export function isCloudPushBlocked(): boolean {
+  return pushBlocked;
+}
+
 export async function pushCloudData(snapshot: CloudSnapshot): Promise<boolean> {
+  if (pushBlocked) {
+    console.warn("[CloudSync] push adiado: logout em andamento");
+    return false;
+  }
   const headers = await buildAuthHeaders();
   if (!headers) return false;
 

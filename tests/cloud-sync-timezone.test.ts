@@ -11,7 +11,7 @@ vi.mock("../lib/_core/auth", () => ({ getSessionToken: async () => "jwt" }));
 const fetchMock = vi.fn();
 vi.stubGlobal("fetch", fetchMock);
 
-import { pushCloudData, type CloudSnapshot } from "../lib/cloud-sync";
+import { pushCloudData, setCloudPushBlocked, type CloudSnapshot } from "../lib/cloud-sync";
 
 const snapshot = {
   anamnesis: null,
@@ -58,5 +58,23 @@ describe("pushCloudData envia o fuso do aparelho", () => {
     await expect(pushCloudData(snapshot)).resolves.toBe(true);
     expect("timezone" in corpoEnviado()).toBe(false);
     expect(warn).toHaveBeenCalled();
+  });
+});
+
+describe("pushCloudData durante o logout", () => {
+  afterEach(() => setCloudPushBlocked(false));
+
+  it("travado, não envia nada (o put contaria como sinal de vida) e devolve false", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    setCloudPushBlocked(true);
+    await expect(pushCloudData(snapshot)).resolves.toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("destravado, volta a enviar", async () => {
+    setCloudPushBlocked(true);
+    setCloudPushBlocked(false);
+    await expect(pushCloudData(snapshot)).resolves.toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
