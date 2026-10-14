@@ -7,18 +7,22 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { PressableScale } from '@/components/pressable-scale';
 import { useColors } from '@/hooks/use-colors';
 import { useAppContext } from '@/lib/app-context';
+import { activeAlarmCount } from '@/lib/alarm-kind';
 import { useAccessibility } from '@/lib/accessibility-context';
 
 interface TabItem {
   label: string;
   icon: React.ComponentProps<typeof MaterialIcons>['name'];
   route: string;
+  /** Rotas filhas: a aba continua marcada quando o usuário está numa delas. */
+  alsoActiveOn?: string[];
 }
 
 const TABS: TabItem[] = [
   { label: 'Início', icon: 'home', route: '/(tabs)/' },
   { label: 'Saúde', icon: 'favorite', route: '/(tabs)/health' },
-  { label: 'Remédios', icon: 'medication', route: '/(tabs)/alarms' },
+  // Hub de Remédios e Check-in: continua marcada dentro das duas listas.
+  { label: 'Alarmes', icon: 'alarm', route: '/(tabs)/alarm-hub', alsoActiveOn: ['/(tabs)/alarms', '/(tabs)/checkin'] },
   { label: 'Tudo', icon: 'apps', route: '/(tabs)/tudo' },
 ];
 
@@ -29,16 +33,18 @@ export function CustomTabBar() {
   const insets = useSafeAreaInsets();
   const { state } = useAppContext();
   const { isAccessibilityMode, a11yColors: ac } = useAccessibility();
-  const activeAlarmCount = state.alarms.filter((a) => a.enabled).length;
+  const activeCount = activeAlarmCount(state.alarms);
 
   // Mesmo cap do (tabs)/_layout.tsx: sem isso, aparelhos com barra de
   // navegação antiga (3 botões) inflam o padding e a barra fica "super alta".
   const bottomPadding = Platform.OS === 'web' ? 12 : Math.min(Math.max(insets.bottom, 8), 24);
   const tabBarHeight = isAccessibilityMode ? 100 + bottomPadding : 86 + bottomPadding;
 
-  const isActive = (route: string) => {
-    if (route === '/(tabs)/') return pathname === '/' || pathname === '/index';
-    return pathname.includes(route.replace('/(tabs)', ''));
+  const isActive = (tab: TabItem) => {
+    if (tab.route === '/(tabs)/') return pathname === '/' || pathname === '/index';
+    return [tab.route, ...(tab.alsoActiveOn ?? [])].some((route) =>
+      pathname.includes(route.replace('/(tabs)', ''))
+    );
   };
 
   const handlePress = async (tab: TabItem) => {
@@ -63,7 +69,7 @@ export function CustomTabBar() {
       ]}
     >
       {TABS.map((tab) => {
-        const active = isActive(tab.route);
+        const active = isActive(tab);
         const iconColor = isAccessibilityMode
           ? (active ? ac.primary : ac.muted)
           : (active ? colors.primary : colors.muted);
@@ -105,7 +111,7 @@ export function CustomTabBar() {
               >
                 <MaterialIcons name={tab.icon} size={iconSize} color={iconColor} />
               </View>
-              {tab.route === '/(tabs)/alarms' && activeAlarmCount > 0 && (
+              {tab.route === '/(tabs)/alarm-hub' && activeCount > 0 && (
                 <View
                   style={[
                     styles.badge,
@@ -113,7 +119,7 @@ export function CustomTabBar() {
                   ]}
                 >
                   <Text style={styles.badgeText}>
-                    {activeAlarmCount > 9 ? '9+' : String(activeAlarmCount)}
+                    {activeCount > 9 ? '9+' : String(activeCount)}
                   </Text>
                 </View>
               )}
@@ -187,7 +193,7 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
   },
   badgeText: {
-    // O contador diz quantos remédios estão ligados; a 9px ninguém de 60+
+    // O contador diz quantos alarmes (remédios e check-ins) estão ligados; a 9px ninguém de 60+
     // lia. O círculo cresceu junto (16 -> 22) para caber o número.
     fontSize: 15,
     fontWeight: '800',

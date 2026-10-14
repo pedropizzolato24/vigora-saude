@@ -23,7 +23,6 @@ import {
 } from 'expo-alarm-countdown';
 import { Linking, Platform } from 'react-native';
 
-import { oemBatteryHint } from '@/lib/_core/oem-battery-hint';
 import { openBatteryOptimizationSettings } from '@/lib/battery-optimization';
 import { isAlarmKitAvailable, requestAlarmKitAuthorization } from '@/lib/ios-alarm-kit';
 import {
@@ -34,22 +33,18 @@ import {
   requestForegroundLocation,
 } from '@/lib/location-permission';
 import { requestNotificationPermissions } from '@/lib/notifications-utils';
+import { permissionTexts, type PermissionKey } from '@/lib/permission-texts';
 
-export type PermissionKey =
-  | 'notifications'
-  | 'exactAlarm'
-  | 'fullScreen'
-  | 'battery'
-  | 'alarmKit'
-  | 'locationForeground'
-  | 'locationBackground';
+export type { PermissionKey };
 
 export interface PermissionItem {
   key: PermissionKey;
   /** Nome curto, na língua do idoso — não o nome da permissão no Android. */
   title: string;
-  /** O que quebra sem ela, em uma frase. */
-  why: string;
+  /** O que ela faz para a pessoa e o que quebra sem ela (2–3 frases curtas). */
+  description: string;
+  /** Passo a passo para liberar; a tela só o mostra enquanto `granted` é false. */
+  steps: string[];
   granted: boolean;
   /** Pede a permissão, ou abre os Ajustes quando o sistema não pergunta mais. */
   request: () => Promise<void>;
@@ -69,25 +64,6 @@ async function abrirAjustesDoApp(): Promise<void> {
   await Linking.openSettings().catch((e) =>
     console.warn('[permissions] não abriu os ajustes do app:', e),
   );
-}
-
-/**
- * Texto do item de bateria, com os passos numerados e o passo extra do
- * fabricante quando ele existe.
- *
- * A numeração é contratual: `oemBatteryHint` continua do "3.", então os passos
- * 1 e 2 precisam estar aqui. Samsung e Xiaomi têm listas próprias que fecham o
- * app mesmo com a isenção padrão concedida — sem esse passo o idoso "libera" a
- * permissão e o alarme continua não tocando.
- */
-function porqueDaBateria(): string {
-  const base =
-    'Para economizar energia, o celular pode fechar o Vigora sozinho — e aí o alarme não toca.\n' +
-    '1. Toque em "Liberar" aqui embaixo\n' +
-    '2. Na pergunta que aparecer, escolha "Permitir"';
-  const manufacturer = (Platform.constants as { Manufacturer?: string })?.Manufacturer ?? '';
-  const extra = oemBatteryHint(manufacturer);
-  return extra ? `${base}\n\n${extra}` : base;
 }
 
 /**
@@ -118,14 +94,16 @@ export async function checkPermissions(
   userType: 'monitored' | 'caregiver',
 ): Promise<PermissionItem[]> {
   const itens: PermissionItem[] = [];
+  const os = Platform.OS === 'ios' ? 'ios' : 'android';
+  const manufacturer = (Platform.constants as { Manufacturer?: string })?.Manufacturer ?? '';
 
   const adicionar = async (
-    item: Omit<PermissionItem, 'granted'>,
+    item: Omit<PermissionItem, 'granted' | 'description' | 'steps'>,
     check: () => Promise<boolean>,
   ): Promise<boolean> => {
     const granted = await checar(item.key, check);
     if (granted === null) return false;
-    itens.push({ ...item, granted });
+    itens.push({ ...item, ...permissionTexts(item.key, os, manufacturer, userType), granted });
     return granted;
   };
 
@@ -133,7 +111,6 @@ export async function checkPermissions(
     {
       key: 'notifications',
       title: 'Avisos do Vigora',
-      why: 'Sem eles o celular não mostra o lembrete de remédio nem o alarme.',
       request: async () => {
         // canAskAgain false = o sistema não abre mais o diálogo; insistir aqui
         // não faria nada aparecer na tela e o idoso acharia que o app travou.
@@ -155,7 +132,6 @@ export async function checkPermissions(
       {
         key: 'exactAlarm',
         title: 'Alarme na hora certa',
-        why: 'Sem isso o alarme do remédio pode atrasar vários minutos.',
         request: openExactAlarmSettings,
       },
       canScheduleExactAlarms,
@@ -165,7 +141,6 @@ export async function checkPermissions(
       {
         key: 'fullScreen',
         title: 'Alarme na tela toda',
-        why: 'Sem isso o alarme chega como um aviso pequeno no alto da tela, fácil de não perceber.',
         request: openFullScreenIntentSettings,
       },
       canUseFullScreenIntent,
@@ -175,7 +150,6 @@ export async function checkPermissions(
       {
         key: 'battery',
         title: 'Não desligar o Vigora',
-        why: porqueDaBateria(),
         request: openBatteryOptimizationSettings,
       },
       isIgnoringBatteryOptimizations,
@@ -191,7 +165,6 @@ export async function checkPermissions(
       {
         key: 'alarmKit',
         title: 'Alarme mesmo no silencioso',
-        why: 'Sem isso o alarme fica mudo quando o celular está no silencioso ou no modo Foco.',
         request: async () => {
           if ((await requestAlarmKitAuthorization()) === 'authorized') return;
           await abrirAjustesDoApp();
@@ -205,7 +178,6 @@ export async function checkPermissions(
     {
       key: 'locationForeground',
       title: 'Localização',
-      why: 'É o que permite mandar onde você está para a família quando você pede ajuda.',
       request: async () => {
         if (await requestForegroundLocation()) return;
         await openLocationSettings();
@@ -222,7 +194,6 @@ export async function checkPermissions(
       {
         key: 'locationBackground',
         title: 'Localização o tempo todo',
-        why: 'É o que permite achar você mesmo com o Vigora fechado.',
         request: async () => {
           if (await requestBackgroundLocation()) return;
           await openLocationSettings();
@@ -245,7 +216,6 @@ export async function checkPermissions(
  */
 const ROTAS_INTOCAVEIS = [
   '/alarm-ring',
-  '/checkin-response',
   '/onboarding',
   '/caregiver-onboarding',
   '/login',

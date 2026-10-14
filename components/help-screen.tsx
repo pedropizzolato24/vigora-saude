@@ -69,7 +69,7 @@ const FAQ_DATA: FAQSection[] = [
     items: [
       {
         question: 'Como criar um novo alarme?',
-        answer: 'Vá até a aba "Alarmes" e toque no botão "+" no canto superior direito. Defina o horário, descrição, modo de repetição (diário, dias úteis, fins de semana ou único) e escolha se deseja som e/ou vibração.',
+        answer: 'Vá até a aba "Alarmes", abra "Remédios" e toque no botão "Adicionar lembrete", na parte de baixo da tela. Defina o horário, descrição, modo de repetição (diário, dias úteis, fins de semana ou único) e escolha se deseja som e/ou vibração.',
         icon: 'add-alarm',
       },
       {

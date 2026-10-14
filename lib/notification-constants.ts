@@ -7,6 +7,7 @@
  */
 export const ALARM_CHANNEL_ID = 'vigora-alarms';
 export const DEFAULT_CHANNEL_ID = 'default';
+/** Canal do check-in ANTIGO — só existe para ser apagado no boot (notifications-utils). */
 export const CHECKIN_CHANNEL_ID = 'vigora-checkin';
 
 // No Android 8+ som e vibração são propriedades do CANAL, não da notificação —

@@ -28,6 +28,14 @@ const DELEGA: Record<string, { motivo: string; para: string }> = {
     motivo: "Rota fina: devolve <HelpScreen/> inteiro, que já adapta.",
     para: "components/help-screen.tsx",
   },
+  "app/(tabs)/alarms.tsx": {
+    motivo: "Rota fina: devolve <AlarmListScreen/> inteiro, que já adapta.",
+    para: "components/alarm-list-screen.tsx",
+  },
+  "app/(tabs)/checkin.tsx": {
+    motivo: "Rota fina: devolve <AlarmListScreen/> inteiro, que já adapta.",
+    para: "components/alarm-list-screen.tsx",
+  },
   "app/(modal)/customer-center.tsx": {
     motivo: "Só monta <AppDialog/>, que já tem ramo acessível próprio.",
     para: "components/app-dialog.tsx",

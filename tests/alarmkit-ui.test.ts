@@ -80,12 +80,11 @@ describe("alarm-ring no iOS 26+", () => {
     expect(alarmRing).toMatch(/if \(vibrationOk && !vindoDoAlarmKit\)/);
   });
 
-  it("não oferece soneca — ela seria uma armadilha no iPhone", () => {
-    // snoozeNativeAlarm é no-op fora do Android, mas handleSnooze registra o
-    // evento pendente: nada voltaria a tocar e a família seria avisada em 5min
-    // sobre quem acabou de responder. Escondido nos DOIS modos.
-    const guardas = alarmRing.match(/\{!isExpired && !vindoDoAlarmKit && \(/g) ?? [];
-    expect(guardas.length, "esperava a guarda nos dois modos").toBe(2);
+  it("não oferece soneca — nem no iPhone nem no Android", () => {
+    // A soneca saiu do app (feedback do beta, out/2026). No iPhone ela já era
+    // uma armadilha: snoozeNativeAlarm era no-op fora do Android e a família
+    // seria avisada em 5 min sobre quem acabou de responder.
+    expect(alarmRing).not.toMatch(/snooze|soneca/i);
   });
 
   it("a voz não manda procurar um botão que não está na tela", () => {

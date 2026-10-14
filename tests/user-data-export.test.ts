@@ -30,6 +30,11 @@ vi.mock("../server/db-links", () => ({
   upsertActiveLink: vi.fn(),
 }));
 
+vi.mock("../server/db-alarm-changes", () => ({
+  getRecentAlarmChanges: vi.fn(async () => [{ id: 1, alarmId: "a1", changeType: "deleted" }]),
+  insertAlarmChanges: vi.fn(),
+}));
+
 vi.mock("../server/db", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../server/db")>();
   return {
@@ -113,6 +118,7 @@ describe("userData.export", () => {
     expect(result.sinalDeVida).toBeTruthy();
     expect(result.cuidadoresVinculados).toEqual([]);
     expect(result.dadosDaConta).toBeTruthy();
+    expect(result.historicoDeAlteracoesDeAlarmes).toHaveLength(1);
   });
 
   it("usa ctx.user.openId como escopo — cada chamador recebe o seu", async () => {

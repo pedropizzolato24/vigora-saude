@@ -37,6 +37,15 @@ export async function signInWithGoogleNative(
 
   await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
 
+  // O Play Services guarda a conta logada e o signIn() devolve ela direto, sem o
+  // seletor — o logout do app nunca chamou signOut(). Limpar aqui garante o
+  // seletor sempre (inclusive após reinstalar ou sair em builds antigas).
+  try {
+    await GoogleSignin.signOut();
+  } catch (e) {
+    console.warn("[google-signin] signOut falhou; seguindo para o signIn:", e);
+  }
+
   const response = await GoogleSignin.signIn();
   if (response.type === "cancelled") return false;
 

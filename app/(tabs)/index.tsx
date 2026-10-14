@@ -26,7 +26,8 @@ import { MonitoringStatusBadge } from '@/components/monitoring-status-badge';
 import { usePurchases } from '@/hooks/use-purchases';
 import { SosStrip } from '@/components/sos-strip';
 import { BigTile } from '@/components/big-tile';
-import { escalateSOSToContacts } from '@/lib/alarm-escalation';
+import { escalateSOSToContacts, type EscalationResult } from '@/lib/alarm-escalation';
+import { emptyEscalation } from '@/lib/sos-status';
 import { trpc } from '@/lib/trpc';
 
 export default function DashboardScreen() {
@@ -44,6 +45,7 @@ export default function DashboardScreen() {
   const [sosCountdownVisible, setSosCountdownVisible] = React.useState(false);
   const [sosActiveVisible, setSosActiveVisible] = React.useState(false);
   const [sosActivatedAt, setSosActivatedAt] = React.useState<number | null>(null);
+  const [sosEscalation, setSosEscalation] = React.useState<EscalationResult | null>(null);
   const nextAlarm = getNextAlarm(state.alarms);
 
   const caregiversQuery = trpc.link.getMyCaregivers.useQuery();
@@ -52,6 +54,7 @@ export default function DashboardScreen() {
 
   const activateSOS = React.useCallback(async () => {
     dispatch({ type: 'TRIGGER_SOS' });
+    setSosEscalation(null);
     setSosActivatedAt(Date.now());
     setSosActiveVisible(true);
 
@@ -74,9 +77,12 @@ export default function DashboardScreen() {
     // Avisa os CONTATOS (WhatsApp via servidor, com fallback de deep link) de
     // que o USUÁRIO precisa de ajuda. A notificação local é só a confirmação
     // para o próprio usuário — nunca o alerta em si.
-    escalateSOSToContacts(state.emergencyContacts, state.profile.name).catch((err) =>
-      console.error('[SOS] Escalation failed:', err)
-    );
+    escalateSOSToContacts(state.emergencyContacts, state.profile.name)
+      .then(setSosEscalation)
+      .catch((err) => {
+        console.error('[SOS] Escalation failed:', err);
+        setSosEscalation(emptyEscalation(state.emergencyContacts.length));
+      });
     await sendNotification(
       'SOS ativado',
       'Seus contatos de emergência estão sendo avisados de que você precisa de ajuda.',
@@ -238,6 +244,26 @@ export default function DashboardScreen() {
               </Text>
             </Pressable>
             <Pressable
+              onPress={() => navigate('/(tabs)/checkin')}
+              accessibilityRole="button"
+              accessibilityLabel="Check-in: horários e atraso do aviso"
+              style={({ pressed }) => [{
+                backgroundColor: colors.primarySurface,
+                borderRadius: 20,
+                paddingVertical: as_.buttonPadding,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 14,
+                opacity: pressed ? 0.85 : 1,
+              }]}
+            >
+              <MaterialIcons name="check-circle" size={36} color={colors.onPrimary} />
+              <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: af.xl, fontWeight: '800', color: colors.onPrimary }}>
+                Check-in
+              </Text>
+            </Pressable>
+            <Pressable
               onPress={() => navigate('/(tabs)/health')}
               style={({ pressed }) => [{
                 backgroundColor: colors.success,
@@ -380,6 +406,7 @@ export default function DashboardScreen() {
         <AppDialog {...dialogProps} />
         <AppToast {...toastProps} />
         <SOSCountdownDialog
+          whatsappCount={state.emergencyContacts.filter((c) => c.whatsapp).length}
           visible={sosCountdownVisible}
           onConfirm={() => { setSosCountdownVisible(false); activateSOS(); }}
           onCancel={() => setSosCountdownVisible(false)}
@@ -388,6 +415,7 @@ export default function DashboardScreen() {
           visible={sosActiveVisible}
           contacts={state.emergencyContacts}
           activatedAt={sosActivatedAt}
+          escalation={sosEscalation}
           onDeactivate={() => setSosActiveVisible(false)}
         />
       </ScreenContainer>
@@ -446,12 +474,12 @@ export default function DashboardScreen() {
           </View>
           <View style={styles.tileWrapper}>
             <BigTile
-              icon="favorite"
-              iconColor={colors.success}
-              iconBg={colors.successLight}
-              title="Anotar saúde"
-              subtitle="Registrar agora"
-              onPress={() => navigate('/(tabs)/health')}
+              icon="check-circle"
+              iconColor={colors.primary}
+              iconBg={colors.primaryLight}
+              title="Check-in"
+              subtitle="Horários e aviso"
+              onPress={() => navigate('/(tabs)/checkin')}
             />
           </View>
           <View style={styles.tileWrapper}>
@@ -466,12 +494,12 @@ export default function DashboardScreen() {
           </View>
           <View style={styles.tileWrapper}>
             <BigTile
-              icon="people"
-              iconColor={colors.emergency}
-              iconBg={colors.emergencyLight}
-              title="Avisar família"
-              subtitle="Contatos de emergência"
-              onPress={() => navigate('/(tabs)/contacts')}
+              icon="favorite"
+              iconColor={colors.success}
+              iconBg={colors.successLight}
+              title="Anotar saúde"
+              subtitle="Registrar agora"
+              onPress={() => navigate('/(tabs)/health')}
             />
           </View>
         </View>
@@ -563,6 +591,7 @@ export default function DashboardScreen() {
       <AppDialog {...dialogProps} />
       <AppToast {...toastProps} />
       <SOSCountdownDialog
+        whatsappCount={state.emergencyContacts.filter((c) => c.whatsapp).length}
         visible={sosCountdownVisible}
         onConfirm={() => { setSosCountdownVisible(false); activateSOS(); }}
         onCancel={() => setSosCountdownVisible(false)}
@@ -571,6 +600,7 @@ export default function DashboardScreen() {
         visible={sosActiveVisible}
         contacts={state.emergencyContacts}
         activatedAt={sosActivatedAt}
+        escalation={sosEscalation}
         onDeactivate={() => setSosActiveVisible(false)}
       />
     </ScreenContainer>

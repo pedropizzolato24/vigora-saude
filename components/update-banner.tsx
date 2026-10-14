@@ -24,7 +24,6 @@ import { useFontSize } from '@/lib/font-size-context';
 // eles) e o funil de entrada (login/onboarding/registro).
 const HIDDEN_PATHS = [
   '/alarm-ring',
-  '/checkin-response',
   '/login',
   '/email-login',
   '/phone-login',

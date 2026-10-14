@@ -327,10 +327,10 @@ index 1c5b665000d21998b8ccfb8ff51e9041cc4c640b..e817495a9846aea2664ed92056cdeff2
  
      /**
 diff --git a/android/src/main/java/com/expoalarmmodule/Manager.java b/android/src/main/java/com/expoalarmmodule/Manager.java
-index 004075da7464088c26edd8b5e6e2e5a191ec7633..72d36112982269edffa7f8c01a22ebfe8cf9c2a1 100644
+index 004075da7464088c26edd8b5e6e2e5a191ec7633..1c14af590d6a4766919b64a96277a1eab09ef072 100644
 --- a/android/src/main/java/com/expoalarmmodule/Manager.java
 +++ b/android/src/main/java/com/expoalarmmodule/Manager.java
-@@ -8,15 +8,72 @@ import java.util.Objects;
+@@ -8,15 +8,97 @@ import java.util.Objects;
  
  public class Manager {
  
@@ -381,6 +381,31 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..72d36112982269edffa7f8c01a22ebfe
      }
  
 +    /**
++     * Swipe na notificacao do alarme. O Android 14+ deixa dispensar uma
++     * notificacao mesmo com setOngoing(true); o swipe dispara o deleteIntent
++     * (DISMISS_ACTION), que antes parava o alarme em Java sem o JS saber -- o
++     * evento ficava pendente e o servidor avisava a familia de um alarme que
++     * ninguem respondeu. Agora o alarme CONTINUA tocando e so' a notificacao
++     * volta, com o botao "Dispensar" e o full-screen intent. Quem desliga e' o
++     * "Dispensar" (deep link, confirma no servidor) ou abrir o app.
++     *
++     * Usa o mesmo id do startForeground do AlarmService (1): notify com o mesmo
++     * id atualiza a notificacao do servico em vez de criar uma segunda.
++     * Devolve false quando nao ha alarme ativo (nada a repostar).
++     */
++    public static boolean repostActiveAlarmNotification(Context context) {
++        if (activeAlarmUid == null) return false;
++        Alarm alarm = Storage.getAlarm(context, activeAlarmUid);
++        android.app.Notification notification = Helper.getAlarmNotification(context, alarm, 1);
++        android.app.NotificationManager manager =
++            (android.app.NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
++        if (manager == null) return false;
++        manager.notify(1, notification);
++        Log.d(TAG, "Swipe: notificacao do alarme " + activeAlarmUid + " repostada");
++        return true;
++    }
++
++    /**
 +     * Cancela os PendingIntents dos disparos ANTERIORES deste uid. Obrigatório
 +     * antes de qualquer (re)agendamento: cada AlarmDates nasce com
 +     * notificationIds ALEATÓRIOS novos, e o app reagenda todos os alarmes a
@@ -403,7 +428,7 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..72d36112982269edffa7f8c01a22ebfe
          AlarmDates dates = alarm.getAlarmDates();
          for (Date date : dates.getDates()) {
              Helper.scheduleAlarm(context, alarm.uid, date.getTime(), dates.getNotificationId(date));
-@@ -28,6 +85,7 @@ public class Manager {
+@@ -28,6 +110,7 @@ public class Manager {
      public static void reschedule(Context context) {
          Alarm[] alarms = Storage.getAllAlarms(context);
          for (Alarm alarm : alarms) {
@@ -411,7 +436,7 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..72d36112982269edffa7f8c01a22ebfe
              Storage.removeDates(context, alarm.uid);
              AlarmDates dates = alarm.getAlarmDates();
              Storage.saveDates(context, dates);
-@@ -60,6 +118,7 @@ public class Manager {
+@@ -60,6 +143,7 @@ public class Manager {
      }
  
      static void remove(Context context, String alarmUid) {
@@ -419,7 +444,7 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..72d36112982269edffa7f8c01a22ebfe
          if (sound != null) {
              sound.stop();
          }
-@@ -112,16 +171,103 @@ public class Manager {
+@@ -112,16 +196,103 @@ public class Manager {
      }
  
      static void start(Context context, String alarmUid) {
@@ -523,7 +548,7 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..72d36112982269edffa7f8c01a22ebfe
          if(Objects.nonNull(sound)) {
              sound.stop();
          }
-@@ -131,11 +277,21 @@ public class Manager {
+@@ -131,11 +302,21 @@ public class Manager {
              AlarmDates dates = Storage.getDates(context, activeAlarmUid);
              if(alarm != null) {
                  if (alarm.repeating) {
@@ -547,7 +572,7 @@ index 004075da7464088c26edd8b5e6e2e5a191ec7633..72d36112982269edffa7f8c01a22ebfe
                  } else {
                      alarm.active = false;
                      Storage.saveAlarm(context, alarm);
-@@ -149,6 +305,7 @@ public class Manager {
+@@ -149,6 +330,7 @@ public class Manager {
      public static void snooze(Context context) {
          Log.d(TAG, "Snoozing " + activeAlarmUid);
  
@@ -781,6 +806,27 @@ index acb1e33bce9bb27c708ef2b0592db2ccc2c70892..14d68e96bf6a02c95edf4ca047164465
      }
  
  }
+diff --git a/android/src/main/java/com/expoalarmmodule/receivers/NotificationActionReceiver.java b/android/src/main/java/com/expoalarmmodule/receivers/NotificationActionReceiver.java
+index 0d2dba4f94c5f065f1f58accb4fa3415643b2bf6..cf9cbe656b42dd0e5eac20378285b99468d3cb39 100644
+--- a/android/src/main/java/com/expoalarmmodule/receivers/NotificationActionReceiver.java
++++ b/android/src/main/java/com/expoalarmmodule/receivers/NotificationActionReceiver.java
+@@ -34,8 +34,14 @@ public class NotificationActionReceiver extends BroadcastReceiver {
+         switch (action) {
+             case "DISMISS_ACTION":
+                 Log.d(TAG, "Received DISMISS action for Alarm: " + alarmUid);
+-                Manager.stop(context);
+-                this.removeNotification(context, notificationId);
++                // So' o swipe chega aqui (os botoes usam deep link). Com o alarme
++                // ativo, o swipe nao o desliga: a notificacao volta e o som
++                // continua. Sem alarme ativo (DISMISS_ACTION velho, depois do
++                // dismiss pelo app) mantem o comportamento antigo.
++                if (!Manager.repostActiveAlarmNotification(context)) {
++                    Manager.stop(context);
++                    this.removeNotification(context, notificationId);
++                }
+                 break;
+ 
+             case "SNOOZE_ACTION":
 diff --git a/android/src/main/res/values/strings.xml b/android/src/main/res/values/strings.xml
 index aa5b034b1438475db3b484b82b7e645f7ff5e9c0..a3ce3a8cc41e7157cfc3348e81c6eb49bc5c0aa9 100644
 --- a/android/src/main/res/values/strings.xml

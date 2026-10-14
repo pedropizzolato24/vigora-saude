@@ -5,8 +5,7 @@
  * server's source of truth (the `link` tRPC router): on mount we hydrate from
  * `link.getMyLink` and reconcile the local cache. AsyncStorage
  * (`vigora_caregiver_state`) is kept as an offline-first cache so the caregiver
- * still sees who they're linked to with no connection. notificationPrefs remain
- * local-only.
+ * still sees who they're linked to with no connection.
  *
  * The provider sits outside the tRPC React provider in the tree, so it talks to
  * the server through caregiver-link-service.ts (raw fetch) rather than hooks.
@@ -16,7 +15,6 @@ import React, { createContext, useCallback, useContext, useEffect, useReducer, u
 import {
   DEFAULT_CAREGIVER_STATE,
   caregiverReducer,
-  type CaregiverNotificationPrefs,
   type CaregiverState,
   type LinkedMonitored,
 } from './caregiver-state';
@@ -51,7 +49,6 @@ interface CaregiverContextValue {
     opts: RedeemOptions,
   ) => Promise<{ monitoredOpenId: string; monitoredName: string | null }>;
   clearLinkedMonitored: () => Promise<void>;
-  updateNotificationPrefs: (partial: Partial<CaregiverNotificationPrefs>) => void;
   /**
    * Re-fetch the link from the server. Call this once auth becomes available
    * (e.g. from the caregiver tabs layout after login) — the provider mounts at
@@ -146,13 +143,7 @@ export function CaregiverProvider({ children }: { children: React.ReactNode }) {
         }
         if (raw) {
           const parsed = JSON.parse(raw) as Partial<CaregiverState>;
-          next = {
-            linkedMonitored: parsed.linkedMonitored ?? null,
-            notificationPrefs: {
-              ...DEFAULT_CAREGIVER_STATE.notificationPrefs,
-              ...(parsed.notificationPrefs ?? {}),
-            },
-          };
+          next = { linkedMonitored: parsed.linkedMonitored ?? null };
         }
       } catch {
         // ignore parse errors — start with defaults
@@ -234,14 +225,9 @@ export function CaregiverProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'CLEAR_LINK' });
   }, []);
 
-  const updateNotificationPrefs = useCallback<CaregiverContextValue['updateNotificationPrefs']>(
-    (partial) => dispatch({ type: 'UPDATE_PREFS', payload: partial }),
-    [],
-  );
-
   return (
     <CaregiverContext.Provider
-      value={{ state, redeemInvite, clearLinkedMonitored, updateNotificationPrefs, refreshLink }}
+      value={{ state, redeemInvite, clearLinkedMonitored, refreshLink }}
     >
       {children}
     </CaregiverContext.Provider>

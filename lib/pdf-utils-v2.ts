@@ -1,5 +1,4 @@
 import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
 import { AnamnesesData } from './app-context';
 import { esc } from './health-report-generator';
 
@@ -153,39 +152,11 @@ export function generateAnamnesisPDF(anamnesis: AnamnesesData): string {
   return htmlContent;
 }
 
-/**
- * Export Anamnesis to PDF and share
- */
-export async function exportAnamnesisToPDF(anamnesis: AnamnesesData): Promise<boolean> {
-  try {
-    const htmlContent = generateAnamnesisPDF(anamnesis);
-
-    // Generate PDF
-    const { uri } = await Print.printToFileAsync({
-      html: htmlContent,
-      base64: false,
-    });
-
-    console.log('[PDF Export] PDF generated at:', uri);
-
-    // Check if sharing is available
-    const canShare = await Sharing.isAvailableAsync();
-
-    if (canShare) {
-      // Share the PDF
-      await Sharing.shareAsync(uri, {
-        mimeType: 'application/pdf',
-        dialogTitle: 'Compartilhar Ficha Médica',
-        UTI: 'com.adobe.pdf',
-      });
-      console.log('[PDF Export] PDF shared successfully');
-      return true;
-    } else {
-      console.warn('[PDF Export] Sharing not available on this device');
-      return false;
-    }
-  } catch (error) {
-    console.error('[PDF Export] Error exporting PDF:', error);
-    throw error;
-  }
+/** Gera o PDF da ficha no cache do app e devolve o file:// dele. */
+export async function createAnamnesisPdf(anamnesis: AnamnesesData): Promise<string> {
+  const { uri } = await Print.printToFileAsync({
+    html: generateAnamnesisPDF(anamnesis),
+    base64: false,
+  });
+  return uri;
 }

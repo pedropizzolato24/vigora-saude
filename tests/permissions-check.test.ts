@@ -175,7 +175,6 @@ describe("canInterruptRoute", () => {
   it("NUNCA interrompe um alarme tocando", () => {
     expect(canInterruptRoute("/alarm-ring")).toBe(false);
     expect(canInterruptRoute("/alarm-ring?alarmId=a1&fromAlarmKit=1")).toBe(false);
-    expect(canInterruptRoute("/checkin-response")).toBe(false);
   });
 
   it("não interrompe o funil de entrada", () => {
@@ -204,32 +203,65 @@ describe("canInterruptRoute", () => {
 });
 
 describe("passo extra de bateria por fabricante", () => {
-  const porqueDaBateria = async () => {
+  const passosDaBateria = async () => {
     env.battery = false;
     const itens = await checkPermissions("monitored");
-    return itens.find((p) => p.key === "battery")?.why ?? "";
+    return itens.find((p) => p.key === "battery")?.steps ?? [];
   };
 
   it("ensina o passo da lista propria do fabricante quando ele existe", async () => {
     env.manufacturer = "samsung";
-    const why = await porqueDaBateria();
-    expect(why).toMatch(/Cuidado do dispositivo/);
-    // O passo do fabricante e o 3o: sem os passos 1 e 2 no proprio texto, ele
-    // comeca numerando do nada.
-    expect(why).toContain("1.");
-    expect(why).toContain("2.");
+    const steps = await passosDaBateria();
+    expect(steps.join(" ")).toMatch(/Cuidado do dispositivo/);
+    // Os passos basicos (Liberar + pergunta) vem antes do passo do fabricante.
+    expect(steps[0]).toMatch(/Liberar/);
+    expect(steps.length).toBeGreaterThan(2);
   });
 
   it("aparelho stock nao ganha passo extra", async () => {
     env.manufacturer = "motorola";
-    expect(await porqueDaBateria()).not.toMatch(/Cuidado do dispositivo/);
+    const steps = await passosDaBateria();
+    expect(steps.join(" ")).not.toMatch(/Cuidado do dispositivo/);
+    expect(steps).toHaveLength(3);
+  });
+});
+
+describe("descricao e passos de cada item", () => {
+  const todos = async (os: "android" | "ios") => {
+    env.os = os;
+    env.alarmKitAvailable = os === "ios";
+    return checkPermissions("monitored");
+  };
+
+  it.each(["android", "ios"] as const)("todo item tem descricao e passos (%s)", async (os) => {
+    for (const item of await todos(os)) {
+      expect(item.description.trim().length, `${item.key}: sem descricao`).toBeGreaterThan(0);
+      expect(item.steps.length, `${item.key}: sem passos`).toBeGreaterThan(0);
+    }
+  });
+
+  it("os passos acompanham a plataforma do aparelho", async () => {
+    const android = (await todos("android")).find((p) => p.key === "locationBackground");
+    const ios = (await todos("ios")).find((p) => p.key === "locationBackground");
+    expect(android?.steps.join(" ")).toMatch(/Permitir o tempo todo/);
+    expect(ios?.steps.join(" ")).toMatch(/Sempre/);
+  });
+
+  it("o cuidador recebe os passos de notificacao e a descricao propria dele", async () => {
+    const [item] = await checkPermissions("caregiver");
+    expect(item.key).toBe("notifications");
+    expect(item.steps.length).toBeGreaterThan(0);
+    expect(item.description).toMatch(/pessoa que você acompanha/);
+    expect(item.description).not.toMatch(/remédio/i);
+    const [idoso] = await checkPermissions("monitored");
+    expect(idoso.description).toMatch(/lembrete de remédio/);
   });
 });
 
 describe("linguagem da central — publico 60+", () => {
   const proibidos = ["Android", "Samsung", "Xiaomi", "Redmi", "iPhone", "Autostart", "segundo plano"];
 
-  it("nenhum titulo ou explicacao cita plataforma, fabricante ou jargao", async () => {
+  it("nenhum titulo, descricao ou passo cita plataforma, fabricante ou jargao", async () => {
     env.os = "ios";
     env.alarmKitAvailable = true;
     const ios = await checkPermissions("monitored");
@@ -237,7 +269,11 @@ describe("linguagem da central — publico 60+", () => {
     env.manufacturer = "samsung";
     const android = await checkPermissions("monitored");
 
-    const textos = [...ios, ...android].map((p) => `${p.title} ${p.why}`).join(" | ");
+    const textos = [...ios, ...android]
+      .map((p) => `${p.title} ${p.description} ${p.steps.join(" ")}`)
+      .join(" | ")
+      // Rótulo real da tela do Samsung, que a pessoa precisa achar.
+      .replaceAll("Limites de uso em segundo plano", "");
     const achados = proibidos.filter((t) => new RegExp(t, "i").test(textos));
     expect(achados, `termos tecnicos na central: ${achados.join(", ")}`).toEqual([]);
   });

@@ -5,7 +5,7 @@
  * DOMINGO tocava na SEGUNDA, no horário certo.
  *
  * `customDays` é gravado pela UI como 0=Domingo — a mesma convenção do
- * `getDay()` do JS. Confirmam isso o seletor (`WEEKDAYS` em app/(tabs)/alarms.tsx),
+ * `getDay()` do JS. Confirmam isso o seletor (`WEEKDAYS` em components/alarm-form-modal.tsx),
  * o rótulo do card (`DAY_ABBR` em components/alarm-card.tsx) e o
  * `alarm-fire-times.ts`, que pré-registra o disparo no servidor.
  *

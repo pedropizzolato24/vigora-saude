@@ -12,6 +12,8 @@ interface AlarmCardProps {
   onEdit: (alarm: Alarm) => void;
   onToggle: (alarm: Alarm) => void;
   onTest: (alarm: Alarm) => void;
+  /** Texto no lugar do nome (check-in mostra o atraso do aviso). */
+  subtitle?: string;
 }
 
 const REPEAT_LABELS: Record<Alarm['repeat'], string> = {
@@ -29,7 +31,7 @@ function formatCustomDays(days: number[] | undefined): string {
   return days.map((d) => DAY_ABBR[d]).join(', ');
 }
 
-export function AlarmCard({ alarm, onEdit, onToggle, onTest }: AlarmCardProps) {
+export function AlarmCard({ alarm, onEdit, onToggle, onTest, subtitle }: AlarmCardProps) {
   const colors = useColors();
   const fs = useFontSize();
 
@@ -82,7 +84,7 @@ export function AlarmCard({ alarm, onEdit, onToggle, onTest }: AlarmCardProps) {
             style={[styles.descriptionText, { color: colors.foreground, fontSize: fs.base }]}
             numberOfLines={1}
           >
-            {alarm.description || 'Sem descrição'}
+            {subtitle ?? (alarm.description || 'Sem descrição')}
           </Text>
           <View style={styles.tagsRow}>
             <View style={[styles.tag, { backgroundColor: colors.border }]}>

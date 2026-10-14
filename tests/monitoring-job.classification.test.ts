@@ -147,7 +147,7 @@ describe("Passo 4 — cópia por status do evento", () => {
     ]);
   });
 
-  it("'not_sent' → 'não entregue / pode estar desligado' no push e no WhatsApp", async () => {
+  it("'not_sent' → push 'sem confirmação' (não afirma nada) e WhatsApp 'não entregue'", async () => {
     vi.mocked(db.getMissedMedicationEvents).mockResolvedValue([
       { ...pendingEvent, status: "not_sent" },
     ]);
@@ -155,8 +155,9 @@ describe("Passo 4 — cópia por status do evento", () => {
     await runMonitoringJob();
 
     const pushCall = vi.mocked(push.sendExpoPush).mock.calls[0];
-    expect(pushCall[1].title).toContain("Alarme não entregue");
-    expect(pushCall[1].body).toContain("desligado");
+    expect(pushCall[1].title).toContain("Alarme sem confirmação");
+    expect(pushCall[1].body).toContain("Não houve confirmação");
+    expect(pushCall[1].body).not.toContain("desligado");
     expect(pushCall[1].body).not.toContain("não respondeu");
 
     const waMessage = vi.mocked(whatsapp.sendWhatsAppMessage).mock.calls[0][1];

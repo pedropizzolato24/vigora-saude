@@ -13,6 +13,7 @@ import { createPendingAlarmEvent } from '@/lib/monitoring-service';
 import { nextAlarmFireMs, lastAlarmFireMs } from '@/lib/alarm-fire-times';
 import { updateAlarmWidgetOnFire } from '@/lib/update-widgets';
 import { Alarm } from '@/lib/app-context';
+import { escalateSeconds, isCheckinAlarm } from '@/lib/alarm-kind';
 
 // Lazy-load expo-alarm-module getAlarmState for Android
 let getAlarmStateNative: (() => Promise<string | null>) | null = null;
@@ -149,7 +150,11 @@ export function AlarmNotificationHandler() {
     console.log(`[AlarmHandler] Alarm fired: ${alarmId}`);
 
     // -- Read timerDuration from AsyncStorage (avoids stale closure) --------------
-    const timerDuration = await readTimerDurationFromStorage();
+    // Check-in: o atraso configurado no próprio alarme; remédio: a preferência
+    // global (timerDuration), lida do storage para não depender do state.
+    const timerDuration = isCheckinAlarm(alarmData)
+      ? escalateSeconds(alarmData)
+      : await readTimerDurationFromStorage();
 
     // -- Synchronized timer setup -------------------------------------------------
     // Check if a timer is already running for this alarm (e.g., app foregrounded

@@ -10,7 +10,7 @@
  *   decisão), não o estado em memória — assim um logout que limpou as chaves
  *   nunca deixa o app travado sem PIN cadastrado.
  * - Só trava com sessão ativa: sem login não há dado de saúde para proteger.
- * - As telas /alarm-ring e /checkin-response nunca são cobertas (isso fica no
+ * - A tela /alarm-ring nunca é coberta (isso fica no
  *   AppLockGate) para não interferir no dead man's switch.
  */
 import * as LocalAuthentication from 'expo-local-authentication';

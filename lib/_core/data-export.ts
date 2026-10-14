@@ -28,6 +28,7 @@ export interface ExportServerData {
   conta: { nome: string | null; email: string | null; telefone: string | null } | null;
   dadosDaConta: unknown;
   historicoDeAlarmes: unknown[];
+  historicoDeAlteracoesDeAlarmes: unknown[];
   alertasEnviados: unknown[];
   sinalDeVida: unknown;
   cuidadoresVinculados: unknown[];

@@ -10,6 +10,7 @@ import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
+import { useCaregiverContext } from '@/lib/caregiver-context';
 import { getDeviceId } from '@/lib/device-id';
 import { getDevicePushToken } from '@/lib/push-registration';
 import { setPushUnavailable } from '@/lib/push-status';
@@ -17,13 +18,27 @@ import { trpc } from '@/lib/trpc';
 
 // Push `data.type` values sent by the server monitoring job. Gating on these
 // keeps this handler from reacting to unrelated notifications (e.g. alarms).
-const CAREGIVER_PUSH_TYPES = ['monitoring_warning', 'missed_checkin', 'missed_alarm', 'sos'];
+const CAREGIVER_PUSH_TYPES = [
+  'monitoring_warning',
+  'missed_checkin',
+  'missed_alarm',
+  'sos',
+  'alarm_changed',
+  'link_revoked',
+];
 const DEFAULT_ROUTE = '/(caregiver-tabs)/alerts';
+
+// Só o nome do erro vai para o log (sem payload: pode carregar dado de saúde).
+function warnFailed(what: string, error: unknown) {
+  console.warn(`[caregiver-push] ${what}`, error instanceof Error ? error.name : typeof error);
+}
 
 export function CaregiverPushInitializer() {
   const registered = useRef(false);
   const router = useRouter();
   const register = trpc.push.register.useMutation();
+  const utils = trpc.useUtils();
+  const { refreshLink } = useCaregiverContext();
 
   // Register this device's push token once.
   useEffect(() => {
@@ -73,12 +88,27 @@ export function CaregiverPushInitializer() {
     // Cold start: the notification tap that launched the app.
     Notifications.getLastNotificationResponseAsync()
       .then(navigateFromResponse)
-      .catch(() => {});
+      .catch((e) => warnFailed('navigation failed', e));
 
     // Warm: taps while the app is already running.
     const sub = Notifications.addNotificationResponseReceivedListener(navigateFromResponse);
     return () => sub.remove();
   }, [router]);
+
+  // Push recebido com o app aberto: recarrega os dados (o toque só navega).
+  // Desvínculo também relê o vínculo, para a tela não continuar mostrando quem
+  // já encerrou o acompanhamento.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const sub = Notifications.addNotificationReceivedListener((notification) => {
+      const type = notification.request.content.data?.type;
+      if (!CAREGIVER_PUSH_TYPES.includes(type as string)) return;
+      utils.link.getMonitoredAlerts.invalidate().catch((e) => warnFailed('refresh failed', e));
+      utils.link.getMonitoredData.invalidate().catch((e) => warnFailed('refresh failed', e));
+      if (type === 'link_revoked') refreshLink().catch((e) => warnFailed('refresh failed', e));
+    });
+    return () => sub.remove();
+  }, [utils, refreshLink]);
 
   return null;
 }

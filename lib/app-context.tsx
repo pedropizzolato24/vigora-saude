@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useReducer } from 'react';
 import { updateAllWidgets } from './update-widgets';
+import { medicationAlarms } from './alarm-kind';
 import { setNativeAlarmVolume, setNativeAlarmVibration } from './native-alarm-manager';
 import { pullCloudData, pushCloudData, type CloudSnapshot } from './cloud-sync';
 import { switchAccount } from './_core/account-switch';
@@ -22,6 +23,10 @@ export interface Alarm {
   vibration: boolean;
   notificationId?: string; // Expo notification ID for scheduled alarm
   nativeAlarmUids?: string[]; // Native AlarmManager UIDs (Android only)
+  /** 'checkin' = "Está tudo bem?"; ausente = remédio (alarmes gravados antes da Fase 3). */
+  kind?: 'medication' | 'checkin';
+  /** Check-in: minutos até avisar contatos e cuidadores se ninguém responder. */
+  escalateAfterMinutes?: 5 | 10 | 15 | 30;
 }
 
 export interface EmergencyContact {
@@ -49,6 +54,8 @@ export interface AnamnesesData {
   susNumber: string;
   healthPlanNumber: string;
   healthPlanProvider: string;
+  /** Telefone de emergência do plano (só dígitos). Opcional: fichas antigas não têm. */
+  healthPlanPhone?: string;
 }
 
 export interface HealthMetric {
@@ -60,9 +67,9 @@ export interface HealthMetric {
 }
 
 export interface AppSettings {
+  /** @deprecated Sem interruptor na UI; a migração única do check-in (lib/checkin-migration.ts) ainda lê este valor de quem atualiza de builds antigos. */
   notificationsEnabled: boolean;
   alarmVolume: number; // 0-100
-  language: 'pt' | 'en';
   missedAlarmThreshold: number; // Number of missed alarms before WhatsApp escalation (1-10)
   vibrationEnabled: boolean;
   sosConfirmation: boolean; // Require confirmation before SOS
@@ -73,11 +80,11 @@ export interface AppSettings {
   speechRate: 0.5 | 0.75 | 1.0 | 1.25; // TTS speech rate
   speechVolume: number; // TTS volume 0-100 (independent of alarm volume)
   timerDuration: 15 | 30 | 45 | 60; // Seconds before emergency escalation
-  /** Check-in diário "Você está bem?" */
+  /** @deprecated Fase 3: o check-in virou um alarme (kind 'checkin'). Fica só para a migração (lib/checkin-migration.ts) ler o que o usuário tinha. */
   checkinEnabled: boolean;
-  /** Horário do check-in no formato HH:mm */
+  /** @deprecated Fase 3: o check-in virou um alarme (kind 'checkin'). Fica só para a migração (lib/checkin-migration.ts) ler o que o usuário tinha. */
   checkinTime: string;
-  /** Minutos que o usuário tem para responder antes de escalonar */
+  /** @deprecated Fase 3: o check-in virou um alarme (kind 'checkin'). Fica só para a migração (lib/checkin-migration.ts) ler o que o usuário tinha. */
   checkinWindowMinutes: number;
   /**
    * Consentimento destacado para tratar dados sensíveis de saúde (LGPD Art. 11).
@@ -154,7 +161,6 @@ const initialState: AppState = {
   settings: {
     notificationsEnabled: true,
     alarmVolume: 80,
-    language: 'pt',
     missedAlarmThreshold: 3,
     vibrationEnabled: true,
     sosConfirmation: true,
@@ -220,8 +226,14 @@ function baseReducer(state: AppState, action: AppAction): AppState {
       return initialState;
 
     case 'ADD_ALARM': {
-      if (state.alarms.length >= 24) return state;
-      const newAlarms = [...state.alarms, action.payload].sort((a, b) =>
+      // Mesmo id (ex.: check-in migrado, id fixo): substitui no lugar. A contagem não
+      // cresce, então o teto não bloqueia a troca.
+      const exists = state.alarms.some((a) => a.id === action.payload.id);
+      if (!exists && state.alarms.length >= 24) return state;
+      const base = exists
+        ? state.alarms.filter((a) => a.id !== action.payload.id)
+        : state.alarms;
+      const newAlarms = [...base, action.payload].sort((a, b) =>
         a.time.localeCompare(b.time)
       );
       return { ...state, alarms: newAlarms };
@@ -497,7 +509,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Atualiza widgets Android quando alarmes ou métricas de saúde mudarem
   useEffect(() => {
     if (state.isLoading) return;
-    updateAllWidgets(state.alarms, state.healthMetrics).catch(() => {});
+    updateAllWidgets(medicationAlarms(state.alarms), state.healthMetrics).catch(() => {});
   }, [state.alarms, state.healthMetrics, state.isLoading]);
 
   // Quem toca o alarme é o serviço nativo, que dispara sem o app aberto — não
@@ -538,7 +550,7 @@ export function generateId(): string {
 }
 
 export function getNextAlarm(alarms: Alarm[]): Alarm | null {
-  const enabled = alarms.filter((a) => a.enabled);
+  const enabled = alarms.filter((a) => a.enabled && a.kind !== 'checkin');
   if (enabled.length === 0) return null;
   const now = new Date();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();

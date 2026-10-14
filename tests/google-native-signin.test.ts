@@ -3,10 +3,11 @@
 // (aparelhos sem Custom Tab e sem navegador visível, ex. Samsung A15).
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { configure, hasPlayServices, signIn } = vi.hoisted(() => ({
+const { configure, hasPlayServices, signIn, signOut } = vi.hoisted(() => ({
   configure: vi.fn(),
   hasPlayServices: vi.fn().mockResolvedValue(true),
   signIn: vi.fn(),
+  signOut: vi.fn().mockResolvedValue(null),
 }));
 const { postAuthRoute, completeServerLogin } = vi.hoisted(() => ({
   postAuthRoute: vi.fn().mockResolvedValue({ sessionToken: "t", user: {} }),
@@ -18,7 +19,7 @@ vi.mock("react-native", () => ({
   Platform: { OS: "android", select: (o: any) => o.android ?? o.default },
 }));
 vi.mock("@react-native-google-signin/google-signin", () => ({
-  GoogleSignin: { configure, hasPlayServices, signIn },
+  GoogleSignin: { configure, hasPlayServices, signIn, signOut },
 }));
 vi.mock("@/lib/auth-session", () => ({
   postAuthRoute,
@@ -34,6 +35,7 @@ const reconcile = vi.fn().mockResolvedValue(undefined);
 describe("signInWithGoogleNative", () => {
   beforeEach(() => {
     signIn.mockClear();
+    signOut.mockClear();
     postAuthRoute.mockClear();
     completeServerLogin.mockClear();
   });
@@ -74,5 +76,33 @@ describe("signInWithGoogleNative", () => {
       /PLAY_SERVICES_NOT_AVAILABLE/
     );
     expect(signIn).not.toHaveBeenCalled();
+  });
+
+  it("sempre mostra o seletor de conta: signOut() antes do signIn()", async () => {
+    signIn.mockResolvedValueOnce({
+      type: "success",
+      data: { idToken: "id-token" },
+    });
+
+    await signInWithGoogleNative(router, reconcile);
+
+    expect(signOut).toHaveBeenCalledTimes(1);
+    expect(signOut.mock.invocationCallOrder[0]).toBeLessThan(
+      signIn.mock.invocationCallOrder[0]
+    );
+  });
+
+  it("signOut que falha é só logado — o login segue para o signIn()", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    signOut.mockRejectedValueOnce(new Error("SIGN_OUT_FAILED"));
+    signIn.mockResolvedValueOnce({
+      type: "success",
+      data: { idToken: "id-token" },
+    });
+
+    expect(await signInWithGoogleNative(router, reconcile)).toBe(true);
+    expect(signIn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 });

@@ -156,6 +156,17 @@ export const alarmEvents = mysqlTable(
      * Null nas linhas anteriores a esta coluna → fallback America/Sao_Paulo.
      */
     timezone: varchar("timezone", { length: 64 }),
+    /**
+     * Tipo do evento: 'checkin' ("Está tudo bem?") ou nulo = remédio. Nulo nas
+     * linhas anteriores à coluna; o check-in ANTIGO é reconhecido pelo
+     * alarmId 'checkin-daily'.
+     */
+    kind: varchar("kind", { length: 16 }),
+    /**
+     * Minutos até o evento vencer sem resposta (5, 10, 15 ou 30). Nulo = 5 (o
+     * grace padrão do monitoring-job). O check-in define o seu.
+     */
+    graceMinutes: int("graceMinutes"),
     status: mysqlEnum("status", ["pending", "responded", "missed", "not_sent"])
       .notNull()
       .default("pending"),
@@ -168,6 +179,35 @@ export const alarmEvents = mysqlTable(
 
 export type AlarmEvent = typeof alarmEvents.$inferSelect;
 export type InsertAlarmEvent = typeof alarmEvents.$inferInsert;
+
+// -----------------------------------------------------------------------------
+// Alarm Changes - o que o usuário tirou do ar (excluiu, desativou, remarcou)
+// -----------------------------------------------------------------------------
+
+/**
+ * Registro de mudanças de alarme detectadas no backup (`userData.put`). Existe
+ * porque desativar ou apagar um alarme faz o monitoring-job apagar o evento
+ * pendente em silêncio — sem esta tabela o cuidador não tem rastro nenhum.
+ * Guarda um derivado do que já está em `user_data.alarms` (mesma base legal).
+ * Entra na exclusão de conta, na exportação e na retenção de 180 dias.
+ */
+export const alarmChanges = mysqlTable(
+  "alarm_changes",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    openId: varchar("openId", { length: 64 }).notNull(),
+    alarmId: varchar("alarmId", { length: 64 }).notNull(),
+    alarmDescription: varchar("alarmDescription", { length: 255 }).notNull().default(""),
+    changeType: mysqlEnum("changeType", ["deleted", "disabled", "rescheduled"]).notNull(),
+    oldTime: varchar("oldTime", { length: 5 }),
+    newTime: varchar("newTime", { length: 5 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [index("alarm_changes_openid_idx").on(t.openId)]
+);
+
+export type AlarmChangeRow = typeof alarmChanges.$inferSelect;
+export type InsertAlarmChange = typeof alarmChanges.$inferInsert;
 
 // -----------------------------------------------------------------------------
 // Warning Log - record of every warning message sent to contacts

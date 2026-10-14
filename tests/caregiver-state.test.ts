@@ -37,22 +37,8 @@ describe('caregiverReducer', () => {
     expect(next.linkedMonitored).toBeNull();
   });
 
-  it('UPDATE_PREFS merges partial preferences', () => {
-    const next = caregiverReducer(DEFAULT_CAREGIVER_STATE, {
-      type: 'UPDATE_PREFS',
-      payload: { missedMedication: false },
-    });
-    expect(next.notificationPrefs.missedMedication).toBe(false);
-    expect(next.notificationPrefs.sosTriggered).toBe(DEFAULT_CAREGIVER_STATE.notificationPrefs.sosTriggered);
-  });
-
-  it('DEFAULT_CAREGIVER_STATE has all notification prefs on', () => {
-    expect(DEFAULT_CAREGIVER_STATE.linkedMonitored).toBeNull();
-    expect(DEFAULT_CAREGIVER_STATE.notificationPrefs).toEqual({
-      missedMedication: true,
-      sosTriggered: true,
-      deadManSwitch: true,
-    });
+  it('DEFAULT_CAREGIVER_STATE começa sem vínculo', () => {
+    expect(DEFAULT_CAREGIVER_STATE).toEqual({ linkedMonitored: null });
   });
 
   it('unknown actions return the same state reference', () => {

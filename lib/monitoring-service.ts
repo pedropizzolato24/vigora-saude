@@ -16,6 +16,7 @@ import { getDeviceId } from "./device-id";
 import { getApiBaseUrl } from "@/constants/oauth";
 import { Alarm } from "./app-context";
 import { nextAlarmFireMs } from "./alarm-fire-times";
+import { serverEventExtras } from "@/lib/alarm-kind";
 import * as Auth from "./_core/auth";
 import {
   enqueueConfirmation,
@@ -304,6 +305,9 @@ export async function createPendingAlarmEvent(
     // horário que o idoso viu na tela. O Brasil tem quatro fusos — sem isso o
     // Acre recebia "23:00" para um alarme das 21:00.
     timezone: deviceTimezone(),
+    // Check-in: tipo e atraso de aviso. Toda chamada para o mesmo (alarmId,
+    // scheduledAt) precisa mandar isto, senão o servidor volta o evento a remédio/5 min.
+    ...serverEventExtras(alarm),
   });
   console.log(`[Monitoring] Created pending event for alarm ${alarm.id}`);
 }
@@ -440,7 +444,7 @@ export async function getMonitoringStatus(): Promise<{
  *
  * Para evitar o falso "Alarmes Perdidos" em toda abertura do app:
  *  - só conta eventos das últimas 48h (eventos antigos não são novidade);
- *  - ignora o check-in diário ('checkin-daily'), que tem fluxo/escalação
+ *  - ignora o check-in (antigo 'checkin-daily' ou kind 'checkin'), que tem fluxo/escalação
  *    próprios e pode deixar eventos pendentes órfãos no servidor;
  *  - lembra (AsyncStorage) o evento mais recente já exibido, para que o
  *    mesmo aviso não reapareça em aberturas seguintes.
@@ -463,7 +467,7 @@ export async function checkOfflineAlarms(
   const windowStart = Date.now() - OFFLINE_ALARMS_WINDOW_MS;
 
   const isRelevant = (e: any): boolean => {
-    if (e.alarmId === CHECKIN_ALARM_ID) return false;
+    if (e.alarmId === CHECKIN_ALARM_ID || e.kind === 'checkin') return false;
     const ts = new Date(e.scheduledAt ?? e.createdAt ?? 0).getTime();
     if (!Number.isFinite(ts) || ts <= 0) return false;
     return ts > windowStart && ts > seenUntil;

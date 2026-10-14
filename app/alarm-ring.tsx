@@ -36,6 +36,7 @@ import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { useAppContext } from '@/lib/app-context';
+import { buildCheckinSpeechText, escalateSeconds, isCheckinAlarm, medicationAlarms, ringCopy } from '@/lib/alarm-kind';
 import { shouldVibrate } from '@/lib/_core/alarm-vibration';
 import { loadCurrentAppStateRaw } from '@/lib/app-state-storage';
 import { useAccessibility } from '@/lib/accessibility-context';
@@ -43,7 +44,6 @@ import { useColors } from '@/hooks/use-colors';
 import { escalateAlarmToContacts } from '@/lib/alarm-escalation';
 import {
   stopNativeAlarm,
-  snoozeNativeAlarm,
   pauseNativeAlarmSound,
   resumeNativeAlarmSound,
 } from '@/lib/native-alarm-manager';
@@ -54,11 +54,10 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { loadAlarmTimer, clearAlarmTimer } from '@/lib/alarm-timer-store';
 import { lastAlarmFireMs } from '@/lib/alarm-fire-times';
 import { updateAlarmWidgetOnDismiss } from '@/lib/update-widgets';
-import { confirmAlarmResponded, confirmAlarmMissed, createPendingAlarmEvent } from '@/lib/monitoring-service';
+import { confirmAlarmResponded, confirmAlarmMissed } from '@/lib/monitoring-service';
 import * as Auth from '@/lib/_core/auth';
 
 const COUNTDOWN_SECONDS = 30;
-const SNOOZE_MINUTES = 5;
 
 // Som do alarme para o iOS. No Android quem toca é o serviço nativo; no iOS
 // não existe equivalente — a notificação toca o som UMA vez e para, então a
@@ -100,12 +99,17 @@ function buildSpeechText(
 
 export default function AlarmRingScreen() {
   const router = useRouter();
-  const { alarmId, expiresAt: expiresAtParam, snooze: snoozeParam, dismiss: dismissParam, fromAlarmKit } = useLocalSearchParams<{ alarmId: string; expiresAt?: string; snooze?: string; dismiss?: string; fromAlarmKit?: string }>();
+  const { alarmId, expiresAt: expiresAtParam, dismiss: dismissParam, fromAlarmKit } = useLocalSearchParams<{ alarmId: string; expiresAt?: string; dismiss?: string; fromAlarmKit?: string }>();
   const { state, dispatch } = useAppContext();
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac } = useAccessibility();
   const colors = useColors();
 
   const alarm = state.alarms.find((a) => a.id === alarmId);
+
+  // Check-in ("Está tudo bem?"): mesma tela, outros textos e outro prazo.
+  const isCheckin = !!alarm && isCheckinAlarm(alarm);
+  const copy = ringCopy(isCheckin);
+  const ringName = isCheckin ? copy.fallbackName : alarm?.description || copy.fallbackName;
 
   // iOS 26+: o alarme JÁ tocou em tela cheia e o idoso JÁ apertou "Desligar" —
   // foi isso que abriu o app. Não há o que tocar nem o que contar: rodar o
@@ -124,7 +128,9 @@ export default function AlarmRingScreen() {
   // Initialize with the configured duration; will be overridden by persisted timer on mount.
   // Note: configuredDuration from state may be stale if state hasn't loaded yet.
   // The initTimer function reads from AsyncStorage directly as fallback.
-  const configuredDuration: number = state.settings.timerDuration ?? 30;
+  const configuredDuration: number = isCheckin && alarm
+    ? escalateSeconds(alarm)
+    : state.settings.timerDuration ?? 30;
   const [secondsLeft, setSecondsLeft] = useState<number>(configuredDuration);
   const [escalated, setEscalated] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -194,7 +200,9 @@ export default function AlarmRingScreen() {
   // O som é o do serviço nativo, então pausar/retomar passa pelo módulo nativo.
   const speakAlarm = useCallback(() => {
     if (Platform.OS === 'web') return;
-    const text = buildSpeechText(alarm?.description, alarm?.time, vindoDoAlarmKit);
+    const text = isCheckin
+      ? buildCheckinSpeechText(alarm?.time, vindoDoAlarmKit)
+      : buildSpeechText(alarm?.description, alarm?.time, vindoDoAlarmKit);
     // speechVolume chega ao Android via patch do expo-speech (KEY_PARAM_VOLUME)
     // — o módulo original ignorava options.volume por completo fora do iOS.
     const speechVol = (state.settings.speechVolume ?? 90) / 100;
@@ -241,7 +249,7 @@ export default function AlarmRingScreen() {
 
   // Mostra a tela por cima da lock screen enquanto o alarme está ativo —
   // escopado a esta tela (não um flag fixo no app inteiro). Ao desmontar
-  // (dismiss, soneca ou voltar), exitAlarmLockScreenMode manda a Activity de
+  // (dismiss ou voltar), exitAlarmLockScreenMode manda a Activity de
   // volta pra lock screen real se o aparelho ainda estiver bloqueado, em vez
   // de deixar a tela inicial do app visível por cima dela.
   useEffect(() => {
@@ -324,8 +332,8 @@ export default function AlarmRingScreen() {
         if (speechTimeoutRef.current) clearTimeout(speechTimeoutRef.current);
         Vibration.cancel();
         Speech.stop();
-        // Sair da tela (desligar, soneca ou voltar) tem de calar o som do iOS —
-        // no Android quem encerra é o stopNativeAlarm/snoozeNativeAlarm.
+        // Sair da tela (desligar ou voltar) tem de calar o som do iOS —
+        // no Android quem encerra é o stopNativeAlarm.
         if (Platform.OS === 'ios') iosPlayer.pause();
       } catch {}
     };
@@ -400,6 +408,9 @@ export default function AlarmRingScreen() {
             }
           }
         } catch {}
+        if (alarmForAnchor && isCheckinAlarm(alarmForAnchor)) {
+          duration = escalateSeconds(alarmForAnchor);
+        }
         const fireMs = alarmForAnchor ? lastAlarmFireMs(alarmForAnchor) : null;
         startCountdown((fireMs ?? Date.now()) + duration * 1000);
       }
@@ -487,9 +498,10 @@ export default function AlarmRingScreen() {
       confirmAlarmResponded(alarm, canonicalScheduledAt()).catch(() => {});
     }
     // Atualiza widget Android para mostrar o próximo alarme pendente
-    updateAlarmWidgetOnDismiss(state.alarms).catch(() => {});
+    updateAlarmWidgetOnDismiss(medicationAlarms(state.alarms)).catch(() => {});
 
-    router.replace(postAlarmRoute as never);
+    // Depois do check-in, volta ao Início (e não à lista de remédios).
+    router.replace((isCheckin && postAlarmRoute === '/(tabs)/alarms' ? '/(tabs)' : postAlarmRoute) as never);
     // `alarm` e `state.alarms` PRECISAM estar aqui: no cold start (alarme toca
     // com o app morto) a tela monta antes do AsyncStorage carregar, então
     // `alarm` é undefined no primeiro render. Sem eles nas deps o callback
@@ -497,57 +509,11 @@ export default function AlarmRingScreen() {
     // o servidor jamais recebia "responded" e o evento ficava pendente até o
     // job marcá-lo como perdido, escalando para a família um alarme que o idoso
     // TINHA respondido. (updateAlarmWidgetOnDismiss recebia [] pelo mesmo
-    // motivo.) handleSnooze já dependia de `alarm` — por isso só o dismiss
-    // falhava.
-  }, [alarmId, alarm, state.alarms, dispatch, router, postAlarmRoute]);
+    // motivo.)
+  }, [alarmId, alarm, state.alarms, dispatch, router, postAlarmRoute, isCheckin]);
 
-  // Soneca: conta como respondido AGORA (idoso interagiu = vivo), mas re-arma um
-  // disparo em 5 min. Se a soneca for ignorada, o evento +5min vira "perdido" no
-  // servidor e escala — regra do usuário (feedback do beta, item 4.3).
-  const handleSnooze = useCallback(() => {
-    if (countdownRef.current) clearInterval(countdownRef.current);
-    if (speechTimeoutRef.current) clearTimeout(speechTimeoutRef.current);
-    setDismissed(true); // impede a escalação do disparo atual
-    dismissedRef.current = true;
-    respondedFirings.add(firingKey());
-    stopNativeAlarm().catch(() => {});
-    Speech.stop().catch(() => {});
-    if (alarmId) {
-      clearAlarmTimer(alarmId);
-      // Mesma limpeza do dismiss: a soneca também encerra o disparo atual, e a
-      // notificação dele não pode sobreviver para reabrir a tela depois.
-      dismissDeliveredAlarmNotification(alarmId);
-    }
-    Vibration.cancel();
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-
-    if (alarm) {
-      dispatch({ type: 'RESET_MISSED_ALARM' });
-      confirmAlarmResponded(alarm, canonicalScheduledAt()).catch(() => {});
-      const fireAt = new Date(Date.now() + SNOOZE_MINUTES * 60 * 1000);
-      snoozeNativeAlarm(alarm, fireAt).catch(() => {});
-      createPendingAlarmEvent(alarm, fireAt).catch(() => {});
-    }
-
-    router.replace(postAlarmRoute as never);
-  }, [alarmId, alarm, dispatch, router, postAlarmRoute]);
-
-  // Botão "Soneca" da notificação: chega como deep link &snooze=1 (a action
-  // nativa abre o app em vez de reagendar em Java — ver native-alarm-manager).
-  // Executa a soneca assim que o alarme carrega do estado; `alarm` na dep é
-  // essencial no cold start (a tela monta antes do AsyncStorage carregar).
-  const autoSnoozedRef = useRef(false);
-  useEffect(() => {
-    if (snoozeParam !== '1' || autoSnoozedRef.current || !alarm) return;
-    autoSnoozedRef.current = true;
-    handleSnooze();
-  }, [snoozeParam, alarm, handleSnooze]);
-
-  // Botão "Dispensar" da notificação: chega como deep link &dismiss=1, pelo
-  // mesmo motivo da soneca. O DISMISS_ACTION nativo parava o alarme só em Java —
-  // o servidor nunca recebia "responded", o evento vencia em 5 min e a família
+  // Botão "Dispensar" da notificação: chega como deep link &dismiss=1. O DISMISS_ACTION nativo
+  // parava o alarme só em Java — o servidor nunca recebia "responded", o evento vencia em 5 min e a família
   // era avisada de um alarme que o idoso TINHA respondido.
   const autoDismissedRef = useRef(false);
   useEffect(() => {
@@ -616,7 +582,7 @@ export default function AlarmRingScreen() {
             </View>
           </RippleHalo>
           <Text style={[styles.alarmLabel, { color: ac.muted, fontSize: af.sm + 2, letterSpacing: 3 }]}>
-            ALARME
+            {copy.topLabel}
           </Text>
         </View>
 
@@ -629,7 +595,7 @@ export default function AlarmRingScreen() {
             style={[styles.alarmName, { color: ac.muted, fontSize: af.lg, lineHeight: af.lg * 1.4 }]}
             numberOfLines={3}
           >
-            {alarm?.description || 'Alarme'}
+            {ringName}
           </Text>
         </View>
 
@@ -677,13 +643,13 @@ export default function AlarmRingScreen() {
                   1,30:1 — o aviso de que a mensagem de emergência está a caminho
                   sumia justamente nos segundos finais. ac.warning dá 6,04:1. */}
               <Text style={[styles.countdownLabel, { color: isUrgent ? ac.warning : ac.muted, fontSize: af.sm, fontWeight: isUrgent ? '700' : '400' }]}>
-                {isUrgent ? '⚠️ Mensagem de emergência em' : 'Mensagem de emergência em'}
+                {isUrgent ? `⚠️ ${copy.countdownLabel}` : copy.countdownLabel}
               </Text>
               <Text style={[styles.countdownTimer, { color: isUrgent ? ac.warning : ac.foreground, fontSize: 56 }]}>
                 {formatTime(secondsLeft)}
               </Text>
               <Text style={[styles.countdownSub, { color: ac.muted, fontSize: af.xs }]}>
-                Toque em "Desligar" para cancelar o envio
+                {copy.countdownHint}
               </Text>
             </>
           ) : (
@@ -692,39 +658,20 @@ export default function AlarmRingScreen() {
                4,11:1 (claro) e 2,84:1 (escuro) — no escuro reprovava até o
                mínimo de texto grande (3:1) e o ícone de 36px. A paleta
                acessível não tem token de tinte de erro, então a caixa usa
-               ac.surface (branco, já usado no botão de soneca) com borda e
+               ac.surface (branco) com borda e
                texto em ac.error: 7,00:1 no texto e 6,11:1 da borda contra o
                fundo, que é o que delimita a caixa. */
             <View style={[styles.escalatedBox, { backgroundColor: ac.surface, borderColor: ac.error, borderWidth: 3 }]}>
               <MaterialIcons name="warning" size={36} color={ac.error} />
               <Text style={[styles.escalatedText, { color: ac.error, fontSize: af.md, lineHeight: af.md * 1.4 }]}>
-                Mensagem de emergência enviada para seus contatos
+                {copy.escalatedText}
               </Text>
             </View>
           )}
         </View>
 
-        {/* Snooze + Dismiss buttons — a soneca some no caminho do AlarmKit:
-            snoozeNativeAlarm é no-op fora do Android, mas handleSnooze registra
-            o evento pendente. No iPhone nada voltaria a tocar e a família seria
-            avisada em 5 min sobre quem acabou de responder. */}
+        {/* Dispensar */}
         <View style={[styles.bottomSection, { gap: 14 }]}>
-          {!isExpired && !vindoDoAlarmKit && (
-            <Pressable
-              style={({ pressed }) => [
-                styles.snoozeButton,
-                { minHeight: 72, paddingVertical: 20, backgroundColor: ac.surface, borderColor: ac.border, borderWidth: 2 },
-                pressed && { opacity: 0.85 },
-              ]}
-              onPress={handleSnooze}
-              accessibilityLabel={`Soneca de ${SNOOZE_MINUTES} minutos`}
-            >
-              <MaterialIcons name="snooze" size={36} color={ac.foreground} />
-              <Text style={[styles.snoozeText, { fontSize: af.md, color: ac.foreground, fontWeight: '800' }]}>
-                Soneca ({SNOOZE_MINUTES} min)
-              </Text>
-            </Pressable>
-          )}
           {/* styles.dismissButton NÃO traz backgroundColor — quem o define é
               cada modo (no normal, colors.error logo abaixo). Sem ele aqui, o
               botão ficava transparente sobre o creme com o texto branco fixo do
@@ -744,11 +691,11 @@ export default function AlarmRingScreen() {
               pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
             ]}
             onPress={handleDismiss}
-            accessibilityLabel={vindoDoAlarmKit ? 'Confirmado, fechar' : 'Desligar alarme'}
+            accessibilityLabel={vindoDoAlarmKit ? 'Confirmado, fechar' : copy.dismissA11y}
           >
             <MaterialIcons name={vindoDoAlarmKit ? 'check' : 'alarm-off'} size={44} color={vindoDoAlarmKit ? ac.onPrimary : ac.onEmergency} />
             <Text style={[styles.dismissText, { fontSize: af.lg, fontWeight: '900', color: vindoDoAlarmKit ? ac.onPrimary : ac.onEmergency }]}>
-              {vindoDoAlarmKit ? 'Confirmado' : 'Desligar Alarme'}
+              {vindoDoAlarmKit ? 'Confirmado' : copy.dismissLabel}
             </Text>
           </Pressable>
         </View>
@@ -774,14 +721,14 @@ export default function AlarmRingScreen() {
           </View>
         </RippleHalo>
 
-        <Text style={styles.alarmLabel}>ALARME</Text>
+        <Text style={styles.alarmLabel}>{copy.topLabel}</Text>
       </View>
 
       {/* Middle section: alarm info */}
       <View style={styles.infoSection}>
         <Text style={styles.alarmTime}>{alarm?.time ?? '--:--'}</Text>
         <Text style={styles.alarmName} numberOfLines={2}>
-          {alarm?.description || 'Alarme'}
+          {ringName}
         </Text>
       </View>
 
@@ -823,13 +770,13 @@ export default function AlarmRingScreen() {
         ) : !isExpired ? (
           <>
             <Text style={[styles.countdownLabel, isUrgent && { color: colors.warning, fontWeight: '600' }]}>
-              {isUrgent ? '⚠️ Mensagem de emergência em' : 'Mensagem de emergência em'}
+              {isUrgent ? `⚠️ ${copy.countdownLabel}` : copy.countdownLabel}
             </Text>
             <Text style={[styles.countdownTimer, isUrgent && { color: colors.warning }]}>
               {formatTime(secondsLeft)}
             </Text>
             <Text style={styles.countdownSub}>
-              Toque em "Desligar" para cancelar o envio
+              {copy.countdownHint}
             </Text>
           </>
         ) : (
@@ -839,25 +786,14 @@ export default function AlarmRingScreen() {
           <View style={[styles.escalatedBox, { backgroundColor: '#F0404020', borderColor: '#F04040' }]}>
             <MaterialIcons name="warning" size={28} color="#F04040" />
             <Text style={[styles.escalatedText, { color: '#FCA5A5' }]}>
-              Mensagem de emergência enviada para seus contatos
+              {copy.escalatedText}
             </Text>
           </View>
         )}
       </View>
 
-      {/* Snooze + Dismiss buttons — ver a nota do modo acessível: sem soneca
-          no caminho do AlarmKit. */}
+      {/* Dispensar */}
       <View style={[styles.bottomSection, { gap: 12 }]}>
-        {!isExpired && !vindoDoAlarmKit && (
-          <Pressable
-            style={({ pressed }) => [styles.snoozeButton, pressed && { opacity: 0.8 }]}
-            onPress={handleSnooze}
-            accessibilityLabel={`Soneca de ${SNOOZE_MINUTES} minutos`}
-          >
-            <MaterialIcons name="snooze" size={24} color="#FFFFFF" />
-            <Text style={styles.snoozeText}>Soneca ({SNOOZE_MINUTES} min)</Text>
-          </Pressable>
-        )}
         <Pressable
           style={({ pressed }) => [
             styles.dismissButton,
@@ -867,11 +803,11 @@ export default function AlarmRingScreen() {
             pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
           ]}
           onPress={handleDismiss}
-          accessibilityLabel={vindoDoAlarmKit ? 'Confirmado, fechar' : 'Desligar alarme'}
+          accessibilityLabel={vindoDoAlarmKit ? 'Confirmado, fechar' : copy.dismissA11y}
         >
           <MaterialIcons name={vindoDoAlarmKit ? 'check' : 'alarm-off'} size={32} color={vindoDoAlarmKit ? colors.onSuccess : colors.onEmergency} />
           <Text style={[styles.dismissText, vindoDoAlarmKit && { color: colors.onSuccess }]}>
-            {vindoDoAlarmKit ? 'Confirmado' : 'Desligar Alarme'}
+            {vindoDoAlarmKit ? 'Confirmado' : copy.dismissLabel}
           </Text>
         </Pressable>
       </View>
@@ -1024,23 +960,5 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.5,
-  },
-  snoozeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    width: '100%',
-    backgroundColor: '#1E293B',
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  snoozeText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
 });
