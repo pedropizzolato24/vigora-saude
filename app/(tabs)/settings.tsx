@@ -33,6 +33,7 @@ import { useAccessibility } from '@/lib/accessibility-context';
 import { useAppLock } from '@/lib/app-lock-context';
 import { useRouter } from 'expo-router';
 import { MonitoringStatusPanel } from '@/components/monitoring-status-panel';
+import { ManagedAlarmsCard } from '@/components/managed-alarms-card';
 import { ProtectAccountBanner } from '@/components/protect-account-banner';
 import { TrialBanner, ExpiredBanner } from '@/components/trial-banner';
 import { previewNativeAlarmSound } from '@/lib/native-alarm-manager';
@@ -450,6 +451,9 @@ export default function SettingsScreen() {
           {/* Status do Monitoramento - logo abaixo do toggle de acessibilidade */}
           <MonitoringStatusPanel accessible={true} />
 
+          {/* Quem cuida dos seus alarmes: só aparece com um acordo ativo */}
+          <ManagedAlarmsCard />
+
           {/* Alarmes: vibração */}
           <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 16 }}>
             <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>Alarmes</Text>
@@ -828,6 +832,9 @@ export default function SettingsScreen() {
         {/* ═══ STATUS DO MONITORAMENTO (abaixo de Acessibilidade) ═══ */}
         {/* Liberado para todos — a experiência completa não é restrita por plano. */}
         <MonitoringStatusPanel accessible={false} />
+
+        {/* Quem cuida dos seus alarmes: só aparece com um acordo ativo */}
+        <ManagedAlarmsCard />
 
         {/* ═══ SECTION 1: Alarmes ═══ */}
         <CollapsibleSection
