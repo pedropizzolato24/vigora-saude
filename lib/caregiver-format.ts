@@ -80,22 +80,31 @@ export function alertEventTitle(e: { alarmId: string; status: string; kind?: str
     : `${subject} sem confirmação do aparelho`;
 }
 
-/** Título de uma mudança de lembrete feita pela pessoa acompanhada. */
+/**
+ * Título de uma mudança de lembrete. `changedByName` null/ausente = a própria
+ * pessoa acompanhada (texto sem sujeito); com nome = um cuidador com o acordo
+ * de gerenciamento (Fase 4), e o nome entra no começo.
+ */
 export function alarmChangeTitle(c: {
   alarmDescription: string;
-  changeType: 'deleted' | 'disabled' | 'rescheduled';
+  changeType: 'created' | 'deleted' | 'disabled' | 'rescheduled';
   oldTime: string | null;
   newTime: string | null;
+  changedByName?: string | null;
 }): string {
   const name = c.alarmDescription.trim() || c.oldTime || c.newTime || 'Lembrete sem nome';
+  const by = c.changedByName?.trim() || null;
+  const verb = (self: string, other: string) => (by ? `${by} ${other}` : self);
   switch (c.changeType) {
+    case 'created':
+      return `${verb('Criou', 'criou')} "${name}"${c.newTime ? ` (${c.newTime})` : ''}`;
     case 'deleted':
-      return `Excluiu "${name}"`;
+      return by ? `${by} apagou "${name}"` : `Excluiu "${name}"`;
     case 'disabled':
-      return `Desativou "${name}"`;
+      return `${verb('Desativou', 'desativou')} "${name}"`;
     default:
       return c.oldTime && c.newTime && c.oldTime !== c.newTime
-        ? `Mudou o horário de "${name}" para ${c.newTime}`
-        : `Mudou os dias de "${name}"`;
+        ? `${verb('Mudou', 'mudou')} o horário de "${name}" para ${c.newTime}`
+        : `${verb('Mudou', 'mudou')} os dias de "${name}"`;
   }
 }

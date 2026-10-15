@@ -80,6 +80,12 @@ export const userData = mysqlTable("user_data", {
   profile: json("profile").$type<Record<string, unknown> | null>(),
   /** Client-supplied epoch-ms of the last local data change. Drives last-write-wins. */
   dataUpdatedAt: bigint("dataUpdatedAt", { mode: "number" }).notNull().default(0),
+  /**
+   * Fuso IANA do aparelho (ex.: "America/Rio_Branco"), enviado pelo app em todo
+   * `userData.put`. O servidor lê os dias e horários dos alarmes neste fuso
+   * (shared/alarm-schedule.ts). Nulo = ainda desconhecido → America/Sao_Paulo.
+   */
+  timezone: varchar("timezone", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -131,6 +137,14 @@ export const accountLiveness = mysqlTable("account_liveness", {
   // vulnerável ao modo de falha "app morto em background = alarme não toca" e
   // é o gancho para, no futuro, alertar o cuidador de um monitorado vulnerável.
   batteryExempt: boolean("batteryExempt"),
+  // Pausa do dead man's switch (Fase 4): o servidor deixa de pré-registrar e
+  // cobrar disparos da conta quando o aparelho saiu da conta ('logged_out'), o
+  // app foi removido ('app_removed') ou ficou 48 h sem sinal ('no_signal').
+  // Qualquer sinal do aparelho limpa os três campos (touchLiveness/recordHeartbeat).
+  dmsPausedReason: mysqlEnum("dmsPausedReason", ["logged_out", "app_removed", "no_signal"]),
+  dmsPausedAt: timestamp("dmsPausedAt"),
+  /** Quando os cuidadores foram avisados desta pausa (um aviso por pausa). */
+  pauseNoticeSentAt: timestamp("pauseNoticeSentAt"),
 });
 
 export type AccountLiveness = typeof accountLiveness.$inferSelect;
@@ -198,9 +212,13 @@ export const alarmChanges = mysqlTable(
     openId: varchar("openId", { length: 64 }).notNull(),
     alarmId: varchar("alarmId", { length: 64 }).notNull(),
     alarmDescription: varchar("alarmDescription", { length: 255 }).notNull().default(""),
-    changeType: mysqlEnum("changeType", ["deleted", "disabled", "rescheduled"]).notNull(),
+    // 'created' fica por ÚLTIMO de propósito: acrescentar no fim do enum é só
+    // metadado no MySQL (não reescreve a tabela nem remapeia as linhas antigas).
+    changeType: mysqlEnum("changeType", ["deleted", "disabled", "rescheduled", "created"]).notNull(),
     oldTime: varchar("oldTime", { length: 5 }),
     newTime: varchar("newTime", { length: 5 }),
+    /** Quem fez a mudança. Nulo = o próprio dono da conta (o diff do backup). */
+    changedByOpenId: varchar("changedByOpenId", { length: 64 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   (t) => [index("alarm_changes_openid_idx").on(t.openId)]
@@ -208,6 +226,77 @@ export const alarmChanges = mysqlTable(
 
 export type AlarmChangeRow = typeof alarmChanges.$inferSelect;
 export type InsertAlarmChange = typeof alarmChanges.$inferInsert;
+
+// -----------------------------------------------------------------------------
+// Alarm Management - o acordo "o cuidador cuida dos alarmes do idoso" (Fase 4)
+// -----------------------------------------------------------------------------
+
+/**
+ * Uma linha por pedido. Só pode existir UM `pending` ou `active` por idoso
+ * (garantido em transação em server/db-alarm-management.ts). O histórico nunca
+ * é apagado enquanto a conta existir: é a prova do consentimento do idoso
+ * (LGPD Art. 8) — `respondedAt` é o aceite ou a recusa. Entra na exclusão de
+ * conta (como idoso e como cuidador) e na exportação.
+ */
+export const alarmManagement = mysqlTable(
+  "alarm_management",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    monitoredOpenId: varchar("monitoredOpenId", { length: 64 }).notNull(),
+    /** Quem pediu (e, se aceito, quem gerencia). */
+    caregiverOpenId: varchar("caregiverOpenId", { length: 64 }).notNull(),
+    status: mysqlEnum("status", ["pending", "active", "ended"]).notNull(),
+    endedReason: mysqlEnum("endedReason", [
+      "declined",
+      "expired",
+      "cancelled",
+      "stopped_by_monitored",
+      "stopped_by_caregiver",
+      "unlinked",
+      "account_deleted",
+    ]),
+    requestedAt: timestamp("requestedAt").defaultNow().notNull(),
+    respondedAt: timestamp("respondedAt"),
+    endedAt: timestamp("endedAt"),
+  },
+  (t) => [
+    index("alarm_management_monitored_idx").on(t.monitoredOpenId),
+    index("alarm_management_caregiver_idx").on(t.caregiverOpenId),
+  ]
+);
+
+export type AlarmManagementRow = typeof alarmManagement.$inferSelect;
+export type InsertAlarmManagement = typeof alarmManagement.$inferInsert;
+
+// -----------------------------------------------------------------------------
+// Managed Alarm Lists - a lista versionada que só o cuidador do acordo grava
+// -----------------------------------------------------------------------------
+
+/**
+ * Uma linha por idoso com acordo ativo (apagada quando o acordo termina; a lista
+ * no celular continua e volta a ser do idoso). `alarms` é a lista do cuidador na
+ * `version` atual; `appliedAlarms` é a lista da `appliedVersion`, a última que o
+ * celular confirmou ter agendado — é DELA que o servidor calcula os disparos,
+ * menos `failedAlarmIds`. Formato dos alarmes: `ManagedAlarm` (shared/managed-alarm.ts).
+ */
+export const managedAlarmLists = mysqlTable("managed_alarm_lists", {
+  id: int("id").autoincrement().primaryKey(),
+  monitoredOpenId: varchar("monitoredOpenId", { length: 64 }).notNull().unique(),
+  /** Sobe a cada gravação do cuidador. */
+  version: int("version").notNull(),
+  alarms: json("alarms").$type<unknown[]>().notNull(),
+  appliedVersion: int("appliedVersion").notNull().default(0),
+  appliedAlarms: json("appliedAlarms").$type<unknown[]>().notNull(),
+  failedAlarmIds: json("failedAlarmIds").$type<string[]>().notNull(),
+  appliedAt: timestamp("appliedAt"),
+  updatedByOpenId: varchar("updatedByOpenId", { length: 64 }).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  /** Controla a notificação visível de reserva (uma por versão). */
+  visibleNoticeSentForVersion: int("visibleNoticeSentForVersion").notNull().default(0),
+});
+
+export type ManagedAlarmListRow = typeof managedAlarmLists.$inferSelect;
+export type InsertManagedAlarmList = typeof managedAlarmLists.$inferInsert;
 
 // -----------------------------------------------------------------------------
 // Warning Log - record of every warning message sent to contacts

@@ -29,6 +29,8 @@ export interface ExportServerData {
   dadosDaConta: unknown;
   historicoDeAlarmes: unknown[];
   historicoDeAlteracoesDeAlarmes: unknown[];
+  acordosDeGerenciamento: unknown[];
+  listaGerenciada: unknown;
   alertasEnviados: unknown[];
   sinalDeVida: unknown;
   cuidadoresVinculados: unknown[];

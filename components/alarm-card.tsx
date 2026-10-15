@@ -10,7 +10,8 @@ import type { Alarm } from '@/lib/app-context';
 interface AlarmCardProps {
   alarm: Alarm;
   onEdit: (alarm: Alarm) => void;
-  onToggle: (alarm: Alarm) => void;
+  /** Sem isto o card não tem interruptor: lista só leitura, quando outra pessoa cuida dos alarmes. */
+  onToggle?: (alarm: Alarm) => void;
   onTest: (alarm: Alarm) => void;
   /** Texto no lugar do nome (check-in mostra o atraso do aviso). */
   subtitle?: string;
@@ -40,7 +41,7 @@ export function AlarmCard({ alarm, onEdit, onToggle, onTest, subtitle }: AlarmCa
       onPress={() => onEdit(alarm)}
       scaleTo={0.985}
       accessibilityRole="button"
-      accessibilityLabel={`Lembrete ${alarm.time}${alarm.description ? ', ' + alarm.description : ''}. Toque para editar.`}
+      accessibilityLabel={`Lembrete ${alarm.time}${alarm.description ? ', ' + alarm.description : ''}. ${onToggle ? 'Toque para editar.' : 'Toque para ver os detalhes.'}`}
       style={({ pressed }) => [
         styles.card,
         {
@@ -129,30 +130,53 @@ export function AlarmCard({ alarm, onEdit, onToggle, onTest, subtitle }: AlarmCa
 
       {/* Bottom section: enable toggle hint + edit prompt */}
       <View style={styles.actionRow}>
-        <Pressable
-          onPress={(e) => { e.stopPropagation?.(); onToggle(alarm); }}
-          style={({ pressed }) => [
-            styles.toggleBtn,
-            { backgroundColor: colors.background, borderColor: colors.border, minHeight: fs.touch(36) },
-            pressed && { opacity: 0.7 },
-          ]}
-          accessibilityRole="switch"
-          accessibilityLabel={alarm.enabled ? 'Desativar lembrete' : 'Ativar lembrete'}
-          accessibilityState={{ checked: alarm.enabled }}
-        >
-          <MaterialIcons
-            name={alarm.enabled ? 'notifications-active' : 'notifications-off'}
-            size={18}
-            color={alarm.enabled ? colors.primary : colors.muted}
-          />
-          <Text style={[styles.toggleBtnText, { color: alarm.enabled ? colors.primary : colors.muted, fontSize: fs.sm }]}>
-            {alarm.enabled ? 'Ativo' : 'Inativo'}
-          </Text>
-        </Pressable>
+        {onToggle ? (
+          <Pressable
+            onPress={(e) => { e.stopPropagation?.(); onToggle(alarm); }}
+            style={({ pressed }) => [
+              styles.toggleBtn,
+              { backgroundColor: colors.background, borderColor: colors.border, minHeight: fs.touch(36) },
+              pressed && { opacity: 0.7 },
+            ]}
+            accessibilityRole="switch"
+            accessibilityLabel={alarm.enabled ? 'Desativar lembrete' : 'Ativar lembrete'}
+            accessibilityState={{ checked: alarm.enabled }}
+          >
+            <MaterialIcons
+              name={alarm.enabled ? 'notifications-active' : 'notifications-off'}
+              size={18}
+              color={alarm.enabled ? colors.primary : colors.muted}
+            />
+            <Text style={[styles.toggleBtnText, { color: alarm.enabled ? colors.primary : colors.muted, fontSize: fs.sm }]}>
+              {alarm.enabled ? 'Ativo' : 'Inativo'}
+            </Text>
+          </Pressable>
+        ) : (
+          // Lista só leitura: mostra se está ligado, mas não deixa mudar.
+          <View
+            style={[
+              styles.toggleBtn,
+              { backgroundColor: colors.background, borderColor: colors.border, minHeight: fs.touch(36) },
+            ]}
+            accessible
+            accessibilityLabel={alarm.enabled ? 'Lembrete ativo' : 'Lembrete inativo'}
+          >
+            <MaterialIcons
+              name={alarm.enabled ? 'notifications-active' : 'notifications-off'}
+              size={18}
+              color={alarm.enabled ? colors.primary : colors.muted}
+            />
+            <Text style={[styles.toggleBtnText, { color: alarm.enabled ? colors.primary : colors.muted, fontSize: fs.sm }]}>
+              {alarm.enabled ? 'Ativo' : 'Inativo'}
+            </Text>
+          </View>
+        )}
 
         <View style={[styles.editHint, { borderColor: colors.border }]}>
-          <MaterialIcons name="edit" size={15} color={colors.muted} />
-          <Text style={[styles.editHintText, { color: colors.muted, fontSize: fs.sm }]}>Toque para editar</Text>
+          <MaterialIcons name={onToggle ? 'edit' : 'visibility'} size={15} color={colors.muted} />
+          <Text style={[styles.editHintText, { color: colors.muted, fontSize: fs.sm }]}>
+            {onToggle ? 'Toque para editar' : 'Toque para ver'}
+          </Text>
         </View>
       </View>
     </PressableScale>

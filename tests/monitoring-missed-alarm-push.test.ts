@@ -22,6 +22,7 @@ let transitionResult: { id: number } | null = { id: 1 };
 
 vi.mock("../server/db-monitoring", () => ({
   recordHeartbeat: vi.fn(async () => undefined),
+  touchLiveness: vi.fn(async () => undefined),
   getAccountLiveness: vi.fn(async () => null),
   createAlarmEvent: vi.fn(async () => 1),
   updateAlarmEventStatusByAlarmId: vi.fn(async () => transitionResult),

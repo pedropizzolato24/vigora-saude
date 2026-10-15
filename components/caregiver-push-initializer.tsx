@@ -25,8 +25,18 @@ const CAREGIVER_PUSH_TYPES = [
   'sos',
   'alarm_changed',
   'link_revoked',
+  // Fase 4: acordo de gerenciamento dos alarmes e pausa dos avisos automáticos.
+  'management_accepted',
+  'management_declined',
+  'management_ended',
+  'management_expired',
+  'management_changed',
+  'dms_paused',
 ];
 const DEFAULT_ROUTE = '/(caregiver-tabs)/alerts';
+// Os pushes `management_*` sem `url` levam à área dos alarmes; `dms_paused` e
+// `management_accepted` já trazem a própria `url`.
+const MANAGEMENT_ROUTE = '/(caregiver-tabs)/managed-alarms';
 
 // Só o nome do erro vai para o log (sem payload: pode carregar dado de saúde).
 function warnFailed(what: string, error: unknown) {
@@ -81,7 +91,8 @@ export function CaregiverPushInitializer() {
     const navigateFromResponse = (response: Notifications.NotificationResponse | null) => {
       const data = response?.notification.request.content.data;
       if (!data || !CAREGIVER_PUSH_TYPES.includes(data.type as string)) return;
-      const url = typeof data.url === 'string' && data.url ? data.url : DEFAULT_ROUTE;
+      const fallback = String(data.type).startsWith('management_') ? MANAGEMENT_ROUTE : DEFAULT_ROUTE;
+      const url = typeof data.url === 'string' && data.url ? data.url : fallback;
       router.push(url as never);
     };
 
@@ -106,6 +117,9 @@ export function CaregiverPushInitializer() {
       utils.link.getMonitoredAlerts.invalidate().catch((e) => warnFailed('refresh failed', e));
       utils.link.getMonitoredData.invalidate().catch((e) => warnFailed('refresh failed', e));
       if (type === 'link_revoked') refreshLink().catch((e) => warnFailed('refresh failed', e));
+      if (type === 'alarm_changed' || String(type).startsWith('management_')) {
+        utils.managedAlarms.forCaregiver.invalidate().catch((e) => warnFailed('refresh failed', e));
+      }
     });
     return () => sub.remove();
   }, [utils, refreshLink]);

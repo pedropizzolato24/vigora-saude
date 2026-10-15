@@ -34,6 +34,10 @@ vi.mock("../server/push", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../server/push")>()),
   sendExpoPush: vi.fn(async () => 1),
 }));
+vi.mock("../server/db-alarm-management", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../server/db-alarm-management")>()),
+  getActiveManagementForMonitored: vi.fn(async () => null),
+}));
 
 import { appRouter } from "../server/routers";
 import * as db from "../server/db";

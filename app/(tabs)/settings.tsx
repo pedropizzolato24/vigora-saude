@@ -33,6 +33,7 @@ import { useAccessibility } from '@/lib/accessibility-context';
 import { useAppLock } from '@/lib/app-lock-context';
 import { useRouter } from 'expo-router';
 import { MonitoringStatusPanel } from '@/components/monitoring-status-panel';
+import { ManagedAlarmsCard } from '@/components/managed-alarms-card';
 import { ProtectAccountBanner } from '@/components/protect-account-banner';
 import { TrialBanner, ExpiredBanner } from '@/components/trial-banner';
 import { previewNativeAlarmSound } from '@/lib/native-alarm-manager';
@@ -450,6 +451,9 @@ export default function SettingsScreen() {
           {/* Status do Monitoramento - logo abaixo do toggle de acessibilidade */}
           <MonitoringStatusPanel accessible={true} />
 
+          {/* Quem cuida dos seus alarmes: só aparece com um acordo ativo */}
+          <ManagedAlarmsCard />
+
           {/* Alarmes: vibração */}
           <View style={{ backgroundColor: ac.surface, borderRadius: 20, borderWidth: 2, borderColor: ac.border, padding: 20, gap: 16 }}>
             <Text style={{ fontSize: af.xl, fontWeight: '900', color: ac.foreground }}>Alarmes</Text>
@@ -828,6 +832,9 @@ export default function SettingsScreen() {
         {/* ═══ STATUS DO MONITORAMENTO (abaixo de Acessibilidade) ═══ */}
         {/* Liberado para todos — a experiência completa não é restrita por plano. */}
         <MonitoringStatusPanel accessible={false} />
+
+        {/* Quem cuida dos seus alarmes: só aparece com um acordo ativo */}
+        <ManagedAlarmsCard />
 
         {/* ═══ SECTION 1: Alarmes ═══ */}
         <CollapsibleSection
@@ -1449,7 +1456,7 @@ export default function SettingsScreen() {
             <Text style={[styles.footerDot, { color: colors.muted }]}>·</Text>
             <Pressable
               onPress={() =>
-                showDialog({ title: 'Política de Privacidade', message: 'Vigora — Política de Privacidade (resumo)\n\nDados que tratamos:\n• Dados sensíveis de saúde (pressão, glicemia, frequência cardíaca, anamnese, medicamentos, tipo sanguíneo), tratados com seu consentimento destacado.\n• Contatos de emergência, localização (quando ativada) e perfil.\n\nOnde ficam: no seu aparelho e, para backup e para o monitoramento funcionar, em nosso servidor próprio (acesso protegido por autenticação). Nunca vendemos nem usamos seus dados de saúde para publicidade.\n\nCompartilhamos apenas para a função que você pediu: WhatsApp/Meta (alertas aos contatos que você designou), Expo, Google e Apple (notificações push aos cuidadores — o aviso de lembrete alterado pode mostrar o nome do lembrete) e RevenueCat (assinatura).\n\nSeus direitos (LGPD Art. 18): acessar, corrigir, exportar e excluir. Você pode apagar sua conta e todos os dados do servidor em Configurações › Excluir minha conta.\n\nEncarregado de Dados (DPO): ' + DPO_EMAIL + '. Fale com ele para exercer seus direitos ou tirar dúvidas sobre privacidade.', variant: 'info', buttons: [{ text: 'OK' }] })
+                showDialog({ title: 'Política de Privacidade', message: 'Vigora — Política de Privacidade (resumo)\n\nDados que tratamos:\n• Dados sensíveis de saúde (pressão, glicemia, frequência cardíaca, anamnese, medicamentos, tipo sanguíneo), tratados com seu consentimento destacado.\n• Contatos de emergência, localização (quando ativada), perfil, o fuso horário do aparelho (guardado para calcular a hora certa dos seus alarmes) e o horário do último sinal do aparelho (usado para pausar e retomar os avisos automáticos).\n\nOnde ficam: no seu aparelho e, para backup e para o monitoramento funcionar, em nosso servidor próprio (acesso protegido por autenticação). Nunca vendemos nem usamos seus dados de saúde para publicidade.\n\nCompartilhamos apenas para a função que você pediu: WhatsApp/Meta e Twilio (alertas por mensagem e SMS aos contatos de emergência que você designou), Expo, Google e Apple (notificações push aos cuidadores e ao seu próprio celular — o aviso de lembrete alterado pode mostrar o nome do lembrete) e RevenueCat (assinatura).\n\nCuidador e seus alarmes: um cuidador vinculado só pode criar, mudar ou apagar os seus alarmes se você aceitar o pedido dele no aplicativo. Você pode parar quando quiser em Configurações, e ele é avisado. A data do pedido e a do seu aceite ficam guardadas enquanto a sua conta existir, como registro do seu consentimento, e são apagadas junto com ela.\n\nVerificação diária: uma vez por dia o servidor manda ao seu celular um aviso silencioso, sem texto e sem som, só para saber se o Vigora ainda está no aparelho. Se não estiver, ou se o celular ficar 2 dias sem dar sinal ou você sair da conta, os avisos automáticos aos seus contatos ficam pausados e, se você tiver cuidador vinculado, ele recebe um aviso (exceto quando o aparelho já estava parado há mais de 7 dias). Quando o Vigora voltar a dar sinal, os avisos retomam sozinhos.\n\nSeus direitos (LGPD Art. 18): acessar, corrigir, exportar e excluir. Você pode apagar sua conta e todos os dados do servidor em Configurações › Excluir minha conta.\n\nEncarregado de Dados (DPO): ' + DPO_EMAIL + '. Fale com ele para exercer seus direitos ou tirar dúvidas sobre privacidade.', variant: 'info', buttons: [{ text: 'OK' }] })
               }
               style={({ pressed }) => [pressed && { opacity: 0.6 }]}
             >

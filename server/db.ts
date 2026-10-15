@@ -191,6 +191,10 @@ export async function upsertUserData(data: InsertUserData): Promise<void> {
     healthMetrics: data.healthMetrics ?? null,
     profile: data.profile ?? null,
     dataUpdatedAt: data.dataUpdatedAt ?? 0,
+    // Fuso do aparelho (o servidor calcula os horários dos alarmes com ele).
+    // undefined = cliente antigo que não manda o fuso: preserva o já guardado;
+    // null apaga.
+    ...(data.timezone !== undefined ? { timezone: data.timezone } : {}),
   };
 
   await db

@@ -49,6 +49,11 @@ import type { EmergencyContactRecord } from "../drizzle/schema";
 import { formatEventTime } from "./_core/format-event-time";
 import { parseLatLng } from "./_core/parse-lat-lng";
 import { agendaHasCheckinAlarm, isEventExpired } from "./_core/event-kind";
+import { runSteps } from "./_core/job-isolation";
+import { chargedManagedAlarms, runPreRegistration } from "./dms-preregister";
+import { getManagedList } from "./db-managed-alarm-list";
+import { runDmsPauses } from "./dms-pauses";
+import { runManagementHousekeeping } from "./managed-alarms-housekeeping";
 
 // Grace period: how long after scheduledAt we wait before resolving a pending event.
 // Precisa cobrir só o caminho feliz do cliente: countdown máximo de 60s
@@ -387,6 +392,45 @@ export async function runMonitoringJob(): Promise<void> {
     console.error(`[Monitor] ${passo} falhou:`, error);
   };
 
+  // -- Fase 4: rotinas que antecedem o Passo 1 ---------------------------------
+  // Cada rotina roda isolada (runSteps): a falha de uma não impede as outras nem
+  // os Passos 1 a 4, e entra em `failures` (o ciclo continua reprovando
+  // /api/health). Só os NOMES das rotinas que falharam chegam ao `lastError`: a
+  // mensagem de um erro do drizzle traz os parâmetros da query. O servidor só
+  // registra o que era esperado e pausa quando o aparelho some; quem faz o
+  // alarme tocar é sempre o celular.
+  try {
+    await runSteps("Rotinas da Fase 4", [
+      [
+        "Pré-registro de disparos",
+        async () => {
+          const { registered } = await runPreRegistration(now);
+          console.log(`[Monitor] Pré-registro: ${registered} disparo(s) registrado(s) pelo servidor`);
+        },
+      ],
+      [
+        "Pausas do dead man's switch",
+        async () => {
+          const { paused, noticesSent, pinged } = await runDmsPauses(now);
+          console.log(
+            `[Monitor] Pausas: ${paused} conta(s) pausada(s), ${noticesSent} aviso(s) a cuidadores, ${pinged} verificação(ões) de aparelho`
+          );
+        },
+      ],
+      [
+        "Manutenção do acordo de alarmes",
+        async () => {
+          const { expired, visibleNotices } = await runManagementHousekeeping(now);
+          console.log(
+            `[Monitor] Acordo de alarmes: ${expired} pedido(s) vencido(s), ${visibleNotices} aviso(s) visível(is)`
+          );
+        },
+      ],
+    ]);
+  } catch (error) {
+    recordFailure("Rotinas da Fase 4", error);
+  }
+
   try {
     // -- Step 1: Resolve expired pending alarm events --------------------------
     // O corte do banco usa o grace padrão (5 min); cada evento pode ter o seu
@@ -405,6 +449,20 @@ export async function runMonitoringJob(): Promise<void> {
       }
       return agendaPorConta.get(openId);
     };
+    // Conta gerenciada: vale a lista que o celular CONFIRMOU (a mesma do
+    // pré-registro), não o backup, que chega atrasado. null = conta comum.
+    const cobradosPorConta = new Map<string, Set<string> | null>();
+    const getCobradosGerenciados = async (openId: string) => {
+      if (!cobradosPorConta.has(openId)) {
+        const list = await getManagedList(openId);
+        cobradosPorConta.set(openId, list ? new Set(chargedManagedAlarms(list).map((a) => a.id)) : null);
+      }
+      return cobradosPorConta.get(openId) ?? null;
+    };
+    const alarmeAindaCobrado = async (openId: string, alarmId: string) => {
+      const cobrados = await getCobradosGerenciados(openId);
+      return cobrados ? cobrados.has(alarmId) : isAlarmStillArmed(await getAgenda(openId), alarmId);
+    };
 
     for (const event of expiredEvents) {
       // Isolado por evento: uma linha problemática não pode travar a resolução
@@ -417,7 +475,7 @@ export async function runMonitoringJob(): Promise<void> {
         // evento órfão virava 'missed' e escalava para contatos e cuidadores.
         if (
           event.alarmId !== CHECKIN_ALARM_ID &&
-          !isAlarmStillArmed(await getAgenda(event.openId), event.alarmId)
+          !(await alarmeAindaCobrado(event.openId, event.alarmId))
         ) {
           await deleteAlarmEvent(event.id);
           console.log(
@@ -774,13 +832,28 @@ export function startMonitoringScheduler(): void {
 
   console.log("[Monitor] Starting monitoring scheduler (every 5 minutes)");
 
+  // Um ciclo por vez: se o anterior ainda não terminou (Expo ou banco lentos),
+  // a rodada é pulada. Dois ciclos em paralelo leriam os mesmos eventos
+  // vencidos e mandariam a mesma escalação duas vezes.
+  let running = false;
+  const tick = () => {
+    if (running) {
+      console.warn("[Monitor] ciclo anterior ainda está rodando — rodada pulada");
+      return;
+    }
+    running = true;
+    runMonitoringJob()
+      .catch(console.error)
+      .finally(() => {
+        running = false;
+      });
+  };
+
   // Run immediately on startup
-  runMonitoringJob().catch(console.error);
+  tick();
 
   // Then run every 5 minutes
-  setInterval(() => {
-    runMonitoringJob().catch(console.error);
-  }, INTERVAL_MS);
+  setInterval(tick, INTERVAL_MS);
 
   // Data retention purge (LGPD minimization): daily, plus once on startup.
   const DAY_MS = 24 * 60 * 60 * 1000;

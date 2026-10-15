@@ -12,10 +12,13 @@ import { normalizeBrPhone } from "./phone-auth";
 import { monitoringRouter } from "./routers-monitoring";
 import { linkRouter } from "./routers-links";
 import { pushRouter } from "./routers-push";
+import { managedAlarmsRouter } from "./routers-managed-alarms";
 import { getUserByOpenId, getUserData, upsertUser, upsertUserData } from "./db";
 import { deleteAccountData } from "./db-account";
-import { getAccountLiveness, getAlarmEventHistory, getWarningHistory } from "./db-monitoring";
+import { getAccountLiveness, getAlarmEventHistory, getWarningHistory, touchLiveness } from "./db-monitoring";
 import { getActiveCaregiversForMonitored } from "./db-links";
+import { getActiveManagementForMonitored, getManagementHistory } from "./db-alarm-management";
+import { getManagedList } from "./db-managed-alarm-list";
 import { recordAndNotifyAlarmChanges } from "./alarm-changes";
 import { pickPersonName } from "./_core/alarm-diff";
 import { getRecentAlarmChanges } from "./db-alarm-changes";
@@ -285,6 +288,9 @@ export const appRouter = router({
           settings: z.record(z.string(), z.unknown()).nullable().optional(),
           healthMetrics: z.array(z.unknown()).max(2000).optional(),
           profile: z.record(z.string(), z.unknown()).nullable().optional(),
+          // Nome IANA do fuso do aparelho. Opcional: cliente antigo não manda
+          // (preserva o guardado); ROM sem ICU manda null.
+          timezone: z.string().max(64).nullish(),
           dataUpdatedAt: z.number().int().nonnegative(),
         }),
       )
@@ -312,15 +318,37 @@ export const appRouter = router({
           settings: (input.settings ?? null) as Record<string, unknown> | null,
           healthMetrics: input.healthMetrics ?? [],
           profile: (input.profile ?? null) as Record<string, unknown> | null,
+          timezone: input.timezone,
           dataUpdatedAt: input.dataUpdatedAt,
         });
 
-        await recordAndNotifyAlarmChanges({
-          openId,
-          previousAlarms,
-          nextAlarms,
-          personName: pickPersonName(input.anamnesis, ctx.user.name),
-        });
+        // O backup é sinal de vida do idoso (cuidador não tem dead man's switch).
+        if (ctx.user.userType !== "caregiver") await touchLiveness(openId);
+
+        // Com o acordo gerenciado ATIVO, só o cuidador muda a lista, e cada
+        // mudança dele já foi registrada (com ele como autor) na gravação. Sem
+        // esta regra, o celular da Maria ao aplicar o que a Ana apagou geraria
+        // "Maria apagou…". Só vale enquanto o acordo está ativo: pedido pendente
+        // ou encerrado não muda nada. Na dúvida (a consulta falhou) o diff fica
+        // quieto, mesma regra do diffAlarms: calar é melhor que acusar.
+        let acordoAtivo = true;
+        try {
+          acordoAtivo = (await getActiveManagementForMonitored(openId)) !== null;
+        } catch (err) {
+          const e = err as { name?: string; cause?: { code?: string }; code?: string };
+          console.warn(
+            "[UserData] não foi possível consultar o acordo de alarmes:",
+            `${e?.name ?? "Error"} ${e?.cause?.code ?? e?.code ?? ""}`.trim(),
+          );
+        }
+        if (!acordoAtivo) {
+          await recordAndNotifyAlarmChanges({
+            openId,
+            previousAlarms,
+            nextAlarms,
+            personName: pickPersonName(input.anamnesis, ctx.user.name),
+          });
+        }
         return { success: true } as const;
       }),
     /**
@@ -353,6 +381,8 @@ export const appRouter = router({
         sinalDeVida,
         cuidadores,
         alteracoesDeAlarmes,
+        acordosDeGerenciamento,
+        listaGerenciada,
       ] = await Promise.all([
         getUserByOpenId(openId),
         getUserData(openId),
@@ -361,6 +391,8 @@ export const appRouter = router({
         getAccountLiveness(openId),
         getActiveCaregiversForMonitored(openId),
         getRecentAlarmChanges(openId, LIMITE_EXPORTACAO),
+        getManagementHistory(openId),
+        getManagedList(openId),
       ]);
 
       return {
@@ -380,6 +412,8 @@ export const appRouter = router({
           : null,
         historicoDeAlarmes,
         historicoDeAlteracoesDeAlarmes: alteracoesDeAlarmes,
+        acordosDeGerenciamento,
+        listaGerenciada: listaGerenciada ?? null,
         alertasEnviados,
         sinalDeVida: sinalDeVida ?? null,
         cuidadoresVinculados: cuidadores.map((c) => ({
@@ -399,6 +433,9 @@ export const appRouter = router({
 
   // Expo push-token registration (real-time caregiver alerts)
   push: pushRouter,
+
+  // Modo gerenciado: o cuidador cuida dos alarmes do idoso (Fase 4)
+  managedAlarms: managedAlarmsRouter,
 
   // WhatsApp emergency escalation routes
   whatsapp: router({

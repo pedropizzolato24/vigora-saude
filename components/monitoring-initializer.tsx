@@ -9,7 +9,7 @@
  *
  * Mount this inside AppProvider so it has access to app state.
  */
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useAppContext } from "@/lib/app-context";
 import {
   startHeartbeat,
@@ -19,11 +19,25 @@ import {
   getWarningLog,
   flushPendingConfirmations,
 } from "@/lib/monitoring-service";
+import {
+  createManagedAlarmsDeps,
+  onManagedSyncRequested,
+  requestManagedSync,
+  syncManagedAlarms,
+} from "@/lib/managed-alarms-sync";
 import * as Auth from "@/lib/_core/auth";
 import * as Location from "expo-location";
 import { AppState, Platform } from "react-native";
 import { AppDialog, useAppDialog } from "@/components/app-dialog";
 import { shouldResync } from "@/lib/resync-throttle";
+
+/**
+ * Com o app aberto, a lista gerenciada é buscada no mesmo compasso do heartbeat
+ * (5 min). O push silencioso `managed_alarms_updated` não chega ao JS: o
+ * expo-notifications não repassa push só de dados aos ouvintes, nem com o app
+ * aberto. Ele fica para a futura tarefa em segundo plano.
+ */
+const MANAGED_POLL_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
  * Returns the user's current location string ("lat,lng") only when:
@@ -78,7 +92,7 @@ function translateSeverity(level: string): string {
 }
 
 export function MonitoringInitializer() {
-  const { state } = useAppContext();
+  const { state, dispatch } = useAppContext();
   const initializedRef = useRef(false);
   const bootstrappedOpenIdRef = useRef<string | null>(null);
   const lastAlarmHashRef = useRef<string>("");
@@ -89,6 +103,34 @@ export function MonitoringInitializer() {
   const stateRef = useRef(state);
   stateRef.current = state;
   const { dialogProps, showDialog, hideDialog } = useAppDialog();
+
+  // Alarmes gerenciados: se um cuidador cuida dos alarmes desta pessoa, busca a
+  // lista no servidor, aplica no aparelho e confirma. Nunca lança (o motivo vai
+  // para o log); conta de cuidador nem pergunta (a rota responde FORBIDDEN).
+  const runManagedSync = useCallback(async () => {
+    try {
+      // Antes de o estado salvo carregar, o plano seria calculado contra [] e
+      // cancelaria/reagendaria tudo; o efeito de isLoading chama de novo depois.
+      if (stateRef.current.isLoading) return;
+      const user = await Auth.getUserInfo();
+      if (!user || user.userType === "caregiver") return;
+      const openId = user.openId;
+      await syncManagedAlarms({
+        ...createManagedAlarmsDeps({
+          getLocal: () => stateRef.current.alarms,
+          getManagement: () => stateRef.current.management,
+          dispatch,
+        }),
+        // Logout/troca de conta no meio da rodada: nada é despachado nem confirmado.
+        isCurrentAccount: async () => (await Auth.getUserInfo())?.openId === openId,
+      });
+    } catch (error) {
+      console.warn(
+        "[Monitoring] sincronização dos alarmes gerenciados falhou:",
+        error instanceof Error ? error.name : typeof error
+      );
+    }
+  }, [dispatch]);
 
   // Bootstrap do monitoramento (registro + heartbeat + sync + aviso de offline)
   // amarrado ao usuário AUTENTICADO — não só ao mount. Antes rodava uma vez no
@@ -121,6 +163,11 @@ export function MonitoringInitializer() {
         // Sync current alarms
         lastResyncRef.current = Date.now();
         await syncAlarmsToServer(s.alarms);
+
+        // Lista gerenciada. Sem await: sem internet isto leva quase um minuto
+        // (três tentativas com timeout) e não pode segurar o aviso de alarmes
+        // não confirmados logo abaixo. Quem aplica e confirma é o syncManagedAlarms.
+        void runManagedSync();
 
         // Check for offline alarms (not_sent) from previous sessions
         const { notSentCount } = await checkOfflineAlarms(s.alarms);
@@ -237,9 +284,37 @@ export function MonitoringInitializer() {
       if (!shouldResync(lastResyncRef.current, now)) return;
       lastResyncRef.current = now;
       syncAlarmsToServer(stateRef.current.alarms).catch(console.warn);
+      void runManagedSync();
     });
     return () => sub.remove();
+  }, [runManagedSync]);
+
+  // O estado salvo terminou de carregar (também depois de uma troca de conta):
+  // a rodada pulada por isLoading acontece agora.
+  useEffect(() => {
+    if (state.isLoading || !initializedRef.current) return;
+    void runManagedSync();
+  }, [state.isLoading, runManagedSync]);
+
+  // Com o app em primeiro plano, pede a lista a cada 5 minutos: é o que traz a
+  // mudança do cuidador sem esperar a próxima abertura (o push silencioso não
+  // chega aqui). Conta de cuidador é ignorada dentro de runManagedSync.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!initializedRef.current || AppState.currentState !== "active") return;
+      requestManagedSync();
+    }, MANAGED_POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
   }, []);
+
+  // Push visível, toque na notificação, a busca periódica acima e o aceite do
+  // pedido pedem a busca da lista na hora, sem esperar o próximo ciclo.
+  useEffect(() => {
+    return onManagedSyncRequested(() => {
+      if (!initializedRef.current) return;
+      void runManagedSync();
+    });
+  }, [runManagedSync]);
 
   // Render the offline alarms dialog (invisible until triggered)
   return <AppDialog {...dialogProps} />;

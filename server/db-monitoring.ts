@@ -8,7 +8,7 @@
  *
  * Handles: account liveness (heartbeat), alarm events, warning log, retention.
  */
-import { and, desc, eq, gt, gte, inArray, isNull, lt, lte, ne, or } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, ne, notInArray, or, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import { pickPendingEvent } from "./_core/pick-pending-event";
 import { LEGACY_CHECKIN_ALARM_ID, warningAnchor } from "./_core/event-kind";
@@ -17,8 +17,12 @@ import {
   alarmChanges,
   alarmEvents,
   InsertAlarmEvent,
+  managedAlarmLists,
+  userData,
+  users,
   warningLog,
 } from "../drizzle/schema";
+import { NO_SIGNAL_PAUSE_HOURS } from "../shared/managed-alarm";
 
 // --- Account Liveness -----------------------------------------------------------
 
@@ -65,8 +69,48 @@ export async function recordHeartbeat(
         lastDeviceId: meta?.lastDeviceId ?? null,
         ...locationFields,
         ...batteryFields,
+        // Qualquer sinal retoma uma conta pausada pelo dead man's switch.
+        dmsPausedReason: null,
+        dmsPausedAt: null,
+        pauseNoticeSentAt: null,
       },
     });
+}
+
+/**
+ * "O aparelho deu sinal agora", vindo de uma chamada que já aconteceria de
+ * qualquer jeito (backup, evento de alarme, token de push, ack). Renova o
+ * `lastSeenAt` e RETOMA a conta se estava pausada (logout, app removido ou
+ * 48 h sem sinal). Só o essencial: não toca localização, aparelho nem versão —
+ * quem grava esses metadados é o heartbeat.
+ *
+ * NUNCA lança: o sinal é carona de outra chamada e não pode derrubá-la. Erro
+ * vira log só com nome e código (a mensagem de um erro do drizzle traz os
+ * parâmetros da query, inclusive o openId).
+ */
+export async function touchLiveness(openId: string): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const now = new Date();
+    await db
+      .insert(accountLiveness)
+      .values({ openId, lastSeenAt: now })
+      .onDuplicateKeyUpdate({
+        set: {
+          lastSeenAt: now,
+          dmsPausedReason: null,
+          dmsPausedAt: null,
+          pauseNoticeSentAt: null,
+        },
+      });
+  } catch (err) {
+    const e = err as { name?: string; code?: string; cause?: { code?: string } } | null;
+    console.warn(
+      "[Liveness] não foi possível registrar o sinal do aparelho:",
+      `${e?.name ?? "Error"} ${e?.cause?.code ?? e?.code ?? ""}`.trim()
+    );
+  }
 }
 
 /** Linha de liveness da conta (lastSeenAt, localização), ou null. */
@@ -291,7 +335,13 @@ export async function getExpiredPendingEvents(gracePeriodMinutes: number) {
     .where(
       and(
         eq(alarmEvents.status, "pending"),
-        lte(alarmEvents.scheduledAt, cutoff)
+        lte(alarmEvents.scheduledAt, cutoff),
+        // Sobra de pausa: pauseDms apaga os pendentes futuros DEPOIS de marcar a
+        // pausa e não é atômico. Se o DELETE falhou, o evento (marcado para depois
+        // do início da pausa) não pode virar not_sent/missed e acusar o idoso de
+        // um alarme que o servidor já desistiu de cobrar. Os que já tinham vencido
+        // quando a pausa começou seguem a escada normal.
+        sql`not exists (select 1 from ${accountLiveness} where ${accountLiveness.openId} = ${alarmEvents.openId} and ${accountLiveness.dmsPausedReason} is not null and ${accountLiveness.dmsPausedAt} < ${alarmEvents.scheduledAt})`
       )
     );
 }
@@ -537,4 +587,289 @@ export async function purgeStaleData(now: number = Date.now()): Promise<{
     warningLog: affected(wl),
     locationsCleared: affected(loc),
   };
+}
+
+// --- Pausas do dead man's switch (Fase 4) -------------------------------------
+
+export type DmsPauseReason = "logged_out" | "app_removed" | "no_signal";
+
+function affectedRows(result: unknown): number {
+  const r = result as { affectedRows?: number } | Array<{ affectedRows?: number }> | null;
+  return (Array.isArray(r) ? r[0]?.affectedRows : r?.affectedRows) ?? 0;
+}
+
+/**
+ * Pausa os disparos da conta. Só pausa conta que NÃO está pausada (não troca o
+ * motivo de quem já está) e devolve `true` apenas quando pausou agora.
+ *
+ * Apaga os eventos PENDENTES FUTUROS (o servidor não cobra o que não vai
+ * acontecer). Os que já venceram ficam: seguem a escada normal, porque o alarme
+ * podia ter tocado antes da pausa.
+ *
+ * `pauseNoticeSentAt` zera: cada pausa tem o seu aviso aos cuidadores.
+ */
+export async function pauseDms(openId: string, reason: DmsPauseReason): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const now = new Date();
+
+  // Logout de quem nunca deu sinal não tem linha de liveness; o `set` é um no-op
+  // para não mexer em lastSeenAt de quem já tem.
+  await db
+    .insert(accountLiveness)
+    .values({ openId, lastSeenAt: now })
+    .onDuplicateKeyUpdate({ set: { openId } });
+
+  // Pausa e limpeza dos pendentes futuros na mesma transação: se o DELETE
+  // falhar, a pausa é desfeita. O filtro not-exists de getExpiredPendingEvents
+  // continua como segunda proteção.
+  return db.transaction(async (tx) => {
+    const claimed = await tx
+      .update(accountLiveness)
+      .set({ dmsPausedReason: reason, dmsPausedAt: now, pauseNoticeSentAt: null })
+      .where(and(eq(accountLiveness.openId, openId), isNull(accountLiveness.dmsPausedReason)));
+    if (affectedRows(claimed) === 0) return false;
+
+    await tx
+      .delete(alarmEvents)
+      .where(
+        and(
+          eq(alarmEvents.openId, openId),
+          eq(alarmEvents.status, "pending"),
+          gt(alarmEvents.scheduledAt, now)
+        )
+      );
+    return true;
+  });
+}
+
+// --- Pré-registro feito pelo servidor (Fase 4) --------------------------------
+
+/**
+ * Conta de idoso que o servidor pré-registra: não pausada e com sinal do
+ * aparelho nas últimas 48 h (`NO_SIGNAL_PAUSE_HOURS`). Conta de cuidador não tem
+ * alarmes. `managed` vem preenchido quando há acordo ativo: nesse caso só vale a
+ * lista que o celular CONFIRMOU (`appliedAlarms`), nunca `user_data.alarms`.
+ */
+export type PreRegisterCandidate = {
+  openId: string;
+  alarms: unknown;
+  /** `user_data.timezone`: fica nulo até o app novo mandar o fuso. */
+  timezone: string | null;
+  /**
+   * Fuso do evento mais recente da conta que tem fuso (o aparelho o grava desde
+   * a migração 0013). Segunda fonte quando `timezone` é nulo.
+   */
+  eventTimezone: string | null;
+  managed: { appliedAlarms: unknown; failedAlarmIds: unknown } | null;
+};
+
+export async function getPreRegisterCandidates(now: Date): Promise<PreRegisterCandidate[]> {
+  const db = await getDb();
+  // Fail-closed, como getAccountsWithUnconfirmedEvents: sem banco o job tem que
+  // contar a falha, não responder "nenhuma conta".
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const cutoff = new Date(now.getTime() - NO_SIGNAL_PAUSE_HOURS * 60 * 60 * 1000);
+
+  const rows = await db
+    .select({
+      openId: accountLiveness.openId,
+      alarms: userData.alarms,
+      timezone: userData.timezone,
+      eventTimezone: sql<string | null>`(select ${alarmEvents.timezone} from ${alarmEvents} where ${alarmEvents.openId} = ${accountLiveness.openId} and ${alarmEvents.timezone} is not null order by ${alarmEvents.id} desc limit 1)`,
+      managedOpenId: managedAlarmLists.monitoredOpenId,
+      appliedAlarms: managedAlarmLists.appliedAlarms,
+      failedAlarmIds: managedAlarmLists.failedAlarmIds,
+    })
+    .from(accountLiveness)
+    .innerJoin(users, eq(users.openId, accountLiveness.openId))
+    .leftJoin(userData, eq(userData.openId, accountLiveness.openId))
+    .leftJoin(managedAlarmLists, eq(managedAlarmLists.monitoredOpenId, accountLiveness.openId))
+    .where(
+      and(
+        isNull(accountLiveness.dmsPausedReason),
+        gte(accountLiveness.lastSeenAt, cutoff),
+        or(isNull(users.userType), ne(users.userType, "caregiver"))
+      )
+    );
+
+  return rows.map((r) => ({
+    openId: r.openId,
+    alarms: r.alarms ?? null,
+    timezone: r.timezone ?? null,
+    eventTimezone: r.eventTimezone ?? null,
+    managed: r.managedOpenId
+      ? { appliedAlarms: r.appliedAlarms, failedAlarmIds: r.failedAlarmIds }
+      : null,
+  }));
+}
+
+/**
+ * Existe evento (de QUALQUER status) do mesmo alarme a até `windowMinutes` do
+ * horário `at`, para os dois lados? É a regra "mesmo disparo, um evento só": o
+ * fuso do aparelho pode diferir do guardado na conta (viagem, fuso ainda nulo) e
+ * o servidor não pode criar um segundo evento que expiraria e acusaria a pessoa
+ * à toa. Evento já resolvido conta: quem já respondeu não gera outro.
+ */
+export async function findEventNear(
+  openId: string,
+  alarmId: string,
+  at: Date,
+  windowMinutes: number
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const windowMs = windowMinutes * 60 * 1000;
+  const rows = await db
+    .select({ id: alarmEvents.id })
+    .from(alarmEvents)
+    .where(
+      and(
+        eq(alarmEvents.openId, openId),
+        eq(alarmEvents.alarmId, alarmId),
+        gte(alarmEvents.scheduledAt, new Date(at.getTime() - windowMs)),
+        lte(alarmEvents.scheduledAt, new Date(at.getTime() + windowMs))
+      )
+    )
+    .limit(1);
+  return rows.length > 0;
+}
+
+/**
+ * Registro de disparo feito PELO SERVIDOR. O servidor nunca move um evento que
+ * já existe (o do celular, com o horário e o fuso reais, vale mais que o palpite
+ * do servidor): não cria se há evento do alarme na janela de `findEventNear` nem
+ * se há QUALQUER pendente futuro do alarme. Só então vem o `createAlarmEvent` de
+ * sempre. Fica numa função à parte para não mudar a ordem das consultas do
+ * `createAlarmEvent`, de que os testes dependem.
+ */
+export async function ensureServerAlarmEvent(
+  data: InsertAlarmEvent,
+  windowMinutes: number
+): Promise<"created" | "exists"> {
+  if (await findEventNear(data.openId, data.alarmId, data.scheduledAt as Date, windowMinutes)) {
+    return "exists";
+  }
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const futurePending = await db
+    .select({ id: alarmEvents.id })
+    .from(alarmEvents)
+    .where(
+      and(
+        eq(alarmEvents.openId, data.openId),
+        eq(alarmEvents.alarmId, data.alarmId),
+        eq(alarmEvents.status, "pending"),
+        gt(alarmEvents.scheduledAt, new Date())
+      )
+    )
+    .limit(1);
+  if (futurePending.length > 0) return "exists";
+  await createAlarmEvent(data);
+  return "created";
+}
+
+/**
+ * Apaga os eventos PENDENTES e FUTUROS dos alarmes dados. Usado para o alarme que
+ * o celular não conseguiu agendar: o evento registrado antes da mudança venceria
+ * sem tocar e acusaria a pessoa de não responder. Os que já venceram ficam.
+ */
+export async function deleteFuturePendingEvents(
+  openId: string,
+  alarmIds: string[],
+  now: Date
+): Promise<void> {
+  if (alarmIds.length === 0) return;
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  await db
+    .delete(alarmEvents)
+    .where(
+      and(
+        eq(alarmEvents.openId, openId),
+        inArray(alarmEvents.alarmId, alarmIds),
+        eq(alarmEvents.status, "pending"),
+        gt(alarmEvents.scheduledAt, now)
+      )
+    );
+}
+
+/**
+ * Apaga os eventos PENDENTES e FUTUROS da conta cujo alarme NÃO está em
+ * `keepAlarmIds`. Usado quando o celular confirma uma lista gerenciada: o que foi
+ * apagado, desligado ou não agendado deixa de ser cobrado na hora, sem esperar o
+ * backup (`user_data.alarms`), que chega atrasado. O check-in antigo
+ * ('checkin-daily') não é alarme da lista e fica com a regra dele.
+ */
+export async function deleteFuturePendingEventsExcept(
+  openId: string,
+  keepAlarmIds: string[],
+  now: Date
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  await db
+    .delete(alarmEvents)
+    .where(
+      and(
+        eq(alarmEvents.openId, openId),
+        eq(alarmEvents.status, "pending"),
+        gt(alarmEvents.scheduledAt, now),
+        ne(alarmEvents.alarmId, LEGACY_CHECKIN_ALARM_ID),
+        keepAlarmIds.length > 0 ? notInArray(alarmEvents.alarmId, keepAlarmIds) : undefined
+      )
+    );
+}
+
+/**
+ * Contas de idoso (não cuidador), não pausadas, com último sinal há mais de 48 h
+ * e com backup no servidor. São as que o job pausa como `no_signal`.
+ */
+export async function getStaleUnpausedMonitoredAccounts(now: Date): Promise<string[]> {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const cutoff = new Date(now.getTime() - NO_SIGNAL_PAUSE_HOURS * 60 * 60 * 1000);
+  const rows = await db
+    .select({ openId: accountLiveness.openId })
+    .from(accountLiveness)
+    .innerJoin(users, eq(users.openId, accountLiveness.openId))
+    .innerJoin(userData, eq(userData.openId, accountLiveness.openId))
+    .where(
+      and(
+        isNull(accountLiveness.dmsPausedReason),
+        lt(accountLiveness.lastSeenAt, cutoff),
+        or(isNull(users.userType), ne(users.userType, "caregiver"))
+      )
+    );
+  return rows.map((r) => r.openId);
+}
+
+/** Pausas em curso cujos cuidadores ainda não foram avisados. */
+export async function getPausesNeedingNotice(): Promise<{ openId: string; reason: DmsPauseReason }[]> {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  const rows = await db
+    .select({ openId: accountLiveness.openId, reason: accountLiveness.dmsPausedReason })
+    .from(accountLiveness)
+    .where(and(isNotNull(accountLiveness.dmsPausedReason), isNull(accountLiveness.pauseNoticeSentAt)));
+  return rows.flatMap((r) => (r.reason ? [{ openId: r.openId, reason: r.reason }] : []));
+}
+
+/**
+ * Marca o aviso da pausa como enviado. A condição protege dois casos: pausa que
+ * já foi retomada no meio do caminho (nada a marcar) e aviso já marcado.
+ */
+export async function markPauseNoticeSent(openId: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_UNAVAILABLE");
+  await db
+    .update(accountLiveness)
+    .set({ pauseNoticeSentAt: new Date() })
+    .where(
+      and(
+        eq(accountLiveness.openId, openId),
+        isNotNull(accountLiveness.dmsPausedReason),
+        isNull(accountLiveness.pauseNoticeSentAt)
+      )
+    );
 }

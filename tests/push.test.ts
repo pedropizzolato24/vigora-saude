@@ -95,3 +95,19 @@ describe("sendExpoPush", () => {
     expect(sent).toBe(0);
   });
 });
+
+describe("sendExpoPush: prazo", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("a chamada à Expo leva AbortSignal.timeout(15 s)", async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    const fetchSpy = mockFetchOnce([{ status: "ok" }]);
+
+    await sendExpoPush(["ExponentPushToken[a]"], { title: "t", body: "b" });
+
+    expect(timeoutSpy).toHaveBeenCalledWith(15_000);
+    expect((fetchSpy.mock.calls[0][1] as RequestInit).signal).toBeInstanceOf(AbortSignal);
+  });
+});

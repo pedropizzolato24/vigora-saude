@@ -1,4 +1,5 @@
 import type { Alarm } from './app-context';
+import { firingDays, lastFireMs, nextFireMs } from '@/shared/alarm-schedule';
 
 /**
  * Horário de disparo do alarme (próximo / mais recente), em ms epoch.
@@ -9,49 +10,40 @@ import type { Alarm } from './app-context';
  * handler usa o disparo MAIS RECENTE — o mesmo timestamp canônico (HH:MM:00 do
  * dia) — então o evento idempotente do servidor não duplica. `now` é injetável
  * para teste.
+ *
+ * A regra mora em `shared/alarm-schedule.ts` (o servidor usa a mesma, com o fuso
+ * da conta). Aqui o fuso é o do aparelho; se o Intl do aparelho não servir, cai
+ * no cálculo com o `Date` local (o caminho básico do sistema).
  */
 
-function parseHM(time: string): [number, number] | null {
+/**
+ * Fuso do aparelho. Em ROM enxuta sem dados de ICU o Intl pode não resolver o
+ * fuso: devolve null (e loga o motivo) e o chamador usa o relógio local.
+ */
+function deviceTimeZone(): string | null {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz) return tz;
+    console.warn('[AlarmFireTimes] fuso do aparelho vazio; usando o relógio local');
+  } catch (error) {
+    console.warn('[AlarmFireTimes] fuso do aparelho indisponível:', error);
+  }
+  return null;
+}
+
+function localHM(time: string): [number, number] | null {
   const [h, m] = time.split(':').map(Number);
   if (Number.isNaN(h) || Number.isNaN(m)) return null;
   return [h, m];
 }
 
-/**
- * Dias JS (getDay: 0=Dom..6=Sáb) em que o alarme dispara, conforme o repeat.
- * 'every' = diário (também trata one-time/desconhecido como diário, igual ao
- * comportamento anterior do handler).
- *
- * Fonte ÚNICA da convenção de dias: usada pelo pré-registro no servidor e pelos
- * dois agendadores (notificação e alarme nativo). Cada um mantinha a sua lista,
- * e foi assim que a convenção divergiu — a UI grava 0=Dom, os agendadores liam
- * 0=Seg, e todo alarme semanal disparava um dia depois.
- *
- * `customDays` vem de estado persistido (inclusive restaurado da nuvem), então
- * dia fora de 0..6 é descartado aqui — uma vez só, para todo mundo.
- */
-export function firingJsDays(alarm: Alarm): number[] | 'every' {
-  switch (alarm.repeat) {
-    case 'weekdays': return [1, 2, 3, 4, 5];
-    case 'weekends': return [0, 6];
-    case 'custom': return (alarm.customDays ?? []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
-    default: return 'every';
-  }
-}
-
-/** Dias semanais do alarme; vazio quando ele não é semanal. */
-export function weeklyJsDays(alarm: Alarm): number[] {
-  const dias = firingJsDays(alarm);
-  return dias === 'every' ? [] : dias;
-}
-
-/** Próximo disparo futuro (> now). null se desabilitado/inválido/sem dias. */
-export function nextAlarmFireMs(alarm: Alarm, now: Date = new Date()): number | null {
+/** Próximo disparo com o `Date` local do aparelho: o caminho básico se o Intl não servir. */
+function localNextFireMs(alarm: Alarm, now: Date): number | null {
   if (!alarm.enabled) return null;
-  const hm = parseHM(alarm.time);
+  const hm = localHM(alarm.time);
   if (!hm) return null;
   const [hours, minutes] = hm;
-  const days = firingJsDays(alarm);
+  const days = firingDays(alarm);
 
   if (days === 'every') {
     const d = new Date(now);
@@ -73,13 +65,13 @@ export function nextAlarmFireMs(alarm: Alarm, now: Date = new Date()): number | 
   return Math.min(...times);
 }
 
-/** Disparo mais recente (<= now). null se desabilitado/inválido/sem dias. */
-export function lastAlarmFireMs(alarm: Alarm, now: Date = new Date()): number | null {
+/** Disparo mais recente com o `Date` local do aparelho. */
+function localLastFireMs(alarm: Alarm, now: Date): number | null {
   if (!alarm.enabled) return null;
-  const hm = parseHM(alarm.time);
+  const hm = localHM(alarm.time);
   if (!hm) return null;
   const [hours, minutes] = hm;
-  const days = firingJsDays(alarm);
+  const days = firingDays(alarm);
 
   if (days === 'every') {
     const d = new Date(now);
@@ -99,4 +91,52 @@ export function lastAlarmFireMs(alarm: Alarm, now: Date = new Date()): number | 
     return d.getTime();
   });
   return Math.max(...times);
+}
+
+/**
+ * Regra compartilhada com o fuso do aparelho; se o Intl não servir (sem fuso,
+ * erro ou sem resultado numérico), cai no cálculo com o `Date` local. Um `null`
+ * legítimo (desabilitado, sem dias) também volta null do cálculo local.
+ */
+function withLocalFallback(
+  shared: (timeZone: string) => number | null,
+  local: () => number | null
+): number | null {
+  const tz = deviceTimeZone();
+  if (tz) {
+    try {
+      const ms = shared(tz);
+      if (ms !== null && Number.isFinite(ms)) return ms;
+    } catch (error) {
+      console.warn('[AlarmFireTimes] regra por fuso falhou; usando o relógio local:', error);
+      return local();
+    }
+  }
+  const ms = local();
+  if (tz && ms !== null) console.warn('[AlarmFireTimes] regra por fuso sem resultado; usando o relógio local');
+  return ms;
+}
+
+/**
+ * Dias JS (getDay: 0=Dom..6=Sáb) em que o alarme dispara, conforme o repeat.
+ * 'every' = diário. Fonte ÚNICA da convenção de dias: `shared/alarm-schedule.ts`.
+ */
+export function firingJsDays(alarm: Alarm): number[] | 'every' {
+  return firingDays(alarm);
+}
+
+/** Dias semanais do alarme; vazio quando ele não é semanal. */
+export function weeklyJsDays(alarm: Alarm): number[] {
+  const dias = firingJsDays(alarm);
+  return dias === 'every' ? [] : dias;
+}
+
+/** Próximo disparo futuro (> now). null se desabilitado/inválido/sem dias. */
+export function nextAlarmFireMs(alarm: Alarm, now: Date = new Date()): number | null {
+  return withLocalFallback((tz) => nextFireMs(alarm, tz, now), () => localNextFireMs(alarm, now));
+}
+
+/** Disparo mais recente (<= now). null se desabilitado/inválido/sem dias. */
+export function lastAlarmFireMs(alarm: Alarm, now: Date = new Date()): number | null {
+  return withLocalFallback((tz) => lastFireMs(alarm, tz, now), () => localLastFireMs(alarm, now));
 }

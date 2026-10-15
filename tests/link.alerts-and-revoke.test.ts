@@ -33,6 +33,16 @@ vi.mock("../server/db-alarm-changes", () => ({
     },
   ]),
 }));
+vi.mock("../server/db-alarm-management", () => ({
+  getOpenManagementForMonitored: vi.fn(async () => null),
+  getActiveManagementForMonitored: vi.fn(async () => null),
+  getOpenManagementForCaregiver: vi.fn(async () => null),
+  createManagementRequest: vi.fn(),
+  activateManagement: vi.fn(),
+  endManagement: vi.fn(async () => undefined),
+  getExpiredManagementRequests: vi.fn(async () => []),
+  getManagementHistory: vi.fn(async () => []),
+}));
 vi.mock("../server/db-push", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../server/db-push")>()),
   getPushTokensForOpenIds: vi.fn(async () => [{ token: "ExpoTok[cg-1]" }]),
@@ -51,6 +61,7 @@ import { appRouter } from "../server/routers";
 import * as dbLinks from "../server/db-links";
 import * as dbChanges from "../server/db-alarm-changes";
 import * as dbPush from "../server/db-push";
+import * as accountDb from "../server/db";
 import * as push from "../server/push";
 
 function makeUser(openId: string, userType: "monitored" | "caregiver"): User {
@@ -100,9 +111,54 @@ describe("link.getMonitoredAlerts — mudanças de alarme", () => {
         changeType: "deleted",
         oldTime: "08:00",
         newTime: null,
+        changedByOpenId: null,
+        changedByName: null,
         createdAt: new Date("2026-10-02T17:32:00Z").getTime(),
       },
     ]);
+  });
+
+  it("diz quem fez a mudança: a própria pessoa = null, este cuidador = Você, outro cuidador = o nome dele", async () => {
+    const row = (id: number, changedByOpenId: string | null, changeType: string) => ({
+      id,
+      openId: "vovo",
+      alarmId: `a${id}`,
+      alarmDescription: "Metformina",
+      changeType,
+      oldTime: null,
+      newTime: "20:00",
+      changedByOpenId,
+      createdAt: new Date("2026-10-05T12:00:00Z"),
+    });
+    vi.mocked(dbChanges.getRecentAlarmChanges).mockResolvedValueOnce([
+      row(1, null, "deleted"),
+      row(2, "cg-1", "created"),
+      row(3, "cg-9", "created"),
+    ] as never);
+    vi.mocked(accountDb.getUserByOpenId).mockResolvedValueOnce({ name: "Ana", openId: "cg-9" } as never);
+
+    const caller = appRouter.createCaller(makeCtx(makeUser("cg-1", "caregiver")));
+    const result = await caller.link.getMonitoredAlerts();
+
+    expect(result.changes.map((c) => c.changedByName)).toEqual([null, "Você", "Ana"]);
+    // só o outro cuidador é consultado; o chamador e a própria pessoa não
+    expect(accountDb.getUserByOpenId).toHaveBeenCalledTimes(1);
+    expect(accountDb.getUserByOpenId).toHaveBeenCalledWith("cg-9");
+  });
+
+  it("autor que não dá para consultar aparece como \"Outro cuidador\" e não derruba a lista", async () => {
+    vi.mocked(dbChanges.getRecentAlarmChanges).mockResolvedValueOnce([
+      {
+        id: 4, openId: "vovo", alarmId: "a4", alarmDescription: "X", changeType: "deleted",
+        oldTime: "08:00", newTime: null, changedByOpenId: "cg-sumiu", createdAt: new Date("2026-10-05T12:00:00Z"),
+      },
+    ] as never);
+    vi.mocked(accountDb.getUserByOpenId).mockRejectedValueOnce(new Error("DB fora do ar"));
+
+    const caller = appRouter.createCaller(makeCtx(makeUser("cg-1", "caregiver")));
+    const result = await caller.link.getMonitoredAlerts();
+
+    expect(result.changes[0].changedByName).toBe("Outro cuidador");
   });
 
   it("sem vínculo ativo é proibido", async () => {

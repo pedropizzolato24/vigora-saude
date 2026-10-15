@@ -6,6 +6,7 @@ let transitionResult: { id: number; timezone?: string | null; kind?: string | nu
 
 vi.mock("../server/db-monitoring", () => ({
   recordHeartbeat: vi.fn(async () => undefined),
+  touchLiveness: vi.fn(async () => undefined),
   getAccountLiveness: vi.fn(async () => null),
   createAlarmEvent: vi.fn(async () => 1),
   updateAlarmEventStatusByAlarmId: vi.fn(async () => transitionResult),

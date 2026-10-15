@@ -15,6 +15,7 @@
  * Routes:
  *   monitoring.register        - (deprecated) compat: registra sinal de vida
  *   monitoring.heartbeat       - Send "I'm alive" ping (liveness da conta)
+ *   monitoring.deviceSignedOut - Logout do idoso: pausa o dead man's switch na hora
  *   monitoring.syncAlarms      - (deprecated) compat no-op: agenda vive em user_data
  *   monitoring.createEvent     - Create a pending alarm event
  *   monitoring.confirmEvent    - Confirm alarm as responded/missed/not_sent
@@ -29,7 +30,9 @@ import {
   getAccountLiveness,
   getAlarmEventHistory,
   getWarningHistory,
+  pauseDms,
   recordHeartbeat,
+  touchLiveness,
   updateAlarmEventStatusByAlarmId,
 } from "./db-monitoring";
 import { getUserData } from "./db";
@@ -215,6 +218,32 @@ export const monitoringRouter = router({
     }),
 
   /**
+   * O app do idoso vai sair da conta. Chamado ANTES de a sessão ser descartada
+   * (precisa de auth). Pausa o dead man's switch na hora ('logged_out'): sem
+   * ninguém logado o celular não pode responder a alarme, e os cuidadores são
+   * avisados UMA vez pelo job (Tarefa 10). O próximo sinal da conta retoma.
+   *
+   * NUNCA lança: o logout não pode falhar por causa disto. Cuidador não tem
+   * dead man's switch. Log só com nome e código do erro.
+   */
+  deviceSignedOut: protectedProcedure.mutation(async ({ ctx }) => {
+    if (ctx.user.userType === "caregiver") {
+      return { success: true, paused: false } as const;
+    }
+    try {
+      const paused = await pauseDms(ctx.user.openId, "logged_out");
+      return { success: true, paused } as const;
+    } catch (err) {
+      const e = err as { name?: string; code?: string; cause?: { code?: string } } | null;
+      console.warn(
+        "[Monitoring] não foi possível pausar o aviso automático no logout:",
+        `${e?.name ?? "Error"} ${e?.cause?.code ?? e?.code ?? ""}`.trim()
+      );
+      return { success: true, paused: false } as const;
+    }
+  }),
+
+  /**
    * DEPRECATED (compat com clientes antigos): a agenda de alarmes autoritativa
    * vive em user_data.alarms (cloud backup). A tabela synced_alarms foi
    * eliminada; aceita a chamada e responde sucesso para não quebrar o cliente.
@@ -248,6 +277,9 @@ export const monitoringRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // O aparelho está vivo (e retoma a conta se estava pausada), mesmo que a
+      // gravação abaixo falhe.
+      await touchLiveness(ctx.user.openId);
       const id = await createAlarmEvent({
         openId: ctx.user.openId,
         alarmId: input.alarmId,
@@ -274,6 +306,7 @@ export const monitoringRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await touchLiveness(ctx.user.openId);
       const scheduledAt = new Date(input.scheduledAt);
       const transitioned = await updateAlarmEventStatusByAlarmId(
         ctx.user.openId,
