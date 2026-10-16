@@ -232,7 +232,9 @@ describe('Intl sem as partes esperadas (ROM enxuta)', () => {
 
   it('formatToParts sem hora/minuto: null, nunca NaN', () => {
     vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
-      () => ({ formatToParts: () => [] }) as unknown as Intl.DateTimeFormat
+      function () {
+        return { formatToParts: () => [] } as unknown as Intl.DateTimeFormat;
+      }
     );
     const now = z('2026-06-24T13:00:00Z');
     // Fuso com nome próprio: o cache de formatadores do módulo não esconde o mock.
