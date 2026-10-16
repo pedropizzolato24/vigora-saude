@@ -32,7 +32,7 @@ describe('fallback para o Date local quando o Intl não serve', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('Intl lança ao resolver o fuso do aparelho: usa o relógio local e loga o motivo', () => {
-    vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(() => {
+    vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(function () {
       throw new Error('sem ICU');
     });
     expectLocalDateResults();
@@ -41,26 +41,28 @@ describe('fallback para o Date local quando o Intl não serve', () => {
 
   it('fuso do aparelho vazio: usa o relógio local e loga', () => {
     vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
-      () => ({ resolvedOptions: () => ({ timeZone: '' }) }) as unknown as Intl.DateTimeFormat
+      function () {
+        return { resolvedOptions: () => ({ timeZone: '' }) } as unknown as Intl.DateTimeFormat;
+      }
     );
     expectLocalDateResults();
     expect(warn).toHaveBeenCalledWith('[AlarmFireTimes] fuso do aparelho vazio; usando o relógio local');
   });
 
   it('a regra por fuso lança (formatador não monta): usa o relógio local e loga', () => {
-    vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(((...args: unknown[]) => {
+    vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(function (...args: unknown[]) {
       if (args.length === 0) return { resolvedOptions: () => ({ timeZone: 'Test/Lanca' }) };
       throw new Error('Intl quebrado');
-    }) as never);
+    } as never);
     expectLocalDateResults();
     expect(warn).toHaveBeenCalledWith('[AlarmFireTimes] regra por fuso falhou; usando o relógio local:', expect.any(Error));
   });
 
   it('formatToParts sem partes (sem resultado numérico): usa o relógio local e loga', () => {
-    vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(((...args: unknown[]) => {
+    vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(function (...args: unknown[]) {
       if (args.length === 0) return { resolvedOptions: () => ({ timeZone: 'Test/SemPartes' }) };
       return { formatToParts: () => [] };
-    }) as never);
+    } as never);
     expectLocalDateResults();
     expect(warn).toHaveBeenCalledWith('[AlarmFireTimes] regra por fuso sem resultado; usando o relógio local');
   });
