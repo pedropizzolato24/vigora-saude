@@ -144,12 +144,18 @@ describe("site", () => {
     registerSiteRoutes(app);
     const ok = makeRes();
     gets["/"]({ query: {} } as unknown as Request, ok.res as unknown as Response, vi.fn());
-    expect(ok.res.body).not.toContain("Confira o e-mail");
+    expect(ok.res.body).not.toContain("Erro: confira");
     expect(ok.res.body).not.toContain("<!--erro-lista-->");
     expect(ok.res.body).not.toContain("<!--depoimentos-->");
+    expect(ok.res.body).not.toContain("aria-invalid");
+    expect(ok.res.body).not.toMatch(/<title>Erro/);
     const erro = makeRes();
     gets["/"]({ query: { erro: "1" } } as unknown as Request, erro.res as unknown as Response, vi.fn());
-    expect(erro.res.body).toContain("Confira o e-mail e marque a caixa de aceite para entrar na lista.");
+    expect(erro.res.body).toContain(
+      '<p class="aviso-erro" id="erro-lista" tabindex="-1">Erro: confira o e-mail e marque a caixa de aceite para entrar na lista.</p>'
+    );
+    expect(erro.res.body).toContain("<title>Erro: confira os dados — Vigora</title>");
+    expect(erro.res.body).toMatch(/id="email-lista" aria-invalid="true" aria-describedby="erro-lista"/);
   });
 
   it("assets e fontes recebem a CSP do site", () => {

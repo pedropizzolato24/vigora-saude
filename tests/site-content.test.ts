@@ -26,7 +26,9 @@ describe("site — página inicial", () => {
   it("tem o disclaimer exato", () => expect(index).toContain(DISCLAIMER));
 
   it("tem o título aprovado", () => {
-    expect(index).toMatch(/<h1[^>]*>Uma mensagem, na hora em que ela importa\.<\/h1>/);
+    const h1 = index.match(/<h1[^>]*>([\s\S]*?)<\/h1>/);
+    expect(h1).not.toBeNull();
+    expect(textoSemTags(h1![1])).toBe("Uma mensagem, na hora em que ela importa.");
   });
 
   it("tem o balão da abertura com o horário em Space Mono", () => {
@@ -60,6 +62,30 @@ describe("site — página inicial", () => {
     expect(ol![0].match(/<li\b/g)).toHaveLength(3);
   });
 
+  it("a linha do tempo fala só do lembrete de remédio e da localização, sem prometer demais", () => {
+    const como = index.slice(index.indexOf('id="como-funciona"'), index.indexOf('id="o-que-mais"'));
+    expect(como).not.toContain("Está tudo bem");
+    expect(como).not.toContain("adivinhar");
+    expect(como).toContain("última localização registrada");
+    const texto = textoSemTags(index);
+    expect(texto).not.toContain("receita");
+    expect(texto).not.toMatch(/precisa aceitar antes de receber qualquer/);
+    expect(texto).not.toMatch(/ninguém recebe um falso/);
+    expect(texto).toContain("só recebe aviso automático quem concordou em receber");
+    expect(texto).toContain("Usamos só para entender o que traz as pessoas ao Vigora.");
+  });
+
+  it("os dois formulários têm nomes distintos e dizem o que é obrigatório", () => {
+    expect(index).toMatch(/<form[^>]*aria-label="Lista de espera, formulário rápido"/);
+    expect(index).toMatch(/<form[^>]*aria-labelledby="t-lista"/);
+    expect((index.match(/\(obrigatório\)/g) ?? []).length).toBeGreaterThanOrEqual(4);
+    expect(index).toMatch(/href="\/privacidade" target="_blank" rel="noopener"[^>]*>Política de Privacidade<span class="so-leitor"> \(abre em nova aba\)<\/span>/);
+  });
+
+  it("no DOM, o texto da abertura vem antes do balão", () => {
+    expect(index.indexOf("<h1")).toBeLessThan(index.indexOf('class="balao-wrap"'));
+  });
+
   it("não promete aviso imediato", () => {
     expect(textoSemTags(index)).not.toMatch(/imediat|na hora certa/i);
   });
@@ -83,7 +109,8 @@ describe("site — página inicial", () => {
       expect(f).toContain('action="/lista"');
     }
     expect(index.match(/name="aceite" value="sim" required/g)).toHaveLength(2);
-    expect(textoSemTags(index)).toContain(
+    // Texto aprovado do aceite, sem o aviso de nova aba (só para leitor de tela).
+    expect(textoSemTags(index.replace(/<span class="so-leitor">[^<]*<\/span>/g, ""))).toContain(
       "Li a Política de Privacidade e quero ser avisado por e-mail do lançamento do Vigora."
     );
     expect(index).toContain('href="/privacidade"');
@@ -107,6 +134,25 @@ describe("site — página inicial", () => {
     expect(index).toContain("<!--erro-lista-->");
     const lista = index.slice(index.indexOf('id="lista"'), index.indexOf('id="perguntas"'));
     expect(lista).toContain("<!--erro-lista-->");
+  });
+
+  it("layout: main recebe foco do link de pular; obrigado lembra da caixa de spam", () => {
+    const layout = fs.readFileSync(path.join(SITE_DIR, "_layout.html"), "utf8");
+    expect(layout).toContain('<main id="conteudo" tabindex="-1">');
+    const obrigado = fs.readFileSync(path.join(SITE_DIR, "obrigado.html"), "utf8");
+    expect(obrigado).toContain("Pronto! Se este e-mail ainda não estava na lista, você vai receber a confirmação em instantes.");
+    expect(obrigado).toContain("Confira também a caixa de spam.");
+  });
+
+  it("CSS: rodapé legível, marcador do FAQ mudo, botão visível em alto contraste, autofill legível", () => {
+    const css = fs.readFileSync(path.join(SITE_DIR, "assets", "site.css"), "utf8");
+    expect(css).toMatch(/\.rodape \{[^}]*font-size: 1\.125rem/);
+    expect(css).toMatch(/\.aviso-legal \{[^}]*color: var\(--foreground\)/);
+    expect(css).toContain('content: "+" / "";');
+    expect(css).toContain('content: "\\2212" / "";');
+    expect(css).toMatch(/\.btn \{[^}]*border: 2px solid transparent/);
+    expect(css).toContain(".abertura .campo:-webkit-autofill");
+    expect(css).toMatch(/\.balao-hora \{[^}]*font-size: 1\.125rem/);
   });
 
   it("não usa script nem style inline (CSP do site)", () => {

@@ -205,7 +205,7 @@ describe("rotas da lista de espera", () => {
     expect(addToWaitlist.mock.calls[1][0].email).toBe("a@b.co");
   });
 
-  it("POST /lista inválido redireciona 303 para /?erro=1#lista sem tocar no banco", async () => {
+  it("POST /lista inválido redireciona 303 para /?erro=1#erro-lista sem tocar no banco", async () => {
     for (const body of [
       {},
       { email: "a@b.co" },
@@ -215,7 +215,7 @@ describe("rotas da lista de espera", () => {
     ]) {
       const { res, headers } = await call(posts["/lista"], { body });
       expect(res.statusCode).toBe(303);
-      expect(res.redirectedTo).toBe("/?erro=1#lista");
+      expect(res.redirectedTo).toBe("/?erro=1#erro-lista");
       expect(headers["Content-Security-Policy"]).toBe(SITE_CSP);
     }
     expect(addToWaitlist).not.toHaveBeenCalled();

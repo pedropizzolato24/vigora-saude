@@ -95,7 +95,7 @@ export function registerWaitlistRoutes(app: Express): void {
   app.post("/lista", comCspDoSite, limiter, async (req: Request, res: Response) => {
     const form = parseWaitlistForm(req.body);
     if (!form) {
-      res.redirect(303, "/?erro=1#lista");
+      res.redirect(303, "/?erro=1#erro-lista");
       return;
     }
     // Responde antes: o tempo de resposta não revela se o e-mail já estava na lista.

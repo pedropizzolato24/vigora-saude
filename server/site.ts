@@ -28,8 +28,12 @@ const PAGINAS: Record<string, { arquivo: string; titulo: string }> = {
   "/obrigado": { arquivo: "obrigado.html", titulo: "Você está na lista — Vigora" },
 };
 
+// Sem JS, `role="alert"` presente no carregamento não é anunciado: o
+// redirecionamento para `#erro-lista` leva o foco ao aviso (tabindex="-1"), e o
+// título da página e o campo de e-mail também indicam o erro.
 const AVISO_ERRO_LISTA =
-  '<p class="aviso-erro" role="alert">Confira o e-mail e marque a caixa de aceite para entrar na lista.</p>';
+  '<p class="aviso-erro" id="erro-lista" tabindex="-1">Erro: confira o e-mail e marque a caixa de aceite para entrar na lista.</p>';
+const TITULO_ERRO_LISTA = "Erro: confira os dados — Vigora";
 
 const cache = new Map<string, string>();
 
@@ -81,13 +85,22 @@ function paginaEstatica(rota: string) {
   const { arquivo, titulo } = PAGINAS[rota];
   return (req: Request, res: Response): void => {
     let content = lerArquivo(arquivo);
+    let title = titulo;
     if (rota === "/") {
+      const erro = req.query.erro === "1";
       content = content
         .replace("<!--depoimentos-->", () => renderTestimonials(DEPOIMENTOS))
-        .replace("<!--erro-lista-->", () => (req.query.erro === "1" ? AVISO_ERRO_LISTA : ""));
+        .replace("<!--erro-lista-->", () => (erro ? AVISO_ERRO_LISTA : ""));
+      if (erro) {
+        title = TITULO_ERRO_LISTA;
+        content = content.replace(
+          'id="email-lista"',
+          'id="email-lista" aria-invalid="true" aria-describedby="erro-lista"'
+        );
+      }
     }
     res.setHeader("Content-Security-Policy", SITE_CSP);
-    res.type("html").send(renderPage({ title: titulo, content }));
+    res.type("html").send(renderPage({ title, content }));
   };
 }
 
