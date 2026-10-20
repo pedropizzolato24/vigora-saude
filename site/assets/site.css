@@ -1,0 +1,156 @@
+/* Tokens (docs/DESIGN.md) */
+:root {
+  --background: #F4EFE5;
+  --surface: #FFFFFF;
+  --bar: #EBE2CD;
+  --primary: #1E4D8C;
+  --on-primary: #F4EFE5;
+  --accent: #C96442;
+  --foreground: #0E1417;
+  --muted: #5B636A;
+  --border: #D8D1C2;
+  --error: #D6161C;
+  --focus: #1E4D8C;
+  --logo-lua: #1E4D8C;
+  --logo-corte: #F4EFE5;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0E1417;
+    --surface: #1A1714;
+    --bar: #151C20;
+    --primary: #4A7EC4;
+    --on-primary: #0E1417;
+    --accent: #D4784A;
+    --foreground: #F4EFE5;
+    --muted: #8A9298;
+    --border: #2D2722;
+    --error: #F04040;
+    --focus: #F4EFE5;
+    --logo-lua: #4A7EC4;
+    --logo-corte: #0E1417;
+  }
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/fonts/PlusJakartaSans-Variable.ttf") format("truetype");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Space Mono";
+  src: url("/fonts/SpaceMono-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Reset */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+h1, h2, h3 { font-weight: 800; line-height: 1.2; margin: 0 0 0.5em; }
+p { margin: 0 0 1em; }
+img, svg { max-width: 100%; }
+a { color: var(--primary); }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* Layout base */
+main { flex: 1; }
+.secao { max-width: 46rem; margin: 0 auto; padding: 3rem 1.25rem; }
+.mono { font-family: "Space Mono", ui-monospace, monospace; }
+.aviso-erro {
+  max-width: 46rem;
+  margin: 1rem auto 0;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--error);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.pular {
+  position: absolute;
+  left: 0.5rem;
+  top: -4rem;
+  padding: 0.75rem 1rem;
+  background: var(--primary);
+  color: var(--on-primary);
+  border-radius: 8px;
+  z-index: 10;
+}
+.pular:focus { top: 0.5rem; }
+
+/* Botão */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.5rem 1.25rem;
+  border-radius: 9999px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* Cabeçalho */
+.topo { background: var(--bar); border-bottom: 1px solid var(--border); }
+.topo-interno {
+  max-width: 70rem;
+  margin: 0 auto;
+  padding: 0.5rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+}
+.marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  color: var(--foreground);
+  font-weight: 800;
+  font-size: 1.25rem;
+  text-decoration: none;
+}
+.logo-lua { fill: var(--logo-lua); }
+.logo-corte { fill: var(--logo-corte); }
+.menu { display: flex; align-items: center; flex-wrap: wrap; gap: 0 1.25rem; }
+.menu a:not(.btn) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--foreground);
+  font-weight: 600;
+}
+.btn-menu { margin-left: 0.25rem; }
+
+/* Rodapé */
+.rodape { background: var(--bar); border-top: 1px solid var(--border); font-size: 1rem; }
+.rodape-interno { max-width: 70rem; margin: 0 auto; padding: 2rem 1.25rem; }
+.rodape-links { display: flex; flex-wrap: wrap; gap: 0 1.5rem; margin-bottom: 1rem; }
+.rodape-links a { display: inline-flex; align-items: center; min-height: 44px; }
+.aviso-legal { color: var(--muted); max-width: 52rem; }
+.copyright { color: var(--muted); margin: 0; }

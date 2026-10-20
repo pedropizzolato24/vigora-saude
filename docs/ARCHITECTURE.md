@@ -586,6 +586,7 @@ Suíte Vitest cobrindo frontend e backend — **290 testes em 38 arquivos** (`pn
 | `RESEND_API_KEY` / `EMAIL_FROM` | Servidor (privado) | Códigos de e-mail (cadastro e recuperação de senha) |
 | `APPLE_TEAM_ID` / `ANDROID_CERT_SHA256` | Servidor | Arquivos de associação de App Links / Universal Links |
 | `CORS_ORIGIN_ALLOWLIST` | Servidor | Allowlist de origens |
+| `SITE_URL` | Servidor | URL canônica do site público (redirecionamento de `www.`); padrão `https://vigorasaude.com` |
 
 ### Armazenamento de Tokens
 
