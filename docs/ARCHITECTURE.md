@@ -265,6 +265,7 @@ vigora-saude/
 │   ├── links-code.ts                 # Geração/validação dos códigos de convite
 │   ├── invite-landing.ts             # Landing HTML de /convite/:token
 │   ├── whatsapp.ts                   # Alertas a contatos via Meta Graph API
+│   ├── site.ts / waitlist.ts / db-waitlist.ts  # O Express também serve o site (vigorasaude.com, HTML em site/) e a lista de espera
 │   └── push.ts                       # Push (Expo) para cuidadores vinculados
 ├── tests/                            # Suíte Vitest — 38 arquivos, 290 testes
 │   ├── auth-providers.test.ts        # Provedores de login e vínculo por e-mail
