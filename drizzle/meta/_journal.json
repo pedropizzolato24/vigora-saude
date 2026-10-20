@@ -127,6 +127,13 @@
       "when": 1791642677222,
       "tag": "0017_fase4_gerenciamento",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1792515605048,
+      "tag": "0018_site_waitlist",
+      "breakpoints": true
     }
   ]
 }
