@@ -96,6 +96,23 @@ main:focus { outline: none; }
   background: var(--surface);
 }
 .aviso-erro:focus { outline: none; }
+
+/* Páginas legais (rascunho para revisão jurídica) */
+.legal { overflow-wrap: break-word; }
+.legal h2 { margin-top: 2.5rem; }
+.legal h3 { font-size: 1.25rem; margin-top: 1.5rem; }
+.aviso-rascunho {
+  margin: 0 0 2rem;
+  padding: 1rem 1.25rem;
+  border: 3px solid var(--accent);
+  border-radius: 12px;
+  background: var(--surface);
+  font-weight: 700;
+}
+.sumario-titulo { font-weight: 700; margin-bottom: 0.25rem; }
+.sumario ol { margin: 0 0 1rem; padding-left: 1.75rem; }
+.sumario a { display: inline-block; padding: 0.5rem 0; }
+.legal-versao { color: var(--muted); margin-top: 2.5rem; }
 .pular {
   position: absolute;
   left: 0.5rem;

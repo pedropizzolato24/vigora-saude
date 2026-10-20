@@ -15,6 +15,8 @@ const DISCLAIMER =
   "Vigora é um aplicativo informativo para monitoramento de saúde e não substitui o diagnóstico, tratamento ou acompanhamento profissional médico. Em caso de emergência médica, ligue 192 (SAMU) ou 193 (Bombeiros). Alertas automáticos podem falhar; não confie exclusivamente neste aplicativo em situações de risco.";
 
 const index = fs.readFileSync(path.join(SITE_DIR, "index.html"), "utf8");
+const privacidade = fs.readFileSync(path.join(SITE_DIR, "privacidade.html"), "utf8");
+const termos = fs.readFileSync(path.join(SITE_DIR, "termos.html"), "utf8");
 const allPages = fs
   .readdirSync(SITE_DIR)
   .filter((f) => f.endsWith(".html"))
@@ -158,6 +160,48 @@ describe("site — página inicial", () => {
   it("não usa script nem style inline (CSP do site)", () => {
     for (const html of allPages) {
       expect(html).not.toMatch(/<script\b|\sstyle="|\son[a-z]+="/i);
+    }
+  });
+});
+
+describe("site — textos legais", () => {
+  const RASCUNHO = "Rascunho — em revisão jurídica. Não publicar antes da revisão.";
+
+  it("Política identifica controlador, DPO, Resend e a lista de espera", () => {
+    for (const s of [
+      "Pedro Frey Pizzolato",
+      "Novo Hamburgo",
+      "vigora@vigorasaude.com",
+      "privacidade@vigorasaude.com",
+      "Resend",
+      "lista de espera",
+      "TROCAR pela razão social",
+      "Versão 2026-10-20",
+    ]) {
+      expect(privacidade).toContain(s);
+    }
+  });
+
+  it("Termos têm foro, teste de 14 dias, disclaimer e suporte", () => {
+    for (const s of ["Novo Hamburgo", "14 dias", DISCLAIMER, "suporte@vigorasaude.com", "Versão 2026-10-20"]) {
+      expect(termos).toContain(s);
+    }
+  });
+
+  it("as duas páginas abrem com o aviso de rascunho, antes da primeira seção", () => {
+    for (const html of [privacidade, termos]) {
+      const aviso = html.indexOf(RASCUNHO);
+      expect(aviso).toBeGreaterThan(-1);
+      expect(aviso).toBeLessThan(html.indexOf("<h2"));
+    }
+  });
+
+  it("um h1 só, e todo link do sumário aponta para uma seção que existe", () => {
+    for (const html of [privacidade, termos]) {
+      expect(html.match(/<h1\b/g)).toHaveLength(1);
+      const ancoras = [...html.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
+      expect(ancoras.length).toBeGreaterThanOrEqual(5);
+      for (const a of ancoras) expect(html).toContain(`id="${a}"`);
     }
   });
 });
