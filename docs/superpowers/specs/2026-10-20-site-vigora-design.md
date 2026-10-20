@@ -1,6 +1,6 @@
 # Site do Vigora (vigorasaude.com) — design
 
-Data: 2026-10-20 · Status: aguardando aprovação
+Data: 2026-10-20 · Status: aprovado pelo Pedro em 2026-10-20
 
 ## Intenção
 
@@ -153,7 +153,10 @@ o motivo real e não desfaz o cadastro.
 
 **Anti-abuso** *(decisão do Claude)*: opt-in simples — o cadastro vale ao enviar o
 formulário, e o e-mail de confirmação traz o link de saída. Se o e-mail já está na lista,
-**nenhum e-mail novo é enviado** e a resposta na tela é a mesma. Isso impede usar o
+**nenhum e-mail novo é enviado** e a resposta na tela é a mesma — escolha do Pedro, para
+não permitir descobrir se um e-mail de terceiro está na lista. Texto da tela, sempre:
+"Pronto! Se este e-mail ainda não estava na lista, você vai receber a confirmação em
+instantes." Isso impede usar o
 formulário para encher a caixa de terceiros e protege a reputação do domínio, que também
 envia os códigos de login.
 
