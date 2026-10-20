@@ -196,6 +196,31 @@ describe("site — textos legais", () => {
     }
   });
 
+  it("revisão 1: textos descrevem o que o app faz hoje", () => {
+    const PENDENTE_APP = "[A CONFIRMAR — depende de correção no app]";
+    for (const html of [privacidade, termos]) {
+      expect(html).toContain(PENDENTE_APP);
+      expect(html).toContain("nome ou a descrição do alarme");
+      expect(html).toContain("Compartilhar Localização");
+      expect(html).toContain("por e-mail, quando tivermos o seu, e nesta página");
+      expect(html).not.toContain("avisaremos no app");
+    }
+    // Push silencioso ≠ check-in "tudo bem?" (verificação diária).
+    expect(privacidade).toContain("Verificação de funcionamento");
+    expect(privacidade).not.toContain("Verificação diária");
+    expect(termos).toContain("compra única");
+    expect(privacidade).toContain("analisadas só em conjunto, nunca pessoa a pessoa");
+    expect(privacidade).not.toContain("pessoa identificada");
+    expect(privacidade).toContain("Art. 19, II");
+    expect(privacidade).not.toContain("Respondemos em até 15 dias");
+    expect(privacidade).toContain("resumo criptográfico");
+    expect(privacidade).not.toContain("versão cifrada");
+    expect(privacidade).toContain("alarmes perdidos ou não entregues");
+    expect(privacidade).toContain("acesso direto ao banco de dados");
+    const lista = privacidade.slice(privacidade.indexOf('id="lista-de-espera"'), privacidade.indexOf('id="dados-do-app"'));
+    expect(lista).toContain("privacidade@vigorasaude.com");
+  });
+
   it("um h1 só, e todo link do sumário aponta para uma seção que existe", () => {
     for (const html of [privacidade, termos]) {
       expect(html.match(/<h1\b/g)).toHaveLength(1);

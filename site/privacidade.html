@@ -42,25 +42,25 @@
 <h3>O que guardamos</h3>
 <ul>
 <li>O seu e-mail.</li>
-<li>As respostas à pergunta "O que aconteceu com vocês?", se você marcar alguma. São opções fixas (uma queda que só foi descoberta depois, ficar sem notícia, remédio esquecido ou trocado, internação, outro motivo). A pergunta é <strong>opcional</strong> e não tem campo de texto livre: nunca guardamos nome, doença ou qualquer detalhe sobre a pessoa de quem você cuida.</li>
+<li>As respostas à pergunta "O que aconteceu com vocês?", se você marcar alguma. São opções fixas (uma queda que só foi descoberta depois, ficar sem notícia, remédio esquecido ou trocado, internação, outro motivo). A pergunta é <strong>opcional</strong> e não tem campo de texto livre: nunca guardamos nome, doença ou qualquer detalhe sobre a pessoa de quem você cuida. [A CONFIRMAR: opções como "Uma queda" e "Uma internação" falam de um acontecimento de saúde de uma terceira pessoa, que não é identificada.]</li>
 <li>A data e a hora em que você aceitou esta política, e a versão aceita.</li>
 <li>A data do cadastro e um código aleatório usado no link "me tire da lista".</li>
 </ul>
 <h3>Para que usamos</h3>
-<p>O e-mail serve só para confirmar o cadastro e avisar você do lançamento do Vigora. As respostas sobre o que aconteceu servem só para entendermos o que traz as pessoas ao Vigora; elas são analisadas em conjunto, nunca ligadas a uma pessoa identificada e nunca usadas para outro fim.</p>
+<p>O e-mail serve só para confirmar o cadastro e avisar você do lançamento do Vigora. As respostas sobre o que aconteceu servem só para entendermos o que traz as pessoas ao Vigora; elas ficam guardadas junto com o seu e-mail, mas são analisadas só em conjunto, nunca pessoa a pessoa, e nunca são usadas para outro fim.</p>
 <h3>Base legal</h3>
 <p>Consentimento (Art. 7º, I, da LGPD), dado ao marcar a caixa de aceite. Você pode retirar o consentimento a qualquer momento saindo da lista.</p>
 <h3>Quem recebe</h3>
 <p>O e-mail de confirmação é enviado pela Resend, empresa contratada para o envio de e-mails. Ela recebe apenas o seu endereço de e-mail e o texto da mensagem; as respostas sobre o que aconteceu não saem do nosso servidor.</p>
 <h3>Como sair e por quanto tempo guardamos</h3>
-<p>Todo e-mail que enviamos traz o link "me tire da lista". Ao confirmar a saída, o seu cadastro é apagado na hora, por inteiro. Se você não sair, os dados da lista de espera são apagados em até 12 meses depois do lançamento do app.</p>
+<p>Todo e-mail que enviamos traz o link "me tire da lista". Ao confirmar a saída, o seu cadastro é apagado na hora, por inteiro. Você também pode pedir a saída escrevendo para <a href="mailto:privacidade@vigorasaude.com">privacidade@vigorasaude.com</a>, por exemplo se o e-mail de confirmação não chegou. Se você não sair, os dados da lista de espera são apagados em até 12 meses depois do lançamento do app.</p>
 
 <h2 id="dados-do-app">4. Dados que o app usa</h2>
 <h3>Conta e acesso</h3>
 <ul>
 <li>Nome, e-mail e, se você informar, telefone e data de nascimento.</li>
 <li>O tipo de conta (pessoa acompanhada ou cuidador).</li>
-<li>Os dados do login escolhido: identificador e e-mail informados pelo Google ou pela Apple; ou e-mail e senha (guardamos só uma versão cifrada da senha, nunca a senha em si); ou o número de celular, quando você entra com um código enviado pelo WhatsApp.</li>
+<li>Os dados do login escolhido: identificador e e-mail informados pelo Google ou pela Apple; ou e-mail e senha (guardamos só um resumo criptográfico da senha, que não permite recuperar a senha, nunca a senha em si); ou o número de celular, quando você entra com um código enviado pelo WhatsApp.</li>
 </ul>
 <h3>Dados de saúde (dados sensíveis)</h3>
 <ul>
@@ -70,9 +70,10 @@
 </ul>
 <p>O Vigora apenas guarda e mostra o que você registrou. Ele não interpreta esses valores nem faz recomendações de saúde.</p>
 <h3>Contatos de emergência</h3>
-<p>Nome e telefone das pessoas que você cadastrou, e o registro de que cada uma concordou em receber alertas automáticos.</p>
+<p>Nome e telefone das pessoas que você cadastrou, se cada uma deve ser avisada pelo WhatsApp e o registro de que cada uma concordou em receber alertas automáticos. A seção 7 explica quem recebe cada tipo de alerta.</p>
 <h3>Localização</h3>
-<p>Só quando você ativa essa opção. Guardamos a última localização registrada do celular, que vai junto nos alertas aos seus contatos e no botão de SOS, para ajudar quem for atrás de você.</p>
+<p>Com a opção "Compartilhar Localização" ligada, o app envia de tempos em tempos a localização do celular ao servidor. Essa opção já vem ligada e pode ser desligada em Configurações. Guardamos só a última localização registrada, que o cuidador vinculado pode ver e que vai junto nos alertas automáticos aos seus contatos, para ajudar quem for atrás de você.</p>
+<p>Além disso, quando um alarme fica sem resposta na tela do celular e quando você aperta o SOS, o app pega a posição atual do GPS e a coloca na mensagem aos contatos sempre que o Vigora tem permissão de localização no celular, mesmo com a opção "Compartilhar Localização" desligada. [A CONFIRMAR — depende de correção no app]</p>
 <h3>Funcionamento do aparelho</h3>
 <ul>
 <li>O fuso horário do celular, para calcular a hora certa dos alarmes.</li>
@@ -80,7 +81,7 @@
 <li>Um identificador do aparelho, a versão do app e, no Android, se o Vigora está liberado da economia de bateria, para entender por que um alarme pode não ter tocado.</li>
 <li>O código de notificação do celular, para que avisos e alarmes cheguem até ele.</li>
 </ul>
-<h3>Verificação diária</h3>
+<h3>Verificação de funcionamento</h3>
 <p>Uma vez por dia, o servidor manda ao seu celular um aviso silencioso, sem texto e sem som, só para saber se o Vigora ainda está instalado. Se não estiver, se o celular ficar 2 dias sem dar sinal ou se você sair da conta, os avisos automáticos aos seus contatos ficam pausados e, se você tiver cuidador vinculado, ele recebe um aviso (exceto quando o aparelho já estava parado há mais de 7 dias). Quando o Vigora volta a dar sinal, os avisos retomam sozinhos.</p>
 <h3>Assinatura</h3>
 <p>Um identificador da sua conta e a situação da assinatura (em teste, ativa ou vencida), informados pela loja de aplicativos. Nenhum dado de saúde entra nessa parte.</p>
@@ -90,7 +91,7 @@
 <li><strong>Criar e manter a sua conta, fazer o login e prestar o serviço contratado</strong>: execução de contrato (Art. 7º, V).</li>
 <li><strong>Guardar e mostrar os seus dados de saúde, fazer cópia de segurança e gerar os relatórios que você pedir</strong>: consentimento específico e destacado, pedido dentro do app antes de qualquer registro de saúde (Art. 11, I).</li>
 <li><strong>Avisar os seus contatos de emergência e o seu cuidador quando um alarme fica sem resposta, e enviar o SOS</strong>: consentimento (Art. 11, I) e proteção da vida e da incolumidade física (Art. 7º, VII, e Art. 11, II, "e"). [A CONFIRMAR]</li>
-<li><strong>Verificação diária e horário do último sinal</strong>: execução de contrato (Art. 7º, V), porque sem isso o Vigora mandaria alertas falsos aos seus contatos quando o celular está desligado.</li>
+<li><strong>Verificação de funcionamento e horário do último sinal</strong>: execução de contrato (Art. 7º, V), porque sem isso o Vigora mandaria alertas falsos aos seus contatos quando o celular está desligado.</li>
 <li><strong>Cobrança da assinatura</strong>: execução de contrato (Art. 7º, V).</li>
 <li><strong>Segurança da conta e combate a abusos</strong> (limite de tentativas de login, por exemplo): legítimo interesse (Art. 7º, IX).</li>
 <li><strong>Cumprir obrigações legais e responder a autoridades</strong>: cumprimento de obrigação legal (Art. 7º, II, e Art. 11, II, "a").</li>
@@ -100,7 +101,7 @@
 
 <h2 id="cuidador">6. Cuidador vinculado</h2>
 <p>Um cuidador só fica vinculado quando a pessoa acompanhada gera um código de convite no próprio app e entrega esse código a ele. Gerar o código é o consentimento dela para ser acompanhada.</p>
-<p>O cuidador vinculado pode ver: perfil, ficha de anamnese, alarmes, as medições mais recentes, contatos de emergência, o horário do último sinal do celular e a última localização registrada. Ele também recebe avisos no app quando um alarme fica sem resposta e quando um alarme é apagado, desligado ou mudado de horário.</p>
+<p>O cuidador vinculado pode ver: perfil, ficha de anamnese, alarmes, as medições mais recentes, contatos de emergência, o horário do último sinal do celular, a última localização registrada, o histórico de alarmes perdidos ou não entregues, os alertas já enviados e as mudanças de alarme, com quem fez cada uma. Ele também recebe avisos no app quando um alarme fica sem resposta e quando um alarme é apagado, desligado ou mudado de horário.</p>
 <p>O cuidador só pode criar, mudar ou apagar os alarmes da pessoa acompanhada se ela aceitar o pedido dele no app. Ela pode parar quando quiser, em Configurações, e o cuidador é avisado. A data do pedido e a do aceite ficam guardadas enquanto a conta existir, como registro do consentimento, e são apagadas junto com ela.</p>
 <p>Qualquer um dos dois pode desfazer o vínculo a qualquer momento. A partir daí, o cuidador deixa de ver os dados.</p>
 
@@ -108,13 +109,18 @@
 <p>Compartilhamos dados apenas com empresas que nos ajudam a prestar o serviço (operadores) e só o necessário para cada função:</p>
 <ul>
 <li><strong>Railway</strong>: hospedagem do servidor e do banco de dados.</li>
-<li><strong>Meta (WhatsApp)</strong>: envio dos alertas aos contatos de emergência e dos códigos de login por celular. Recebe o telefone de quem recebe a mensagem e o texto do alerta (o seu nome, o que aconteceu e, se ativada, a última localização registrada).</li>
-<li><strong>Twilio</strong>: envio dos mesmos alertas por SMS. Recebe o telefone do contato e o texto do alerta.</li>
+<li><strong>Meta (WhatsApp)</strong>: envio dos alertas aos contatos de emergência e dos códigos de login por celular. Recebe o telefone de quem recebe a mensagem e o texto do alerta: o seu nome, o nome ou a descrição do alarme e o horário dele (num lembrete de remédio, normalmente o nome do remédio) e, quando houver, a localização.</li>
+<li><strong>Twilio</strong>: envio dos mesmos alertas por SMS. Recebe o telefone do contato e o texto do alerta, com o mesmo conteúdo (inclusive o nome ou a descrição do alarme).</li>
 <li><strong>Expo, Google e Apple</strong>: entrega de notificações ao seu celular e aos cuidadores. O aviso de lembrete alterado pode mostrar o nome do lembrete. Google e Apple também fazem o login, quando você escolhe entrar com eles.</li>
 <li><strong>RevenueCat, App Store e Google Play</strong>: assinatura e cobrança. Recebem um identificador da conta e os dados da compra; nenhum dado de saúde.</li>
 <li><strong>Resend</strong>: envio de e-mails (códigos de login por e-mail e confirmação da lista de espera). Recebe o endereço de e-mail e o texto da mensagem.</li>
 </ul>
-<p>Os seus dados também chegam às pessoas que você escolheu: o cuidador vinculado (seção 6) e os contatos de emergência, que só recebem alertas automáticos se você registrou que eles concordaram.</p>
+<p>Os seus dados também chegam às pessoas que você escolheu: o cuidador vinculado (seção 6) e os contatos de emergência. Hoje, os contatos recebem alertas assim:</p>
+<ul>
+<li>Os alertas automáticos enviados pelo servidor (WhatsApp e SMS) não vão para o contato que você marcou como não tendo concordado. Contatos cadastrados antes de existir essa confirmação são tratados como se tivessem concordado.</li>
+<li>Quando um alarme fica sem resposta na tela do celular, o próprio app abre o WhatsApp com a mensagem de alerta para todos os contatos marcados para aviso pelo WhatsApp, sem olhar essa confirmação. O mesmo acontece quando você aperta o SOS.</li>
+</ul>
+<p>[A CONFIRMAR — depende de correção no app]</p>
 <p>Podemos ter de fornecer dados a autoridades quando a lei ou uma ordem judicial exigir.</p>
 
 <h2 id="transferencia">8. Transferência internacional</h2>
@@ -135,9 +141,9 @@
 <h2 id="seguranca">10. Como protegemos os dados</h2>
 <ul>
 <li>Toda comunicação entre o app, o site e o servidor é cifrada (HTTPS).</li>
-<li>Os dados no servidor só são acessados com login, e o cuidador só vê os dados de quem o vinculou.</li>
+<li>Pelo app, os dados no servidor só são acessados com login, e o cuidador só vê os dados de quem o vinculou. O acesso direto ao banco de dados fica restrito ao controlador, para manutenção e suporte.</li>
 <li>No celular, a chave da sua sessão fica no armazenamento protegido do sistema.</li>
-<li>Senhas são guardadas apenas em versão cifrada.</li>
+<li>Senhas são guardadas apenas como resumo criptográfico, que não permite recuperar a senha.</li>
 <li>Os registros técnicos do servidor não incluem dados de saúde.</li>
 <li>Há limite de tentativas para dificultar acessos indevidos.</li>
 </ul>
@@ -165,14 +171,14 @@
 <li>saber que pode negar o consentimento e o que acontece se negar;</li>
 <li>retirar o consentimento.</li>
 </ul>
-<p>No próprio app, em Configurações, você pode exportar todos os seus dados e apagar a sua conta com todos os dados do servidor (Configurações › Excluir minha conta). Para os demais pedidos, escreva para <a href="mailto:privacidade@vigorasaude.com">privacidade@vigorasaude.com</a>. Respondemos em até 15 dias.</p>
+<p>No próprio app, em Configurações, você pode exportar todos os seus dados e apagar a sua conta com todos os dados do servidor (Configurações › Excluir minha conta). Para os demais pedidos, escreva para <a href="mailto:privacidade@vigorasaude.com">privacidade@vigorasaude.com</a>. A declaração completa sobre os seus dados é entregue em até 15 dias do pedido (Art. 19, II); os demais pedidos são respondidos nos prazos da LGPD.</p>
 <p>Se não ficar satisfeito com a resposta, você também pode reclamar à Autoridade Nacional de Proteção de Dados (ANPD).</p>
 
 <h2 id="site">13. Este site</h2>
 <p>O site vigorasaude.com não usa cookies, não usa ferramentas de análise de visitas e não carrega nada de outras empresas: as fontes e as imagens vêm do nosso próprio servidor. O endereço IP de quem acessa é usado apenas no momento do acesso, para limitar tentativas repetidas no formulário, e não fica ligado ao cadastro da lista de espera. [A CONFIRMAR: registros de acesso mantidos pela hospedagem e por quanto tempo.]</p>
 
 <h2 id="mudancas">14. Mudanças nesta política</h2>
-<p>Quando esta política mudar, publicaremos a nova versão nesta página, com nova data. Se a mudança for relevante, avisaremos no app ou por e-mail antes de ela valer e, quando a lei exigir, pediremos o seu consentimento de novo.</p>
+<p>Quando esta política mudar, publicaremos a nova versão nesta página, com nova data. Se a mudança for relevante, avisaremos antes de ela valer, por e-mail, quando tivermos o seu, e nesta página e, quando a lei exigir, pediremos o seu consentimento de novo.</p>
 <p>Data de vigência: [A CONFIRMAR — data da publicação].</p>
 <p class="legal-versao">Versão 2026-10-20</p>
 </section>
