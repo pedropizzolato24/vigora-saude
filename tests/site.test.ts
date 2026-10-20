@@ -92,6 +92,16 @@ describe("site", () => {
     expect(html).toContain("suporte@vigorasaude.com");
   });
 
+  it("renderPage põe a URL canônica quando recebe o caminho e omite a tag sem ele", () => {
+    process.env.SITE_URL = "https://exemplo.test/";
+    const html = renderPage({ title: "x", content: "", path: "/termos" });
+    expect(html).toContain('<link rel="canonical" href="https://exemplo.test/termos">');
+    const semCaminho = renderPage({ title: "x", content: "" });
+    expect(semCaminho).not.toContain("canonical");
+    expect(semCaminho).not.toContain("{{canonical}}");
+    delete process.env.SITE_URL;
+  });
+
   it("renderPage escapa o título e não interpreta $ no conteúdo", () => {
     const html = renderPage({ title: "<x>", content: "<p>$&</p>" });
     expect(html).toContain("<title>&lt;x&gt;");
@@ -137,6 +147,37 @@ describe("site", () => {
       expect(headers["Content-Security-Policy"]).toBe(SITE_CSP);
       expect(res.body).toContain("<!doctype html>");
     }
+  });
+
+  it("cada página aponta para a própria URL canônica", () => {
+    delete process.env.SITE_URL;
+    const { app, gets } = makeApp();
+    registerSiteRoutes(app);
+    const esperado: Record<string, string> = {
+      "/": "https://vigorasaude.com/",
+      "/privacidade": "https://vigorasaude.com/privacidade",
+      "/termos": "https://vigorasaude.com/termos",
+      "/obrigado": "https://vigorasaude.com/obrigado",
+    };
+    for (const [path, url] of Object.entries(esperado)) {
+      const { res } = makeRes();
+      gets[path]({ query: {} } as unknown as Request, res as unknown as Response, vi.fn());
+      expect(res.body, path).toContain(`<link rel="canonical" href="${url}">`);
+    }
+  });
+
+  it("/ com ?erro=2 mostra o aviso de falha ao registrar, sem marcar o e-mail como inválido", () => {
+    const { app, gets } = makeApp();
+    registerSiteRoutes(app);
+    const erro = makeRes();
+    gets["/"]({ query: { erro: "2" } } as unknown as Request, erro.res as unknown as Response, vi.fn());
+    expect(erro.res.body).toContain(
+      '<p class="aviso-erro" id="erro-lista" tabindex="-1">Erro: não conseguimos registrar agora. Tente de novo em alguns minutos.</p>'
+    );
+    expect(erro.res.body).not.toContain("Erro: confira o e-mail");
+    expect(erro.res.body).toContain("<title>Erro: tente de novo — Vigora</title>");
+    expect(erro.res.body).not.toContain("aria-invalid");
+    expect(erro.res.body).not.toContain("<!--erro-lista-->");
   });
 
   it("/ mostra o aviso de erro só com ?erro=1 e não deixa marcadores no HTML", () => {

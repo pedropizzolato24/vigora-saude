@@ -175,18 +175,32 @@ describe("rotas da lista de espera", () => {
     expect(html).toContain(`/lista/sair?t=${TOKEN}`);
   });
 
-  it("POST /lista responde antes de gravar e enviar", async () => {
-    let release: (v: { created: false }) => void = () => {};
+  it("POST /lista só responde depois de gravar e envia o e-mail depois da resposta", async () => {
+    const ordem: string[] = [];
+    let release: (v: { created: true; unsubscribeToken: string }) => void = () => {};
     addToWaitlist.mockReturnValue(new Promise((r) => (release = r)));
+    sendEmail.mockImplementation(async () => {
+      ordem.push("email");
+      return true;
+    });
     const { res } = makeRes();
+    res.redirect.mockImplementation((code: number, url: string) => {
+      ordem.push("resposta");
+      res.statusCode = code;
+      res.redirectedTo = url;
+    });
     const handlers = posts["/lista"];
     const pending = handlers[handlers.length - 1](
       { query: {}, body: { email: "a@b.co", aceite: "sim" } } as Request,
       res as unknown as Response
     );
-    expect(res.redirectedTo).toBe("/obrigado");
-    release({ created: false });
+    await Promise.resolve();
+    expect(res.redirectedTo).toBe("");
+    release({ created: true, unsubscribeToken: TOKEN });
     await pending;
+    await new Promise((r) => setImmediate(r));
+    expect(res.redirectedTo).toBe("/obrigado");
+    expect(ordem).toEqual(["resposta", "email"]);
   });
 
   it("POST /lista com e-mail já cadastrado responde igual e não envia e-mail", async () => {
@@ -251,10 +265,12 @@ describe("rotas da lista de espera", () => {
     expect(JSON.stringify(errorSpy.mock.calls)).not.toContain("a@b.co");
   });
 
-  it("erro do banco no background não derruba a resposta e loga sem o e-mail", async () => {
+  it("erro do banco não perde o cadastro em silêncio: volta para /?erro=2#erro-lista e loga sem o e-mail", async () => {
     addToWaitlist.mockRejectedValue(new Error("DATABASE_UNAVAILABLE"));
-    const { res } = await call(posts["/lista"], { body: { email: "a@b.co", aceite: "sim" } });
-    expect(res.redirectedTo).toBe("/obrigado");
+    const { res, headers } = await call(posts["/lista"], { body: { email: "a@b.co", aceite: "sim" } });
+    expect(res.statusCode).toBe(303);
+    expect(res.redirectedTo).toBe("/?erro=2#erro-lista");
+    expect(headers["Content-Security-Policy"]).toBe(SITE_CSP);
     expect(sendEmail).not.toHaveBeenCalled();
     expect(String(errorSpy.mock.calls[0][0])).toContain("[Waitlist]");
     expect(JSON.stringify(errorSpy.mock.calls)).not.toContain("a@b.co");

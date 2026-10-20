@@ -11,8 +11,9 @@ import { SITE_CSP, escapeHtml, lerArquivo, renderPage, siteUrl } from "./site";
  * Lista de espera do site (vigorasaude.com).
  *
  * Privacidade: a resposta do POST /lista é sempre a mesma (e-mail novo ou já
- * cadastrado), o trabalho roda depois dela, e o e-mail de quem se cadastra
- * nunca vai para o log. A saída é em dois passos: GET só mostra a confirmação
+ * cadastrado), o envio da confirmação roda depois dela, e o e-mail de quem se
+ * cadastra nunca vai para o log. Se o cadastro não puder ser gravado, a pessoa
+ * vê um aviso em vez do "obrigado". A saída é em dois passos: GET só mostra a confirmação
  * (leitores de link de provedores de e-mail abrem links), apagar exige POST.
  */
 
@@ -54,20 +55,18 @@ function motivoDoErro(err: unknown): string {
   return err instanceof Error ? err.name : "erro desconhecido";
 }
 
-async function cadastrar(email: string, reasons: WaitlistReason[]): Promise<void> {
+async function enviarConfirmacao(email: string, unsubscribeToken: string): Promise<void> {
   try {
-    const result = await addToWaitlist({ email, reasons, policyVersion: POLICY_VERSION });
-    if (!result.created) return;
     if (!isEmailServiceConfigured()) {
       console.error("[Waitlist] Resend não configurado; confirmação não enviada");
       return;
     }
-    const link = `${siteUrl()}/lista/sair?t=${result.unsubscribeToken}`;
+    const link = `${siteUrl()}/lista/sair?t=${unsubscribeToken}`;
     if (!(await sendEmail(email, EMAIL_SUBJECT, confirmationEmailHtml(link)))) {
       console.error("[Waitlist] envio da confirmação falhou");
     }
   } catch (err) {
-    console.error("[Waitlist] erro ao cadastrar:", motivoDoErro(err));
+    console.error("[Waitlist] erro ao enviar a confirmação:", motivoDoErro(err));
   }
 }
 
@@ -98,9 +97,19 @@ export function registerWaitlistRoutes(app: Express): void {
       res.redirect(303, "/?erro=1#erro-lista");
       return;
     }
-    // Responde antes: o tempo de resposta não revela se o e-mail já estava na lista.
+    // Grava antes de responder: se o banco falhar, a pessoa precisa saber. O
+    // INSERT IGNORE leva o mesmo tempo para e-mail novo ou repetido.
+    let result: Awaited<ReturnType<typeof addToWaitlist>>;
+    try {
+      result = await addToWaitlist({ email: form.email, reasons: form.reasons, policyVersion: POLICY_VERSION });
+    } catch (err) {
+      console.error("[Waitlist] erro ao cadastrar:", motivoDoErro(err));
+      res.redirect(303, "/?erro=2#erro-lista");
+      return;
+    }
     res.redirect(303, "/obrigado");
-    await cadastrar(form.email, form.reasons);
+    // O envio (Resend) é o que denunciaria e-mail novo pelo tempo: roda depois da resposta.
+    if (result.created) await enviarConfirmacao(form.email, result.unsubscribeToken);
   });
 
   app.get("/lista/sair", comCspDoSite, (req: Request, res: Response) => {

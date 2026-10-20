@@ -34,6 +34,9 @@ const PAGINAS: Record<string, { arquivo: string; titulo: string }> = {
 const AVISO_ERRO_LISTA =
   '<p class="aviso-erro" id="erro-lista" tabindex="-1">Erro: confira o e-mail e marque a caixa de aceite para entrar na lista.</p>';
 const TITULO_ERRO_LISTA = "Erro: confira os dados — Vigora";
+const AVISO_FALHA_LISTA =
+  '<p class="aviso-erro" id="erro-lista" tabindex="-1">Erro: não conseguimos registrar agora. Tente de novo em alguns minutos.</p>';
+const TITULO_FALHA_LISTA = "Erro: tente de novo — Vigora";
 
 const cache = new Map<string, string>();
 
@@ -59,8 +62,13 @@ export function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-export function renderPage(opts: { title: string; content: string }): string {
-  return lerArquivo("_layout.html")
+export function renderPage(opts: { title: string; content: string; path?: string }): string {
+  const layout = lerArquivo("_layout.html");
+  const comCanonical =
+    opts.path === undefined
+      ? layout.replace(/^[^\n]*\{\{canonical\}\}[^\n]*\r?\n/m, "")
+      : layout.replace("{{canonical}}", () => escapeHtml(siteUrl() + opts.path));
+  return comCanonical
     .replace("{{title}}", () => escapeHtml(opts.title))
     .replace("{{content}}", () => opts.content);
 }
@@ -88,19 +96,22 @@ function paginaEstatica(rota: string) {
     let title = titulo;
     if (rota === "/") {
       const erro = req.query.erro === "1";
+      const falha = req.query.erro === "2";
       content = content
         .replace("<!--depoimentos-->", () => renderTestimonials(DEPOIMENTOS))
-        .replace("<!--erro-lista-->", () => (erro ? AVISO_ERRO_LISTA : ""));
+        .replace("<!--erro-lista-->", () => (erro ? AVISO_ERRO_LISTA : falha ? AVISO_FALHA_LISTA : ""));
       if (erro) {
         title = TITULO_ERRO_LISTA;
         content = content.replace(
           'id="email-lista"',
           'id="email-lista" aria-invalid="true" aria-describedby="erro-lista"'
         );
+      } else if (falha) {
+        title = TITULO_FALHA_LISTA;
       }
     }
     res.setHeader("Content-Security-Policy", SITE_CSP);
-    res.type("html").send(renderPage({ title, content }));
+    res.type("html").send(renderPage({ title, content, path: rota }));
   };
 }
 

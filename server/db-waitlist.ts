@@ -4,8 +4,8 @@
  * Lista de espera do site (tabela `waitlist`, ver drizzle/schema.ts). O e-mail
  * chega já normalizado pelo chamador. O UNIQUE do banco decide duplicata:
  * `INSERT IGNORE` não grava (affectedRows 0) quando o e-mail já existe, sem
- * consulta prévia. Escritas lançam sem banco — calar faria o visitante achar
- * que entrou na lista.
+ * consulta prévia. Escritas lançam sem banco; a rota espera o resultado e avisa
+ * o visitante, que não deve achar que entrou na lista sem ter entrado.
  */
 import { randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";

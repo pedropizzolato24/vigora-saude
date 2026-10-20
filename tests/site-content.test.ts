@@ -68,13 +68,22 @@ describe("site — página inicial", () => {
     const como = index.slice(index.indexOf('id="como-funciona"'), index.indexOf('id="o-que-mais"'));
     expect(como).not.toContain("Está tudo bem");
     expect(como).not.toContain("adivinhar");
-    expect(como).toContain("última localização registrada");
+    expect(como).toContain("e a localização, quando houver");
     const texto = textoSemTags(index);
     expect(texto).not.toContain("receita");
     expect(texto).not.toMatch(/precisa aceitar antes de receber qualquer/);
     expect(texto).not.toMatch(/ninguém recebe um falso/);
-    expect(texto).toContain("só recebe aviso automático quem concordou em receber");
     expect(texto).toContain("Usamos só para entender o que traz as pessoas ao Vigora.");
+  });
+
+  it("a home não promete consentimento nem localização condicional que a política desmente", () => {
+    expect(index).not.toContain("concordou em receber");
+    expect(index).not.toContain("se a localização estiver ligada");
+  });
+
+  it("a resposta de preço cobre assinatura mensal, anual e compra única, sem valor", () => {
+    const preco = index.slice(index.indexOf("Quanto vai custar"));
+    expect(preco).toContain("assinatura mensal ou anual, ou compra única");
   });
 
   it("os dois formulários têm nomes distintos e dizem o que é obrigatório", () => {
