@@ -221,6 +221,17 @@ describe("site — textos legais", () => {
     expect(lista).toContain("privacidade@vigorasaude.com");
   });
 
+  it("revisão 2: SOS e alarme na tela também passam pelo servidor sem olhar a confirmação", () => {
+    for (const html of [privacidade, termos]) {
+      expect(html).toContain("Esse é o único envio que olha a confirmação.");
+      expect(html).toContain("o app pede ao servidor que mande a mensagem na hora");
+      expect(html).toContain("Só se o servidor não conseguir enviar a nenhum contato");
+      expect(html).toContain("o app pede ao servidor que mande a mensagem a esses mesmos contatos");
+      expect(html).not.toContain("O mesmo acontece quando você aperta o SOS");
+    }
+    expect(privacidade).not.toContain("nesta página e,");
+  });
+
   it("um h1 só, e todo link do sumário aponta para uma seção que existe", () => {
     for (const html of [privacidade, termos]) {
       expect(html.match(/<h1\b/g)).toHaveLength(1);
