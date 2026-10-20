@@ -18,6 +18,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { renderInviteLanding } from "../invite-landing";
 import { registerSiteRoutes } from "../site";
+import { registerWaitlistRoutes } from "../waitlist";
 
 async function startServer() {
   assertRequiredSecrets();
@@ -49,6 +50,7 @@ async function startServer() {
   // Site público (vigorasaude.com): páginas, /assets, /fonts e redirecionamento
   // www. Só estas rotas trocam a CSP da API pela do site (ver ../site.ts).
   registerSiteRoutes(app);
+  registerWaitlistRoutes(app);
 
   // Deep-link association files for caregiver share invites
   // (https://<host>/convite/<token>). Served only when the platform IDs are

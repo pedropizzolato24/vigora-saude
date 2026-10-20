@@ -33,7 +33,7 @@ const AVISO_ERRO_LISTA =
 
 const cache = new Map<string, string>();
 
-function lerArquivo(nome: string): string {
+export function lerArquivo(nome: string): string {
   let conteudo = cache.get(nome);
   if (conteudo === undefined) {
     conteudo = fs.readFileSync(path.join(SITE_DIR, nome), "utf8");
