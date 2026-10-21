@@ -6,8 +6,9 @@
 // Deploy › Settings › Domains & Routes › Add › Custom Domain: vigorasaude.com e
 // www.vigorasaude.com. No Railway, SITE_URL=https://vigorasaude.com (já é o padrão).
 //
-// ponytail: o servidor vê o IP do Worker, não o do visitante — o rate limit por IP
-// da lista de espera fica compartilhado entre todos até a correção de IP do roadmap.
+// O servidor vê o IP do Worker; para o rate limit da lista ser por visitante, o Worker
+// repassa o IP real (x-vigora-client-ip) e prova a origem com o segredo
+// SITE_PROXY_SECRET (Worker › Settings › Variables, tipo Secret; o mesmo valor no Railway).
 
 const ORIGEM = "https://app.vigorasaude.com";
 const RAIZ = "https://vigorasaude.com";
@@ -17,7 +18,7 @@ const GET_PERMITIDOS = /^\/(|privacidade|termos|obrigado|lista\/sair|assets\/.+|
 const POST_PERMITIDOS = /^\/lista(\/sair)?$/;
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const url = new URL(request.url);
 
     if (url.hostname === "www.vigorasaude.com") {
@@ -31,6 +32,10 @@ export default {
     if (!permitido) return new Response("Página não encontrada", { status: 404 });
 
     // redirect: "manual" — o 303 do formulário (→ /obrigado) precisa chegar ao navegador.
-    return fetch(new Request(ORIGEM + url.pathname + url.search, request), { redirect: "manual" });
+    const origem = new Request(ORIGEM + url.pathname + url.search, request);
+    // set() sobrescreve qualquer valor que o visitante tenha mandado nesses headers.
+    origem.headers.set("x-vigora-client-ip", request.headers.get("CF-Connecting-IP") ?? "");
+    origem.headers.set("x-vigora-proxy-secret", env.SITE_PROXY_SECRET ?? "");
+    return fetch(origem, { redirect: "manual" });
   },
 };

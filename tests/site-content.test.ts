@@ -22,7 +22,16 @@ const allPages = fs
   .filter((f) => f.endsWith(".html"))
   .map((f) => fs.readFileSync(path.join(SITE_DIR, f), "utf8"));
 
-const textoSemTags = (html: string) => html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ");
+// Repete até estabilizar: um único replace deixaria tags montadas a partir dos restos.
+const textoSemTags = (html: string) => {
+  let texto = html;
+  let anterior;
+  do {
+    anterior = texto;
+    texto = texto.replace(/<[^>]*>/g, "");
+  } while (texto !== anterior);
+  return texto.replace(/\s+/g, " ");
+};
 
 describe("site — página inicial", () => {
   it("tem o disclaimer exato", () => expect(index).toContain(DISCLAIMER));

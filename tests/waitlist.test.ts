@@ -24,7 +24,10 @@ vi.mock("../server/email-auth", () => ({
 }));
 
 const createRateLimit = vi.fn((_opts: unknown) => (_req: Request, _res: Response, next: () => void) => next());
-vi.mock("../server/_core/rate-limit", () => ({ createRateLimit: (o: unknown) => createRateLimit(o) }));
+vi.mock("../server/_core/rate-limit", () => ({
+  createRateLimit: (o: unknown) => createRateLimit(o),
+  clientIp: (req: Request) => req.ip ?? "unknown",
+}));
 
 import { SITE_CSP } from "../server/site";
 import {
@@ -32,6 +35,7 @@ import {
   confirmationEmailHtml,
   parseWaitlistForm,
   registerWaitlistRoutes,
+  siteClientKey,
 } from "../server/waitlist";
 
 type Handler = (req: Request, res: Response, next?: () => void) => unknown;
@@ -91,6 +95,37 @@ async function call(handlers: Handler[], req: Partial<Request>) {
   return { res, headers };
 }
 
+describe("siteClientKey (IP do visitante atrás do Worker do Cloudflare)", () => {
+  const req = (headers: Record<string, string>) =>
+    ({ ip: "198.51.100.1", get: (h: string) => headers[h.toLowerCase()] }) as unknown as Request;
+  const viaWorker = (secret: string, ip: string) => req({ "x-vigora-proxy-secret": secret, "x-vigora-client-ip": ip });
+
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("usa o IP que o Worker repassa quando o segredo confere", () => {
+    vi.stubEnv("SITE_PROXY_SECRET", "segredo-do-worker");
+    expect(siteClientKey(viaWorker("segredo-do-worker", "203.0.113.7"))).toBe("203.0.113.7");
+    expect(siteClientKey(viaWorker("segredo-do-worker", "2001:db8::1"))).toBe("2001:db8::1");
+  });
+
+  it("ignora o header quando o segredo não confere (cabeçalho forjado direto no app.)", () => {
+    vi.stubEnv("SITE_PROXY_SECRET", "segredo-do-worker");
+    expect(siteClientKey(viaWorker("chute", "203.0.113.7"))).toBe("198.51.100.1");
+    expect(siteClientKey(req({ "x-vigora-client-ip": "203.0.113.7" }))).toBe("198.51.100.1");
+  });
+
+  it("ignora o header quando não há segredo configurado no servidor", () => {
+    vi.stubEnv("SITE_PROXY_SECRET", "");
+    expect(siteClientKey(viaWorker("", "203.0.113.7"))).toBe("198.51.100.1");
+  });
+
+  it("ignora IP malformado mesmo com segredo certo", () => {
+    vi.stubEnv("SITE_PROXY_SECRET", "segredo-do-worker");
+    expect(siteClientKey(viaWorker("segredo-do-worker", "x".repeat(60)))).toBe("198.51.100.1");
+    expect(siteClientKey(viaWorker("segredo-do-worker", "1.2.3.4, 5.6.7.8"))).toBe("198.51.100.1");
+  });
+});
+
 describe("parseWaitlistForm", () => {
   it("normaliza o e-mail", () =>
     expect(parseWaitlistForm({ email: " Ana@Exemplo.com ", aceite: "sim" })?.email).toBe("ana@exemplo.com"));
@@ -149,10 +184,15 @@ describe("rotas da lista de espera", () => {
   });
   afterEach(() => errorSpy.mockRestore());
 
-  it("registra POST /lista com rate limit de 5 por minuto", () => {
-    expect(createRateLimit).toHaveBeenCalledWith({ max: 5, windowMs: 60_000, name: "waitlist" });
+  it("registra POST /lista com rate limit de 5 por minuto, pelo IP real do visitante", () => {
+    expect(createRateLimit).toHaveBeenCalledWith({ max: 5, windowMs: 60_000, name: "waitlist", keyFn: siteClientKey });
     expect(Object.keys(posts).sort()).toEqual(["/lista", "/lista/sair"]);
     expect(Object.keys(gets)).toEqual(["/lista/sair"]);
+  });
+
+  it("POST /lista/sair também passa por rate limit (cada token bem formado custa um DELETE)", () => {
+    expect(createRateLimit).toHaveBeenCalledWith({ max: 10, windowMs: 60_000, name: "waitlist-sair", keyFn: siteClientKey });
+    expect(posts["/lista/sair"]).toHaveLength(3); // CSP, limiter, handler
   });
 
   it("POST /lista válido redireciona 303 para /obrigado e envia e-mail só quando created", async () => {

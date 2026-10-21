@@ -1,6 +1,7 @@
 import type { Express, NextFunction, Request, Response } from "express";
 import { z } from "zod";
-import { createRateLimit } from "./_core/rate-limit";
+import { timingSafeEqual } from "node:crypto";
+import { clientIp, createRateLimit } from "./_core/rate-limit";
 import { normalizeEmail } from "./db-auth";
 import { addToWaitlist, removeFromWaitlist, WAITLIST_REASONS } from "./db-waitlist";
 import type { WaitlistReason } from "./db-waitlist";
@@ -88,8 +89,28 @@ function comCspDoSite(_req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
+const IP_RE = /^[0-9A-Fa-f:.]{2,45}$/;
+
+/**
+ * Chave do rate limit do site. Pelo Worker do Cloudflare (infra/cloudflare/site-worker.js)
+ * todo visitante chega com o IP do Worker; o Worker repassa o IP real num header e prova
+ * a origem com SITE_PROXY_SECRET. Sem segredo configurado, ou com segredo errado (alguém
+ * forjando o header direto no app.), vale o IP de sempre.
+ */
+export function siteClientKey(req: Request): string {
+  const segredo = process.env.SITE_PROXY_SECRET ?? "";
+  const recebido = req.get("x-vigora-proxy-secret") ?? "";
+  const ip = req.get("x-vigora-client-ip") ?? "";
+  const confere =
+    segredo.length > 0 &&
+    recebido.length === segredo.length &&
+    timingSafeEqual(Buffer.from(recebido), Buffer.from(segredo));
+  return confere && IP_RE.test(ip) ? ip : clientIp(req);
+}
+
 export function registerWaitlistRoutes(app: Express): void {
-  const limiter = createRateLimit({ max: 5, windowMs: 60_000, name: "waitlist" });
+  const limiter = createRateLimit({ max: 5, windowMs: 60_000, name: "waitlist", keyFn: siteClientKey });
+  const limiterSair = createRateLimit({ max: 10, windowMs: 60_000, name: "waitlist-sair", keyFn: siteClientKey });
 
   app.post("/lista", comCspDoSite, limiter, async (req: Request, res: Response) => {
     const form = parseWaitlistForm(req.body);
@@ -122,7 +143,7 @@ export function registerWaitlistRoutes(app: Express): void {
     res.type("html").send(paginaSair("Sair da lista", formulario));
   });
 
-  app.post("/lista/sair", comCspDoSite, async (req: Request, res: Response) => {
+  app.post("/lista/sair", comCspDoSite, limiterSair, async (req: Request, res: Response) => {
     const token = tokenDe((req.body as { t?: unknown } | undefined)?.t);
     if (!token) {
       res.type("html").send(paginaSair("Link inválido", LINK_INVALIDO));
