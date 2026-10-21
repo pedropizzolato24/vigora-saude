@@ -67,6 +67,29 @@ function getSessionSecret() {
   return new TextEncoder().encode(secret);
 }
 
+/**
+ * Segredo anterior, aceito só para VERIFICAR e só até JWT_SECRET_PREVIOUS_UNTIL.
+ * Serve para trocar o JWT_SECRET sem deslogar ninguém: o app chama auth.refresh
+ * a cada abertura e recebe um token assinado com o segredo atual. Deslogar um
+ * idoso pausa o dead man's switch, por isso a janela. Sem data válida, nada.
+ */
+function getPreviousSessionSecret(): Uint8Array | null {
+  const previous = process.env.JWT_SECRET_PREVIOUS ?? "";
+  const until = Date.parse(process.env.JWT_SECRET_PREVIOUS_UNTIL ?? "");
+  if (previous.length === 0 || !Number.isFinite(until) || Date.now() > until) return null;
+  return new TextEncoder().encode(previous);
+}
+
+async function verifyWithCurrentOrPrevious(token: string) {
+  try {
+    return await jwtVerify(token, getSessionSecret(), { algorithms: ["HS256"] });
+  } catch (error) {
+    const previous = getPreviousSessionSecret();
+    if (!previous) throw error;
+    return jwtVerify(token, previous, { algorithms: ["HS256"] });
+  }
+}
+
 function parseCookies(cookieHeader: string | undefined) {
   if (!cookieHeader) return new Map<string, string>();
   return new Map(Object.entries(parseCookieHeader(cookieHeader)));
@@ -127,9 +150,7 @@ class SDKServer {
     if (!cookieValue) return null;
 
     try {
-      const { payload } = await jwtVerify(cookieValue, getSessionSecret(), {
-        algorithms: ["HS256"],
-      });
+      const { payload } = await verifyWithCurrentOrPrevious(cookieValue);
       const { openId, appId, name, jti, exp } = payload as Record<string, unknown>;
 
       if (!isNonEmptyString(openId) || !isNonEmptyString(appId) || !isNonEmptyString(name)) {

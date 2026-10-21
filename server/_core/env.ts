@@ -78,6 +78,15 @@ export function assertRequiredSecrets(env: NodeJS.ProcessEnv = process.env): voi
     );
   }
 
+  // Segredo anterior sem data limite seria aceito para sempre (ou ignorado,
+  // deslogando todo mundo e pausando o dead man's switch). Melhor o deploy
+  // falhar: o Railway mantém a versão anterior no ar.
+  if ((env.JWT_SECRET_PREVIOUS ?? "") && !Number.isFinite(Date.parse(env.JWT_SECRET_PREVIOUS_UNTIL ?? ""))) {
+    throw new Error(
+      "JWT_SECRET_PREVIOUS definido sem JWT_SECRET_PREVIOUS_UNTIL válido (data ISO, ex.: 2026-11-15T00:00:00Z).",
+    );
+  }
+
   // Banco ausente não é falha aberta (a autenticação recusa quando não acha o
   // usuário), mas é o modo de falha que já desarmou o dead man's switch por 27h
   // sem ninguém notar. Melhor não subir do que subir cego.
