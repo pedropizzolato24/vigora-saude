@@ -93,6 +93,22 @@ describe("createRateLimit", () => {
     expect(next).toHaveBeenCalledTimes(3); // not invoked for the blocked one
   });
 
+  it("uses onLimit instead of the JSON body when given (páginas do site)", () => {
+    const onLimit = vi.fn();
+    const mw = createRateLimit({ max: 1, windowMs: 60_000, onLimit });
+    middlewares.push(mw as any);
+    const next = vi.fn();
+    mw(makeReq(), makeRes().res, next);
+    const { res, headers, state } = makeRes();
+    const req = makeReq();
+    mw(req, res, next);
+
+    expect(onLimit).toHaveBeenCalledWith(req, res);
+    expect(headers["Retry-After"]).toBeDefined();
+    expect(state.jsonBody).toBeUndefined();
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
   it("resets the bucket after the window elapses", () => {
     let now = 1_000_000;
     const mw = build(2, { now: () => now });

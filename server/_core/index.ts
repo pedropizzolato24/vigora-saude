@@ -17,6 +17,8 @@ import { assertRequiredSecrets } from "./env";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { renderInviteLanding } from "../invite-landing";
+import { registerSiteRoutes } from "../site";
+import { registerWaitlistRoutes } from "../waitlist";
 
 async function startServer() {
   assertRequiredSecrets();
@@ -44,6 +46,11 @@ async function startServer() {
   // 1MB is plenty for normal tRPC payloads (alarm lists, contacts).
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ limit: "1mb", extended: true }));
+
+  // Site público (vigorasaude.com): páginas, /assets, /fonts e redirecionamento
+  // www. Só estas rotas trocam a CSP da API pela do site (ver ../site.ts).
+  registerSiteRoutes(app);
+  registerWaitlistRoutes(app);
 
   // Deep-link association files for caregiver share invites
   // (https://<host>/convite/<token>). Served only when the platform IDs are

@@ -503,3 +503,17 @@ export const authCodes = mysqlTable(
 
 export type AuthCode = typeof authCodes.$inferSelect;
 export type InsertAuthCode = typeof authCodes.$inferInsert;
+
+/** Lista de espera do site (LGPD: só e-mail + motivos de múltipla escolha, sem dado de saúde). */
+export const waitlist = mysqlTable("waitlist", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  reasons: json("reasons").$type<string[]>().notNull(),
+  policyVersion: varchar("policyVersion", { length: 20 }).notNull(),
+  consentAt: timestamp("consentAt").notNull(),
+  unsubscribeToken: varchar("unsubscribeToken", { length: 64 }).notNull().unique(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Waitlist = typeof waitlist.$inferSelect;
+export type InsertWaitlist = typeof waitlist.$inferInsert;
