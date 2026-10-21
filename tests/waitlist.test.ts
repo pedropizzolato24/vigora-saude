@@ -184,14 +184,30 @@ describe("rotas da lista de espera", () => {
   });
   afterEach(() => errorSpy.mockRestore());
 
+  it("passar do limite mostra uma página do site com 429, não JSON", () => {
+    const opts = createRateLimit.mock.calls.map((c) => c[0] as { name: string; onLimit: Handler });
+    for (const nome of ["waitlist", "waitlist-sair"]) {
+      const { res, headers } = makeRes();
+      opts.find((o) => o.name === nome)!.onLimit({} as Request, res as unknown as Response);
+      expect(res.statusCode).toBe(429);
+      expect(res.body).toContain("Muitas tentativas seguidas");
+      expect(res.body).toContain("Espere um minuto e tente de novo.");
+      expect(headers["Content-Security-Policy"]).toBe(SITE_CSP);
+    }
+  });
+
   it("registra POST /lista com rate limit de 5 por minuto, pelo IP real do visitante", () => {
-    expect(createRateLimit).toHaveBeenCalledWith({ max: 5, windowMs: 60_000, name: "waitlist", keyFn: siteClientKey });
+    expect(createRateLimit).toHaveBeenCalledWith(
+      expect.objectContaining({ max: 5, windowMs: 60_000, name: "waitlist", keyFn: siteClientKey }),
+    );
     expect(Object.keys(posts).sort()).toEqual(["/lista", "/lista/sair"]);
     expect(Object.keys(gets)).toEqual(["/lista/sair"]);
   });
 
   it("POST /lista/sair também passa por rate limit (cada token bem formado custa um DELETE)", () => {
-    expect(createRateLimit).toHaveBeenCalledWith({ max: 10, windowMs: 60_000, name: "waitlist-sair", keyFn: siteClientKey });
+    expect(createRateLimit).toHaveBeenCalledWith(
+      expect.objectContaining({ max: 10, windowMs: 60_000, name: "waitlist-sair", keyFn: siteClientKey }),
+    );
     expect(posts["/lista/sair"]).toHaveLength(3); // CSP, limiter, handler
   });
 

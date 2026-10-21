@@ -28,6 +28,8 @@ export interface RateLimitOptions {
   name?: string;
   /** Now-provider so tests can advance time deterministically. */
   now?: () => number;
+  /** Responds when the limit is hit (Retry-After already set). Default: 429 JSON. */
+  onLimit?: (req: Request, res: Response) => void;
 }
 
 interface Bucket {
@@ -90,6 +92,10 @@ export function createRateLimit(options: RateLimitOptions) {
       res.setHeader("Retry-After", String(retryAfterSec));
       res.setHeader("X-RateLimit-Limit", String(max));
       res.setHeader("X-RateLimit-Remaining", "0");
+      if (options.onLimit) {
+        options.onLimit(req, res);
+        return;
+      }
       res.status(429).json({
         error: "Too many requests",
         retryAfterSeconds: retryAfterSec,

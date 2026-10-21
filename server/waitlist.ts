@@ -108,9 +108,24 @@ export function siteClientKey(req: Request): string {
   return confere && IP_RE.test(ip) ? ip : clientIp(req);
 }
 
+// Quem passa do limite vê uma página do site, não o JSON da API.
+function paginaLimite(_req: Request, res: Response): void {
+  res.setHeader("Content-Security-Policy", SITE_CSP);
+  res
+    .status(429)
+    .type("html")
+    .send(paginaSair("Muitas tentativas seguidas", '<p>Espere um minuto e tente de novo.</p><p><a href="/">Voltar ao início</a></p>'));
+}
+
 export function registerWaitlistRoutes(app: Express): void {
-  const limiter = createRateLimit({ max: 5, windowMs: 60_000, name: "waitlist", keyFn: siteClientKey });
-  const limiterSair = createRateLimit({ max: 10, windowMs: 60_000, name: "waitlist-sair", keyFn: siteClientKey });
+  const limiter = createRateLimit({ max: 5, windowMs: 60_000, name: "waitlist", keyFn: siteClientKey, onLimit: paginaLimite });
+  const limiterSair = createRateLimit({
+    max: 10,
+    windowMs: 60_000,
+    name: "waitlist-sair",
+    keyFn: siteClientKey,
+    onLimit: paginaLimite,
+  });
 
   app.post("/lista", comCspDoSite, limiter, async (req: Request, res: Response) => {
     const form = parseWaitlistForm(req.body);
