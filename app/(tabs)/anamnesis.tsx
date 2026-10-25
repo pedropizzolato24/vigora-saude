@@ -27,6 +27,8 @@ import { ExportFileButtons } from '@/components/export-file-buttons';
 import { isValidPlanPhone, sanitizePlanPhone } from '@/lib/health-plan-phone';
 import { AppDialog, useAppDialog } from '@/components/app-dialog';
 import { FormKeyboardView } from '@/components/form-keyboard-view';
+import { SurgeryListEditor } from '@/components/surgery-list-editor';
+import { SURGERY_DATE_ERROR_TEXT, cleanSurgeries, firstInvalidSurgery, readSurgeries, surgeryDateError } from '@/lib/surgeries';
 
 const GENDER_OPTIONS: { value: AnamnesesData['gender']; label: string }[] = [
   { value: 'M', label: 'Masculino' },
@@ -60,7 +62,11 @@ const EMPTY_FORM: AnamnesesData = {
   healthPlanNumber: '',
   healthPlanProvider: '',
   healthPlanPhone: '',
+  surgeries: [],
 };
+
+// Fichas antigas não têm `surgeries`; dado malformado vira lista vazia.
+const withSurgeries = (a: AnamnesesData): AnamnesesData => ({ ...a, surgeries: readSurgeries(a.surgeries) });
 
 export default function AnamnesisScreen() {
   const colors = useColors();
@@ -68,20 +74,20 @@ export default function AnamnesisScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { state, dispatch } = useAppContext();
-  const [form, setForm] = useState<AnamnesesData>(state.anamnesis ?? EMPTY_FORM);
+  const [form, setForm] = useState<AnamnesesData>(state.anamnesis ? withSurgeries(state.anamnesis) : EMPTY_FORM);
   const { step: stepParam } = useLocalSearchParams<{ step?: string }>();
-  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(stepParam === 'plan' ? 3 : 1);
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4>(stepParam === 'plan' ? 4 : 1);
   const { dialogProps, showDialog } = useAppDialog();
   const { isAccessibilityMode, a11yFontSize: af, a11yColors: ac, a11ySpacing: as_ } = useAccessibility();
 
   // Anamnese fica montada nas abas: reabrir pelo ?step=plan precisa reagir ao parâmetro.
   useEffect(() => {
-    if (stepParam === 'plan') setWizardStep(3);
+    if (stepParam === 'plan') setWizardStep(4);
   }, [stepParam]);
 
   useEffect(() => {
     if (state.anamnesis) {
-      setForm(state.anamnesis);
+      setForm(withSurgeries(state.anamnesis));
     }
   }, [state.anamnesis]);
 
@@ -110,13 +116,30 @@ export default function AnamnesisScreen() {
       return false;
     }
 
-    dispatch({ type: 'SET_ANAMNESIS', payload: form });
+    if (!checkSurgeries()) return false;
+
+    dispatch({ type: 'SET_ANAMNESIS', payload: { ...form, surgeries: cleanSurgeries(form.surgeries ?? []) } });
 
     if (Platform.OS !== 'web') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Speech.speak('Histórico médico salvo', { language: 'pt-BR' });
     }
     return true;
+  };
+
+  // Data inválida numa cirurgia bloqueia o avanço, com o motivo na tela.
+  const checkSurgeries = (): boolean => {
+    const list = form.surgeries ?? [];
+    const bad = firstInvalidSurgery(list);
+    if (bad === -1) return true;
+    const err = surgeryDateError(list[bad]);
+    showDialog({
+      title: 'Confira a data',
+      message: `Registro ${bad + 1} (${list[bad].name.trim()}): ${err ? SURGERY_DATE_ERROR_TEXT[err] : ''}`,
+      variant: 'warning',
+      buttons: [{ text: 'OK' }],
+    });
+    return false;
   };
 
   const handleWizardSave = () => {
@@ -128,7 +151,7 @@ export default function AnamnesisScreen() {
   // Exportação em PDF liberada para todos — a experiência completa não é
   // restringida por plano. Baixar/Compartilhar ficam no ExportFileButtons.
   const prepareExport = async () => ({
-    uri: await createAnamnesisPdf(form),
+    uri: await createAnamnesisPdf({ ...form, surgeries: cleanSurgeries(form.surgeries ?? []) }),
     fileName: 'vigora-historico-medico.pdf',
     mimeType: 'application/pdf',
     uti: 'com.adobe.pdf',
@@ -148,6 +171,8 @@ export default function AnamnesisScreen() {
       setWizardStep(2);
     } else if (wizardStep === 2) {
       setWizardStep(3);
+    } else if (wizardStep === 3) {
+      if (checkSurgeries()) setWizardStep(4);
     } else {
       handleWizardSave();
     }
@@ -156,6 +181,7 @@ export default function AnamnesisScreen() {
   const handleWizardBack = () => {
     if (wizardStep === 2) setWizardStep(1);
     else if (wizardStep === 3) setWizardStep(2);
+    else if (wizardStep === 4) setWizardStep(3);
   };
 
   // LGPD Art. 11: não coletar dados sensíveis de saúde sem consentimento
@@ -223,6 +249,10 @@ export default function AnamnesisScreen() {
               )}
             </View>
           ))}
+          <View style={{ gap: 10 }}>
+            <Text style={{ fontSize: af.lg, fontWeight: '800', color: ac.foreground }} accessibilityRole="header">Cirurgias e internações</Text>
+            <SurgeryListEditor value={form.surgeries ?? []} onChange={(v) => updateField('surgeries', v)} />
+          </View>
           {/* Exportar PDF — liberado para todos */}
           <ExportFileButtons label="Histórico médico (PDF)" prepare={prepareExport} />
           {/* Save button */}
@@ -264,7 +294,7 @@ export default function AnamnesisScreen() {
         {/* Step 1 — Você */}
         {wizardStep === 1 && (
           <WizardStep
-            total={3}
+            total={4}
             current={0}
             categoryTag="Você"
             tagColor={colors.primary}
@@ -353,7 +383,7 @@ export default function AnamnesisScreen() {
         {/* Step 2 — Saúde */}
         {wizardStep === 2 && (
           <WizardStep
-            total={3}
+            total={4}
             current={1}
             categoryTag="Saúde"
             tagColor={colors.emergency}
@@ -417,11 +447,29 @@ export default function AnamnesisScreen() {
           </WizardStep>
         )}
 
-        {/* Step 3 — Plano */}
+        {/* Step 3 — Cirurgias */}
         {wizardStep === 3 && (
           <WizardStep
-            total={3}
+            total={4}
             current={2}
+            categoryTag="Cirurgias"
+            tagColor={colors.primary}
+            question="Cirurgias e internações"
+            onBack={handleWizardBack}
+            onNext={handleWizardNext}
+            nextLabel="Continuar"
+          >
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.stepContent} keyboardShouldPersistTaps="handled">
+              <SurgeryListEditor value={form.surgeries ?? []} onChange={(v) => updateField('surgeries', v)} />
+            </ScrollView>
+          </WizardStep>
+        )}
+
+        {/* Step 4 — Plano */}
+        {wizardStep === 4 && (
+          <WizardStep
+            total={4}
+            current={3}
             categoryTag="Plano"
             tagColor={colors.success}
             question="Plano de saúde"

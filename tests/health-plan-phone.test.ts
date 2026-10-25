@@ -46,6 +46,6 @@ describe('tela Ambulância', () => {
 describe('tela Anamnese', () => {
   const src = readFileSync(join(__dirname, '..', 'app', '(tabs)', 'anamnesis.tsx'), 'utf8');
   it('reage ao parâmetro ?step=plan mesmo já montada', () => {
-    expect(src).toMatch(/useEffect\(\(\) => \{\s*if \(stepParam === 'plan'\) setWizardStep\(3\);\s*\}, \[stepParam\]\)/);
+    expect(src).toMatch(/useEffect\(\(\) => \{\s*if \(stepParam === 'plan'\) setWizardStep\(4\);\s*\}, \[stepParam\]\)/);
   });
 });
