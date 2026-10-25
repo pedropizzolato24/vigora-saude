@@ -329,6 +329,8 @@ vigora-saude/
 | `APPLE_BUNDLE_ID` | Audience esperada no identity token da Apple (default `com.vigora.saude`) | Opcional |
 | `APPLE_TEAM_ID` / `ANDROID_CERT_SHA256` | Emitidos nos arquivos de associação (`/.well-known/*`) dos links universais de convite | Opcional |
 | `IOS_APP_STORE_URL` / `ANDROID_PLAY_STORE_URL` | Botões "instale o app" na landing de `/convite/:token` | Opcional |
+| `SITE_URL` | URL canônica do site público (redirecionamento de `www.` e links absolutos). Padrão `https://vigorasaude.com` | Opcional |
+| `SITE_PROXY_SECRET` | Segredo compartilhado com o Worker do Cloudflare que serve o site; o servidor só confia no IP do visitante repassado pelo Worker quando ele confere | Opcional (sem ele, rate limit do site por IP do Worker) |
 
 > Push aos cuidadores usa o serviço público da Expo (`exp.host`) — não requer secret no servidor.
 

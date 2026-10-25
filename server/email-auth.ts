@@ -108,7 +108,7 @@ export function isEmailServiceConfigured(): boolean {
   return !!(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
 }
 
-async function sendEmail(
+export async function sendEmail(
   to: string,
   subject: string,
   bodyHtml: string

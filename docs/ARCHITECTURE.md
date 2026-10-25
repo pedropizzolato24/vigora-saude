@@ -265,6 +265,7 @@ vigora-saude/
 │   ├── links-code.ts                 # Geração/validação dos códigos de convite
 │   ├── invite-landing.ts             # Landing HTML de /convite/:token
 │   ├── whatsapp.ts                   # Alertas a contatos via Meta Graph API
+│   ├── site.ts / waitlist.ts / db-waitlist.ts  # O Express também serve o site (vigorasaude.com, HTML em site/) e a lista de espera
 │   └── push.ts                       # Push (Expo) para cuidadores vinculados
 ├── tests/                            # Suíte Vitest — 38 arquivos, 290 testes
 │   ├── auth-providers.test.ts        # Provedores de login e vínculo por e-mail
@@ -586,6 +587,8 @@ Suíte Vitest cobrindo frontend e backend — **290 testes em 38 arquivos** (`pn
 | `RESEND_API_KEY` / `EMAIL_FROM` | Servidor (privado) | Códigos de e-mail (cadastro e recuperação de senha) |
 | `APPLE_TEAM_ID` / `ANDROID_CERT_SHA256` | Servidor | Arquivos de associação de App Links / Universal Links |
 | `CORS_ORIGIN_ALLOWLIST` | Servidor | Allowlist de origens |
+| `SITE_URL` | Servidor | URL canônica do site público (redirecionamento de `www.`); padrão `https://vigorasaude.com` |
+| `SITE_PROXY_SECRET` | Servidor + Worker | Prova que a requisição veio do Worker do site; só então o IP repassado vale para o rate limit |
 
 ### Armazenamento de Tokens
 
