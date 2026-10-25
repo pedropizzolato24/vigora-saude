@@ -15,6 +15,7 @@ import { AppToast, useAppToast } from '@/components/app-toast';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { PressableScale } from '@/components/pressable-scale';
 import { ScreenContainer } from '@/components/screen-container';
+import { ScreenHeaderBack } from '@/components/screen-header-back';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AlarmFormModal } from '@/components/alarm-form-modal';
 import { AlarmCard } from '@/components/alarm-card';
@@ -353,11 +354,17 @@ export function AlarmListScreen({ kind }: { kind: AlarmKind }) {
           borderBottomWidth: 2,
           borderBottomColor: ac.border,
           backgroundColor: ac.bar,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
         }}>
-          <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>{copy.title}</Text>
-          <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>
-            {copy.count(sortedAlarms.length)}
-          </Text>
+          <ScreenHeaderBack fallbackRoute="/(tabs)/alarm-hub" />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: af['2xl'], fontWeight: '900', color: ac.foreground }}>{copy.title}</Text>
+            <Text style={{ fontSize: af.sm, color: ac.muted, marginTop: 4 }}>
+              {copy.count(sortedAlarms.length)}
+            </Text>
+          </View>
         </View>
         {readOnly && (
           <View style={{
@@ -517,9 +524,10 @@ export function AlarmListScreen({ kind }: { kind: AlarmKind }) {
   // --- NORMAL MODE ----------------------------------------------------------
   return (
     <ScreenContainer edges={["left", "right"]}>
-      {/* Header — só título, sem botões (regra do app: nada de ações no topo) */}
+      {/* Header — voltar + título; ações ficam na barra inferior */}
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.bar, paddingTop: insets.top + 12 }]}>
-        <View>
+        <ScreenHeaderBack fallbackRoute="/(tabs)/alarm-hub" />
+        <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.foreground, fontSize: fs['2xl'], fontFamily: BrandFonts.body }]}>{copy.title}</Text>
           <Text style={[styles.subtitle, { color: colors.muted, fontSize: fs.sm }]}>
             {copy.subtitle}
@@ -649,8 +657,8 @@ export function AlarmListScreen({ kind }: { kind: AlarmKind }) {
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
     paddingHorizontal: 20,
     paddingBottom: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
