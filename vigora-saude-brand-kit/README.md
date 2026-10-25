@@ -13,7 +13,7 @@ vigora-saude-brand-kit/
 ├── brand-guidelines.pdf         Full visual brand guidelines PDF
 ├── README.md                    This file
 ├── logo/
-│   ├── symbol/                  Crescent moon mark — 3 color variants
+│   ├── symbol/                  Crescent moon mark — 3 color variants + true crescent (symbol-crescent*.svg)
 │   ├── wordmark/                "Vigora" type treatment — 2 color variants
 │   └── lockup/
 │       ├── horizontal/          Symbol + wordmark side by side — 2 variants
@@ -53,6 +53,7 @@ vigora-saude-brand-kit/
 | Favicon | `logo/symbol/symbol-blue-on-cream.svg` (resize to 32×32) |
 | Print materials (light) | `logo/lockup/horizontal/lockup-h-blue.svg` + `brand-guidelines.pdf` for specs |
 | Email header | `logo/lockup/horizontal/lockup-h-blue.svg` |
+| Symbol on any background (site header, gradients, photos) | `logo/symbol/symbol-crescent.svg` (single path, transparent, `fill=currentColor`) or `-blue` / `-cream` |
 | Wordmark only (no symbol) | `logo/wordmark/wordmark-blue.svg` or `wordmark-cream.svg` |
 
 **Rule of thumb:**
