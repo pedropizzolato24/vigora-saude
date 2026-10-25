@@ -4,8 +4,27 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{title}}</title>
+  <meta name="description" content="{{description}}">
   <link rel="canonical" href="{{canonical}}">
+  <!-- Cor da barra do navegador no celular: a mesma do cabeçalho -->
+  <meta name="theme-color" content="#EBE2CD" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#151C20" media="(prefers-color-scheme: dark)">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <!-- Prévia do link (WhatsApp, Facebook, LinkedIn, X) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Vigora">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:title" content="{{title}}">
+  <meta property="og:description" content="{{description}}">
+  <meta property="og:url" content="{{canonical}}">
+  <meta property="og:image" content="{{ogImage}}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Uma mensagem, na hora em que ela importa. Exemplo de aviso: a Lúcia não respondeu ao alarme das 8h00.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preload" href="/assets/fonts/plus-jakarta-sans.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/site.css">
 </head>
 <body>
@@ -18,10 +37,10 @@
         </svg>
         <span>Vigora</span>
       </a>
+      <a class="btn btn-menu" href="/#lista">Entrar na lista</a>
       <nav class="menu" aria-label="Principal">
-        <a class="menu-extra" href="/#como-funciona">Como funciona</a>
-        <a class="menu-extra" href="/#perguntas">Perguntas</a>
-        <a class="btn btn-menu" href="/#lista">Entrar na lista</a>
+        <a href="/#como-funciona">Como funciona</a>
+        <a href="/#perguntas">Perguntas</a>
       </nav>
     </div>
   </header>
