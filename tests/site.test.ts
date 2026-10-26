@@ -203,10 +203,12 @@ describe("site", () => {
   it("botão flutuante do WhatsApp: mensagem pronta com o endereço do site, só na home", () => {
     process.env.SITE_URL = "https://exemplo.test/";
     const url = whatsappShareUrl();
-    expect(url.startsWith("https://wa.me/?text=")).toBe(true);
-    const texto = decodeURIComponent(url.slice("https://wa.me/?text=".length));
-    expect(texto).toContain("Vigora");
-    expect(texto.endsWith("https://exemplo.test")).toBe(true);
+    // Igualdade exata (e não startsWith/endsWith): a mensagem inteira, com o
+    // endereço do site sem a barra final.
+    const esperado =
+      "Conheci o Vigora: quando o alarme do remédio toca e ninguém responde, ele avisa a família pelo WhatsApp. " +
+      "Dá para entrar na lista de espera: https://exemplo.test";
+    expect(url).toBe(`https://wa.me/?text=${encodeURIComponent(esperado)}`);
 
     const { app, gets } = makeApp();
     registerSiteRoutes(app);
