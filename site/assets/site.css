@@ -22,17 +22,20 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0E1417;
-    --surface: #1A1714;
-    --bar: #151C20;
-    /* Só no site: o #4A7EC4 do app dá 4,48:1 sobre #0E1417 (abaixo do AA);
-       #5A8CD0 dá 5,39:1 como texto e com texto #0E1417 por cima. */
-    --primary: #5A8CD0;
+    /* Cinzas um pouco mais claros que o #0E1417 do app (o site ficava escuro
+       demais), todos na mesma família azul-acinzentada. */
+    --background: #161D22;
+    --surface: #212A31;
+    --bar: #1D252B;
+    /* Só no site: o #4A7EC4 do app fica abaixo do AA sobre esses fundos.
+       #6493D3 dá 4,94:1 sobre o fundo, 4,62:1 sobre os cartões e 5,88:1
+       com texto #0E1417 por cima (botões). */
+    --primary: #6493D3;
     --on-primary: #0E1417;
     --accent: #D4784A;
     --foreground: #F4EFE5;
-    --muted: #8A9298;
-    --border: #2D2722;
+    --muted: #8F979D;
+    --border: #343F47;
     --error: #F04040;
     --focus: #F4EFE5;
     --logo-lua: #4A7EC4;

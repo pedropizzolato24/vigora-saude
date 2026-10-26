@@ -61,7 +61,7 @@ describe('site: head', () => {
 
   it('cor da barra do navegador nos dois temas e ícone do iPhone', () => {
     expect(layout).toContain('<meta name="theme-color" content="#EBE2CD" media="(prefers-color-scheme: light)">');
-    expect(layout).toContain('<meta name="theme-color" content="#151C20" media="(prefers-color-scheme: dark)">');
+    expect(layout).toContain('<meta name="theme-color" content="#1D252B" media="(prefers-color-scheme: dark)">');
     expect(layout).toContain('<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">');
   });
 
@@ -82,5 +82,32 @@ describe('site: aviso de "O que o Vigora não faz"', () => {
   it('fica no código, mas oculto; o rodapé de todas as páginas mantém o texto', () => {
     expect(index).toMatch(/<p class="disclaimer" hidden>Vigora é um aplicativo informativo/);
     expect(layout).toMatch(/<p class="aviso-legal">Vigora é um aplicativo informativo/);
+  });
+});
+
+describe('site: contraste no tema escuro', () => {
+  const lum = (hex: string) => {
+    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  };
+  const ratio = (a: string, b: string) => {
+    const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m);
+    return (x + 0.05) / (y + 0.05);
+  };
+  const dark = css.slice(css.indexOf('@media (prefers-color-scheme: dark)'));
+  const token = (name: string) => {
+    const m = new RegExp(`--${name}: (#[0-9A-Fa-f]{6});`).exec(dark);
+    expect(m, name).not.toBeNull();
+    return m![1];
+  };
+
+  it('texto, texto secundário e links passam de 4,5:1 sobre fundo, barra e cartões', () => {
+    for (const bg of ['background', 'bar', 'surface']) {
+      for (const fg of ['foreground', 'muted', 'primary']) {
+        expect(ratio(token(fg), token(bg)), `${fg} sobre ${bg}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+    expect(ratio(token('on-primary'), token('primary')), 'texto do botão').toBeGreaterThanOrEqual(4.5);
   });
 });
