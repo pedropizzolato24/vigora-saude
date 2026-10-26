@@ -21,6 +21,18 @@ export const SITE_CSP =
 const SITE_DIR = path.resolve("site");
 const FONTS_DIR = path.resolve("assets", "fonts");
 
+/**
+ * Link "Enviar pelo WhatsApp": abre o WhatsApp com a mensagem pronta e o
+ * endereço do site (que gera a prévia). Sem JavaScript, sem rastreio: nada
+ * sai do site até a pessoa tocar no botão e escolher o contato.
+ */
+export function whatsappShareUrl(): string {
+  const texto =
+    "Conheci o Vigora: quando o alarme do remédio toca e ninguém responde, ele avisa a família pelo WhatsApp. " +
+    `Dá para entrar na lista de espera: ${siteUrl()}`;
+  return `https://wa.me/?text=${encodeURIComponent(texto)}`;
+}
+
 /** Descrição padrão (busca e prévia de link) para páginas sem uma própria. */
 export const DESCRICAO_PADRAO =
   "Quando o alarme do remédio toca e ninguém responde, o Vigora avisa a família pelo WhatsApp, por SMS e no app. Entre na lista de espera.";
@@ -118,6 +130,7 @@ function paginaEstatica(rota: string) {
       const erro = req.query.erro === "1";
       const falha = req.query.erro === "2";
       content = content
+        .replace(/\{\{whatsappUrl\}\}/g, () => escapeHtml(whatsappShareUrl()))
         .replace("<!--depoimentos-->", () => renderTestimonials(DEPOIMENTOS))
         .replace("<!--erro-lista-->", () => (erro ? AVISO_ERRO_LISTA : falha ? AVISO_FALHA_LISTA : ""));
       if (erro) {

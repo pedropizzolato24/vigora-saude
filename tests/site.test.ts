@@ -13,6 +13,7 @@ import {
   renderPage,
   renderTestimonials,
   siteUrl,
+  whatsappShareUrl,
 } from "../server/site";
 
 type Handler = (req: Request, res: Response, next: () => void) => void;
@@ -197,6 +198,25 @@ describe("site", () => {
     );
     expect(erro.res.body).toContain("<title>Erro: confira os dados — Vigora</title>");
     expect(erro.res.body).toMatch(/id="email-lista" aria-invalid="true" aria-describedby="erro-lista"/);
+  });
+
+  it("botão do WhatsApp: mensagem pronta com o endereço do site, nas duas posições da home", () => {
+    process.env.SITE_URL = "https://exemplo.test/";
+    const url = whatsappShareUrl();
+    expect(url.startsWith("https://wa.me/?text=")).toBe(true);
+    const texto = decodeURIComponent(url.slice("https://wa.me/?text=".length));
+    expect(texto).toContain("Vigora");
+    expect(texto.endsWith("https://exemplo.test")).toBe(true);
+
+    const { app, gets } = makeApp();
+    registerSiteRoutes(app);
+    const { res } = makeRes();
+    gets["/"]({ query: {} } as unknown as Request, res as unknown as Response, vi.fn());
+    expect(res.body).not.toContain("{{whatsappUrl}}");
+    const links = res.body.match(/<a class="btn btn-contorno btn-compartilhar" href="([^"]+)" target="_blank" rel="noopener noreferrer">/g) ?? [];
+    expect(links).toHaveLength(2);
+    // href escapado para HTML (o & da query não aparece cru)
+    expect(res.body).toContain(`href="${escapeHtml(url)}"`);
   });
 
   it("assets e fontes recebem a CSP do site", () => {
