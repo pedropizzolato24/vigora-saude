@@ -15,6 +15,7 @@ import { useCaregiverContext } from '@/lib/caregiver-context';
 import type { LinkMethod } from '@/lib/caregiver-state';
 import { trpc } from '@/lib/trpc';
 import type { Alarm, AnamnesesData, EmergencyContact, HealthMetric } from '@/lib/app-context';
+import { formatSurgeryDate, readSurgeries, sortSurgeriesForDisplay } from '@/lib/surgeries';
 import { checkinAlarms, medicationAlarms } from '@/lib/alarm-kind';
 import { formatMetricValue, isRecent, metricTypeLabel, relativeTime } from '@/lib/caregiver-format';
 
@@ -97,6 +98,7 @@ export default function CaregiverPersonScreen() {
     .sort((a, b) => b.timestamp - a.timestamp)
     .slice(0, 5);
   const anamnesis = (data?.anamnesis ?? null) as AnamnesesData | null;
+  const surgeries = sortSurgeriesForDisplay(readSurgeries(anamnesis?.surgeries));
   const contacts = (data?.emergencyContacts ?? []) as EmergencyContact[];
   const hb = data?.lastHeartbeatAt ?? null;
   const loc = data?.lastLocation ?? null;
@@ -263,6 +265,18 @@ export default function CaregiverPersonScreen() {
             </>
           ) : (
             <Muted skin={skin} text="Sem ficha de anamnese preenchida." />
+          )}
+        </Section>
+
+        <Section icon="healing" title="Cirurgias e internações" skin={skin}>
+          {loading ? (
+            <Muted skin={skin} text="Carregando…" />
+          ) : surgeries.length === 0 ? (
+            <Muted skin={skin} text="Nenhuma cirurgia anotada." />
+          ) : (
+            surgeries.map((s) => (
+              <Row key={s.id} skin={skin} left={s.name} right={formatSurgeryDate(s)} sub={s.notes || undefined} />
+            ))
           )}
         </Section>
 

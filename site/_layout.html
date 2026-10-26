@@ -4,8 +4,27 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{title}}</title>
+  <meta name="description" content="{{description}}">
   <link rel="canonical" href="{{canonical}}">
+  <!-- Cor da barra do navegador no celular: a mesma do cabeçalho -->
+  <meta name="theme-color" content="#EBE2CD" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1D252B" media="(prefers-color-scheme: dark)">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <!-- Prévia do link (WhatsApp, Facebook, LinkedIn, X) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Vigora">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:title" content="{{title}}">
+  <meta property="og:description" content="{{description}}">
+  <meta property="og:url" content="{{canonical}}">
+  <meta property="og:image" content="{{ogImage}}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Uma mensagem, na hora em que ela importa. Exemplo de aviso: a Lúcia não respondeu ao alarme das 8h00.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preload" href="/assets/fonts/plus-jakarta-sans.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/site.css">
 </head>
 <body>
@@ -14,15 +33,14 @@
     <div class="topo-interno">
       <a class="marca" href="/" aria-label="Vigora, página inicial">
         <svg class="logo" width="36" height="36" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <circle class="logo-lua" cx="36" cy="36" r="28"/>
-          <circle class="logo-corte" cx="48" cy="28" r="22"/>
+          <path class="logo-lua" d="M38.58 8.12A28 28 0 1 0 62.73 44.34A22 22 0 1 1 38.58 8.12Z"/>
         </svg>
         <span>Vigora</span>
       </a>
+      <a class="btn btn-menu" href="/#lista">Entrar na lista</a>
       <nav class="menu" aria-label="Principal">
         <a href="/#como-funciona">Como funciona</a>
         <a href="/#perguntas">Perguntas</a>
-        <a class="btn btn-menu" href="/#lista">Entrar na lista</a>
       </nav>
     </div>
   </header>

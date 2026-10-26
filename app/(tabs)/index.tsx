@@ -248,24 +248,6 @@ export default function DashboardScreen() {
               accessibilityRole="button"
               accessibilityLabel="Check-in: horários e atraso do aviso"
               style={({ pressed }) => [{
-                backgroundColor: colors.primarySurface,
-                borderRadius: 20,
-                paddingVertical: as_.buttonPadding,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 14,
-                opacity: pressed ? 0.85 : 1,
-              }]}
-            >
-              <MaterialIcons name="check-circle" size={36} color={colors.onPrimary} />
-              <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: af.xl, fontWeight: '800', color: colors.onPrimary }}>
-                Check-in
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => navigate('/(tabs)/health')}
-              style={({ pressed }) => [{
                 backgroundColor: colors.success,
                 borderRadius: 20,
                 paddingVertical: as_.buttonPadding,
@@ -276,9 +258,29 @@ export default function DashboardScreen() {
                 opacity: pressed ? 0.85 : 1,
               }]}
             >
-              <MaterialIcons name="favorite" size={36} color={colors.onSuccess} />
+              <MaterialIcons name="check-circle" size={36} color={colors.onSuccess} />
               <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: af.xl, fontWeight: '800', color: colors.onSuccess }}>
-                Registrar Saúde
+                Check-in
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => navigate('/(tabs)/anamnesis')}
+              accessibilityRole="button"
+              accessibilityLabel="Histórico médico"
+              style={({ pressed }) => [{
+                backgroundColor: colors.primarySurface,
+                borderRadius: 20,
+                paddingVertical: as_.buttonPadding,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 14,
+                opacity: pressed ? 0.85 : 1,
+              }]}
+            >
+              <MaterialIcons name="description" size={36} color={colors.onPrimary} />
+              <Text style={{ fontFamily: 'PlusJakartaSans', fontSize: af.xl, fontWeight: '800', color: colors.onPrimary }}>
+                Histórico Médico
               </Text>
             </Pressable>
           </View>
@@ -475,8 +477,8 @@ export default function DashboardScreen() {
           <View style={styles.tileWrapper}>
             <BigTile
               icon="check-circle"
-              iconColor={colors.primary}
-              iconBg={colors.primaryLight}
+              iconColor={colors.success}
+              iconBg={colors.successLight}
               title="Check-in"
               subtitle="Horários e aviso"
               onPress={() => navigate('/(tabs)/checkin')}
@@ -485,8 +487,8 @@ export default function DashboardScreen() {
           <View style={styles.tileWrapper}>
             <BigTile
               icon="local-hospital"
-              iconColor={colors.primary}
-              iconBg={colors.primaryLight}
+              iconColor={colors.emergency}
+              iconBg={colors.emergencyLight}
               title="Chamar ambulância"
               subtitle="Emergência médica"
               onPress={() => navigate('/(tabs)/ambulance')}
@@ -494,12 +496,12 @@ export default function DashboardScreen() {
           </View>
           <View style={styles.tileWrapper}>
             <BigTile
-              icon="favorite"
-              iconColor={colors.success}
-              iconBg={colors.successLight}
-              title="Anotar saúde"
-              subtitle="Registrar agora"
-              onPress={() => navigate('/(tabs)/health')}
+              icon="description"
+              iconColor={colors.primary}
+              iconBg={colors.primaryLight}
+              title="Histórico médico"
+              subtitle="Suas informações"
+              onPress={() => navigate('/(tabs)/anamnesis')}
             />
           </View>
         </View>

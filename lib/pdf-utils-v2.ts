@@ -1,6 +1,7 @@
 import * as Print from 'expo-print';
 import { AnamnesesData } from './app-context';
 import { esc } from './health-report-generator';
+import { formatSurgeryDate, readSurgeries, sortSurgeriesForDisplay } from './surgeries';
 
 /**
  * Generate HTML content for Anamnesis PDF
@@ -11,11 +12,25 @@ import { esc } from './health-report-generator';
  * mesma falha já corrigida em health-report-generator.ts, de onde `esc` vem.
  */
 export function generateAnamnesisPDF(anamnesis: AnamnesesData): string {
+  // O app salva a data como DD/MM/AAAA; AAAA-MM-DD fica por compatibilidade.
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'Não informado';
-    const [year, month, day] = dateStr.split('-');
-    return esc(`${day}/${month}/${year}`);
+    const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+    return esc(iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : dateStr);
   };
+
+  const surgeries = sortSurgeriesForDisplay(readSurgeries(anamnesis.surgeries));
+  const surgeriesHtml = surgeries.length === 0
+    ? '<p class="empty">Nenhuma informada</p>'
+    : surgeries
+        .map(
+          (s) => `
+          <div class="field">
+            <div class="field-label">${esc(formatSurgeryDate(s))}</div>
+            <div class="field-value">${esc(s.name)}${s.notes ? `<div class="note">${esc(s.notes)}</div>` : ''}</div>
+          </div>`,
+        )
+        .join('');
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -71,6 +86,15 @@ export function generateAnamnesisPDF(anamnesis: AnamnesesData): string {
             width: 65%;
             word-wrap: break-word;
           }
+          .note {
+            color: #666;
+            font-size: 13px;
+            margin-top: 2px;
+          }
+          .empty {
+            margin: 0 0 12px;
+            color: #333;
+          }
           .footer {
             margin-top: 40px;
             text-align: center;
@@ -123,6 +147,11 @@ export function generateAnamnesisPDF(anamnesis: AnamnesesData): string {
             <div class="field-label">Doenças Crônicas:</div>
             <div class="field-value">${esc(anamnesis.diseases) || 'Nenhuma informada'}</div>
           </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Cirurgias e Internações</div>
+          ${surgeriesHtml}
         </div>
 
         <div class="section">

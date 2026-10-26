@@ -21,11 +21,39 @@ export const SITE_CSP =
 const SITE_DIR = path.resolve("site");
 const FONTS_DIR = path.resolve("assets", "fonts");
 
-const PAGINAS: Record<string, { arquivo: string; titulo: string }> = {
-  "/": { arquivo: "index.html", titulo: "Vigora — uma mensagem, na hora em que ela importa" },
-  "/privacidade": { arquivo: "privacidade.html", titulo: "Política de Privacidade — Vigora" },
-  "/termos": { arquivo: "termos.html", titulo: "Termos de Uso — Vigora" },
-  "/obrigado": { arquivo: "obrigado.html", titulo: "Você está na lista — Vigora" },
+/**
+ * Link "Enviar pelo WhatsApp": abre o WhatsApp com a mensagem pronta e o
+ * endereço do site (que gera a prévia). Sem JavaScript, sem rastreio: nada
+ * sai do site até a pessoa tocar no botão e escolher o contato.
+ */
+export function whatsappShareUrl(): string {
+  const texto =
+    "Conheci o Vigora: quando o alarme do remédio toca e ninguém responde, ele avisa a família pelo WhatsApp. " +
+    `Dá para entrar na lista de espera: ${siteUrl()}`;
+  return `https://wa.me/?text=${encodeURIComponent(texto)}`;
+}
+
+/** Descrição padrão (busca e prévia de link) para páginas sem uma própria. */
+export const DESCRICAO_PADRAO =
+  "Quando o alarme do remédio toca e ninguém responde, o Vigora avisa a família pelo WhatsApp, por SMS e no app. Entre na lista de espera.";
+
+const PAGINAS: Record<string, { arquivo: string; titulo: string; descricao: string }> = {
+  "/": { arquivo: "index.html", titulo: "Vigora — uma mensagem, na hora em que ela importa", descricao: DESCRICAO_PADRAO },
+  "/privacidade": {
+    arquivo: "privacidade.html",
+    titulo: "Política de Privacidade — Vigora",
+    descricao: "Quais dados o Vigora coleta, para quê, com quem compartilha e como exercer os seus direitos pela LGPD.",
+  },
+  "/termos": {
+    arquivo: "termos.html",
+    titulo: "Termos de Uso — Vigora",
+    descricao: "As regras de uso do aplicativo Vigora, o que ele faz e o que ele não faz.",
+  },
+  "/obrigado": {
+    arquivo: "obrigado.html",
+    titulo: "Você está na lista — Vigora",
+    descricao: "Seu e-mail está na lista de espera do Vigora.",
+  },
 };
 
 // Sem JS, `role="alert"` presente no carregamento não é anunciado: o
@@ -62,14 +90,18 @@ export function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-export function renderPage(opts: { title: string; content: string; path?: string }): string {
+export function renderPage(opts: { title: string; content: string; path?: string; description?: string }): string {
   const layout = lerArquivo("_layout.html");
+  // Sem caminho (páginas com token, como a de sair da lista), some a linha
+  // inteira de canonical e de og:url: o endereço não deve ser divulgado.
   const comCanonical =
     opts.path === undefined
-      ? layout.replace(/^[^\n]*\{\{canonical\}\}[^\n]*\r?\n/m, "")
-      : layout.replace("{{canonical}}", () => escapeHtml(siteUrl() + opts.path));
+      ? layout.replace(/^[^\n]*\{\{canonical\}\}[^\n]*\r?\n/gm, "")
+      : layout.replace(/\{\{canonical\}\}/g, () => escapeHtml(siteUrl() + opts.path));
   return comCanonical
-    .replace("{{title}}", () => escapeHtml(opts.title))
+    .replace(/\{\{title\}\}/g, () => escapeHtml(opts.title))
+    .replace(/\{\{description\}\}/g, () => escapeHtml(opts.description ?? DESCRICAO_PADRAO))
+    .replace("{{ogImage}}", () => escapeHtml(siteUrl() + "/assets/og-image.png"))
     .replace("{{content}}", () => opts.content);
 }
 
@@ -90,7 +122,7 @@ function comCspDoSite(_req: Request, res: Response, next: NextFunction): void {
 }
 
 function paginaEstatica(rota: string) {
-  const { arquivo, titulo } = PAGINAS[rota];
+  const { arquivo, titulo, descricao } = PAGINAS[rota];
   return (req: Request, res: Response): void => {
     let content = lerArquivo(arquivo);
     let title = titulo;
@@ -98,6 +130,7 @@ function paginaEstatica(rota: string) {
       const erro = req.query.erro === "1";
       const falha = req.query.erro === "2";
       content = content
+        .replace(/\{\{whatsappUrl\}\}/g, () => escapeHtml(whatsappShareUrl()))
         .replace("<!--depoimentos-->", () => renderTestimonials(DEPOIMENTOS))
         .replace("<!--erro-lista-->", () => (erro ? AVISO_ERRO_LISTA : falha ? AVISO_FALHA_LISTA : ""));
       if (erro) {
@@ -111,7 +144,7 @@ function paginaEstatica(rota: string) {
       }
     }
     res.setHeader("Content-Security-Policy", SITE_CSP);
-    res.type("html").send(renderPage({ title, content, path: rota }));
+    res.type("html").send(renderPage({ title, content, path: rota, description: descricao }));
   };
 }
 

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { SurgeryRecord } from './surgeries';
 import * as Crypto from 'expo-crypto';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useReducer } from 'react';
 import { updateAllWidgets } from './update-widgets';
@@ -56,6 +57,8 @@ export interface AnamnesesData {
   healthPlanProvider: string;
   /** Telefone de emergência do plano (só dígitos). Opcional: fichas antigas não têm. */
   healthPlanPhone?: string;
+  /** Cirurgias e internações informadas pela pessoa. Opcional: fichas antigas não têm. */
+  surgeries?: SurgeryRecord[];
 }
 
 export interface HealthMetric {

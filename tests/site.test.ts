@@ -13,6 +13,7 @@ import {
   renderPage,
   renderTestimonials,
   siteUrl,
+  whatsappShareUrl,
 } from "../server/site";
 
 type Handler = (req: Request, res: Response, next: () => void) => void;
@@ -197,6 +198,32 @@ describe("site", () => {
     );
     expect(erro.res.body).toContain("<title>Erro: confira os dados — Vigora</title>");
     expect(erro.res.body).toMatch(/id="email-lista" aria-invalid="true" aria-describedby="erro-lista"/);
+  });
+
+  it("botão flutuante do WhatsApp: mensagem pronta com o endereço do site, só na home", () => {
+    process.env.SITE_URL = "https://exemplo.test/";
+    const url = whatsappShareUrl();
+    // Igualdade exata (e não startsWith/endsWith): a mensagem inteira, com o
+    // endereço do site sem a barra final.
+    const esperado =
+      "Conheci o Vigora: quando o alarme do remédio toca e ninguém responde, ele avisa a família pelo WhatsApp. " +
+      "Dá para entrar na lista de espera: https://exemplo.test";
+    expect(url).toBe(`https://wa.me/?text=${encodeURIComponent(esperado)}`);
+
+    const { app, gets } = makeApp();
+    registerSiteRoutes(app);
+    const { res } = makeRes();
+    gets["/"]({ query: {} } as unknown as Request, res as unknown as Response, vi.fn());
+    expect(res.body).not.toContain("{{whatsappUrl}}");
+    const fab = res.body.match(/<a class="fab-compartilhar" href="([^"]+)" target="_blank" rel="noopener noreferrer"/g) ?? [];
+    expect(fab).toHaveLength(1);
+    // href escapado para HTML (o & da query não aparece cru)
+    expect(res.body).toContain(`href="${escapeHtml(url)}"`);
+    expect(res.body).toContain("Compartilhar o Vigora pelo WhatsApp (abre o WhatsApp)");
+
+    const termos = makeRes();
+    gets["/termos"]({ query: {} } as unknown as Request, termos.res as unknown as Response, vi.fn());
+    expect(termos.res.body).not.toContain("fab-compartilhar");
   });
 
   it("assets e fontes recebem a CSP do site", () => {

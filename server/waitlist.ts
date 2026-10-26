@@ -19,7 +19,7 @@ import { SITE_CSP, escapeHtml, lerArquivo, renderPage, siteUrl } from "./site";
  */
 
 /** Versão da Política de Privacidade aceita no cadastro. */
-export const POLICY_VERSION = "2026-10-20";
+export const POLICY_VERSION = "2026-10-25";
 
 const TOKEN_RE = /^[A-Za-z0-9_-]{32}$/;
 const EMAIL_SUBJECT = "Você está na lista de espera do Vigora";

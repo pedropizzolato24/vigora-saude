@@ -194,7 +194,8 @@ describe("site — textos legais", () => {
       "Resend",
       "lista de espera",
       "TROCAR pela razão social",
-      "Versão 2026-10-20",
+      "Versão 2026-10-25",
+      "cirurgias e internações",
     ]) {
       expect(privacidade).toContain(s);
     }
